@@ -1,4 +1,4 @@
-import { X, createElement } from 'lucide'
+import { ExternalLink, X, createElement } from 'lucide'
 import type { DesktopBridge } from './contracts.ts'
 
 type CredentialInfo = Readonly<{ configured: boolean; writable: boolean }>
@@ -167,8 +167,13 @@ export function installDesktopOnboarding({ bridge, credentials, openPaths }: Set
       body.innerHTML = '<div class="rounded-xl border border-border bg-surface px-5 py-5"><p class="m-0 text-sm font-medium text-foreground">OpenRouter</p><p role="status" class="m-0 mt-2 text-sm leading-6 text-muted-foreground">This key cannot be changed here. You can set up a model in Settings → Models later.</p></div>'
       save.disabled = true
     } else {
-      body.innerHTML = '<div class="flex flex-col gap-3 rounded-xl border border-border bg-surface px-5 py-5"><p class="m-0 text-sm font-medium text-foreground">OpenRouter</p><label for="tockteam-onboarding-key" class="text-sm font-medium text-foreground">OpenRouter API Key</label><input id="tockteam-onboarding-key" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="4096" aria-describedby="tockteam-onboarding-key-help tockteam-onboarding-error" placeholder="Enter your API key" class="box-border h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground placeholder:text-subtle-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"><p class="m-0 text-xs leading-5 text-muted-foreground">Need an API key? Get one from OpenRouter:</p><a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer" class="w-fit break-all text-sm font-medium text-foreground underline underline-offset-4 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">https://openrouter.ai/settings/keys</a><p id="tockteam-onboarding-key-help" class="m-0 text-xs leading-5 text-muted-foreground">Your key is saved by TockTeam and can be changed later in Settings → Models.</p></div>'
+      body.innerHTML = '<div class="flex flex-col gap-3 rounded-xl border border-border bg-surface px-5 py-5"><p class="m-0 text-sm font-medium text-foreground">OpenRouter</p><input id="tockteam-onboarding-key" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="4096" aria-label="OpenRouter API Key" aria-describedby="tockteam-onboarding-error" placeholder="OPENROUTER_API_KEY" class="box-border h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground placeholder:text-subtle-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"><a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer" class="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-foreground underline underline-offset-4 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">Get API Key</a></div>'
       const input = element<HTMLInputElement>('#tockteam-onboarding-key')
+      const externalIcon = createElement(ExternalLink) as SVGSVGElement
+      externalIcon.setAttribute('width', '16')
+      externalIcon.setAttribute('height', '16')
+      externalIcon.setAttribute('aria-hidden', 'true')
+      body.querySelector('a')!.append(externalIcon)
       input.value = draft
       save.textContent = 'Save and Finish'
       save.disabled = draft.trim().length === 0

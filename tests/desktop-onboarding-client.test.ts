@@ -85,9 +85,15 @@ test('Desktop can choose a folder, save a missing model key, and finish only aft
     assert.equal(dialog.querySelector('h2')?.textContent, 'Add a Model')
     const input = dialog.querySelector('input[type=password]') as HTMLInputElement | null
     assert.ok(input, 'the missing key can be entered')
+    assert.equal(input.placeholder, 'OPENROUTER_API_KEY')
+    assert.equal(input.getAttribute('aria-label'), 'OpenRouter API Key', 'the unlabeled field remains accessible')
+    assert.equal(dialog.querySelector('label[for="tockteam-onboarding-key"]'), null)
+    assert.doesNotMatch(dialog.textContent ?? '', /Need an API key\?|https:\/\/openrouter\.ai\/settings\/keys/u)
     const keyLink = dialog.querySelector('a[href="https://openrouter.ai/settings/keys"]') as HTMLAnchorElement | null
     assert.ok(keyLink, 'the official OpenRouter key page is linked')
-    assert.equal(keyLink.textContent?.trim(), 'https://openrouter.ai/settings/keys')
+    assert.equal(keyLink.textContent?.trim(), 'Get API Key')
+    assert.equal(keyLink.querySelector('svg')?.getAttribute('aria-hidden'), 'true')
+    assert.ok(keyLink.querySelector('svg path[d="M15 3h6v6"]'), 'Lucide ExternalLink leads to the key page')
     assert.equal(keyLink.target, '_blank', 'the link must not replace the Desktop workbench')
     assert.equal(keyLink.relList.contains('noopener'), true)
     assert.equal(button(dom.window.document, 'Save and Finish').disabled, true)
