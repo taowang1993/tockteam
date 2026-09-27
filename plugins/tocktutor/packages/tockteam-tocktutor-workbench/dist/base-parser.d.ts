@@ -13,6 +13,7 @@ export interface ExecutableBaseViewDefinition {
     limit: number | null;
     name: string;
     order: string[];
+    rowHeight: 'short' | 'medium' | 'tall';
     sort: string[];
     summaries: ExecutableBaseSummary[];
     type: 'table' | 'list' | 'cards' | 'map';

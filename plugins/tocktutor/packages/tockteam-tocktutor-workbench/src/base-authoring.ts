@@ -1,13 +1,15 @@
 import { parseExecutableBase, type ExecutableBaseViewDefinition } from './base-parser.ts'
 
 /** Replace only one bounded view field; refuse ambiguous or unsupported source. */
-export function setBaseViewField(source: string, viewName: string, field: 'sort' | 'filters' | 'order' | 'name' | 'limit', value: string | readonly string[]): string | null {
+export function setBaseViewField(source: string, viewName: string, field: 'sort' | 'filters' | 'order' | 'name' | 'limit' | 'type' | 'rowHeight', value: string | readonly string[]): string | null {
   const parsed = parseExecutableBase(source)
   if (parsed.status !== 'ready') return null
   const view = parsed.views.find(entry => entry.name === viewName)
   if (!view || !source.endsWith('\n')) return null
   if (field === 'name' && (typeof value !== 'string' || !/^[\p{L}\p{N}][\p{L}\p{N} _-]{0,79}$/u.test(value)
     || parsed.views.some(entry => entry !== view && entry.name.toLocaleLowerCase() === value.toLocaleLowerCase()))) return null
+  if (field === 'type' && (typeof value !== 'string' || !['table', 'list', 'cards', 'map'].includes(value))) return null
+  if (field === 'rowHeight' && (typeof value !== 'string' || !['short', 'medium', 'tall'].includes(value))) return null
   const lines = source.slice(0, -1).split('\n')
   const starts = lines.map((line, index) => /^  -(?: type| name):/u.test(line) ? index : -1).filter(index => index >= 0)
   const start = starts[view.index]
@@ -17,12 +19,12 @@ export function setBaseViewField(source: string, viewName: string, field: 'sort'
   const matches: number[] = []
   for (let index = start + 1; index < stop; index += 1) if (new RegExp(`^    ${field}:`, 'u').test(lines[index] ?? '')) matches.push(index)
   if (matches.length > 1) return null
-  const raw = Array.isArray(value) ? `[${value.map(item => JSON.stringify(item)).join(', ')}]` : JSON.stringify(value)
+  const raw = field === 'type' && typeof value === 'string' ? value : Array.isArray(value) ? `[${value.map(item => JSON.stringify(item)).join(', ')}]` : JSON.stringify(value)
   const replacement = `    ${field}: ${raw}`
   const clear = (field === 'filters' || field === 'limit') && value === ''
-  if (field === 'name' && /^  - name:/u.test(lines[start] ?? '')) {
+  if ((field === 'name' || field === 'type') && new RegExp(`^  - ${field}:`, 'u').test(lines[start] ?? '')) {
     if (matches.length > 0) return null
-    const inline = lines[start]?.match(/^(  - name:\s*)([^#\r\n]*)(\s+#.*)?$/u)
+    const inline = lines[start]?.match(new RegExp(`^(  - ${field}:\\s*)([^#\\r\\n]*)(\\s+#.*)?$`, 'u'))
     if (!inline) return null
     lines[start] = `${inline[1]}${raw}${inline[3] ?? ''}`
   } else if (matches.length === 1) {
@@ -40,6 +42,8 @@ export function setBaseViewField(source: string, viewName: string, field: 'sort'
   if (field === 'sort' || field === 'order') {
     if (JSON.stringify(updated[field]) !== JSON.stringify(expected)) return null
   } else if (field === 'name' && updated.name !== value) return null
+  else if (field === 'type' && updated.type !== value) return null
+  else if (field === 'rowHeight' && updated.rowHeight !== value) return null
   else if (field === 'limit' && updated.limit !== (value === '' ? null : Number(value))) return null
   else if (field === 'filters' && JSON.stringify(updated.filters) !== JSON.stringify(value === '' ? [] : [{ kind: 'statement', statement: value }])) return null
   return output

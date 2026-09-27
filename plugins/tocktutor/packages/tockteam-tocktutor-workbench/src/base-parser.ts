@@ -23,6 +23,7 @@ export interface ExecutableBaseViewDefinition {
   limit: number | null
   name: string
   order: string[]
+  rowHeight: 'short' | 'medium' | 'tall'
   sort: string[]
   summaries: ExecutableBaseSummary[]
   type: 'table' | 'list' | 'cards' | 'map'
@@ -197,6 +198,7 @@ export function parseExecutableBase(source: string): ExecutableBaseParseResult {
         limit: null,
         name: `View ${String(views.length + 1)}`,
         order: [],
+        rowHeight: 'short',
         sort: [],
         summaries: [],
         type: 'table',
@@ -230,6 +232,9 @@ export function parseExecutableBase(source: string): ExecutableBaseParseResult {
       } else if (key === 'name') {
         if (value === '') return unsupported('Base view names must not be empty.')
         currentView.name = value
+      } else if (key === 'rowHeight') {
+        if (value !== 'short' && value !== 'medium' && value !== 'tall') return unsupported('Base row height is invalid.')
+        currentView.rowHeight = value
       } else if (key === 'limit') {
         if (!/^\d+$/u.test(value)) return unsupported('Base view limit is invalid.')
         const limit = Number(value)

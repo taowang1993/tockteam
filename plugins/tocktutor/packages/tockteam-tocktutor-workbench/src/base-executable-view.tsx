@@ -7,7 +7,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react'
-import { ArrowDownUp, ChevronsUpDown, LayoutGrid, List, ListFilter, ListTree, MapPin, Plus, Search, Table2 } from 'lucide-react'
+import { ArrowDownUp, ChevronLeft, ChevronRight, ChevronsUpDown, LayoutGrid, List, ListFilter, ListTree, MapPin, Plus, Search, Table2, X } from 'lucide-react'
 import { Button } from '@tockteam/ui/button'
 import { Checkbox } from '@tockteam/ui/checkbox'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@tockteam/ui/command'
@@ -330,7 +330,7 @@ function ExecutableTable(props: {
                 return (
                   <td
                     aria-selected={inRange ? 'true' : undefined}
-                    className="border border-[var(--tt-border)] p-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--tt-accent)] data-[selected=true]:bg-[var(--tt-selected)]"
+                    className={`border border-[var(--tt-border)] px-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--tt-accent)] data-[selected=true]:bg-[var(--tt-selected)] ${model.view.rowHeight === 'tall' ? 'py-4' : model.view.rowHeight === 'medium' ? 'py-2' : 'py-1'}`}
                     data-selected={inRange ? 'true' : undefined}
                     key={cell.column}
                     ref={element => {
@@ -371,9 +371,16 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
   const [viewPickerOpen, setViewPickerOpen] = useState(false)
   const [viewQuery, setViewQuery] = useState('')
   const [showAddView, setShowAddView] = useState(false)
+  const [configuringView, setConfiguringView] = useState<string | null>(null)
+  const [findOpen, setFindOpen] = useState(false)
+  const findRef = useRef<HTMLInputElement>(null)
+  const searchTriggerRef = useRef<HTMLButtonElement>(null)
+  const viewTriggerRef = useRef<HTMLButtonElement>(null)
   const [renameName, setRenameName] = useState('')
   const [viewType, setViewType] = useState<'table' | 'list' | 'cards' | 'map'>('table')
   const [authoringError, setAuthoringError] = useState('')
+  const savingRef = useRef(false)
+  const [saving, setSaving] = useState(false)
   const document = useMemo(() => parseExecutableBase(props.source), [props.source])
   const selectedName = document.status === 'ready'
     ? document.views.find(view => view.name === props.activeView)?.name ?? document.views[0]?.name ?? ''
@@ -382,6 +389,8 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
   const model = useMemo(() => document.status === 'ready'
     ? createBaseViewModel(document, props.files, selectedName, search, props.baseFile)
     : document, [document, props.files, selectedName, search, props.baseFile])
+  const configured = document.status === 'ready' ? document.views.find(view => view.name === configuringView) : undefined
+  useEffect(() => { if (findOpen) findRef.current?.focus() }, [findOpen])
 
   if (model.status !== 'ready') return <p role="alert">{model.reason}</p>
   const blocked = model.unsupported.length > 0
@@ -393,28 +402,51 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
     ...props.files.flatMap(file => parseFrontmatterProperties(file.source).map(property => `note.${property.key}`)),
   ])].filter(key => /^[\w.-]+$/u.test(key)).slice(0, 256), [model.columns, props.files])
   const commit = async (next: string | null): Promise<boolean> => {
+    if (savingRef.current) return false
     if (next === null || props.onSourceChange === undefined) { setAuthoringError('This Base change is unavailable. Open Base Source to edit it.'); return false }
+    // ponytail: one Base source write at a time; queue edits only if simultaneous authoring becomes necessary.
+    savingRef.current = true
+    setSaving(true)
     try {
       if (!await props.onSourceChange(props.source, next)) { setAuthoringError('The Base changed before it could be saved. Review its source and retry.'); return false }
       setAuthoringError('')
       return true
     } catch { setAuthoringError('The Base could not be saved. Review its source before retrying.'); return false }
+    finally { savingRef.current = false; setSaving(false) }
+  }
+  const saveConfiguredName = (): void => {
+    if (configured === undefined || renameName === configured.name) return
+    void commit(setBaseViewField(props.source, configured.name, 'name', renameName)).then(saved => {
+      if (saved) { setConfiguringView(current => current === configured.name ? renameName : current); props.onActiveViewChange?.(renameName) }
+    })
   }
   const menuClass = 'z-[1002] w-64 rounded-lg border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] p-3 text-foreground shadow-lg'
   const ViewIcon = { table: Table2, list: List, cards: LayoutGrid, 'map-label': MapPin }[model.kind]
   return (
-    <section aria-label="Executable Base" className="flex min-h-0 flex-col gap-3 overflow-auto p-4">
+    <section aria-label="Executable Base" className="flex min-h-0 flex-col overflow-auto p-4">
       <header aria-label="Base View Controls" role="toolbar" className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border pb-2">
-        <Popover open={viewPickerOpen} onOpenChange={open => { setViewPickerOpen(open); if (!open) { setViewQuery(''); setShowAddView(false) } }}>
+        <Popover open={viewPickerOpen} onOpenChange={open => { setViewPickerOpen(open); if (!open) { setViewQuery(''); setShowAddView(false); setConfiguringView(null) } }}>
           <PopoverTrigger asChild>
-            <Button unstyled id="tocktutor-base-view" type="button" aria-label="Base View" className="box-border flex h-7 max-w-36 shrink-0 cursor-pointer items-center gap-1 rounded-md border-0 bg-transparent px-2 text-sm text-foreground hover:bg-muted outline-none focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]">
+            <Button unstyled ref={viewTriggerRef} id="tocktutor-base-view" type="button" aria-label="Base View" className="box-border flex h-7 max-w-36 shrink-0 cursor-pointer items-center gap-1 rounded-md border-0 bg-transparent px-2 text-sm text-foreground hover:bg-muted outline-none focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]">
               <ViewIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
               <span className="truncate">{model.view.name}</span>
               <ChevronsUpDown aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent unstyled align="start" sideOffset={2} className={`z-[1002] flex flex-col gap-0 rounded-lg border border-border bg-surface-muted p-1 text-sm text-foreground shadow-lg outline-none ${showAddView ? 'w-64' : 'w-48'}`}>
-            {showAddView ? (
+          <PopoverContent unstyled align="start" sideOffset={2} className={`z-[1002] box-border flex flex-col gap-0 rounded-lg border border-border bg-surface-muted p-1 text-sm text-foreground shadow-lg outline-none ${configured === undefined && !showAddView ? 'w-64' : 'w-72'}`}>
+            {configured !== undefined ? (
+              <div className="flex flex-col gap-2 p-1">
+                <div className="flex items-center gap-1">
+                  <Button unstyled type="button" aria-label="Back to Views" className="flex size-7 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring" onPointerDown={event => event.preventDefault()} onClick={() => { setConfiguringView(null); saveConfiguredName() }}><ChevronLeft aria-hidden="true" className="size-4" /></Button>
+                  <h3 className="m-0 flex-1 text-sm font-medium">Configure View</h3>
+                  <Button unstyled type="button" aria-label="Close Configure View" className="flex size-7 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring" onPointerDown={event => event.preventDefault()} onClick={() => { setViewPickerOpen(false); setConfiguringView(null); saveConfiguredName(); viewTriggerRef.current?.focus() }}><X aria-hidden="true" className="size-4" /></Button>
+                </div>
+                <Input unstyled aria-label="View Name" className="box-border h-8 w-full rounded-md border border-border bg-surface px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" disabled={!props.onSourceChange || saving} value={renameName} onChange={event => setRenameName(event.currentTarget.value)} onBlur={saveConfiguredName} onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur() }} />
+                <Field className="gap-1"><FieldLabel htmlFor="base-configure-layout">Layout</FieldLabel><NativeSelect id="base-configure-layout" disabled={!props.onSourceChange || saving} value={configured.type} onChange={event => { void commit(setBaseViewField(props.source, configured.name, 'type', event.currentTarget.value)) }}>{(['table', 'list', 'cards', 'map'] as const).map(kind => <NativeSelectOption key={kind} value={kind}>{readableKind(kind)}</NativeSelectOption>)}</NativeSelect></Field>
+                {configured.type === 'table' && <Field className="gap-1"><FieldLabel htmlFor="base-configure-row-height">Row Height</FieldLabel><NativeSelect id="base-configure-row-height" disabled={!props.onSourceChange || saving} value={configured.rowHeight} onChange={event => { void commit(setBaseViewField(props.source, configured.name, 'rowHeight', event.currentTarget.value)) }}>{(['short', 'medium', 'tall'] as const).map(height => <NativeSelectOption key={height} value={height}>{readableKind(height)}</NativeSelectOption>)}</NativeSelect></Field>}
+                {authoringError && <p role="alert" className="m-0 text-xs text-destructive">{authoringError}</p>}
+              </div>
+            ) : showAddView ? (
               <div className="p-2">
                 <Field className="gap-1"><FieldLabel htmlFor="base-new-view-name">View Name</FieldLabel><Input id="base-new-view-name" value={viewName} onChange={event => setViewName(event.currentTarget.value)} /></Field>
                 <Field className="mt-2 gap-1"><FieldLabel htmlFor="base-new-view-kind">View Type</FieldLabel><NativeSelect id="base-new-view-kind" value={viewType} onChange={event => setViewType(event.currentTarget.value as typeof viewType)}>{(['table', 'list', 'cards', 'map'] as const).map(kind => <NativeSelectOption key={kind} value={kind}>{readableKind(kind)}</NativeSelectOption>)}</NativeSelect></Field>
@@ -423,26 +455,26 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
             ) : (
               <>
                 <Command unstyled className="flex min-h-0 flex-col" label="Search Views">
-                  <div className="flex h-8 items-center gap-1 border-b border-border px-2">
+                  <div className="flex h-9 items-center gap-1 border-b border-border px-2">
                     <Search aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
                     <CommandInput unstyled placeholder="Search..." value={viewQuery} onValueChange={setViewQuery} className="h-7 min-w-0 flex-1 border-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]" />
                   </div>
                   <CommandList className="max-h-56">
                     <CommandEmpty className="py-2 text-center text-xs text-muted-foreground">No views found.</CommandEmpty>
-                    <CommandGroup unstyled className="p-1">
+                    <CommandGroup unstyled className="box-border w-full py-1">
                       {model.views.map(view => {
                         const Icon = { table: Table2, list: List, cards: LayoutGrid, 'map-label': MapPin }[view.kind]
-                        return <CommandItem unstyled key={view.name} value={view.name} aria-current={view.name === model.view.name ? 'true' : undefined} className="flex min-w-0 cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground outline-none data-[current=true]:bg-[var(--dsw-alias-interactive-bg-hover)] data-[selected=true]:bg-[var(--dsw-alias-interactive-bg-hover)] focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]" data-current={view.name === model.view.name ? 'true' : undefined} onSelect={() => { props.onActiveViewChange?.(view.name); setViewPickerOpen(false); setViewQuery('') }}><Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" /><span className="truncate">{view.name}</span></CommandItem>
+                        return <CommandItem unstyled key={view.name} value={view.name} aria-current={view.name === model.view.name ? 'true' : undefined} className="box-border flex h-9 w-full min-w-0 cursor-pointer items-center gap-2 rounded-md px-2 text-sm text-foreground outline-none data-[current=true]:bg-[var(--dsw-alias-interactive-bg-hover)] data-[selected=true]:bg-[var(--dsw-alias-interactive-bg-hover)] focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]" data-current={view.name === model.view.name ? 'true' : undefined} onSelect={() => { if (view.name === model.view.name) { setRenameName(view.name); setViewQuery(''); setConfiguringView(view.name) } else { props.onActiveViewChange?.(view.name); setViewPickerOpen(false); setViewQuery('') } }}><Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" /><span className="min-w-0 flex-1 truncate">{view.name}</span>{view.name === model.view.name && <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />}</CommandItem>
                       })}
                     </CommandGroup>
                   </CommandList>
                 </Command>
-                <Button unstyled type="button" className="flex h-8 w-full cursor-pointer items-center gap-2 border-0 border-t border-border bg-transparent px-2 text-sm text-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover)] focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]" onClick={() => { setViewQuery(''); setShowAddView(true) }}><Plus aria-hidden="true" className="size-4" />Add View</Button>
+                <Button unstyled type="button" className="flex h-9 w-full cursor-pointer items-center gap-2 border-0 border-t border-border bg-transparent px-2 text-sm text-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover)] focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]" onClick={() => { setViewQuery(''); setShowAddView(true) }}><Plus aria-hidden="true" className="size-4" />Add View</Button>
               </>
             )}
           </PopoverContent>
         </Popover>
-        <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button" aria-live="polite" className="tabular-nums text-muted-foreground">{resultCount(model.rows.length)}</Button></PopoverTrigger><PopoverContent align="start" className={menuClass}>
+        <Popover><PopoverTrigger asChild><Button unstyled type="button" aria-live="polite" className="h-7 cursor-pointer rounded-md border-0 bg-transparent px-1 text-sm tabular-nums text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{resultCount(model.rows.length)}</Button></PopoverTrigger><PopoverContent align="start" className={menuClass}>
           <Field className="gap-1"><FieldLabel htmlFor="base-result-limit">Result Limit</FieldLabel><NativeSelect id="base-result-limit" value={String(model.view.limit ?? 'all')} disabled={!props.onSourceChange} onChange={event => { void commit(setBaseViewField(props.source, model.view.name, 'limit', event.currentTarget.value === 'all' ? '' : event.currentTarget.value)) }}>
             {['all', '25', '50', '100', '500', '2000'].map(value => <NativeSelectOption key={value} value={value}>{value === 'all' ? 'All Results' : value}</NativeSelectOption>)}
           </NativeSelect></Field>
@@ -478,18 +510,16 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
           <p className="m-0 mb-2 text-sm">Visible Properties</p>
           <div className="max-h-56 overflow-auto">{properties.map(key => <Label key={key} className="flex min-h-8 items-center gap-2 text-sm"><Checkbox disabled={!props.onSourceChange || key === 'file.name'} checked={model.columns.some(column => column.key === key)} onCheckedChange={checked => { const columns = model.columns.map(column => column.key).filter(column => column !== key); if (checked === true) columns.push(key); if (!columns.includes('file.name')) columns.unshift('file.name'); void commit(setBaseViewField(props.source, model.view.name, 'order', columns)) }} /><span>{key}</span></Label>)}</div>
         </PopoverContent></Popover>
-        <div className="relative w-36 shrink-0 rounded-md hover:bg-muted">
-          <Search aria-hidden="true" className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input unstyled id="tocktutor-base-search" aria-label={`Search ${model.view.name}`} className="box-border h-7 w-full rounded-md border-0 bg-transparent py-1 pl-7 pr-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]" maxLength={1_000} placeholder="Search" type="search" value={model.search} onChange={event => props.onSearchChange?.(model.view.name, event.currentTarget.value)} />
-        </div>
+        <Button ref={searchTriggerRef} size="sm" variant="ghost" type="button" aria-controls="tocktutor-base-find" aria-expanded={findOpen} className={findOpen ? 'text-brand' : undefined} onClick={() => { if (findOpen) props.onSearchChange?.(model.view.name, ''); setFindOpen(!findOpen) }}><Search aria-hidden="true" />Search</Button>
         <Button size="sm" variant="ghost" disabled={!props.onNewNote} type="button" onClick={props.onNewNote}><Plus aria-hidden="true" />New</Button>
         </div>
       </header>
-      {authoringError && <p role="alert" className="m-0 text-sm text-destructive">{authoringError}</p>}
+      {authoringError && configured === undefined && <p role="alert" className="m-0 text-sm text-destructive">{authoringError}</p>}
+      {findOpen && <div id="tocktutor-base-find" role="search" aria-label="Find in Base" className="flex h-9 w-full min-w-0 items-center gap-1 border-b border-border px-1 text-muted-foreground focus-within:border-ring"><Search aria-hidden="true" className="size-4 shrink-0" /><Input unstyled ref={findRef} aria-label="Find in Base" className="box-border h-8 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-foreground outline-none placeholder:text-muted-foreground" maxLength={1_000} placeholder="Find..." type="search" value={model.search} onChange={event => props.onSearchChange?.(model.view.name, event.currentTarget.value)} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); props.onSearchChange?.(model.view.name, ''); setFindOpen(false); searchTriggerRef.current?.focus() } }} /></div>}
       {blocked ? (
         <p role="alert">Unsupported Base expression: {model.unsupported.map(entry => entry.expression).join(', ')}</p>
       ) : model.rows.length === 0 ? (
-        <p>No notes match this view.</p>
+        <p>{model.search ? 'No notes match this search.' : 'No notes match this view.'}</p>
       ) : model.kind === 'table' ? (
         <ExecutableTable model={model} onCopy={props.onCopy} onEdit={props.onEdit} />
       ) : (

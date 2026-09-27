@@ -1,0 +1,24 @@
+{
+  "surface": "TockTutor Desktop Base View",
+  "route": "/tocktutor/Untitled.base",
+  "mode": "Executable Base Table",
+  "cssViewport": [1512, 949],
+  "deviceScaleFactor": 2,
+  "screenshots": [
+    {"file": "menu-dark-final.png", "state": "Base View menu open, Table row selected and full-width", "sha256": "f08a485385b6d0b8360c2aa33ce7b077ca833c41c6cc88ddc1ababd6d7201883"},
+    {"file": "config-dark-final.png", "state": "Configure View panel open with Name, Layout, Row Height", "sha256": "9b1f6b81567ae92f5a4a56278be8b8981a44a4d8d5db735eb1855089f6db242e"},
+    {"file": "find-dark-final.png", "state": "Full-width Find row open and focused above Table", "sha256": "c9679a694cf357326f6a0ec419be6b6b3ed3f511caa19f7fba80314687d54728"}
+  ],
+  "canonical": {"theme": "built-in dark", "colorScheme": "dark", "skinId": null, "htmlSkin": null, "menuWidthCss": 256, "viewRowWidthCss": 246, "configurePanelWidthCss": 288, "findWidthCss": 1152, "counterBackground": "transparent", "counterBorderWidth": "0px", "menuTextContrast": 13.34},
+  "appearances": [
+    {"name": "built-in light", "colorScheme": "light", "skinId": null, "menuTextContrast": 18.90, "errors": []},
+    {"name": "Deep Current", "colorScheme": "dark", "skinId": "tockteam-skin-deep-current", "menuTextContrast": 13.67, "errors": []},
+    {"name": "Jade Circuit", "colorScheme": "dark", "skinId": "tockteam-skin-jade-circuit", "menuTextContrast": 13.57, "errors": []},
+    {"name": "Porcelain", "colorScheme": "light", "skinId": "tockteam-skin-porcelain", "menuTextContrast": 12.39, "errors": []},
+    {"name": "Ember Dusk", "colorScheme": "dark", "skinId": "tockteam-skin-ember-dusk", "menuTextContrast": 13.44, "errors": []}
+  ],
+  "interactionChecks": ["counter has no grey background", "menu row fits panel", "active row opens Configure View", "Layout and Row Height persist as Base source after sequential writes", "Find focuses, narrows 45 results to one, clears and restores focus on Escape"],
+  "renameClose": {"savedName": "Renamed", "menuReopened": true, "configurePanelClosed": true, "route": "/tocktutor/Untitled.base", "errors": []},
+  "runtimeErrors": [],
+  "processCleanup": {"rootPids": [64193, 68724, 69664, 70364, 71036, 71709, 72430, 83265, 84463, 87671], "remaining": []}
+}

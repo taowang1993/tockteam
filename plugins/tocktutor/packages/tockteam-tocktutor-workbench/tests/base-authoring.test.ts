@@ -49,6 +49,27 @@ test('result limits can be added and cleared without changing other view fields'
   if (final.status === 'ready') assert.equal(final.views[0]?.limit, null)
 })
 
+test('view layout and row height save in place without losing other fields or views', () => {
+  const layout = setBaseViewField(original, 'Notes', 'type', 'list')
+  assert.ok(layout)
+  assert.match(layout, /  - type: list\n    name: Notes/u)
+  const height = setBaseViewField(layout, 'Notes', 'rowHeight', 'tall')
+  assert.ok(height)
+  assert.match(height, /    rowHeight: "tall"/u)
+  assert.match(height, /# Keep this comment/u)
+  assert.match(height, /  - type: list\n    name: Other/u)
+  const parsed = parseExecutableBase(height)
+  assert.equal(parsed.status, 'ready')
+  if (parsed.status === 'ready') {
+    assert.equal(parsed.views[0]?.type, 'list')
+    assert.equal(parsed.views[0]?.rowHeight, 'tall')
+    assert.equal(parsed.views[1]?.type, 'list')
+    assert.equal(parsed.views[1]?.rowHeight, 'short')
+  }
+  assert.equal(setBaseViewField(original, 'Notes', 'type', 'unknown'), null)
+  assert.equal(setBaseViewField(original, 'Notes', 'rowHeight', 'unknown'), null)
+})
+
 test('view creation rejects duplicate names and preserves remaining Base source', () => {
   const added = appendBaseView(original, 'cards', 'Gallery')
   assert.ok(added)

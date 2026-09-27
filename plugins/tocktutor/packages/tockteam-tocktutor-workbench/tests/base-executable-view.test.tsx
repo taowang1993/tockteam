@@ -69,22 +69,109 @@ function ControlledBase(props: {
 }
 
 describe('ExecutableBaseView', () => {
+  it('opens the full-width selected row into a saved Configure View form', async () => {
+    function EditableBase() {
+      const [baseSource, setBaseSource] = useState(source)
+      const [selected, setSelected] = useState('Ranked')
+      return <ExecutableBaseView source={baseSource} files={files} activeView={selected} onActiveViewChange={setSelected} onSourceChange={async (previous, next) => {
+        if (previous !== baseSource) return false
+        setBaseSource(next)
+        return true
+      }} />
+    }
+    render(<EditableBase />)
+    const count = screen.getByRole('button', { name: '2 Results' })
+    expect(count.className).toContain('bg-transparent')
+    fireEvent.click(screen.getByRole('button', { name: 'Base View' }))
+    expect(screen.getByRole('dialog').className).toContain('w-64')
+    const row = screen.getByRole('option', { name: 'Ranked' })
+    expect(row.className).toContain('w-full')
+    fireEvent.click(row)
+    expect(screen.getByRole('heading', { name: 'Configure View' })).toBeTruthy()
+    expect(screen.getByRole('dialog').className).toContain('w-72')
+    fireEvent.change(screen.getByRole('combobox', { name: 'Row Height' }), { target: { value: 'tall' } })
+    await waitFor(() => expect(screen.getByRole('gridcell', { name: 'Alpha' }).className).toContain('py-4'))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Layout' }), { target: { value: 'list' } })
+    await waitFor(() => expect(screen.getByRole('list', { name: 'Ranked Results' })).toBeTruthy())
+    const name = screen.getByRole('textbox', { name: 'View Name' })
+    fireEvent.change(name, { target: { value: 'Renamed' } })
+    fireEvent.blur(name)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Base View' }).textContent).toContain('Renamed'))
+  })
+
+  it('blocks another Configure View write until the first source save settles', async () => {
+    let finish!: (saved: boolean) => void
+    const pending = new Promise<boolean>(resolve => { finish = resolve })
+    const onSourceChange = vi.fn(async () => await pending)
+    render(<ExecutableBaseView source={source} files={files} onSourceChange={onSourceChange} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Base View' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Ranked' }))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Row Height' }), { target: { value: 'tall' } })
+    await waitFor(() => expect(onSourceChange).toHaveBeenCalledTimes(1))
+    expect((screen.getByRole('combobox', { name: 'Layout' }) as HTMLSelectElement).disabled).toBe(true)
+    finish(true)
+    await waitFor(() => expect((screen.getByRole('combobox', { name: 'Layout' }) as HTMLSelectElement).disabled).toBe(false))
+  })
+
+  it('reopens the view list after closing Configure View during a name save', async () => {
+    let finish!: (saved: boolean) => void
+    const pending = new Promise<boolean>(resolve => { finish = resolve })
+    function EditableBase() {
+      const [baseSource, setBaseSource] = useState(source)
+      const [selected, setSelected] = useState('Ranked')
+      return <ExecutableBaseView source={baseSource} files={files} activeView={selected} onActiveViewChange={setSelected} onSourceChange={async (previous, next) => {
+        if (previous !== baseSource) return false
+        if (!await pending) return false
+        setBaseSource(next)
+        return true
+      }} />
+    }
+    render(<EditableBase />)
+    fireEvent.click(screen.getByRole('button', { name: 'Base View' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Ranked' }))
+    const name = screen.getByRole('textbox', { name: 'View Name' })
+    fireEvent.change(name, { target: { value: 'Renamed' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Close Configure View' }))
+    finish(true)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Base View' }).textContent).toContain('Renamed'))
+    fireEvent.click(screen.getByRole('button', { name: 'Base View' }))
+    expect(screen.getByRole('combobox', { name: 'Search Views' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Configure View' })).toBeNull()
+  })
+
+  it('opens an inline Find strip that filters rows and clears on Escape', async () => {
+    render(<ControlledBase />)
+    const search = screen.getByRole('button', { name: 'Search', exact: true })
+    expect(screen.queryByRole('search', { name: 'Find in Base' })).toBeNull()
+    fireEvent.click(search)
+    const strip = screen.getByRole('search', { name: 'Find in Base' })
+    expect(strip.className).toContain('w-full')
+    const input = within(strip).getByRole('searchbox', { name: 'Find in Base' })
+    await waitFor(() => expect(document.activeElement).toBe(input))
+    fireEvent.change(input, { target: { value: 'alpha' } })
+    expect(screen.getByText('1 Result')).toBeTruthy()
+    expect(screen.queryByText('Beta')).toBeNull()
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(screen.queryByRole('search', { name: 'Find in Base' })).toBeNull()
+    expect(screen.getByText('2 Results')).toBeTruthy()
+    await waitFor(() => expect(document.activeElement).toBe(search))
+  })
+
   it('opens an unboxed, searchable view menu with Add View and keyboard focus', async () => {
     render(<ControlledBase />)
     const toolbar = screen.getByRole('toolbar', { name: 'Base View Controls' })
     for (const name of ['2 Results', 'Sort', 'Filter', 'Properties']) expect(within(toolbar).getByRole('button', { name })).toBeTruthy()
     const view = within(toolbar).getByRole('button', { name: 'Base View' })
-    const search = within(toolbar).getByRole('searchbox', { name: 'Search Ranked' })
-    for (const control of [view, search]) {
-      expect(control.className).toContain('border-0')
-      expect(control.className).toContain('bg-transparent')
-      expect(control.className).toContain('focus-visible:shadow-')
-    }
+    const search = within(toolbar).getByRole('button', { name: 'Search' })
+    expect(view.className).toContain('border-0')
+    expect(view.className).toContain('bg-transparent')
+    expect(view.className).toContain('focus-visible:shadow-')
+    expect(search.getAttribute('aria-expanded')).toBe('false')
     view.focus()
     fireEvent.click(view)
     expect(screen.getByRole('combobox', { name: 'Search Views' })).toBeTruthy()
     const panel = screen.getByRole('dialog')
-    expect(panel.className).toContain('w-48')
+    expect(panel.className).toContain('w-64')
     expect(panel.className).not.toContain('w-72')
     expect(screen.getByRole('option', { name: 'Ranked' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add View' })).toBeTruthy()
@@ -166,7 +253,8 @@ describe('ExecutableBaseView', () => {
     render(<ControlledBase />)
 
     expect(screen.getByRole('grid', { name: 'Ranked Results' })).toBeTruthy()
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search Ranked' }), { target: { value: 'alpha' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find in Base' }), { target: { value: 'alpha' } })
     expect(screen.getByText('1 Result')).toBeTruthy()
     expect(screen.queryByText('Beta')).toBeNull()
 
@@ -181,7 +269,7 @@ describe('ExecutableBaseView', () => {
       }
     }
     expect(screen.getByText('1 Result')).toBeTruthy()
-    expect((screen.getByRole('searchbox', { name: 'Search Ranked' }) as HTMLInputElement).value).toBe('alpha')
+    expect((screen.getByRole('searchbox', { name: 'Find in Base' }) as HTMLInputElement).value).toBe('alpha')
   })
 
   it('copies and exports the exact searched row set with spreadsheet-safe values', () => {
@@ -189,7 +277,8 @@ describe('ExecutableBaseView', () => {
     const onExport = vi.fn()
     render(<ControlledBase onCopy={onCopy} onExport={onExport} />)
 
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search Ranked' }), { target: { value: 'alpha' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find in Base' }), { target: { value: 'alpha' } })
     fireEvent.click(screen.getByLabelText('More Base Actions'))
     fireEvent.click(screen.getByRole('button', { name: 'Copy Visible Results' }))
     fireEvent.click(screen.getByRole('button', { name: 'Export Visible CSV' }))
