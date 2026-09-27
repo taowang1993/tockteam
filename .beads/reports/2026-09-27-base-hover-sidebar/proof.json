@@ -1,0 +1,37 @@
+{
+  "surface": "TockTutor Base Toolbar Hover",
+  "route": "/tocktutor/Untitled.base",
+  "content": "Untitled.base, Table Results",
+  "viewportCss": [1512, 949],
+  "deviceScaleFactor": 2,
+  "screenshotPixels": [3024, 1898],
+  "screenshots": ["hover-dark.png", "hover-light.png"],
+  "checks": {
+    "buttons": ["Sort", "Filter", "Properties", "Search", "New"],
+    "restBackground": "rgba(0, 0, 0, 0)",
+    "hoverBackground": "equal to computed Files sidebar background on all five buttons in every appearance",
+    "activeSearchHoverBackground": "equal to computed Files sidebar background",
+    "cssTransitionWaitMs": 210,
+    "runtimeErrors": []
+  },
+  "appearances": [
+    {"scheme": "dark", "skin": null, "sidebarAndHover": "rgb(30, 30, 30)"},
+    {"scheme": "light", "skin": null, "sidebarAndHover": "color(srgb 0.962353 0.962667 0.963294)"},
+    {"scheme": "dark", "skin": "tockteam-skin-deep-current", "sidebarAndHover": "rgb(7, 25, 35)"},
+    {"scheme": "dark", "skin": "tockteam-skin-jade-circuit", "sidebarAndHover": "rgb(7, 26, 22)"},
+    {"scheme": "light", "skin": "tockteam-skin-porcelain", "sidebarAndHover": "color(srgb 0.918588 0.937569 0.93349)"},
+    {"scheme": "dark", "skin": "tockteam-skin-ember-dusk", "sidebarAndHover": "rgb(33, 22, 31)"}
+  ],
+  "canonicalDark": {"rootColorScheme": "dark", "htmlSkinPresent": false, "bodySkinPresent": false},
+  "verification": {
+    "failingComponentCheckBeforeFix": "1 failed, 20 passed",
+    "componentCheckAfterFix": "21 passed",
+    "firstRenderedCheck": "failed; Tailwind ghost hover:bg-muted overrode token class due generated CSS rule order",
+    "finalRenderedCheck": "6 appearances passed; token utility uses important to win over ghost hover only on these five controls",
+    "nestedTypecheckBuildManifest": "passed",
+    "rootTypecheckBuildAndStage": "passed",
+    "rootTests": "1492 passed; 17 skipped; 0 failed",
+    "nestedTests": "209 passed; 1 environment-blocked: search-index-host-death.test.ts /bin/ps spawn EPERM"
+  },
+  "cleanup": {"finalRootPids": [62394, 63187, 63991, 64661, 65356, 66047], "remaining": []}
+}

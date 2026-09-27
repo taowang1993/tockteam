@@ -169,6 +169,7 @@ describe('ExecutableBaseView', () => {
     const search = screen.getByRole('button', { name: 'Search', exact: true })
     expect(screen.queryByRole('search', { name: 'Find in Base' })).toBeNull()
     fireEvent.click(search)
+    expect(search.className).toContain('hover:bg-[var(--tockteam-shell-chrome,var(--tt-panel))]!')
     const strip = screen.getByRole('search', { name: 'Find in Base' })
     expect(strip.className).toContain('w-full')
     const input = within(strip).getByRole('searchbox', { name: 'Find in Base' })
@@ -211,7 +212,7 @@ describe('ExecutableBaseView', () => {
     for (const name of ['Sort', 'Filter', 'Properties', 'Search', 'New']) {
       const action = within(toolbar).getByRole('button', { name })
       expect(action.className).toContain('bg-transparent')
-      expect(action.className).toContain('hover:bg-transparent')
+      expect(action.className).toContain('hover:bg-[var(--tockteam-shell-chrome,var(--tt-panel))]!')
     }
     expect(within(toolbar).getByRole('button', { name: 'Properties' }).querySelector('path[d="M3 12h.01"]')).toBeTruthy()
   })
