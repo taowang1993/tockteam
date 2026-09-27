@@ -125,6 +125,11 @@ export interface DesktopLaunchOnStartBridge {
   set(enabled: boolean): Promise<boolean>
 }
 
+export interface DesktopOnboardingBridge {
+  status(): Promise<boolean>
+  complete(): Promise<void>
+}
+
 export interface WebClipDesktopBridge {
   authorizeDocument(frameId: number, html: string): Promise<string>
   onNavigationBlocked(listener: (navigation: WebClipBlockedNavigation) => void): () => void
@@ -136,6 +141,7 @@ export interface DesktopBridge {
   launcher: DesktopLauncherBridge
   appUpdate: DesktopAppUpdateBridge
   launchOnStart: DesktopLaunchOnStartBridge
+  onboarding: DesktopOnboardingBridge
   getInfo(): Promise<DesktopInfo>
   getRuntimeSnapshot(): Promise<DesktopRuntimeSnapshot>
   revealSavedModelKey(ref: string): Promise<string | null>

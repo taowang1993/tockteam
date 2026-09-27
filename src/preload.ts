@@ -229,6 +229,18 @@ const bridge: DesktopBridge = Object.freeze({
       return value
     },
   }),
+  onboarding: Object.freeze({
+    status: async (...args: unknown[]): Promise<boolean> => {
+      assertNoLauncherIpcArguments(args)
+      const value: unknown = await ipcRenderer.invoke('desktop:onboarding:status')
+      if (typeof value !== 'boolean') throw new Error('Invalid Desktop onboarding status')
+      return value
+    },
+    complete: async (...args: unknown[]): Promise<void> => {
+      assertNoLauncherIpcArguments(args)
+      if (await ipcRenderer.invoke('desktop:onboarding:complete') !== true) throw new Error('Desktop onboarding completion failed')
+    },
+  }),
   getInfo: async (): Promise<DesktopInfo> => await ipcRenderer.invoke('desktop:get-info') as DesktopInfo,
   getRuntimeSnapshot: async (): Promise<DesktopRuntimeSnapshot> => {
     return await ipcRenderer.invoke('desktop:get-runtime-snapshot') as DesktopRuntimeSnapshot

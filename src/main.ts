@@ -83,6 +83,7 @@ import {
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
 import { readSavedDesktopModelKey } from './desktop-model-credentials.ts'
+import { completeDesktopOnboarding, readDesktopOnboardingComplete } from './desktop-onboarding-state.ts'
 import { pruneRuntimeBrowserCookies } from './runtime-browser-cookies.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
 import { isTockTutorProtocol, parseSingleInstanceProtocolUrls, resolveTockTutorProtocolRequest } from './desktop-native-policy.ts'
@@ -4049,6 +4050,17 @@ function installIpc(): void {
   ipcMain.handle('desktop:choose-workspace', async event => {
     assertTrustedMainIpc(event)
     return await selectWorkspacePaths()
+  })
+  ipcMain.handle('desktop:onboarding:status', (event, ...rawArgs: unknown[]) => {
+    assertTrustedMainIpc(event)
+    assertNoLauncherIpcArguments(rawArgs)
+    return readDesktopOnboardingComplete(app.getPath('userData'))
+  })
+  ipcMain.handle('desktop:onboarding:complete', (event, ...rawArgs: unknown[]) => {
+    assertTrustedMainIpc(event)
+    assertNoLauncherIpcArguments(rawArgs)
+    completeDesktopOnboarding(app.getPath('userData'))
+    return true
   })
   ipcMain.handle('desktop:get-info', event => {
     assertTrustedMainIpc(event)
