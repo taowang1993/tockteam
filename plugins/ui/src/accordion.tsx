@@ -20,7 +20,7 @@ const AccordionTrigger = React.forwardRef<React.ElementRef<typeof AccordionPrimi
       <AccordionPrimitive.Trigger
         ref={ref}
         data-slot="accordion-trigger"
-        className={cn('group/accordion-trigger relative m-0 flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-lg border border-solid border-transparent bg-transparent px-0 py-2.5 text-left font-[inherit] text-sm font-medium text-foreground outline-none transition-[color,box-shadow] hover:underline focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none [&>svg]:size-4 [&>svg]:shrink-0', className)}
+        className={cn('group/accordion-trigger relative m-0 flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-lg border border-solid border-transparent bg-transparent px-0 py-2.5 text-left font-[inherit] text-sm font-medium text-foreground outline-none transition-[color,box-shadow] hover:underline focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none [&>svg]:size-4 [&>svg]:shrink-0', className)}
         {...props}
       >
         {children}

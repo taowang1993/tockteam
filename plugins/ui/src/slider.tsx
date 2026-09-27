@@ -29,7 +29,7 @@ const Slider = React.forwardRef<React.ElementRef<typeof SliderPrimitive.Root>, R
             aria-describedby={describedBy}
             aria-valuetext={valueText}
             data-slot="slider-thumb"
-            className="relative box-border block size-3 shrink-0 rounded-full [corner-shape:round] border border-solid border-ring bg-background ring-ring/50 outline-none transition-[color,box-shadow] after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 active:ring-3 data-[disabled]:pointer-events-none motion-reduce:transition-none"
+            className="relative box-border block size-3 shrink-0 rounded-full [corner-shape:round] border border-solid border-ring bg-background ring-ring/50 outline-none transition-[color,box-shadow] after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-2 active:ring-3 data-[disabled]:pointer-events-none motion-reduce:transition-none"
           />
         ))}
       </SliderPrimitive.Root>

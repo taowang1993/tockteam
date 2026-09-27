@@ -39,7 +39,7 @@
   --color-border: var(--dsw-alias-border-l2);
   --color-border-strong: var(--dsw-alias-border-l3);
   --color-input: var(--dsw-alias-border-l2);
-  --color-ring: var(--dsw-alias-brand-primary);
+  --color-ring: color-mix(in srgb, var(--dsw-alias-brand-primary) 70%, var(--dsw-alias-bg-base));
   --color-brand: var(--dsw-alias-brand-primary);
   --color-brand-foreground: var(--dsw-alias-brand-primary-invert);
   --color-primary: var(--dsw-alias-button-primary-fill);
