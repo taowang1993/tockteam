@@ -47,13 +47,13 @@ test('fresh Models settings foreground OpenRouter and request its key without lo
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
-test('Desktop opens directly to API-key setup while Web keeps the testing notice', () => {
+test('Desktop owns its onboarding flow while Web keeps the native welcome and key prompts', () => {
   const { root, client } = fixture()
   try {
     prioritizeOpenRouterModelsSettings(root)
     const adapted = readFileSync(client, 'utf8')
     assert.match(adapted, /if \(window\.dshDesktop === void 0\) ctx\.slots\.inject\("settings\.onboarding", \(\) => ctx\.slots\.register\(\{\s+name: "settings\.onboarding",\s+id: "welcome-notice",/u)
-    assert.match(adapted, /ctx\.slots\.inject\("settings\.onboarding", \(\) => ctx\.slots\.register\(\{\s+name: "settings\.onboarding",\s+id: "openrouter",/u)
+    assert.match(adapted, /if \(window\.dshDesktop === void 0\) ctx\.slots\.inject\("settings\.onboarding", \(\) => ctx\.slots\.register\(\{\s+name: "settings\.onboarding",\s+id: "openrouter",/u)
     const start = adapted.indexOf('if (window.dshDesktop === void 0) ctx.slots.inject("settings.onboarding"')
     const end = adapted.indexOf('}, DeepSeekOnboardingDialog));', start) + '}, DeepSeekOnboardingDialog));'.length
     const register = new Script(`(ctx, window) => {
@@ -62,7 +62,7 @@ test('Desktop opens directly to API-key setup while Web keeps the testing notice
       ${adapted.slice(start, end)}
     }`).runInNewContext() as (ctx: unknown, window: unknown) => void
     for (const [window, expected] of [
-      [{ dshDesktop: {} }, ['openrouter']],
+      [{ dshDesktop: {} }, []],
       [{}, ['welcome-notice', 'openrouter']],
     ] as const) {
       const ids: string[] = []

@@ -13,6 +13,7 @@ const PREVIOUS_STAGED_SHA256 = new Set([
   'c726e22891b8589ec2ba8597069a0c0945b40405f00d462f66550673f7185fb8',
   '56cf3f48f01b9d725d78b47f07076e8a05658a9861bb38177b9a8ff5edacef87',
   '2998f14676b330da0be1f4899ad59f1ceecd123a64d4a31ea09f1b335d792493',
+  'ec77adcd6583246c8dbf3e2463261aeda0863ff7783f6cd5ead497a9c4f72af0',
 ])
 const DEEPSEEK_ROUTE = 'candidate.entry.provider === "deepseek-official" && candidate.entry.settingsNs === "llm-deepseek" && candidate.entry.settingsPath.length === 0'
 const OPENROUTER_ROUTE = 'candidate.entry.provider === "openrouter" && candidate.entry.settingsNs === "llm-pi-ai" && candidate.entry.settingsPath.join("/") === "providers/openrouter"'
@@ -35,6 +36,11 @@ const CHANGES = [
   [
     '\t\t\tctx.slots.inject("settings.onboarding", () => ctx.slots.register({\n\t\t\t\tname: "settings.onboarding",\n\t\t\t\tid: "welcome-notice",',
     '\t\t\tif (window.dshDesktop === void 0) ctx.slots.inject("settings.onboarding", () => ctx.slots.register({\n\t\t\t\tname: "settings.onboarding",\n\t\t\t\tid: "welcome-notice",',
+    1,
+  ],
+  [
+    '\t\t\t}, WelcomeNotice));\n\t\t\tctx.slots.inject("settings.onboarding", () => ctx.slots.register({',
+    '\t\t\t}, WelcomeNotice));\n\t\t\tif (window.dshDesktop === void 0) ctx.slots.inject("settings.onboarding", () => ctx.slots.register({',
     1,
   ],
   [
