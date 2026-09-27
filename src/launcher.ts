@@ -1,4 +1,5 @@
 import { isLauncherExtensionId, launcherProviderAlerts } from './launcher-extension-settings.ts'
+import { launcherCalculatorCaptions } from './launcher-calculator-caption.ts'
 import { createTrustedRaycastView } from './trusted-raycast-renderer.ts'
 import { createTrustedRaycastFirstUseView, createTrustedRaycastTrustView } from './trusted-raycast-trust-view.ts'
 import { trustedRaycastCommands, trustedRaycastSetupId, trustedRaycastAssetUrl, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
@@ -928,17 +929,33 @@ async function bootstrap(): Promise<void> {
       const compact = surfaceSettings.searchResultLayout === 'compact'
       if (calculator) {
         const equation = document.createElement('span')
-        equation.className = 'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3'
+        equation.className = 'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2'
         const expression = document.createElement('span')
-        expression.className = 'min-w-0 truncate text-center text-[22px] font-semibold tabular-nums'
+        expression.className = 'col-start-1 row-start-1 min-w-0 truncate text-center text-[22px] font-semibold tabular-nums'
         expression.textContent = displayedTerm
         const equals = document.createElement('span')
         equals.className = 'sr-only'
         equals.textContent = messages().equals
         const answer = document.createElement('strong')
-        answer.className = 'min-w-0 truncate text-center text-[26px] font-semibold tabular-nums'
+        answer.className = 'col-start-3 row-start-1 min-w-0 truncate text-center text-[26px] font-semibold tabular-nums'
         answer.textContent = item.name
-        equation.append(expression, icon(ArrowRight), equals, answer)
+        const captions = launcherCalculatorCaptions(displayedTerm, item.name)
+        equation.append(expression)
+        if (captions.operation) {
+          const operation = document.createElement('small')
+          operation.className = 'col-start-1 row-start-2 max-w-full justify-self-center truncate rounded bg-[var(--dsw-alias-bg-layer-3,color-mix(in_srgb,CanvasText_12%,transparent))] px-2 py-0.5 text-[11px] font-medium text-muted-foreground'
+          operation.textContent = captions.operation
+          equation.append(operation)
+        }
+        const arrow = icon(ArrowRight)
+        arrow.classList.add('col-start-2', 'row-start-1')
+        equation.append(arrow, equals, answer)
+        if (captions.answerWords) {
+          const words = document.createElement('small')
+          words.className = 'col-start-3 row-start-2 max-w-full justify-self-center truncate rounded bg-[var(--dsw-alias-bg-layer-3,color-mix(in_srgb,CanvasText_12%,transparent))] px-2 py-0.5 text-[11px] font-medium text-muted-foreground'
+          words.textContent = captions.answerWords
+          equation.append(words)
+        }
         button.append(equation)
       } else {
         const copy = document.createElement('span')

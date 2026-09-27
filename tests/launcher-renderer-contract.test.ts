@@ -124,6 +124,7 @@ test('calculator uses the typed expression and main-owned answer in an accessibl
   assert.match(launcherSource, /button\.dataset\.testid = 'tocklauncher-calculator-result'/u)
   assert.match(launcherSource, /expression\.textContent = displayedTerm/u)
   assert.match(launcherSource, /answer\.textContent = item\.name/u)
+  assert.match(launcherSource, /launcherCalculatorCaptions\(displayedTerm, item\.name\)/u)
   assert.match(launcherSource, /item\.sourceExtension === 'Calculator'[^\n]*item\.id === 'calculator:instantResult'/u)
   assert.match(launcherSource, /item\.sourceExtension === 'Calculator' \? messages\(\)\.copyAnswer : messages\(\)\.openCommand/u)
   assert.match(launcherSource, /files: 'Files'/u)
