@@ -32,6 +32,21 @@ const CHANGES = [
   ['onboardingDescription: "Configure the official DeepSeek provider to start building."', 'onboardingDescription: "Configure OpenRouter to start building."', 1],
   ['onboardingDescription: "配置 DeepSeek 官方模型，即可开始使用。"', 'onboardingDescription: "配置 OpenRouter 模型，即可开始使用。"', 1],
   [
+    'children: t("intro")\n\t\t\t\t\t}),\n\t\t\t\t\t!state.writable',
+    'children: t("intro")\n\t\t\t\t\t}),\n\t\t\t\t\t(0, react_jsx_runtime.jsx)("p", {\n\t\t\t\t\t\tclassName: ModelsSection_module_css_default["intro"],\n\t\t\t\t\t\tchildren: t("defaultModelNotice")\n\t\t\t\t\t}),\n\t\t\t\t\t!state.writable',
+    1,
+  ],
+  [
+    'intro: "Enter your API keys to use models from the following providers.",\n\t\t\tedit: "Edit",',
+    'intro: "Enter your API keys to use models from the following providers.",\n\t\t\tdefaultModelNotice: "New setups default to OpenRouter · openrouter/free. You do not need a Model ID or display name unless you customize the catalog; saved choices take precedence.",\n\t\t\tedit: "Edit",',
+    1,
+  ],
+  [
+    'intro: "填入各提供方的 API 密钥即可使用其模型。",\n\t\t\tedit: "编辑",',
+    'intro: "填入各提供方的 API 密钥即可使用其模型。",\n\t\t\tdefaultModelNotice: "新安装默认使用 OpenRouter · openrouter/free。除非自定义模型目录，否则无需填写模型 ID 或显示名称；已保存的模型选择优先。",\n\t\t\tedit: "编辑",',
+    1,
+  ],
+  [
     'const keyPlaceholder = keyLocked ? t("keyEnvLocked") : keyState?.configured === true && props.credentialRequired !== true ? t("keyStored") : family === "pi-ai" ? t("keyPlaceholderNative") : t("keyPlaceholder");',
     'const keyPlaceholder = keyLocked ? t("keyEnvLocked") : keyState?.configured === true && props.credentialRequired !== true ? t("keyStored") : props.credentialRequired === true ? t("keyPlaceholder") : family === "pi-ai" ? t("keyPlaceholderNative") : t("keyPlaceholder");',
     1,
