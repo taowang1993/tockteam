@@ -1,0 +1,28 @@
+{
+  "surface": "TockTutor Base Results Menu Typography",
+  "route": "/tocktutor/Untitled.base",
+  "viewportCss": [1512, 949],
+  "deviceScaleFactor": 2,
+  "screenshotPixels": [3024, 1898],
+  "screenshots": ["base-menu-dark.png", "base-menu-light.png"],
+  "comparison": "Table menu option, Results menu label, entry and all three actions have the same computed 14px font size",
+  "menuCssSize": [224, 153],
+  "appearances": [
+    {"scheme": "dark", "skin": null, "menuAndTableRgb": "rgb(44, 44, 46)", "textContrast": 13.34, "runtimeErrors": []},
+    {"scheme": "light", "skin": null, "menuAndTableRgb": "rgb(255, 255, 255)", "textContrast": 18.9, "runtimeErrors": []},
+    {"scheme": "dark", "skin": "tockteam-skin-deep-current", "menuAndTableRgb": "rgb(15, 42, 57)", "textContrast": 13.67, "runtimeErrors": []},
+    {"scheme": "dark", "skin": "tockteam-skin-jade-circuit", "menuAndTableRgb": "rgb(16, 46, 38)", "textContrast": 13.57, "runtimeErrors": []},
+    {"scheme": "light", "skin": "tockteam-skin-porcelain", "menuAndTableRgb": "rgb(237, 244, 242)", "textContrast": 12.39, "runtimeErrors": []},
+    {"scheme": "dark", "skin": "tockteam-skin-ember-dusk", "menuAndTableRgb": "rgb(52, 33, 48)", "textContrast": 13.44, "runtimeErrors": []}
+  ],
+  "canonicalDark": {"rootColorScheme": "dark", "htmlSkinPresent": false, "bodySkinPresent": false},
+  "verification": {
+    "componentTest": "21 passed; red test observed 12px input/action mismatch",
+    "nestedTypecheckBuildManifest": "passed",
+    "sharedUiTypecheckAndContracts": "passed; 7 contract tests",
+    "rootTypecheckBuildQuickStage": "passed",
+    "rootTests": "1486 passed; 17 skipped; 0 failed",
+    "nestedTests": "209 passed; 1 unrelated environment-blocked: search-index-host-death.test.ts /bin/ps spawn EPERM"
+  },
+  "cleanup": {"rootPids": [9094, 9996, 10792, 11512, 12265, 12979], "remaining": []}
+}

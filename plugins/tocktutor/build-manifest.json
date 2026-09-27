@@ -1331,7 +1331,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/base-executable-view.js",
-      "sha256": "0ba2e6ba48a5f08bc031797c1d0b93b836a552836ac7f20c491df0e1e2db5017"
+      "sha256": "8bcc2e149775666f53020c27e4de74a262ef2654dfd3c4fda9ff2a233a367560"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/base-executable-view.js.map",
@@ -1667,11 +1667,11 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js",
-      "sha256": "aab5cdc3afb972f957dbb1ec8c3982f5005aa12bf6a01cb3012bc295c66a5670"
+      "sha256": "bf0cfe0597137111c4034e11d9b5aaeb3e9ff82f969af1492f9e48fe3a816ad1"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/client.js.map",
-      "sha256": "9f3a3f1147b02c7dc53e4377aca4e138b889b2e91934ff127961d8401056bce4"
+      "sha256": "98997c8b5a70e14532b5b926469a1ad9b014deb6daa85f2171beb44be2bed8d8"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/dist/composer.d.ts",
@@ -2891,7 +2891,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/base-executable-view.tsx",
-      "sha256": "ea3b154567a75ad260895803f39dcf50acf2dd2e1048515c53cdcf684c596dac"
+      "sha256": "58c46766722f68a143c1f8dec2d83c0ea63b3dc557e3302fa928726d691f41dc"
     },
     {
       "path": "packages/tockteam-tocktutor-workbench/src/base-new-note-dialog.tsx",
