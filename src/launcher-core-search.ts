@@ -327,8 +327,13 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     if (indexGeneration !== searchGeneration) throw new Error('TockLauncher search was superseded')
 
     let beforeItems = favoriteItems.slice(0, LAUNCHER_MAX_RESULT_ITEMS)
+    const seen = new Set(beforeItems.map(item => item.id))
     let afterItems: readonly LauncherInternalResultItem[] = [...instantBefore, ...ordinaryItems, ...instantAfter]
-      .filter(({ id }) => !excluded.has(id))
+      .filter(({ id }) => {
+        if (excluded.has(id) || seen.has(id)) return false
+        seen.add(id)
+        return true
+      })
       .slice(0, Math.max(0, LAUNCHER_MAX_RESULT_ITEMS - beforeItems.length))
     let sections: readonly LauncherCoreSearchSection[]
     if (trimmedSearchTerm.length === 0) {

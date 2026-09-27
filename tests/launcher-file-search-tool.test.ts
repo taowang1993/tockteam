@@ -79,6 +79,20 @@ test('File Search consumes Escape at the menu and tool-input layers', () => {
   assert.match(source, /if \(event\.key === 'Escape'\) \{[\s\S]{0,80}event\.stopPropagation\(\)[\s\S]{0,80}options\.onClose\(\)/u)
 })
 
+test('File Search starts with the launcher query and immediately searches through the bounded bridge', async () => {
+  const queries: string[] = []
+  const bridge = {
+    search: async (term: string) => { queries.push(term); return { before: [], after: [], resultSetId: 'launcher-results:1', status: { indexedItemCount: 0, rescanStatus: 'idle' as const } } },
+  } as unknown as LauncherPreloadBridge
+  const document = new FakeDocument()
+  const tool = createLauncherFileSearchTool({ bridge, document: document as unknown as Document, initialSearchTerm: '  invoice  ', onClose: () => undefined, searchOptions: options }) as unknown as FakeElement
+  const input = find(tool, element => element.tagName === 'input')!
+  await flush()
+  assert.equal(input.value, 'invoice')
+  assert.equal(document.activeElement, input)
+  assert.deepEqual(queries, ['tockteam:file-search:invoice'])
+})
+
 test('File Search result buttons support roving arrow-key focus', async () => {
   const items = ['first.txt', 'second.txt'].map((name, index): LauncherPublicResultItem => ({
     defaultAction: { actionId: `launcher-action:${index}`, description: 'Open file', hideWindowAfterInvocation: true },

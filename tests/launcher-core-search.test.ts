@@ -48,6 +48,20 @@ test('core search matches both engines, instant ordering, empty ordering, limits
   }
 })
 
+test('typed search does not repeat an indexed File Search action as an instant suggestion', async () => {
+  for (const searchEngineId of ['fuzzysort', 'Fuse.js'] as const) {
+    const command = { ...item('file-search:invoke', 'Search Files'), sourceExtension: 'FileSearch' }
+    const core = createLauncherCoreSearch({
+      loadIndexedItems: async () => [command],
+      searchInstant: async () => ({ before: [], after: [{ ...command, name: 'Search Files for “search files”' }] }),
+    })
+    try {
+      const result = await core.search('search files', { ...options, searchEngineId })
+      assert.deepEqual([...result.before, ...result.after].map(entry => entry.id), ['file-search:invoke'])
+    } finally { await core.close() }
+  }
+})
+
 test('core exclusions suppress instant results in both provider positions', async () => {
   const core = createLauncherCoreSearch({
     initialExcludedItemIds: ['hidden-before', 'hidden-after'],

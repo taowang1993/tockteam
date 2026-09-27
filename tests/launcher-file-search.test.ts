@@ -107,6 +107,31 @@ test('FileSearch query status ignores a stale Simple File Search scan error', as
   assert.equal(result.lastError, undefined)
 })
 
+test('ordinary launcher queries offer a File Search handoff without starting a native file scan', async () => {
+  let nativeQueries = 0
+  let enabled = true
+  let locale: 'en-US' | 'zh-CN' = 'en-US'
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: () => undefined, revealPath: () => undefined },
+    enabledExtensionIds: () => enabled ? ['FileSearch'] : [], getLocale: () => locale, getSetting: settings,
+    homePath: '/home/max', platform: 'macOS',
+    scanners: {
+      queryFileSearch: async () => { nativeQueries++; return [] },
+      scanSimpleFolder: async () => [], validatePath: async () => true,
+    },
+  })
+  const suggested = await provider.searchInstant('  invoice  ')
+  assert.deepEqual(suggested.after.map(item => [item.id, item.name]), [['file-search:invoke', 'Search Files for “invoice”']])
+  assert.equal(await provider.executeAction(record(suggested.after[0]!)), true)
+  assert.equal(nativeQueries, 0)
+  locale = 'zh-CN'
+  assert.equal((await provider.searchInstant('invoice')).after[0]?.name, '搜索文件：“invoice”')
+  assert.deepEqual((await provider.searchInstant('   ')).after, [])
+  enabled = false
+  assert.deepEqual((await provider.searchInstant('invoice')).after, [])
+  await provider.close()
+})
+
 test('file providers index bounded simple results and query the exact prefixed FileSearch surface', async () => {
   const opened: string[] = []; const revealed: string[] = []; let queried = 0
   const scanners: LauncherFileSearchScanners = {

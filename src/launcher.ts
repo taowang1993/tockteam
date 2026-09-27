@@ -402,8 +402,8 @@ async function bootstrap(): Promise<void> {
     hideLauncherControls()
     root.append(tool)
   }
-  const openFileSearchTool = async (): Promise<void> => {
-    const tool = createLauncherFileSearchTool({ bridge, document, locale: surfaceSettings.locale, onClose: closeLocalTool, searchOptions: {
+  const openFileSearchTool = async (initialSearchTerm: string): Promise<void> => {
+    const tool = createLauncherFileSearchTool({ bridge, document, initialSearchTerm, locale: surfaceSettings.locale, onClose: closeLocalTool, searchOptions: {
       fuzziness: surfaceSettings.fuzziness,
       maxSearchResultItems: surfaceSettings.maxSearchResultItems,
       searchEngineId: surfaceSettings.searchEngineId,
@@ -595,6 +595,7 @@ async function bootstrap(): Promise<void> {
     const fileSearchTool = candidate?.id === 'file-search:invoke'
       && candidate.sourceExtension === 'FileSearch'
       && action.actionId === candidate.defaultAction.actionId
+    const fileSearchQuery = fileSearchTool ? search.value.trim() : ''
     const networkTool = candidate !== undefined
       && (candidate.id === 'ueli-network:DeeplTranslator' || candidate.id === 'ueli-network:WebSearch')
       && candidate.sourceExtension === (candidate.id.endsWith('DeeplTranslator') ? 'DeeplTranslator' : 'WebSearch')
@@ -661,7 +662,7 @@ async function bootstrap(): Promise<void> {
         return
       }
       if (fileSearchTool) {
-        await openFileSearchTool()
+        await openFileSearchTool(fileSearchQuery)
         return
       }
       if (networkTool) {

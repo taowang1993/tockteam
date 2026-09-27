@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import path from 'node:path'
 import type { LauncherActionRecord, LauncherInternalAction, LauncherInternalResultItem } from './launcher-actions.ts'
-import { LAUNCHER_FILE_SEARCH_QUERY_PREFIX } from './launcher-contract.ts'
+import { LAUNCHER_FILE_SEARCH_QUERY_PREFIX, type LauncherLocale } from './launcher-contract.ts'
 import { isLauncherRendererSettingValue } from './launcher-settings-contract.ts'
 import type {
   LauncherFileSearchEntry,
@@ -38,6 +38,7 @@ type FileSearchOptions = Readonly<{
   }>
   enabledExtensionIds: () => readonly string[]
   getSetting: <T>(key: string, fallback: T) => T
+  getLocale?: () => LauncherLocale
   homePath: string
   onProviderError?: (extensionId: LauncherFileSearchExtensionId, error: Error) => void
   platform: LauncherFileSearchPlatform
@@ -51,6 +52,13 @@ type FileSearchInstantResult = Readonly<{
   before: readonly LauncherInternalResultItem[]
   lastError?: string
 }>
+
+function fileSearchInvocation(name: string): LauncherInternalResultItem {
+  return Object.freeze({
+    defaultAction: Object.freeze({ argument: 'FileSearch', description: 'Search Files', handlerKey: HANDLERS.invoke, hideWindowAfterInvocation: false, requiresConfirmation: false }),
+    description: 'File Search', id: 'file-search:invoke', imageKey: 'file-search-folder', name, sourceExtension: 'FileSearch',
+  })
+}
 
 function emptySearch(lastError?: string): FileSearchInstantResult {
   return Object.freeze({
@@ -351,10 +359,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
       const items: LauncherInternalResultItem[] = []
       if (enabledIds.has('FileSearch')) {
         if (options.platform === 'Linux') reportProviderError('FileSearch', new Error('File Search is unsupported on Linux'))
-        else items.push(Object.freeze({
-          defaultAction: Object.freeze({ argument: 'FileSearch', description: 'Search Files', handlerKey: HANDLERS.invoke, hideWindowAfterInvocation: false, requiresConfirmation: false }),
-          description: 'File Search', id: 'file-search:invoke', imageKey: 'file-search-folder', name: 'Search Files', sourceExtension: 'FileSearch',
-        }))
+        else items.push(fileSearchInvocation('Search Files'))
       }
       if (!enabledIds.has('SimpleFileSearch')) {
         throwIfNotCurrent(scanController.signal, generation, scanGeneration)
@@ -428,7 +433,15 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
       || searchTerm.length > (searchTerm.startsWith(LAUNCHER_FILE_SEARCH_QUERY_PREFIX)
         ? LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length + 512
         : 512)
-      || !enabled().has('FileSearch') || !searchTerm.startsWith(LAUNCHER_FILE_SEARCH_QUERY_PREFIX)) return emptySearch()
+      || !enabled().has('FileSearch')) return emptySearch()
+    if (!searchTerm.startsWith(LAUNCHER_FILE_SEARCH_QUERY_PREFIX)) {
+      const term = searchTerm.trim()
+      if (options.platform === 'Linux' || term.length === 0) return emptySearch()
+      const prefix = options.getLocale?.() === 'zh-CN' ? '搜索文件：“' : 'Search Files for “'
+      return Object.freeze({ before: Object.freeze([]), after: Object.freeze([
+        fileSearchInvocation(`${prefix}${term.slice(0, 512 - prefix.length - 1)}”`),
+      ]) })
+    }
     const queryTerm = searchTerm.slice(LAUNCHER_FILE_SEARCH_QUERY_PREFIX.length).trim()
     if (queryTerm.length === 0 || queryTerm.length > 512 || /[\0\r\n]/u.test(queryTerm)) return emptySearch()
     if (options.platform === 'Linux') {

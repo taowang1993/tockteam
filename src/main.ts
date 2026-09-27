@@ -1915,6 +1915,7 @@ function initializeLauncher(): void {
     },
     enabledExtensionIds: launcherEnabledLocalExtensionIds,
     getSetting: (key, fallback) => repository.getSetting(key, fallback),
+    getLocale: () => launcherLocale,
     homePath: app.getPath('home'),
     onProviderError: (extensionId, error) => {
       appendLog('desktop', `TockLauncher provider ${extensionId} failed: ${error instanceof Error ? error.name : 'unknown error'}`)

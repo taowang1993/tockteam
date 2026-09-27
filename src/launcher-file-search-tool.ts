@@ -13,6 +13,7 @@ function element<K extends keyof HTMLElementTagNameMap>(document: Document, tag:
 export function createLauncherFileSearchTool(options: Readonly<{
   bridge: LauncherPreloadBridge
   document: Document
+  initialSearchTerm?: string
   locale?: LauncherLocale
   onClose: () => void
   searchOptions: LauncherSearchOptions
@@ -32,6 +33,9 @@ export function createLauncherFileSearchTool(options: Readonly<{
   const input = element(document, 'input')
   const maxInputLength = LAUNCHER_MAX_SEARCH_TERM_LENGTH
   input.type = 'search'; input.className = 'launcher-command-control'; input.maxLength = maxInputLength; input.placeholder = text('searchFiles', 'Search files'); input.setAttribute('aria-label', text('fileSearchInput', 'File Search Input')); input.setAttribute('aria-controls', 'launcher-file-search-results'); input.setAttribute('aria-autocomplete', 'list'); input.autocomplete = 'off'
+  const initial = typeof options.initialSearchTerm === 'string' ? options.initialSearchTerm.trim() : ''
+  if (initial.length <= maxInputLength && !/[\0\r\n]/u.test(initial)) input.value = initial
+  const searchOnOpen = input.value.length > 0
   const status = element(document, 'p', 'launcher-command-status data-[tone=error]:text-[var(--dsw-alias-state-error-primary,CanvasText)]'); status.setAttribute('role', 'status'); status.textContent = text('enterFile', 'Enter a file name to search.')
   const list = element(document, 'ul', 'launcher-command-list'); list.id = 'launcher-file-search-results'; list.setAttribute('aria-label', text('fileSearchResults', 'File Search Results')); list.setAttribute('role', 'list')
   content.append(input, status, list)
@@ -181,6 +185,6 @@ export function createLauncherFileSearchTool(options: Readonly<{
     if (toggle !== undefined) setTimeout(() => { if (toggle.isConnected) toggle.focus() }, 0)
   }
   tool.addEventListener('tockteam-launcher-close-tool-menu', closeMenuAndRestoreFocus)
-  queueMicrotask(() => input.focus())
+  queueMicrotask(() => { input.focus(); if (searchOnOpen) void search() })
   return tool
 }
