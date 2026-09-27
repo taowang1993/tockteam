@@ -48,6 +48,23 @@ test('core search matches both engines, instant ordering, empty ordering, limits
   }
 })
 
+test('both search engines find macOS app aliases while keeping exact displayed names first', async () => {
+  for (const searchEngineId of ['fuzzysort', 'Fuse.js'] as const) {
+    const core = createLauncherCoreSearch({
+      loadIndexedItems: async () => [
+        { ...item('calendar', 'Calendar'), sourceExtension: 'ApplicationSearch', searchAliases: ['日历'] },
+        { ...item('calendar-zh', '日历'), sourceExtension: 'ApplicationSearch' },
+      ],
+    })
+    try {
+      const result = await core.search('日历', { ...options, maxSearchResultItems: 5, searchEngineId })
+      assert.deepEqual(result.after.map(entry => entry.id), ['calendar-zh', 'calendar'])
+      assert.equal(result.after[1]?.name, 'Calendar')
+      assert.deepEqual((await core.search('日历', { ...options, maxSearchResultItems: 1, searchEngineId })).after.map(entry => entry.id), ['calendar-zh'])
+    } finally { await core.close() }
+  }
+})
+
 test('typed search does not repeat an indexed File Search action as an instant suggestion', async () => {
   for (const searchEngineId of ['fuzzysort', 'Fuse.js'] as const) {
     const command = { ...item('file-search:invoke', 'Search Files'), sourceExtension: 'FileSearch' }

@@ -1,6 +1,6 @@
 import { execFile as nodeExecFile } from 'node:child_process'
 import { DatabaseSync } from 'node:sqlite'
-import { opendir, open, readdir, stat } from 'node:fs/promises'
+import { lstat, opendir, open, readdir, stat } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -21,6 +21,8 @@ const MAX_DESKTOP_ENTRY_BYTES = 256 * 1024
 export const MAX_DISCOVERY_DIRECTORY_VISITS = 4_096
 const MAX_TEXT_LENGTH = 16_384
 const DISCOVERY_READ_CHUNK_BYTES = 64 * 1024
+const MAX_BUNDLE_METADATA_BYTES = 1024 * 1024
+const MAC_APP_LANGUAGES = ['en', 'en_US', 'zh_CN', 'zh-Hans'] as const
 
 export type LauncherExecFileOptions = Readonly<{
   maxBuffer?: number
@@ -399,6 +401,63 @@ async function scanBrowser(browser: string, context: LauncherDiscoveryScanContex
   })))
 }
 
+function macBundleName(value: unknown): string | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined
+  const metadata = value as Record<string, unknown>
+  for (const key of ['CFBundleDisplayName', 'CFBundleName']) {
+    const name = metadata[key]
+    if (boundedDiscoveryString(name, 512) && name.trim()) return name.trim()
+  }
+  return undefined
+}
+
+async function macApplicationAliases(bundlePath: string, base: string, signal: AbortSignal, execFile: LauncherExecFile): Promise<readonly string[]> {
+  const contents = path.join(bundlePath, 'Contents')
+  const resources = path.join(contents, 'Resources')
+  try {
+    for (const directory of [bundlePath, contents, resources]) {
+      if (!(await lstat(directory)).isDirectory()) return []
+    }
+  } catch { throwIfAborted(signal); return [] }
+  const plist = async (file: string): Promise<Record<string, unknown> | undefined> => {
+    try {
+      const metadata = await lstat(file)
+      if (!metadata.isFile() || metadata.size > MAX_BUNDLE_METADATA_BYTES) return undefined
+      throwIfAborted(signal)
+      const { stdout } = await execFile('/usr/bin/plutil', ['-convert', 'json', '-o', '-', '--', file], {
+        maxBuffer: 2 * MAX_BUNDLE_METADATA_BYTES, signal, timeout: 1_000,
+      })
+      const value: unknown = JSON.parse(stdout)
+      return typeof value === 'object' && value !== null && !Array.isArray(value)
+        ? value as Record<string, unknown> : undefined
+    } catch {
+      throwIfAborted(signal)
+      return undefined
+    }
+  }
+  const table = await plist(path.join(resources, 'InfoPlist.loctable'))
+  const seen = new Set([base.toLocaleLowerCase('en-US')])
+  const names: string[] = []
+  const append = (value: unknown): void => {
+    const name = macBundleName(value)
+    if (name === undefined || seen.has(name.toLocaleLowerCase('en-US')) || names.length >= 8) return
+    seen.add(name.toLocaleLowerCase('en-US'))
+    names.push(name)
+  }
+  for (const language of MAC_APP_LANGUAGES) {
+    throwIfAborted(signal)
+    append(table?.[language])
+    const folder = path.join(resources, `${language}.lproj`)
+    try {
+      if ((await lstat(folder)).isDirectory()) append(await plist(path.join(folder, 'InfoPlist.strings')))
+    } catch {
+      throwIfAborted(signal)
+      // Missing localization folders cannot change app discovery.
+    }
+  }
+  return names
+}
+
 async function scanApplications(context: LauncherDiscoveryScanContext, execFile: LauncherExecFile): Promise<readonly LauncherDiscoveryEntry[]> {
   const defaults = context.defaults.ApplicationSearch
   if (context.platform === 'macOS') {
@@ -429,7 +488,17 @@ async function scanApplications(context: LauncherDiscoveryScanContext, execFile:
         } finally { await directory.close().catch(() => undefined) }
       }
     }
-    return Object.freeze(paths.map(value => Object.freeze({ id: `applications:${value}`, kind: 'application' as const, name: path.basename(value, '.app'), path: value })))
+    const results: LauncherDiscoveryEntry[] = []
+    for (let offset = 0; offset < paths.length; offset += 8) {
+      throwIfAborted(context.signal)
+      results.push(...await Promise.all(paths.slice(offset, offset + 8).map(async value => {
+        const name = path.basename(value, '.app')
+        const searchAliases = await macApplicationAliases(value, name, context.signal, execFile)
+        return Object.freeze({ id: `applications:${value}`, kind: 'application' as const, name, path: value,
+          ...(searchAliases.length === 0 ? {} : { searchAliases: Object.freeze(searchAliases) }) })
+      })))
+    }
+    return Object.freeze(results)
   }
   if (context.platform === 'Windows') {
     const invocation = windowsApplicationScanInvocation({

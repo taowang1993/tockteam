@@ -112,9 +112,10 @@ function searchIndexedItems(
   searchTerm: string,
   options: LauncherSearchOptions,
 ): LauncherInternalResultItem[] {
+  const hasAliases = searchResultItems.some(item => item.searchAliases?.length)
   if (options.searchEngineId === 'Fuse.js') {
     return new Fuse([...searchResultItems], {
-      keys: ['name'],
+      keys: hasAliases ? [{ name: 'name', weight: 0.9 }, { name: 'searchAliases', weight: 0.1 }] : ['name'],
       shouldSort: true,
       threshold: options.fuzziness,
     })
@@ -124,7 +125,14 @@ function searchIndexedItems(
   }
   // Ueli inverts fuzzysort's strictness scale and rounds it to one decimal.
   const threshold = Math.round((1 - options.fuzziness) * 10) / 10
-  return fuzzysort.go(searchTerm, [...searchResultItems], {
+  const items = [...searchResultItems]
+  if (hasAliases) return fuzzysort.go(searchTerm, items, {
+    keys: ['name', item => item.searchAliases?.join(' ') ?? ''],
+    limit: options.maxSearchResultItems,
+    scoreFn: result => Math.max(result[0]?.score ?? 0, (result[1]?.score ?? 0) * 0.98),
+    threshold,
+  }).map(result => result.obj)
+  return fuzzysort.go(searchTerm, items, {
     key: 'name',
     limit: options.maxSearchResultItems,
     threshold,

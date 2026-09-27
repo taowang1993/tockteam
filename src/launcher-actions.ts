@@ -26,6 +26,7 @@ export type LauncherInternalResultItem = Readonly<{
   imageKey?: string
   imageUrl?: string
   name: string
+  searchAliases?: readonly string[]
   sourceExtension: string
 }>
 

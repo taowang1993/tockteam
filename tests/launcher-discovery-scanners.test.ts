@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -146,6 +146,67 @@ test('keeps macOS applications with exact .app path-component filtering', async 
     getSetting: <T>(key: string, fallback: T) => key.endsWith('.macOsFolders') ? ['/Applications'] as T : fallback,
   }))
   assert.deepEqual(entries.map(entry => 'path' in entry ? entry.path : ''), ['/Applications/Foo.app-data/Bar.app', '/Applications/Good.app'])
+})
+
+test('macOS app scan finds English and Chinese bundle names without following metadata links', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-localized-apps-'))
+  try {
+    const calendar = join(root, 'Calendar.app')
+    const notes = join(root, 'Notes.app')
+    const linked = join(root, 'Linked.app')
+    await mkdir(join(calendar, 'Contents', 'Resources'), { recursive: true })
+    await mkdir(join(notes, 'Contents', 'Resources', 'zh_CN.lproj'), { recursive: true })
+    await mkdir(join(linked, 'Contents', 'Resources'), { recursive: true })
+    await writeFile(join(calendar, 'Contents', 'Resources', 'InfoPlist.loctable'), JSON.stringify({ en: { CFBundleDisplayName: 'Calendar' }, zh_CN: { CFBundleDisplayName: '日历' } }))
+    await writeFile(join(notes, 'Contents', 'Resources', 'zh_CN.lproj', 'InfoPlist.strings'), JSON.stringify({ CFBundleDisplayName: '备忘录' }))
+    await symlink(join(calendar, 'Contents', 'Resources', 'InfoPlist.loctable'), join(linked, 'Contents', 'Resources', 'InfoPlist.loctable'))
+    const files: string[] = []
+    const scanner = createLauncherDiscoveryScanners({ execFile: async (executable, args) => {
+      if (executable === '/usr/bin/mdfind') return { stdout: [calendar, notes, linked].join('\n') }
+      assert.equal(executable, '/usr/bin/plutil')
+      const target = args.at(-1)!
+      files.push(target)
+      return { stdout: readFileSync(target, 'utf8') }
+    } })
+    const entries = await scanner.ApplicationSearch(context({
+      platform: 'macOS',
+      getSetting: <T>(key: string, fallback: T) => key.endsWith('.macOsFolders') ? [root] as T : fallback,
+    }))
+    assert.deepEqual(entries.map(entry => entry.kind === 'application' ? [entry.name, entry.searchAliases] : []), [
+      ['Calendar', ['日历']], ['Notes', ['备忘录']], ['Linked', undefined],
+    ])
+    assert.ok(!files.some(file => file.startsWith(join(linked, 'Contents'))))
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+test('malformed and oversized macOS bundle metadata falls back to the app filename', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-broken-apps-'))
+  try {
+    const broken = join(root, 'Broken.app')
+    const large = join(root, 'Large.app')
+    for (const app of [broken, large]) await mkdir(join(app, 'Contents', 'Resources'), { recursive: true })
+    await writeFile(join(broken, 'Contents', 'Resources', 'InfoPlist.loctable'), '{bad')
+    await writeFile(join(large, 'Contents', 'Resources', 'InfoPlist.loctable'), 'x'.repeat(1024 * 1024 + 1))
+    const checked: string[] = []
+    const scanner = createLauncherDiscoveryScanners({ execFile: async (executable, args) => {
+      if (executable === '/usr/bin/mdfind') return { stdout: `${broken}\n${large}` }
+      assert.equal(executable, '/usr/bin/plutil')
+      checked.push(args.at(-1)!)
+      return { stdout: readFileSync(args.at(-1)!, 'utf8') }
+    } })
+    const entries = await scanner.ApplicationSearch(context({ platform: 'macOS', getSetting: <T>(key: string, fallback: T) => key.endsWith('.macOsFolders') ? [root] as T : fallback }))
+    assert.deepEqual(entries.map(entry => entry.kind === 'application' ? [entry.name, entry.searchAliases] : []), [['Broken', undefined], ['Large', undefined]])
+    assert.deepEqual(checked, [join(broken, 'Contents', 'Resources', 'InfoPlist.loctable')])
+    const canceled = new AbortController()
+    const cancelScanner = createLauncherDiscoveryScanners({ execFile: async executable => {
+      if (executable === '/usr/bin/mdfind') return { stdout: broken }
+      canceled.abort(new Error('bundle scan canceled'))
+      return { stdout: '{}' }
+    } })
+    await assert.rejects(cancelScanner.ApplicationSearch(context({ platform: 'macOS', signal: canceled.signal,
+      getSetting: <T>(key: string, fallback: T) => key.endsWith('.macOsFolders') ? [root] as T : fallback,
+    })), /bundle scan canceled/u)
+  } finally { await rm(root, { recursive: true, force: true }) }
 })
 
 test('scans Linux applications sequentially with limits and cancellation', async () => {

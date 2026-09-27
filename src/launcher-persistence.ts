@@ -280,7 +280,7 @@ export async function atomicWrite(filePath: string, contents: string, options: R
 }
 
 const INDEX_ACTION_KEYS = ['argument', 'description', 'handlerKey', 'hideWindowAfterInvocation', 'keyboardShortcut', 'requiresConfirmation']
-const INDEX_ITEM_KEYS = ['additionalActions', 'defaultAction', 'description', 'details', 'id', 'imageKey', 'name', 'sourceExtension']
+const INDEX_ITEM_KEYS = ['additionalActions', 'defaultAction', 'description', 'details', 'id', 'imageKey', 'name', 'searchAliases', 'sourceExtension']
 
 function parseIndexAction(value: unknown): void {
   if (!isRecord(value)
@@ -305,6 +305,9 @@ function parseIndex(value: unknown): LauncherInternalResultItem[] {
       || typeof raw.sourceExtension !== 'string' || raw.sourceExtension.length === 0 || raw.sourceExtension.length > 128 || /[\0\r\n]/u.test(raw.sourceExtension)
       || (raw.imageKey !== undefined && (typeof raw.imageKey !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/u.test(raw.imageKey)))
       || (raw.details !== undefined && (typeof raw.details !== 'string' || raw.details.length > 8_192 || /[\0\r\n]/u.test(raw.details)))
+      || (raw.searchAliases !== undefined && (raw.sourceExtension !== 'ApplicationSearch'
+        || !Array.isArray(raw.searchAliases) || raw.searchAliases.length > 8
+        || raw.searchAliases.some((alias: unknown) => typeof alias !== 'string' || alias.length === 0 || alias.length > 512 || /[\0\r\n]/u.test(alias))))
       || !isRecord(raw.defaultAction)) throw new Error('TockLauncher index item is invalid')
     parseIndexAction(raw.defaultAction)
     const additional = raw.additionalActions

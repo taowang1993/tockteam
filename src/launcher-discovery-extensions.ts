@@ -66,6 +66,7 @@ export type LauncherDiscoveryEntry = Readonly<{
   kind: 'application'
   name: string
   path: string
+  searchAliases?: readonly string[]
 }> | Readonly<{
   browserName: string
   id: string
@@ -469,10 +470,13 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
           ? action(HANDLERS.reveal, 'Show in file explorer', { kind: 'path', path: entry.path }, { keyboardShortcut: options.platform === 'macOS' ? 'Cmd+O' : 'Ctrl+O' })
           : undefined
         const copy = action(HANDLERS.copy, 'Copy file path to clipboard', { kind: 'text', text: entry.path }, { hideWindowAfterInvocation: false, keyboardShortcut: options.platform === 'macOS' ? 'Cmd+C' : 'Ctrl+C' })
+        const aliases = Array.isArray(entry.searchAliases)
+          ? entry.searchAliases.filter(value => bounded(value, 512) && value !== entry.name).slice(0, 8)
+          : []
         const item = Object.freeze({
           additionalActions: Object.freeze([...(admin === undefined ? [] : [admin]), ...(reveal === undefined ? [] : [reveal]), copy]),
           defaultAction: action(HANDLERS.openApplication, 'Open', { kind: 'application', target: entry.path }),
-          description: 'Application', details: entry.path, id: entry.id, imageKey: applicationImageKey(options.platform), ...(imageUrl === undefined ? {} : { imageUrl }), name: entry.name, sourceExtension: 'ApplicationSearch',
+          description: 'Application', details: entry.path, id: entry.id, imageKey: applicationImageKey(options.platform), ...(imageUrl === undefined ? {} : { imageUrl }), name: entry.name, ...(aliases.length === 0 ? {} : { searchAliases: Object.freeze(aliases) }), sourceExtension: 'ApplicationSearch',
         })
         applications.set(item.defaultAction.argument, Object.freeze({ entry, identity }))
         if (reveal !== undefined) reveals.set(reveal.argument, Object.freeze({ entry, identity }))

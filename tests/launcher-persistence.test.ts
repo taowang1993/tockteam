@@ -53,6 +53,21 @@ test('ranking persistence survives restart, recovers its validated backup, and r
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
+test('app name aliases survive restart while malformed alias data is rejected', async () => {
+  const userDataPath = await root()
+  try {
+    const repository = await LauncherPersistenceRepository.open({ userDataPath })
+    const calendar = { ...item, id: 'applications:/Applications/Calendar.app', sourceExtension: 'ApplicationSearch', searchAliases: ['日历'] }
+    await repository.writeIndex([calendar])
+    assert.deepEqual(repository.readIndex()[0]?.searchAliases, ['日历'])
+    await assert.rejects(repository.writeIndex([{ ...calendar, searchAliases: ['valid', 'bad\nname'] }]), /index/u)
+    await repository.close()
+    const restarted = await LauncherPersistenceRepository.open({ userDataPath })
+    assert.deepEqual(restarted.readIndex()[0]?.searchAliases, ['日历'])
+    await restarted.close()
+  } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
 test('reset fences a queued ranking write from restoring cleared usage', async () => {
   const userDataPath = await root()
   try {

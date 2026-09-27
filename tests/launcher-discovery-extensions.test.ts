@@ -9,7 +9,7 @@ import {
   createLauncherDiscoveryExtensions,
   type LauncherDiscoveryScanners,
 } from '../src/launcher-discovery-extensions.ts'
-import type { LauncherActionRecord, LauncherInternalResultItem } from '../src/launcher-actions.ts'
+import { LauncherActionStore, type LauncherActionRecord, type LauncherInternalResultItem } from '../src/launcher-actions.ts'
 
 const entries = {
   ApplicationSearch: async () => [{ id: 'applications:/Applications/Notes.app', kind: 'application' as const, name: 'Notes', path: '/Applications/Notes.app' }],
@@ -68,6 +68,27 @@ test('maps applications, bookmarks, JetBrains projects, and VS Code to opaque bo
   const instant = await provider.searchInstant('vscode tock')
   assert.equal(instant.after[0]?.sourceExtension, 'VSCode')
   assert.equal(instant.after[0]?.defaultAction.argument.includes('file:///work/tockteam'), true)
+})
+
+test('application aliases stay in the Host index without changing action targets', async () => {
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    scanners: { ...entries, ApplicationSearch: async () => [{
+      id: 'applications:/Applications/Calendar.app', kind: 'application', name: 'Calendar',
+      path: '/Applications/Calendar.app', searchAliases: ['日历'],
+    }] },
+    effects: { confirmOpenApplicationAsAdministrator: async () => false, copyText: () => {}, launchExecutable: () => {}, openApplication: () => {}, openApplicationAsAdministrator: () => {}, openExternal: () => {}, revealPath: () => {} },
+  })
+  try {
+    const indexed = await provider.loadIndexedItems(new AbortController().signal)
+    assert.deepEqual(indexed[0]?.searchAliases, ['日历'])
+    assert.equal(indexed[0]?.defaultAction.argument.includes('日历'), false)
+    assert.equal(indexed[0]?.id, 'applications:/Applications/Calendar.app')
+    const publicItem = new LauncherActionStore({ execute: async () => undefined }).publish({
+      items: indexed, owner: { role: 'launcher', webContentsId: 1 },
+    }).items[0]
+    assert.equal('searchAliases' in (publicItem ?? {}), false)
+  } finally { await provider.close() }
 })
 
 test('VS Code retains all local recents while bounding identity concurrency', async () => {
