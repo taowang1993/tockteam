@@ -1,0 +1,26 @@
+{
+  "surface": "TockTutor Desktop Base View picker",
+  "screenshot": {
+    "file": "opened-dark.png",
+    "sha256": "bf61a47e281d5ffccb198173a31af5a4a0996562b04bac71b9f0b841994473d8",
+    "cssViewport": [1512, 949],
+    "deviceScaleFactor": 2,
+    "pngPixels": [3024, 1898],
+    "captureMethod": "Bounded Playwright session attached to owned Electron CDP; Page.captureScreenshot",
+    "route": "/tocktutor/Untitled.base",
+    "mode": "Executable Base Table, View menu expanded",
+    "visibleState": "45 Results; Search Views field focused; Table row and Add View visible",
+    "theme": "Built-in dark",
+    "colorScheme": "dark",
+    "skinId": null,
+    "htmlSkin": null,
+    "menuBackground": "rgb(44, 44, 46)",
+    "menuCssWidth": 202,
+    "anchoredToTrigger": true,
+    "searchTopmost": true,
+    "browserConsoleErrors": [],
+    "pageErrors": []
+  },
+  "interactionChecks": ["view menu opened above editor", "search shows empty state", "Add View opens creator", "Cancel returns to view list", "Escape dismisses and restores focus"],
+  "processCleanup": { "rootPid": 35892, "remaining": [] }
+}

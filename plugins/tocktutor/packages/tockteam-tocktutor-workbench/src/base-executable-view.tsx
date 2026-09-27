@@ -413,7 +413,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
               <ChevronsUpDown aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent unstyled align="start" sideOffset={2} className={`z-[1002] flex flex-col gap-0 rounded-lg border border-border bg-[var(--dsw-alias-bg-layer-2)] p-1 text-sm text-foreground shadow-lg outline-none ${showAddView ? 'w-64' : 'w-48'}`}>
+          <PopoverContent unstyled align="start" sideOffset={2} className={`z-[1002] flex flex-col gap-0 rounded-lg border border-border bg-surface-muted p-1 text-sm text-foreground shadow-lg outline-none ${showAddView ? 'w-64' : 'w-48'}`}>
             {showAddView ? (
               <div className="p-2">
                 <Field className="gap-1"><FieldLabel htmlFor="base-new-view-name">View Name</FieldLabel><Input id="base-new-view-name" value={viewName} onChange={event => setViewName(event.currentTarget.value)} /></Field>
