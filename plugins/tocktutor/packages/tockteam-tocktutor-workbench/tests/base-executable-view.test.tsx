@@ -248,7 +248,10 @@ describe('ExecutableBaseView', () => {
     expect(menu.className).not.toContain('bg-popover')
     expect(menu.className).toContain('w-56')
     expect(within(menu).queryByRole('combobox')).toBeNull()
-    const limit = within(menu).getByRole('spinbutton', { name: 'Limit Number of Results' }) as HTMLInputElement
+    const limit = within(menu).getByRole('textbox', { name: 'Limit Number of Results' }) as HTMLInputElement
+    expect(within(menu).queryByRole('spinbutton')).toBeNull()
+    expect(limit.type).toBe('text')
+    expect(limit.inputMode).toBe('numeric')
     expect(limit.placeholder).toBe('e.g. 10')
     expect(limit.value).toBe('')
     for (const invalid of ['0', '2001', '3.5']) {
@@ -261,7 +264,7 @@ describe('ExecutableBaseView', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: '1 Result' })).toBeTruthy())
     expect(screen.queryByRole('dialog')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: '1 Result' }))
-    expect((screen.getByRole('spinbutton', { name: 'Limit Number of Results' }) as HTMLInputElement).value).toBe('1')
+    expect((screen.getByRole('textbox', { name: 'Limit Number of Results' }) as HTMLInputElement).value).toBe('1')
     fireEvent.click(screen.getByRole('button', { name: 'Show All' }))
     await waitFor(() => expect(screen.getByRole('button', { name: '2 Results' })).toBeTruthy())
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -270,7 +273,7 @@ describe('ExecutableBaseView', () => {
   it('keeps the result limit menu open with an error when a source write fails', async () => {
     render(<ExecutableBaseView files={files} source={source} onSourceChange={async () => false} />)
     fireEvent.click(screen.getByRole('button', { name: '2 Results' }))
-    const limit = screen.getByRole('spinbutton', { name: 'Limit Number of Results' })
+    const limit = screen.getByRole('textbox', { name: 'Limit Number of Results' })
     fireEvent.change(limit, { target: { value: '25' } })
     fireEvent.submit(limit.closest('form')!)
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('changed before it could be saved'))
