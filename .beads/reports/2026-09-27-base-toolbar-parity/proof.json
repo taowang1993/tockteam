@@ -1,0 +1,38 @@
+{
+  "surface": "TockTutor Base Toolbar and Menus",
+  "content": "Untitled.base, Table Results",
+  "route": "/tocktutor/Untitled.base",
+  "viewportCss": [1512, 949],
+  "deviceScaleFactor": 2,
+  "screenshotPixels": [3024, 1898],
+  "screenshots": ["result-menu-dark.png", "result-menu-light.png", "view-menu-dark.png"],
+  "checks": {
+    "resultDivider": false,
+    "resultLabelInputGapPx": 8,
+    "resultMenuCssSize": [224, 152],
+    "viewSearchPlaceholderComputedFontPx": 14,
+    "viewOptionComputedFontPx": 14,
+    "toolbarActions": ["Sort", "Filter", "Properties", "Search", "New"],
+    "toolbarNormalAndHoverBackground": "rgba(0, 0, 0, 0)",
+    "propertyIcon": "Lucide List; Sort, Filter, Search and New already use the corresponding Obsidian Lucide glyphs"
+  },
+  "appearances": [
+    {"scheme": "dark", "skin": null, "resultMenuRgb": "rgb(44, 44, 46)", "runtimeErrors": []},
+    {"scheme": "light", "skin": null, "resultMenuRgb": "rgb(255, 255, 255)", "runtimeErrors": []},
+    {"scheme": "dark", "skin": "tockteam-skin-deep-current", "resultMenuRgb": "rgb(15, 42, 57)", "runtimeErrors": []},
+    {"scheme": "dark", "skin": "tockteam-skin-jade-circuit", "resultMenuRgb": "rgb(16, 46, 38)", "runtimeErrors": []},
+    {"scheme": "light", "skin": "tockteam-skin-porcelain", "resultMenuRgb": "rgb(237, 244, 242)", "runtimeErrors": []},
+    {"scheme": "dark", "skin": "tockteam-skin-ember-dusk", "resultMenuRgb": "rgb(52, 33, 48)", "runtimeErrors": []}
+  ],
+  "canonicalDark": {"rootColorScheme": "dark", "htmlSkinPresent": false, "bodySkinPresent": false},
+  "verification": {
+    "redComponentTest": "2 failing cases (12px search text and 4px label/input gap)",
+    "greenComponentTest": "21 passed",
+    "nestedTypecheckBuildManifest": "passed",
+    "sharedUiTypecheckAndContracts": "passed; 8 contract tests",
+    "rootTypecheckBuildAndStage": "passed",
+    "rootTests": "1491 passed; 17 skipped; 0 failed",
+    "nestedTests": "209 passed; 1 environment-blocked: search-index-host-death.test.ts /bin/ps spawn EPERM"
+  },
+  "cleanup": {"rootPids": [46423, 47458, 48267, 48947, 49612, 50319], "remaining": []}
+}

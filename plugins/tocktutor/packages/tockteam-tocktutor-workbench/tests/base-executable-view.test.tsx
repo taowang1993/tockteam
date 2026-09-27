@@ -194,7 +194,8 @@ describe('ExecutableBaseView', () => {
     expect(search.getAttribute('aria-expanded')).toBe('false')
     view.focus()
     fireEvent.click(view)
-    expect(screen.getByRole('combobox', { name: 'Search Views' })).toBeTruthy()
+    const viewSearch = screen.getByRole('combobox', { name: 'Search Views' })
+    expect(viewSearch.className).toContain('text-sm')
     const panel = screen.getByRole('dialog')
     expect(panel.className).toContain('w-64')
     expect(panel.className).not.toContain('w-72')
@@ -207,6 +208,12 @@ describe('ExecutableBaseView', () => {
     expect(screen.queryByRole('combobox', { name: 'Search Views' })).toBeNull()
     await waitFor(() => expect(document.activeElement).toBe(view))
     expect(within(toolbar).queryByLabelText('More Base Actions')).toBeNull()
+    for (const name of ['Sort', 'Filter', 'Properties', 'Search', 'New']) {
+      const action = within(toolbar).getByRole('button', { name })
+      expect(action.className).toContain('bg-transparent')
+      expect(action.className).toContain('hover:bg-transparent')
+    }
+    expect(within(toolbar).getByRole('button', { name: 'Properties' }).querySelector('path[d="M3 12h.01"]')).toBeTruthy()
   })
 
   it('offers the Base toolbar and persists a changed sort through the source owner', async () => {
@@ -247,6 +254,8 @@ describe('ExecutableBaseView', () => {
     expect(menu.className).toContain('bg-surface-muted')
     expect(menu.className).not.toContain('bg-popover')
     expect(menu.className).toContain('w-56')
+    expect(menu.querySelector('form')?.className).toContain('gap-2')
+    expect(menu.querySelector('[class*="border-t"]')).toBeNull()
     expect(within(menu).queryByRole('combobox')).toBeNull()
     const limit = within(menu).getByRole('textbox', { name: 'Limit Number of Results' }) as HTMLInputElement
     expect(within(menu).getByText('Limit Number of Results').className).toContain('text-sm')
