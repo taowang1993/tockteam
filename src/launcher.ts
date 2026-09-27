@@ -304,6 +304,12 @@ async function bootstrap(): Promise<void> {
   let history: string[] = surfaceSettings.historyEnabled ? [...surfaceSettings.history] : []
   const surfacePlatform: LauncherSurfacePlatform = isMac ? 'macOS' : /Windows/iu.test(`${navigator.platform} ${navigator.userAgent}`) ? 'Windows' : 'Linux'
   const messages = (): typeof LAUNCHER_MESSAGES.en => surfaceSettings.locale === 'zh-CN' ? LAUNCHER_MESSAGES.zh : LAUNCHER_MESSAGES.en
+  const calculatorOnly = (): boolean => currentItems.length === 1
+    && currentItems[0]?.sourceExtension === 'Calculator'
+    && currentItems[0]?.id === 'calculator:instantResult'
+  const syncProviderStatuses = (): void => {
+    providerStatuses.hidden = calculatorOnly() || surfaceSettings.providerStatuses.every(provider => provider.state === 'ready' || provider.state === 'disabled')
+  }
   const syncScrollBehavior = (): void => {
     // The media rule owns CSS scrolling; programmatic scrolling uses the effective behavior below.
     results.style.removeProperty('scroll-behavior')
@@ -333,11 +339,11 @@ async function bootstrap(): Promise<void> {
       else button.append(document.createTextNode(label))
     }
     setButtonLabel(historyToggle, copy.history)
-    providerStatuses.hidden = surfaceSettings.providerStatuses.every(provider => provider.state === 'ready' || provider.state === 'disabled')
     providerStatuses.textContent = surfaceSettings.providerStatuses
       .filter(provider => provider.state !== 'ready' && provider.state !== 'disabled')
       .map(provider => `${provider.extensionId}: ${messages().providerState(provider.state)}`)
       .join(' · ')
+    syncProviderStatuses()
   }
   applySurfaceSettings()
 
@@ -377,6 +383,7 @@ async function bootstrap(): Promise<void> {
     activeLocalToolId = undefined
     tool?.remove()
     for (const element of [searchForm, providerStatuses, results, footer]) { element.hidden = false; element.classList.remove('hidden') }
+    syncProviderStatuses()
     historyOpen = false
     historyPanel.hidden = true
     historyToggle.setAttribute('aria-expanded', 'false')
@@ -1013,12 +1020,13 @@ async function bootstrap(): Promise<void> {
       const previous = selectedItemId
       currentSections = [...response.sections]
       currentItems = currentSections.flatMap(section => section.items)
+      syncProviderStatuses()
       currentResultSetId = response.resultSetId
       selectedItemId = launcherSelectedResultId(currentItems, previous, term !== displayedTerm)
       displayedTerm = term
       search.setAttribute('aria-expanded', String(currentItems.length > 0))
       renderResults()
-      const error = response.status.lastError
+      const error = calculatorOnly() ? undefined : response.status.lastError
       setStatus(error ?? (currentItems.length === 0
         ? messages().noResults
         : messages().indexed(response.status.indexedItemCount)), error ? 'error' : 'ready')
@@ -1028,6 +1036,7 @@ async function bootstrap(): Promise<void> {
       if (currentRevision !== revision || workflowInteractionBlocked()) return false
       currentItems = []
       currentSections = []
+      syncProviderStatuses()
       selectedItemId = ''
       search.setAttribute('aria-expanded', 'false')
       renderResults()

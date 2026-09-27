@@ -125,6 +125,8 @@ test('calculator uses the typed expression and main-owned answer in an accessibl
   assert.match(launcherSource, /answer\.textContent = item\.name/u)
   assert.match(launcherSource, /item\.sourceExtension === 'Calculator'[^\n]*item\.id === 'calculator:instantResult'/u)
   assert.match(launcherSource, /item\.sourceExtension === 'Calculator' \? messages\(\)\.copyAnswer : messages\(\)\.openCommand/u)
+  assert.match(launcherSource, /providerStatuses\.hidden = calculatorOnly\(\) \|\|/u)
+  assert.match(launcherSource, /const error = calculatorOnly\(\) \? undefined : response\.status\.lastError/u)
 })
 
 test('root command UI uses one shared Raycast-like visual recipe', () => {

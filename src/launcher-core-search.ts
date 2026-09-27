@@ -349,10 +349,12 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     }
     if (indexGeneration !== searchGeneration) throw new Error('TockLauncher search was superseded')
 
-    let beforeItems = favoriteItems.slice(0, LAUNCHER_MAX_RESULT_ITEMS)
+    const calculation = instantAfter.find(item => item.sourceExtension === 'Calculator' && item.id === 'calculator:instantResult' && !excluded.has(item.id))
+    let beforeItems = calculation === undefined ? favoriteItems.slice(0, LAUNCHER_MAX_RESULT_ITEMS) : []
     const seen = new Set(beforeItems.map(item => item.id))
-    const calculation = instantAfter.filter(item => item.sourceExtension === 'Calculator' && item.id === 'calculator:instantResult')
-    let afterItems: readonly LauncherInternalResultItem[] = [...calculation, ...instantBefore, ...ordinaryItems, ...instantAfter.filter(item => !calculation.includes(item))]
+    let afterItems: readonly LauncherInternalResultItem[] = (calculation === undefined
+      ? [...instantBefore, ...ordinaryItems, ...instantAfter]
+      : [calculation])
       .filter(({ id }) => {
         if (excluded.has(id) || seen.has(id)) return false
         seen.add(id)

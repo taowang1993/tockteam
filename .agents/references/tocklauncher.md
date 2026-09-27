@@ -109,7 +109,7 @@ TockTeam Electron Main
 3. `LauncherLifecycleController.sync()` applies lifecycle settings. The global shortcut is `Option+Space` on macOS and `Alt+Space` on Windows/Linux.
 4. The workbench is created first. The overlay is created lazily from the shortcut or workbench title-bar button and then reused.
 5. Composition is bundled into the renderer as a constant. The renderer reads sanitized surface settings and sends a bounded query/options payload over typed IPC; main uses its own persisted search settings, not renderer-selected engine authority.
-6. Main combines indexed results, instant results, and the two TockTeam destinations. Empty queries publish bounded `Pinned`, `Recent`, `Commands`, and `Applications` sections. Typed queries retain the ordinary `Results` ordering except calculator answers lead in a separate `Calculator` section; the renderer selects a new calculation by default so Enter copies its answer. The search and publication layers are latest-request-wins.
+6. Main combines indexed results, instant results, and the two TockTeam destinations. Empty queries publish bounded `Pinned`, `Recent`, `Commands`, and `Applications` sections. Typed queries retain the ordinary `Results` ordering except a successful calculation publishes only its answer; the renderer shows it in a `Calculator` section and selects it by default so Enter copies the answer. Unrelated provider diagnostics are hidden while that answer is shown, but remain available for ordinary searches and in Settings. The search and publication layers are latest-request-wins.
 7. `LauncherActionStore` publishes a new result-set ID and opaque action IDs for the current launcher `webContents` owner.
 8. Invocation validates and consumes one action ID before dispatching the finite provider effect. Only successful default completions update the main-owned usage ranking; Electron main alone applies `hideWindowAfterInvocation`.
 9. Provider invalidation, window clearing, navigation, settings changes, and teardown revoke stale actions and abort owned work.
@@ -129,7 +129,7 @@ TockTeam Electron Main
 
 The renderer provides:
 
-- one semantic search combobox and grouped `Pinned`, `Recent`, `Commands`, and `Applications` options for an empty query, with typed `Results`;
+- one semantic search combobox and grouped `Pinned`, `Recent`, `Commands`, and `Applications` options for an empty query, with typed `Results` except when only a calculator answer is shown;
 - Enter, arrows, Home/End, Ctrl/Cmd+number, Ctrl/Cmd+K, Ctrl/Cmd+F, Ctrl/Cmd+Delete, history, and layered Escape behavior;
 - keyboard-navigable additional-action, file-search, and network-tool menus; a root capture guard preserves IME composition defaults before any nested keyboard handler;
 - reopening after hiding disposes the revoked trusted-command view and returns to fresh root results rather than resuming a dead child;
@@ -394,7 +394,7 @@ The root `node:test` suite contains focused contracts for IPC, ownership, provid
 
 Fresh-profile compatibility proofs must open the bundled command directly, not wait for an obsolete **Approve and Open** screen; explicit removal/disablement recovery is a separate scenario. The Translate tracer supplies its extension identity and explicit Chinese target languages, with an offline admitted-source success regression. Installed compatibility proofs skip non-macOS platforms. Historical TTS proof cannot satisfy a current playback gate: a responding upstream without observed playback fails; an unavailable upstream records a partial/inconclusive result, not a current TTS pass.
 
-Legacy standalone overlay proofs still encode `750 × 475` geometry and require migration before they can publish evidence under the project-wide `1512 × 949` CSS-pixel / `3024 × 1898` screenshot contract. Source-contract tests are not fresh visual evidence. The September 26 audit passed typecheck/build and focused regressions, but its broad launcher run retained three environment-denied process-inspection failures; see `.beads/reports/2026-09-26-tocklauncher-audit.md` for exact commands and limits.
+Standalone overlay proofs must verify the real `750 × 475` window size and centered placement after guarded display placement, without stretching the launcher to fill the `1512 × 949` capture viewport. A native-size overlay screenshot is supplementary and does not by itself satisfy the project-wide `3024 × 1898` Desktop screenshot contract. Source-contract tests are not fresh visual evidence. The September 26 audit passed typecheck/build and focused regressions, but its broad launcher run retained three environment-denied process-inspection failures; see `.beads/reports/2026-09-26-tocklauncher-audit.md` for exact commands and limits.
 
 ## Maintenance Rules
 

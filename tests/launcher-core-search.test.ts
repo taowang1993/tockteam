@@ -62,17 +62,39 @@ test('core search matches both engines, instant ordering, empty ordering, limits
   }
 })
 
-test('a calculator answer leads typed results ahead of other instant suggestions', async () => {
-  const calculator = { ...item('calculator:instantResult', '15'), sourceExtension: 'Calculator' }
-  const fileSearch = { ...item('file-search:open', 'Search Files for “5+10”'), sourceExtension: 'FileSearch' }
+test('a calculator answer replaces unrelated matches while ordinary queries keep their results and diagnostics', async () => {
+  const calculator = { ...item('calculator:instantResult', '13'), sourceExtension: 'Calculator' }
+  const fileSearch = { ...item('file-search:open', 'Search Files'), sourceExtension: 'FileSearch' }
+  const pinned = item('math-note', '5+8 notes')
   const core = createLauncherCoreSearch({
+    initialFavoriteItemIds: [pinned.id],
+    loadIndexedItems: async () => [pinned],
+    searchInstant: async term => ({ before: [fileSearch], after: term === '5+8' ? [calculator] : [], lastError: 'File Search unavailable' }),
+  })
+  try {
+    const result = await core.search('5+8', options)
+    assert.deepEqual(result.before.map(entry => entry.id), [])
+    assert.deepEqual(result.after.map(entry => entry.id), ['calculator:instantResult'])
+    assert.deepEqual(result.sections.map(section => section.id), ['results'])
+    assert.deepEqual(result.sections[0]?.items.map(entry => entry.id), ['calculator:instantResult'])
+    assert.equal(result.status.lastError, 'File Search unavailable')
+    const ordinary = await core.search('notes', options)
+    assert.deepEqual(ordinary.before.map(entry => entry.id), ['math-note'])
+    assert.deepEqual(ordinary.after.map(entry => entry.id), ['file-search:open'])
+    assert.equal(ordinary.status.lastError, 'File Search unavailable')
+  } finally { await core.close() }
+})
+
+test('excluding a calculator answer leaves ordinary search choices available', async () => {
+  const calculator = { ...item('calculator:instantResult', '13'), sourceExtension: 'Calculator' }
+  const fileSearch = { ...item('file-search:open', 'Search Files'), sourceExtension: 'FileSearch' }
+  const core = createLauncherCoreSearch({
+    initialExcludedItemIds: [calculator.id],
     loadIndexedItems: async () => [],
     searchInstant: async () => ({ before: [fileSearch], after: [calculator] }),
   })
   try {
-    const result = await core.search('5+10', options)
-    assert.deepEqual(result.after.map(entry => entry.id), ['calculator:instantResult', 'file-search:open'])
-    assert.deepEqual(result.sections[0]?.items.map(entry => entry.id), ['calculator:instantResult', 'file-search:open'])
+    assert.deepEqual((await core.search('5+8', options)).after.map(entry => entry.id), ['file-search:open'])
   } finally { await core.close() }
 })
 
