@@ -47,7 +47,7 @@ import { createWriteStream, existsSync, lstatSync, mkdirSync, realpathSync, stat
 import { lstat, realpath } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, extname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { PluginMarketplaceManager } from '../plugins/plugin-marketplace/src/host/transaction-manager.ts'
 import {
   MARKETPLACE_AGENT_TOKEN_ENV,
@@ -82,6 +82,7 @@ import {
   stripWebClipResponseHeaders,
 } from './web-clip-frame.ts'
 import { DshRuntimeSupervisor, runDshCommand, type DshRuntimeOptions, type RuntimeExit } from './runtime.ts'
+import { readSavedDesktopModelKey } from './desktop-model-credentials.ts'
 import { pruneRuntimeBrowserCookies } from './runtime-browser-cookies.ts'
 import { DesktopDispatchChannel } from './desktop-dispatch-channel.ts'
 import { isTockTutorProtocol, parseSingleInstanceProtocolUrls, resolveTockTutorProtocolRequest } from './desktop-native-policy.ts'
@@ -4053,6 +4054,15 @@ function installIpc(): void {
   ipcMain.handle('desktop:get-runtime-snapshot', event => {
     assertTrustedMainIpc(event)
     return desktopRuntimeSnapshot()
+  })
+  ipcMain.handle('desktop:models:reveal-saved-key', async (event, raw: unknown, ...extra: unknown[]) => {
+    assertTrustedMainIpc(event)
+    assertNoLauncherIpcArguments(extra)
+    const modulePath = join(runtimePaths().runtimeRoot, 'node_modules', '@deepseek-ai', 'dsh-credentials-local', 'lib', 'index.js')
+    const { parseCredentialsDocument } = await import(pathToFileURL(modulePath).href) as {
+      parseCredentialsDocument(source: string, filename: string): { refs: ReadonlyMap<string, string> }
+    }
+    return readSavedDesktopModelKey(desktopInfo().dshHome, raw, parseCredentialsDocument)
   })
   ipcMain.handle(DESKTOP_APP_UPDATE_CHANNELS.getState, (event, ...rawArgs: unknown[]) => {
     assertTrustedMainIpc(event)

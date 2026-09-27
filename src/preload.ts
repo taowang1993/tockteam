@@ -233,6 +233,15 @@ const bridge: DesktopBridge = Object.freeze({
   getRuntimeSnapshot: async (): Promise<DesktopRuntimeSnapshot> => {
     return await ipcRenderer.invoke('desktop:get-runtime-snapshot') as DesktopRuntimeSnapshot
   },
+  revealSavedModelKey: async (ref: string, ...extra: unknown[]): Promise<string | null> => {
+    assertNoLauncherIpcArguments(extra)
+    if (typeof ref !== 'string' || ref.length > 128 || !/^[A-Z][A-Z0-9_]*_API_KEY$/u.test(ref)) {
+      throw new Error('Invalid Models API key reference')
+    }
+    const value: unknown = await ipcRenderer.invoke('desktop:models:reveal-saved-key', ref)
+    if (value !== null && (typeof value !== 'string' || value.length === 0)) throw new Error('Invalid Models API key response')
+    return value as string | null
+  },
   onCommand: (listener: (command: DesktopCommand) => void): (() => void) => {
     if (typeof listener !== 'function') throw new Error('Desktop command listener is invalid')
     commandListeners.add(listener)

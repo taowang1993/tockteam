@@ -1,13 +1,14 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join, relative, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 // Browser-only correction to the pinned DSH 0.1.2-rc.1 Models UI. Never change
 // an installed package or user settings: adapt the staged/Nix runtime copy.
 const NAME = '@deepseek-ai/dsh-client-ui-settings-models'
 const VERSION = '0.1.2-rc.1'
 const ORIGINAL_SHA256 = '7acf9736edeea519c63791e946a135f5cc854c95c299fd9864e82074fce587e5'
+const PREVIOUS_STAGED_SHA256 = 'eea643a18add1c5f913e495aaaf1c2ade09dabc9b31a019bb96bbaa2b2d9955e'
 const DEEPSEEK_ROUTE = 'candidate.entry.provider === "deepseek-official" && candidate.entry.settingsNs === "llm-deepseek" && candidate.entry.settingsPath.length === 0'
 const OPENROUTER_ROUTE = 'candidate.entry.provider === "openrouter" && candidate.entry.settingsNs === "llm-pi-ai" && candidate.entry.settingsPath.join("/") === "providers/openrouter"'
 const CHANGES = [
@@ -43,7 +44,17 @@ const CHANGES = [
   ],
   [
     'const [keyDraft, setKeyDraft] = (0, react.useState)("");\n\t\t\tconst [keyState, setKeyState]',
-    'const [keyDraft, setKeyDraft] = (0, react.useState)("");\n\t\t\tconst [showKeyDraft, setShowKeyDraft] = (0, react.useState)(false);\n\t\t\tconst [keyState, setKeyState]',
+    'const [keyDraft, setKeyDraft] = (0, react.useState)("");\n\t\t\tconst [showKeyDraft, setShowKeyDraft] = (0, react.useState)(false);\n\t\t\tconst [savedKey, setSavedKey] = (0, react.useState)(void 0);\n\t\t\tconst [keyState, setKeyState]',
+    1,
+  ],
+  [
+    'let stale = false;\n\t\t\t\tsetKeyState(void 0);',
+    'let stale = false;\n\t\t\t\tsetSavedKey(void 0);\n\t\t\t\tsetShowKeyDraft(false);\n\t\t\t\tsetKeyState(void 0);',
+    1,
+  ],
+  [
+    'const keyLocked = keyState?.writable === false;\n\t\t\t/**',
+    'const keyLocked = keyState?.writable === false;\n\t\t\tconst canRevealSaved = typeof window.dshDesktop?.revealSavedModelKey === "function";\n\t\t\t/**',
     1,
   ],
   // Lucide Eye and EyeOff v0.473.0 shapes; inline SVG avoids a new DSH browser module.
@@ -67,11 +78,12 @@ const CHANGES = [
 							className: ModelsSection_module_css_default["keyField"],
 							children: [(0, react_jsx_runtime.jsx)("input", {
 								className: ModelsSection_module_css_default["input"],
-								type: showKeyDraft ? "text" : "password",
+								type: savedKey !== void 0 || showKeyDraft ? "text" : "password",
 								autoComplete: "off",
-								value: keyDraft,
+								value: savedKey ?? keyDraft,
+								readOnly: savedKey !== void 0,
 								placeholder: keyPlaceholder,
-								"aria-label": t("keyInput"),
+								"aria-label": savedKey !== void 0 ? t("savedKeyInput") : t("keyInput"),
 								"aria-invalid": shownKeyFailure !== void 0,
 								required: props.credentialRequired === true,
 								autoFocus: props.autoFocusCredential === true,
@@ -83,11 +95,24 @@ const CHANGES = [
 							}), (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
 								className: ModelsSection_module_css_default["iconButton"] + " " + ModelsSection_module_css_default["keyVisibility"],
-								"aria-label": showKeyDraft ? t("hideNewKey") : t("showNewKey"),
-								"aria-description": keyDraft.length === 0 && keyState?.configured === true ? t("savedKeyPrivate") : void 0,
-								title: keyDraft.length === 0 && keyState?.configured === true ? t("savedKeyPrivate") : void 0,
-								disabled: disabled || keyLocked || keyDraft.length === 0,
-								onClick: () => setShowKeyDraft((shown) => !shown),
+								"aria-label": savedKey !== void 0 ? t("hideSavedKey") : keyDraft.length > 0 ? showKeyDraft ? t("hideNewKey") : t("showNewKey") : canRevealSaved && keyState?.configured === true ? t("showSavedKey") : t("showNewKey"),
+								"aria-description": keyDraft.length === 0 && keyState?.configured === true && !canRevealSaved ? t("savedKeyPrivate") : void 0,
+								title: keyDraft.length === 0 && keyState?.configured === true && !canRevealSaved ? t("savedKeyPrivate") : void 0,
+								disabled: disabled || keyLocked || keyDraft.length === 0 && (keyState?.configured !== true || !canRevealSaved),
+								onClick: async () => {
+									if (savedKey !== void 0) { setSavedKey(void 0); return; }
+									if (keyDraft.length > 0) { setShowKeyDraft((shown) => !shown); return; }
+									if (!canRevealSaved || keyState?.configured !== true) return;
+									setBusy(true);
+									setFailure(void 0);
+									try {
+										const stored = await window.dshDesktop.revealSavedModelKey(keyRef);
+										if (stored === null) setFailure(t("savedKeyUnavailable"));
+										else setSavedKey(stored);
+									} catch {
+										setFailure(t("savedKeyUnavailable"));
+									} finally { setBusy(false); }
+								},
 								children: (0, react_jsx_runtime.jsx)("svg", {
 									width: 16,
 									height: 16,
@@ -98,7 +123,7 @@ const CHANGES = [
 									strokeLinecap: "round",
 									strokeLinejoin: "round",
 									"aria-hidden": true,
-									children: showKeyDraft ? [(0, react_jsx_runtime.jsx)("path", { d: "M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" }), (0, react_jsx_runtime.jsx)("path", { d: "M14.084 14.158a3 3 0 0 1-4.242-4.242" }), (0, react_jsx_runtime.jsx)("path", { d: "M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" }), (0, react_jsx_runtime.jsx)("path", { d: "m2 2 20 20" })] : [(0, react_jsx_runtime.jsx)("path", { d: "M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" }), (0, react_jsx_runtime.jsx)("circle", { cx: "12", cy: "12", r: "3" })]
+									children: savedKey !== void 0 || showKeyDraft ? [(0, react_jsx_runtime.jsx)("path", { d: "M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" }), (0, react_jsx_runtime.jsx)("path", { d: "M14.084 14.158a3 3 0 0 1-4.242-4.242" }), (0, react_jsx_runtime.jsx)("path", { d: "M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" }), (0, react_jsx_runtime.jsx)("path", { d: "m2 2 20 20" })] : [(0, react_jsx_runtime.jsx)("path", { d: "M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" }), (0, react_jsx_runtime.jsx)("circle", { cx: "12", cy: "12", r: "3" })]
 								})
 							})]
 						}),`,
@@ -116,19 +141,33 @@ const CHANGES = [
   ],
   [
     'keyInput: "API key",\n\t\t\tkeyPlaceholder: "Enter your API key",',
-    'keyInput: "API key",\n\t\t\tshowNewKey: "Show New API Key",\n\t\t\thideNewKey: "Hide New API Key",\n\t\t\tsavedKeyPrivate: "Saved keys cannot be shown. Enter a new key to replace it.",\n\t\t\tkeyPlaceholder: "Enter your API key",',
+    'keyInput: "API key",\n\t\t\tsavedKeyInput: "Saved API Key",\n\t\t\tshowNewKey: "Show New API Key",\n\t\t\thideNewKey: "Hide New API Key",\n\t\t\tshowSavedKey: "Show Saved API Key",\n\t\t\thideSavedKey: "Hide Saved API Key",\n\t\t\tsavedKeyPrivate: "Saved keys can be shown only in Desktop. Enter a new key to replace it.",\n\t\t\tsavedKeyUnavailable: "This key was not saved here. Enter a new key to replace it.",\n\t\t\tkeyPlaceholder: "Enter your API key",',
     1,
   ],
   [
     'keyInput: "API 密钥",\n\t\t\tkeyPlaceholder: "输入 API 密钥",',
-    'keyInput: "API 密钥",\n\t\t\tshowNewKey: "显示新 API 密钥",\n\t\t\thideNewKey: "隐藏新 API 密钥",\n\t\t\tsavedKeyPrivate: "已保存的密钥不可查看。输入新密钥可替换。",\n\t\t\tkeyPlaceholder: "输入 API 密钥",',
+    'keyInput: "API 密钥",\n\t\t\tsavedKeyInput: "已保存的 API 密钥",\n\t\t\tshowNewKey: "显示新 API 密钥",\n\t\t\thideNewKey: "隐藏新 API 密钥",\n\t\t\tshowSavedKey: "显示已保存的 API 密钥",\n\t\t\thideSavedKey: "隐藏已保存的 API 密钥",\n\t\t\tsavedKeyPrivate: "只有桌面版可以显示已保存的密钥。输入新密钥可替换。",\n\t\t\tsavedKeyUnavailable: "此密钥未保存在这里。输入新密钥可替换。",\n\t\t\tkeyPlaceholder: "输入 API 密钥",',
     1,
   ],
 ]
 
 function count(source, fragment) { return source.split(fragment).length - 1 }
 
+function pristineClientForPreviousStage() {
+  const store = join(fileURLToPath(new URL('..', import.meta.url)), 'node_modules', '.pnpm')
+  if (!existsSync(store)) throw new Error(`${NAME}: previous staged copy requires a full restage`)
+  for (const entry of readdirSync(store)) {
+    if (!entry.startsWith(`@deepseek-ai+dsh-client-ui-settings-models@${VERSION}_`)) continue
+    const source = readFileSync(join(store, entry, 'node_modules', NAME, 'lib', 'client.js'), 'utf8')
+    if (createHash('sha256').update(source).digest('hex') === ORIGINAL_SHA256) return source
+  }
+  throw new Error(`${NAME}: previous staged copy requires a full restage`)
+}
+
 function adapt(source) {
+  // Quick staging may retain the exact previous TockTeam adaptation. Rebuild it
+  // from the hash-verified installed original rather than guessing how to undo it.
+  if (createHash('sha256').update(source).digest('hex') === PREVIOUS_STAGED_SHA256) source = pristineClientForPreviousStage()
   let normalized = source
   for (const [before, after, expected] of CHANGES) {
     const original = count(normalized, before)

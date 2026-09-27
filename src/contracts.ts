@@ -138,6 +138,7 @@ export interface DesktopBridge {
   launchOnStart: DesktopLaunchOnStartBridge
   getInfo(): Promise<DesktopInfo>
   getRuntimeSnapshot(): Promise<DesktopRuntimeSnapshot>
+  revealSavedModelKey(ref: string): Promise<string | null>
   onCommand(listener: (command: DesktopCommand) => void): () => void
   onRoute(listener: (route: LauncherWorkbenchRoute) => void): () => void
   syncLauncherLocale(locale: LauncherLocale): Promise<void>
