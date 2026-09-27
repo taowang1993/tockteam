@@ -1,0 +1,353 @@
+{
+  "fixture": "isolated 45-note vault with a punctuated Chinese note and a second List view",
+  "viewportCss": [
+    1512,
+    949
+  ],
+  "deviceScaleFactor": 2,
+  "screenshotPixels": [
+    3024,
+    1898
+  ],
+  "stoppedElectronRootPids": [
+    99718,
+    1433,
+    2177,
+    2724,
+    3211,
+    3697
+  ],
+  "remainingDescendants": 0,
+  "appearances": [
+    {
+      "name": "Built-in Dark",
+      "route": "/tocktutor/Untitled.base",
+      "css": [
+        1512,
+        949
+      ],
+      "dpr": 2,
+      "scheme": "dark",
+      "skin": null,
+      "htmlSkin": null,
+      "view": {
+        "border": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "shadow": "none",
+        "outline": "none",
+        "width": 96,
+        "x": 336,
+        "right": 432,
+        "y": 96,
+        "height": 28,
+        "text": "rgb(249, 250, 251)",
+        "contrast": 17.45
+      },
+      "search": {
+        "border": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "shadow": "none",
+        "outline": "none",
+        "width": 144,
+        "x": 1271.21875,
+        "right": 1415.21875,
+        "y": 96,
+        "height": 28,
+        "text": "rgb(249, 250, 251)",
+        "contrast": 17.45
+      },
+      "placeholderContrast": 12.11,
+      "toolbarHeight": 37,
+      "resultCount": true,
+      "viewIcon": "lucide lucide-table2 pointer-events-none absolute left-2 size-4 text-muted-foreground",
+      "chevron": true,
+      "viewFocus": {
+        "visible": true,
+        "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(207, 211, 214) 0px -2px 0px 0px inset"
+      },
+      "searchFocus": {
+        "visible": true,
+        "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(207, 211, 214) 0px -2px 0px 0px inset"
+      },
+      "listIcon": "lucide lucide-list pointer-events-none absolute left-2 size-4 text-muted-foreground",
+      "punctuatedNoteFound": true,
+      "sortTopmost": true,
+      "runtimeErrors": 0
+    },
+    {
+      "name": "Built-in Light",
+      "route": "/tocktutor/Untitled.base",
+      "css": [
+        1512,
+        949
+      ],
+      "dpr": 2,
+      "scheme": "light",
+      "skin": null,
+      "htmlSkin": null,
+      "view": {
+        "border": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "shadow": "none",
+        "outline": "none",
+        "width": 96,
+        "x": 336,
+        "right": 432,
+        "y": 96,
+        "height": 28,
+        "text": "rgb(15, 17, 21)",
+        "contrast": 18.9
+      },
+      "search": {
+        "border": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "shadow": "none",
+        "outline": "none",
+        "width": 144,
+        "x": 1271.21875,
+        "right": 1415.21875,
+        "y": 96,
+        "height": 28,
+        "text": "rgb(15, 17, 21)",
+        "contrast": 18.9
+      },
+      "placeholderContrast": 5.8,
+      "toolbarHeight": 37,
+      "resultCount": true,
+      "viewIcon": "lucide lucide-table2 pointer-events-none absolute left-2 size-4 text-muted-foreground",
+      "chevron": true,
+      "viewFocus": {
+        "visible": true,
+        "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(97, 102, 107) 0px -2px 0px 0px inset"
+      },
+      "searchFocus": {
+        "visible": true,
+        "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(97, 102, 107) 0px -2px 0px 0px inset"
+      },
+      "listIcon": "lucide lucide-list pointer-events-none absolute left-2 size-4 text-muted-foreground",
+      "punctuatedNoteFound": true,
+      "sortTopmost": true,
+      "runtimeErrors": 0
+    },
+    {
+      "name": "Deep Current",
+      "route": "/tocktutor/Untitled.base",
+      "css": [
+        1512,
+        949
+      ],
+      "dpr": 2,
+      "scheme": "dark",
+      "skin": "tockteam-skin-deep-current",
+      "htmlSkin": null,
+      "view": {
+        "border": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "shadow": "none",
+        "outline": "none",
+        "width": 96,
+        "x": 336,
+        "right": 432,
+        "y": 96,
+        "height": 28,
+        "text": "rgb(233, 248, 251)",
+        "contrast": 15
+      },
+      "search": {
+        "border": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "shadow": "none",
+        "outline": "none",
+        "width": 144,
+        "x": 1271.21875,
+        "right": 1415.21875,
+        "y": 96,
+        "height": 28,
+        "text": "rgb(233, 248, 251)",
+        "contrast": 15
+      },
+      "placeholderContrast": 11.13,
+      "toolbarHeight": 37,
+      "resultCount": true,
+      "viewIcon": "lucide lucide-table2 pointer-events-none absolute left-2 size-4 text-muted-foreground",
+      "chevron": true,
+      "viewFocus": {
+        "visible": true,
+        "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(185, 219, 228) 0px -2px 0px 0px inset"
+      },
+      "searchFocus": {
+        "visible": true,
+        "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(185, 219, 228) 0px -2px 0px 0px inset"
+      },
+      "listIcon": "lucide lucide-list pointer-events-none absolute left-2 size-4 text-muted-foreground",
+      "punctuatedNoteFound": true,
+      "sortTopmost": true,
+      "runtimeErrors": 0
+    },
+    {
+      "name": "Jade Circuit",
+      "route": "/tocktutor/Untitled.base",
+      "css": [
+        1512,
+        949
+      ],
+      "dpr": 2,
+      "scheme": "dark",
+      "skin": "tockteam-skin-jade-circuit",
+      "htmlSkin": null,
+      "view": {
+        "border": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "shadow": "none",
+        "outline": "none",
+        "width": 96,
+        "x": 336,
+        "right": 432,
+        "y": 96,
+        "height": 28,
+        "text": "rgb(233, 251, 243)",
+        "contrast": 15.22
+      },
+      "search": {
+        "border": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "shadow": "none",
+        "outline": "none",
+        "width": 144,
+        "x": 1271.21875,
+        "right": 1415.21875,
+        "y": 96,
+        "height": 28,
+        "text": "rgb(233, 251, 243)",
+        "contrast": 15.22
+      },
+      "placeholderContrast": 11.12,
+      "toolbarHeight": 37,
+      "resultCount": true,
+      "viewIcon": "lucide lucide-table2 pointer-events-none absolute left-2 size-4 text-muted-foreground",
+      "chevron": true,
+      "viewFocus": {
+        "visible": true,
+        "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(185, 221, 206) 0px -2px 0px 0px inset"
+      },
+      "searchFocus": {
+        "visible": true,
+        "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(185, 221, 206) 0px -2px 0px 0px inset"
+      },
+      "listIcon": "lucide lucide-list pointer-events-none absolute left-2 size-4 text-muted-foreground",
+      "punctuatedNoteFound": true,
+      "sortTopmost": true,
+      "runtimeErrors": 0
+    },
+    {
+      "name": "Porcelain",
+      "route": "/tocktutor/Untitled.base",
+      "css": [
+        1512,
+        949
+      ],
+      "dpr": 2,
+      "scheme": "light",
+      "skin": "tockteam-skin-porcelain",
+      "htmlSkin": null,
+      "view": {
+        "border": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "shadow": "none",
+        "outline": "none",
+        "width": 96,
+        "x": 336,
+        "right": 432,
+        "y": 96,
+        "height": 28,
+        "text": "rgb(24, 49, 47)",
+        "contrast": 13.28
+      },
+      "search": {
+        "border": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "shadow": "none",
+        "outline": "none",
+        "width": 144,
+        "x": 1271.21875,
+        "right": 1415.21875,
+        "y": 96,
+        "height": 28,
+        "text": "rgb(24, 49, 47)",
+        "contrast": 13.28
+      },
+      "placeholderContrast": 6.89,
+      "toolbarHeight": 37,
+      "resultCount": true,
+      "viewIcon": "lucide lucide-table2 pointer-events-none absolute left-2 size-4 text-muted-foreground",
+      "chevron": true,
+      "viewFocus": {
+        "visible": true,
+        "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(64, 93, 89) 0px -2px 0px 0px inset"
+      },
+      "searchFocus": {
+        "visible": true,
+        "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(64, 93, 89) 0px -2px 0px 0px inset"
+      },
+      "listIcon": "lucide lucide-list pointer-events-none absolute left-2 size-4 text-muted-foreground",
+      "punctuatedNoteFound": true,
+      "sortTopmost": true,
+      "runtimeErrors": 0
+    },
+    {
+      "name": "Ember Dusk",
+      "route": "/tocktutor/Untitled.base",
+      "css": [
+        1512,
+        949
+      ],
+      "dpr": 2,
+      "scheme": "dark",
+      "skin": "tockteam-skin-ember-dusk",
+      "htmlSkin": null,
+      "view": {
+        "border": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "shadow": "none",
+        "outline": "none",
+        "width": 96,
+        "x": 336,
+        "right": 432,
+        "y": 96,
+        "height": 28,
+        "text": "rgb(255, 240, 234)",
+        "contrast": 14.72
+      },
+      "search": {
+        "border": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "shadow": "none",
+        "outline": "none",
+        "width": 144,
+        "x": 1271.21875,
+        "right": 1415.21875,
+        "y": 96,
+        "height": 28,
+        "text": "rgb(255, 240, 234)",
+        "contrast": 14.72
+      },
+      "placeholderContrast": 9.83,
+      "toolbarHeight": 37,
+      "resultCount": true,
+      "viewIcon": "lucide lucide-table2 pointer-events-none absolute left-2 size-4 text-muted-foreground",
+      "chevron": true,
+      "viewFocus": {
+        "visible": true,
+        "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(223, 193, 203) 0px -2px 0px 0px inset"
+      },
+      "searchFocus": {
+        "visible": true,
+        "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(223, 193, 203) 0px -2px 0px 0px inset"
+      },
+      "listIcon": "lucide lucide-list pointer-events-none absolute left-2 size-4 text-muted-foreground",
+      "punctuatedNoteFound": true,
+      "sortTopmost": true,
+      "runtimeErrors": 0
+    }
+  ]
+}
