@@ -249,6 +249,11 @@ describe('ExecutableBaseView', () => {
     expect(menu.className).toContain('w-56')
     expect(within(menu).queryByRole('combobox')).toBeNull()
     const limit = within(menu).getByRole('textbox', { name: 'Limit Number of Results' }) as HTMLInputElement
+    expect(within(menu).getByText('Limit Number of Results').className).toContain('text-sm')
+    expect(limit.className).toContain('text-sm')
+    for (const action of ['Show All', 'Copy to Clipboard', 'Export CSV…']) {
+      expect(within(menu).getByRole('button', { name: action }).className).toContain('text-sm')
+    }
     expect(within(menu).queryByRole('spinbutton')).toBeNull()
     expect(limit.type).toBe('text')
     expect(limit.inputMode).toBe('numeric')
