@@ -111,32 +111,41 @@ function searchIndexedItems(
   searchResultItems: readonly LauncherInternalResultItem[],
   searchTerm: string,
   options: LauncherSearchOptions,
+  ranking: readonly LauncherRankingEntry[],
+  favorites: ReadonlySet<string>,
+  now: number,
 ): LauncherInternalResultItem[] {
   const hasAliases = searchResultItems.some(item => item.searchAliases?.length)
+  const usageOrder = new Map((ranking.length > 0 ? rankLauncherItems(searchResultItems, ranking, now) : [])
+    .map((item, index) => [item.id, index]))
+  const compareTie = (left: LauncherInternalResultItem, right: LauncherInternalResultItem): number =>
+    Number(favorites.has(right.id)) - Number(favorites.has(left.id))
+      || (usageOrder.get(left.id) ?? searchResultItems.length) - (usageOrder.get(right.id) ?? searchResultItems.length)
   if (options.searchEngineId === 'Fuse.js') {
-    return new Fuse([...searchResultItems], {
+    const results = new Fuse([...searchResultItems], {
       keys: hasAliases ? [{ name: 'name', weight: 0.9 }, { name: 'searchAliases', weight: 0.1 }] : ['name'],
+      includeScore: ranking.length > 0,
       shouldSort: true,
       threshold: options.fuzziness,
-    })
-      .search(searchTerm)
-      .slice(0, options.maxSearchResultItems)
-      .map(result => result.item)
+    }).search(searchTerm)
+    return (ranking.length > 0
+      ? results.toSorted((left, right) => (left.score ?? 1) - (right.score ?? 1) || compareTie(left.item, right.item))
+      : results).slice(0, options.maxSearchResultItems).map(result => result.item)
   }
   // Ueli inverts fuzzysort's strictness scale and rounds it to one decimal.
   const threshold = Math.round((1 - options.fuzziness) * 10) / 10
   const items = [...searchResultItems]
-  if (hasAliases) return fuzzysort.go(searchTerm, items, {
+  // ponytail: inspect at most twice the visible candidates (minimum 100); widen only if tied inventories grow beyond this bound.
+  const limit = ranking.length > 0 ? Math.min(items.length, Math.max(100, options.maxSearchResultItems * 2)) : options.maxSearchResultItems
+  const results = hasAliases ? fuzzysort.go(searchTerm, items, {
     keys: ['name', item => item.searchAliases?.join(' ') ?? ''],
-    limit: options.maxSearchResultItems,
+    limit,
     scoreFn: result => Math.max(result[0]?.score ?? 0, (result[1]?.score ?? 0) * 0.98),
     threshold,
-  }).map(result => result.obj)
-  return fuzzysort.go(searchTerm, items, {
-    key: 'name',
-    limit: options.maxSearchResultItems,
-    threshold,
-  }).map(result => result.obj)
+  }) : fuzzysort.go(searchTerm, items, { key: 'name', limit, threshold })
+  return (ranking.length > 0
+    ? results.toSorted((left, right) => right.score - left.score || compareTie(left.obj, right.obj))
+    : results).slice(0, options.maxSearchResultItems).map(result => result.obj)
 }
 
 function coreAction(
@@ -303,7 +312,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
     for (const item of available) if (!availableById.has(item.id)) availableById.set(item.id, item)
     const trimmedSearchTerm = searchTerm.trim()
     const filtered = trimmedSearchTerm.length > 0
-      ? searchIndexedItems(available, trimmedSearchTerm, searchOptions)
+      ? searchIndexedItems(available, trimmedSearchTerm, searchOptions, ranking, favorites, now())
       : available.toSorted(alphabetically)
     const favoriteItems = trimmedSearchTerm.length > 0
       ? filtered.filter(({ id }) => favorites.has(id))

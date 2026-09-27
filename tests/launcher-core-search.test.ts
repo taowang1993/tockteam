@@ -51,6 +51,8 @@ test('core search matches both engines, instant ordering, empty ordering, limits
 test('both search engines find macOS app aliases while keeping exact displayed names first', async () => {
   for (const searchEngineId of ['fuzzysort', 'Fuse.js'] as const) {
     const core = createLauncherCoreSearch({
+      initialRanking: [{ id: 'calendar', lastUsedAt: 100_000, score: 100, useCount: 100 }],
+      now: () => 100_000,
       loadIndexedItems: async () => [
         { ...item('calendar', 'Calendar'), sourceExtension: 'ApplicationSearch', searchAliases: ['日历'] },
         { ...item('calendar-zh', '日历'), sourceExtension: 'ApplicationSearch' },
@@ -62,6 +64,36 @@ test('both search engines find macOS app aliases while keeping exact displayed n
       assert.equal(result.after[1]?.name, 'Calendar')
       assert.deepEqual((await core.search('日历', { ...options, maxSearchResultItems: 1, searchEngineId })).after.map(entry => entry.id), ['calendar-zh'])
     } finally { await core.close() }
+  }
+})
+
+test('typed matches use launch history only to break equal-quality ties for both engines', async () => {
+  for (const searchEngineId of ['fuzzysort', 'Fuse.js'] as const) {
+    const now = 100_000
+    const core = createLauncherCoreSearch({
+      initialIndexedItems: [item('first', 'Notes'), item('used', 'Notes'), item('weaker', 'Notepad')],
+      initialRanking: [
+        { id: 'used', lastUsedAt: now, score: 2, useCount: 2 },
+        { id: 'weaker', lastUsedAt: now, score: 20, useCount: 20 },
+      ],
+      loadIndexedItems: async () => [item('first', 'Notes'), item('used', 'Notes'), item('weaker', 'Notepad')],
+      now: () => now,
+    })
+    try {
+      const typed = await core.search('Notes', { ...options, maxSearchResultItems: 3, searchEngineId })
+      assert.deepEqual(typed.after.slice(0, 2).map(result => result.id), ['used', 'first'])
+      assert.notEqual(typed.after[0]?.id, 'weaker')
+      assert.deepEqual((await core.search('Notes', { ...options, maxSearchResultItems: 1, searchEngineId })).after.map(result => result.id), ['used'])
+      const empty = await core.search('', { ...options, maxSearchResultItems: 3, searchEngineId })
+      assert.deepEqual(empty.sections[0]?.items.map(result => result.id), ['weaker', 'used'])
+    } finally { await core.close() }
+    const pinned = createLauncherCoreSearch({
+      initialFavoriteItemIds: ['first'], initialRanking: [{ id: 'used', lastUsedAt: now, score: 2, useCount: 2 }],
+      loadIndexedItems: async () => [item('first', 'Notes'), item('used', 'Notes')], now: () => now,
+    })
+    try {
+      assert.deepEqual((await pinned.search('Notes', { ...options, maxSearchResultItems: 1, searchEngineId })).before.map(result => result.id), ['first'])
+    } finally { await pinned.close() }
   }
 })
 
