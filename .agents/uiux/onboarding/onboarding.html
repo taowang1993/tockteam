@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TockTeam Desktop Onboarding Preview</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root { color-scheme: dark; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #111214; color: #f0f1f3; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header, main, footer { width: min(1512px, calc(100% - 32px)); margin-inline: auto; }
+    header { padding: 40px 0 24px; }
+    h1 { margin: 0 0 12px; font-size: clamp(28px, 4vw, 40px); letter-spacing: -.035em; }
+    p { max-width: 850px; color: #a6aab2; font-size: 14px; line-height: 1.6; }
+    a { color: inherit; }
+    a:focus-visible { outline: 2px solid #a6c8ff; outline-offset: 3px; }
+    .details { margin-bottom: 0; font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    figure { margin: 0; border: 1px solid #30333a; background: #181a1d; }
+    figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 14px 16px; border-bottom: 1px solid #30333a; }
+    h2 { margin: 0; font-size: 15px; font-weight: 600; }
+    figcaption span { color: #a6aab2; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .screenshot { display: block; }
+    img { display: block; width: 100%; height: auto; }
+    footer { padding: 24px 0 40px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>First-Run Onboarding</h1>
+    <p>One setup screen: add an OpenRouter API key or configure it later. This is a real Desktop capture from a clean test profile, not a working form. Your saved key and settings are untouched. Click the image to inspect it at full resolution.</p>
+    <p class="details">1512 × 949 CSS Pixels · 2× Scale · 3024 × 1898 PNG · Built-In Dark Theme · No Active Skin</p>
+  </header>
+  <main>
+    <figure>
+      <figcaption><h2>API Key Setup</h2><span>New, Empty Profile · September 27, 2026</span></figcaption>
+      <a class="screenshot" href="../../../.beads/reports/2026-09-27-tockteam-desktop-api-key-setup.png"><img src="../../../.beads/reports/2026-09-27-tockteam-desktop-api-key-setup.png" width="3024" height="1898" alt="TockTeam Desktop with the Add an API key to get started dialog. The API key field is empty; Configure later is available and Save and continue is disabled."></a>
+    </figure>
+  </main>
+  <footer><p>The Internal Testing Notice is absent on Desktop. This prompt appears for a new, empty chat without a working model key; a returning profile with a saved key skips it. <a href="../../../.beads/reports/2026-09-27-tockteam-desktop-api-key-setup.proof.json">Capture proof</a>.</p></footer>
+</body>
+</html>
