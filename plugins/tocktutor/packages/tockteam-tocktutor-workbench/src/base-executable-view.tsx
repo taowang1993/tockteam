@@ -425,7 +425,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
       if (saved) { setConfiguringView(current => current === configured.name ? renameName : current); props.onActiveViewChange?.(renameName) }
     })
   }
-  const menuClass = 'z-[1002] w-64 rounded-lg border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] p-3 text-foreground shadow-lg'
+  const menuClass = 'z-[1002] w-64 rounded-lg border border-border bg-surface-muted p-3 text-foreground shadow-lg'
   const ViewIcon = { table: Table2, list: List, cards: LayoutGrid, 'map-label': MapPin }[model.kind]
   const LayoutIcon = layoutIcons[configured?.type ?? 'table']
   return (
@@ -524,7 +524,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
             )}
           </PopoverContent>
         </Popover>
-        <Popover><PopoverTrigger asChild><Button unstyled type="button" aria-live="polite" className="h-7 cursor-pointer rounded-md border-0 bg-transparent px-1 text-sm tabular-nums text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{resultCount(model.rows.length)}</Button></PopoverTrigger><PopoverContent align="start" className={menuClass}>
+        <Popover><PopoverTrigger asChild><Button unstyled type="button" aria-live="polite" className="h-7 cursor-pointer rounded-md border-0 bg-transparent px-1 text-sm tabular-nums text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{resultCount(model.rows.length)}</Button></PopoverTrigger><PopoverContent unstyled align="start" className={menuClass}>
           <Field className="gap-1"><FieldLabel htmlFor="base-result-limit">Result Limit</FieldLabel><NativeSelect id="base-result-limit" value={String(model.view.limit ?? 'all')} disabled={!props.onSourceChange} onChange={event => { void commit(setBaseViewField(props.source, model.view.name, 'limit', event.currentTarget.value === 'all' ? '' : event.currentTarget.value)) }}>
             {['all', '25', '50', '100', '500', '2000'].map(value => <NativeSelectOption key={value} value={value}>{value === 'all' ? 'All Results' : value}</NativeSelectOption>)}
           </NativeSelect></Field>
@@ -532,7 +532,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
         <details className="relative shrink-0" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus() } }}>
           <summary aria-label="More Base Actions" className="flex size-7 cursor-pointer list-none items-center justify-center rounded-md text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden"><Plus aria-hidden="true" className="size-4" /></summary>
           <div className="absolute top-full left-0 z-[1002] flex w-max max-w-[calc(100vw-3rem)] flex-wrap gap-1 rounded-lg border border-border bg-surface p-2 shadow-lg">
-            <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button" onClick={() => setRenameName(model.view.name)}>Rename View</Button></PopoverTrigger><PopoverContent align="start" className={menuClass}>
+            <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button" onClick={() => setRenameName(model.view.name)}>Rename View</Button></PopoverTrigger><PopoverContent unstyled align="start" className={menuClass}>
               <Field className="gap-1"><FieldLabel htmlFor="base-rename-view-name">View Name</FieldLabel><Input id="base-rename-view-name" value={renameName} onChange={event => setRenameName(event.currentTarget.value)} /></Field>
               <Button className="mt-3" disabled={!props.onSourceChange || renameName === model.view.name} type="button" onClick={() => { void commit(setBaseViewField(props.source, model.view.name, 'name', renameName)) }}>Save View Name</Button>
             </PopoverContent></Popover>
@@ -541,14 +541,14 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
           </div>
         </details>
         <div className="ml-auto flex flex-wrap items-center gap-1">
-        <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button"><ArrowDownUp aria-hidden="true" />Sort</Button></PopoverTrigger><PopoverContent align="end" className={menuClass}>
+        <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button"><ArrowDownUp aria-hidden="true" />Sort</Button></PopoverTrigger><PopoverContent unstyled align="end" className={menuClass}>
           <Field className="gap-1"><FieldLabel htmlFor="base-sort-property">Sort Property</FieldLabel><NativeSelect id="base-sort-property" value={sortProperty} onChange={event => setSortProperty(event.currentTarget.value)}>{properties.map(key => <NativeSelectOption key={key} value={key}>{key}</NativeSelectOption>)}</NativeSelect></Field>
           <Field className="mt-2 gap-1"><FieldLabel htmlFor="base-sort-direction">Sort Direction</FieldLabel><NativeSelect id="base-sort-direction" value={sortDirection} onChange={event => setSortDirection(event.currentTarget.value)}><NativeSelectOption value="asc">Ascending</NativeSelectOption><NativeSelectOption value="desc">Descending</NativeSelectOption></NativeSelect></Field>
           <p className="text-xs text-muted-foreground">{model.view.sort.length > 0 ? model.view.sort.join(', ') : 'No sort applied.'}</p>
           <Button disabled={!props.onSourceChange} type="button" onClick={() => { void commit(setBaseViewField(props.source, model.view.name, 'sort', [`${sortProperty} ${sortDirection}`])) }}>Apply Sort</Button>
           <Button variant="ghost" disabled={!props.onSourceChange || model.view.sort.length === 0} type="button" onClick={() => { void commit(setBaseViewField(props.source, model.view.name, 'sort', [])) }}>Clear Sort</Button>
         </PopoverContent></Popover>
-        <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button"><ListFilter aria-hidden="true" />Filter</Button></PopoverTrigger><PopoverContent align="end" className={menuClass}>
+        <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button"><ListFilter aria-hidden="true" />Filter</Button></PopoverTrigger><PopoverContent unstyled align="end" className={menuClass}>
           <Field className="gap-1"><FieldLabel htmlFor="base-filter-property">Filter Property</FieldLabel><NativeSelect id="base-filter-property" value={filterProperty} onChange={event => setFilterProperty(event.currentTarget.value)}>{properties.map(key => <NativeSelectOption key={key} value={key}>{key}</NativeSelectOption>)}</NativeSelect></Field>
           <Field className="mt-2 gap-1"><FieldLabel htmlFor="base-filter-operator">Filter Operator</FieldLabel><NativeSelect id="base-filter-operator" value={filterOperator} onChange={event => setFilterOperator(event.currentTarget.value)}><NativeSelectOption value="==">Equals</NativeSelectOption><NativeSelectOption value="!=">Does Not Equal</NativeSelectOption></NativeSelect></Field>
           <Field className="mt-2 gap-1"><FieldLabel htmlFor="base-filter-value">Filter Value</FieldLabel><Input id="base-filter-value" maxLength={200} value={filterValue} onChange={event => setFilterValue(event.currentTarget.value)} /></Field>
@@ -556,7 +556,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
           <Button disabled={!props.onSourceChange || filterValue === ''} type="button" onClick={() => { void commit(setBaseViewField(props.source, model.view.name, 'filters', `${filterProperty} ${filterOperator} ${JSON.stringify(filterValue)}`)) }}>Apply Filter</Button>
           <Button variant="ghost" disabled={!props.onSourceChange || model.view.filters.length === 0} type="button" onClick={() => { void commit(setBaseViewField(props.source, model.view.name, 'filters', '')) }}>Clear Filter</Button>
         </PopoverContent></Popover>
-        <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button"><ListTree aria-hidden="true" />Properties</Button></PopoverTrigger><PopoverContent align="end" className={menuClass}>
+        <Popover><PopoverTrigger asChild><Button size="sm" variant="ghost" type="button"><ListTree aria-hidden="true" />Properties</Button></PopoverTrigger><PopoverContent unstyled align="end" className={menuClass}>
           <p className="m-0 mb-2 text-sm">Visible Properties</p>
           <div className="max-h-56 overflow-auto">{properties.map(key => <Label key={key} className="flex min-h-8 items-center gap-2 text-sm"><Checkbox disabled={!props.onSourceChange || key === 'file.name'} checked={model.columns.some(column => column.key === key)} onCheckedChange={checked => { const columns = model.columns.map(column => column.key).filter(column => column !== key); if (checked === true) columns.push(key); if (!columns.includes('file.name')) columns.unshift('file.name'); void commit(setBaseViewField(props.source, model.view.name, 'order', columns)) }} /><span>{key}</span></Label>)}</div>
         </PopoverContent></Popover>

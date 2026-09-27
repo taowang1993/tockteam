@@ -243,6 +243,9 @@ describe('ExecutableBaseView', () => {
     const changes: string[] = []
     render(<ExecutableBaseView files={files} source={source} onSourceChange={async (_, next) => { changes.push(next); return true }} />)
     fireEvent.click(screen.getByRole('button', { name: '2 Results' }))
+    const menu = screen.getByRole('dialog')
+    expect(menu.className).toContain('bg-surface-muted')
+    expect(menu.className).not.toContain('bg-popover')
     fireEvent.change(screen.getByRole('combobox', { name: 'Result Limit' }), { target: { value: '25' } })
     await waitFor(() => expect(changes).toHaveLength(1))
     expect(changes[0]).toContain('limit: "25"')
