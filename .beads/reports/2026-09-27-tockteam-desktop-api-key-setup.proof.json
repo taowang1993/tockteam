@@ -1,0 +1,36 @@
+{
+  "surface": "TockTeam Desktop",
+  "route": "/tockcoder",
+  "mode": {
+    "documentColorScheme": "dark",
+    "documentSkin": null,
+    "bodySkin": "not checked"
+  },
+  "viewportCss": [1512, 949],
+  "deviceScaleFactor": 2,
+  "screenshotPixels": [3024, 1898],
+  "screenshot": "2026-09-27-tockteam-desktop-api-key-setup.png",
+  "sha256": "b1ca50ef21c3872774b9c4d047c69aaa7ebddf0ca5327010ed19390b3d2f28ca",
+  "visibleState": {
+    "dialog": "Add an API key to get started",
+    "description": "Configure OpenRouter to start building.",
+    "keyInput": true,
+    "saveDisabledWithoutKey": true,
+    "configureLaterAvailable": true,
+    "internalTestingNotice": false
+  },
+  "flow": {
+    "configureLaterClosesDialog": true,
+    "composerVisibleAfterSkip": true
+  },
+  "runtime": {
+    "consoleErrors": 0,
+    "consoleWarnings": 1,
+    "warning": "Electron development-mode Content Security Policy warning"
+  },
+  "cleanup": {
+    "rootPid": 31347,
+    "trackedDescendantsRemaining": 0,
+    "guardedRunStopped": true
+  }
+}
