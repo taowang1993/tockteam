@@ -1,4 +1,19 @@
+import childProcess from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { promisify } from 'node:util'
+
+// The guard wraps execFile for sandboxing; its wrapper loses Node's custom
+// promisified { stdout, stderr } result unless this adapter restores it.
+export function restoreGuardedExecFilePromisify({ execFile }) {
+  if (typeof execFile !== 'function') throw new Error('Guarded Launcher smoke requires execFile')
+  if (typeof execFile[promisify.custom] === 'function') return
+  Object.defineProperty(execFile, promisify.custom, { configurable: true, value: (...args) => new Promise((resolve, reject) => {
+    execFile(...args, (error, stdout, stderr) => {
+      if (error) { Object.assign(error, { stdout, stderr }); reject(error) }
+      else resolve({ stdout, stderr })
+    })
+  }) })
+}
 
 // The guard fills top-level windows. Keep the Launcher an owned child so its
 // real popup bounds survive, and let clicks on the workbench dismiss it.
@@ -38,6 +53,7 @@ if (process.versions.electron) {
   const electron = globalThis[Symbol.for('pi.extended-display.electron')]
   if (!electron) throw new Error('The Launcher smoke requires the extended-display guard')
   installBoundedLauncherSmoke(electron)
+  restoreGuardedExecFilePromisify(childProcess)
   process.chdir(fileURLToPath(new URL('..', import.meta.url)))
   process.argv.push('--toggle')
   void import('../dist/main.js').catch(error => { console.error(error); electron.app.exit(1) })

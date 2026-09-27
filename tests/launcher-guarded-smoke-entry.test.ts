@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import { createRequire } from 'node:module'
 import { test } from 'node:test'
+import { promisify } from 'node:util'
 
 class GuardedWindow extends EventEmitter {
   readonly options: Record<string, unknown>
@@ -26,8 +27,9 @@ class GuardedWindow extends EventEmitter {
 }
 
 type FakeElectron = { BrowserWindow: typeof GuardedWindow }
-const { installBoundedLauncherSmoke } = createRequire(import.meta.url)('../scripts/launcher-guarded-smoke-entry.mjs') as {
+const { installBoundedLauncherSmoke, restoreGuardedExecFilePromisify } = createRequire(import.meta.url)('../scripts/launcher-guarded-smoke-entry.mjs') as {
   installBoundedLauncherSmoke: (electron: FakeElectron) => void
+  restoreGuardedExecFilePromisify: (childProcess: object) => void
 }
 
 test('guarded Launcher smoke keeps its popup bounded and closes it on workbench click-away', () => {
@@ -62,4 +64,23 @@ test('guarded Launcher smoke destroys a popup if native bounds unexpectedly fill
   new electron.BrowserWindow({ title: 'TockTeam', width: 1280, height: 840 })
   assert.throws(() => new electron.BrowserWindow({ title: 'TockLauncher', width: 750, height: 475 }), /native popup bounds/u)
   assert.equal(created[1]?.destroyed, true)
+})
+
+test('guarded Launcher smoke preserves the native execFile promise result without bypassing its wrapper', async () => {
+  const output = '{"zh-Hans":{"CFBundleName":"日历"}}'
+  const calls: string[] = []
+  const guardedExecFile = (executable: string, _args: readonly string[], _options: object, callback: (error: Error | null, stdout: string, stderr: string) => void): void => {
+    calls.push(executable)
+    callback(null, output, '')
+  }
+  const childProcess = { execFile: guardedExecFile }
+  restoreGuardedExecFilePromisify(childProcess)
+  assert.equal(childProcess.execFile, guardedExecFile)
+  assert.deepEqual(await promisify(childProcess.execFile)('/usr/bin/plutil', ['-convert', 'json'], { timeout: 1_000 }), { stdout: output, stderr: '' })
+  assert.deepEqual(calls, ['/usr/bin/plutil'])
+
+  const failure = new Error('denied')
+  const failingExecFile = (_executable: string, _args: readonly string[], _options: object, callback: (error: Error | null, stdout: string, stderr: string) => void): void => { callback(failure, '', 'denied') }
+  restoreGuardedExecFilePromisify({ execFile: failingExecFile })
+  await assert.rejects(promisify(failingExecFile)('/usr/bin/plutil', [], {}), error => error === failure && (error as Error & { stderr?: string }).stderr === 'denied')
 })
