@@ -122,6 +122,8 @@ const FIXED_ZH: Readonly<Record<string, string>> = Object.freeze({
   'Discard Unsaved Changes?': '放弃未保存的更改？',
   'Some edits have not been saved. Stay to correct them, or discard them and leave settings.': '部分编辑尚未保存。您可以继续编辑，或放弃更改并退出设置。',
   'Keep Editing': '继续编辑',
+  'Discard Changes': '放弃更改',
+  'Your unsaved changes will be lost.': '未保存的更改将丢失。',
   'Discard and Leave': '放弃并退出',
   'Search Extensions': '搜索扩展',
   'Built-In Tools': '内置工具',

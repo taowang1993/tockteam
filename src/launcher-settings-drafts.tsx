@@ -18,7 +18,7 @@ export function LauncherSyncedNativeSelect({ defaultValue, value, onChange, ...p
   return <NativeSelect {...props} value={draft} onChange={event => { setDraft(event.target.value); onChange?.(event) }} />
 }
 
-export function LauncherSyncedTextarea({ defaultValue, value, onBlur, onChange, ...props }: ComponentProps<typeof Textarea>): ReactNode {
-  const [draft, setDraft, commitDraft] = useLauncherDraft<string>(typeof value === 'string' ? value : typeof defaultValue === 'string' ? defaultValue : '')
+export function LauncherSyncedTextarea({ defaultValue, value, onBlur, onChange, draftEquals, ...props }: ComponentProps<typeof Textarea> & { draftEquals?: (left: string, right: string) => boolean }): ReactNode {
+  const [draft, setDraft, commitDraft] = useLauncherDraft<string>(typeof value === 'string' ? value : typeof defaultValue === 'string' ? defaultValue : '', draftEquals)
   return <Textarea {...props} value={draft} onChange={event => { setDraft(event.target.value); onChange?.(event) }} onBlur={event => { commitDraft(); onBlur?.(event) }} />
 }

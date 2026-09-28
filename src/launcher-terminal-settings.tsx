@@ -59,7 +59,7 @@ export function LauncherTerminalSettings({ busy, save, snapshot }: LauncherTermi
 
   const toggle = (id: string, checked: boolean): void => {
     const previous = terminalIdsRef.current
-    const next = definitions.filter(definition => checked ? definition.id === id || previous.includes(definition.id) : definition.id !== id && previous.includes(definition.id)).map(definition => definition.id)
+    const next = checked ? [...new Set([...previous, id])] : previous.filter(candidate => candidate !== id)
     terminalIdsRef.current = next
     setTerminalIds(next)
     void save('extension[TerminalLauncher].terminalIds', next).then(saved => {

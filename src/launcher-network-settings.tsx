@@ -13,6 +13,11 @@ import { launcherFixedText } from './launcher-i18n.ts'
 import { LauncherSettingField as Field } from './launcher-setting-field.tsx'
 import { LauncherSyncedNativeSelect } from './launcher-settings-drafts.tsx'
 import { useLauncherDraft } from './launcher-settings-drafts.ts'
+import { launcherJsonDraftEquals } from './launcher-settings-draft-value.ts'
+
+function currencyCodes(raw: string): string[] {
+  return raw.split(/[\s,]+/u).map(item => item.toLocaleLowerCase('en-US')).filter(Boolean)
+}
 
 const SOURCE_LANGUAGES = ['Auto', 'BG', 'CS', 'DA', 'DE', 'EL', 'EN', 'ES', 'ET', 'FI', 'FR', 'HU', 'ID', 'IT', 'JA', 'KO', 'LT', 'LV', 'NB', 'NL', 'PL', 'PT', 'RO', 'RU', 'SK', 'SL', 'SV', 'TR', 'UK', 'ZH'] as const
 const TARGET_LANGUAGES = ['BG', 'CS', 'DA', 'DE', 'EL', 'EN', 'EN-GB', 'EN-US', 'ES', 'ET', 'FI', 'FR', 'HU', 'ID', 'IT', 'JA', 'KO', 'LT', 'LV', 'NB', 'NL', 'PL', 'PT', 'PT-BR', 'PT-PT', 'RO', 'RU', 'SK', 'SL', 'SV', 'TR', 'UK', 'ZH'] as const
@@ -33,11 +38,11 @@ function value<T>(snapshot: LauncherSettingsSnapshot, key: string, fallback: T):
 export function LauncherNetworkSettings({ busy, extensionId, save, snapshot }: NetworkSettingsProps): ReactNode {
   const currencies = value<readonly string[]>(snapshot, 'extension[CurrencyConversion].currencies', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.CurrencyConversion.currencies)
   const target = value<string>(snapshot, 'extension[CurrencyConversion].defaultTargetCurrency', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.CurrencyConversion.defaultTargetCurrency)
-  const [currencyDraft, setCurrencyDraft] = useLauncherDraft(currencies.join(', '))
+  const [currencyDraft, setCurrencyDraft] = useLauncherDraft(currencies.join(', '), (left, right) => JSON.stringify(currencyCodes(left)) === JSON.stringify(currencyCodes(right)))
   const [currencyError, setCurrencyError] = useState<string>()
   const [targetDraft, setTargetDraft] = useLauncherDraft(target)
   const [targetError, setTargetError] = useState<string>()
-  const [customJson, setCustomJson] = useLauncherDraft(JSON.stringify(value(snapshot, 'extension[CustomWebSearch].customSearchEngines', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.CustomWebSearch.customSearchEngines), null, 2))
+  const [customJson, setCustomJson] = useLauncherDraft(JSON.stringify(value(snapshot, 'extension[CustomWebSearch].customSearchEngines', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.CustomWebSearch.customSearchEngines), null, 2), launcherJsonDraftEquals)
   const [customError, setCustomError] = useState<string>()
   const fixed = launcherFixedText
   const source = value(snapshot, 'extension[DeeplTranslator].defaultSourceLanguage', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.DeeplTranslator.defaultSourceLanguage)
@@ -46,7 +51,7 @@ export function LauncherNetworkSettings({ busy, extensionId, save, snapshot }: N
   const locale = value(snapshot, 'extension[WebSearch].locale', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.WebSearch.locale)
   const instant = value(snapshot, 'extension[WebSearch].showInstantSearchResult', LAUNCHER_NETWORK_EXTENSION_DEFAULTS.WebSearch.showInstantSearchResult)
   const updateCurrencies = (raw: string): void => {
-    const next = raw.split(/[\s,]+/u).map(item => item.toLocaleLowerCase('en-US')).filter(Boolean)
+    const next = currencyCodes(raw)
     if (!isLauncherRendererSettingValue('extension[CurrencyConversion].currencies', next)) {
       setCurrencyError(fixed('Currency codes must be 2–16 lowercase letters, digits, or dots.'))
       return

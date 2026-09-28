@@ -240,11 +240,11 @@ function LauncherSettingsContents({ locale, navigation }: SettingsSectionProps):
   useLayoutEffect(() => {
     const onEscape = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return
-      const dialog = document.querySelector<HTMLElement>('[data-testid="tocklauncher-reset-dialog"][data-state="open"], [data-testid="tocklauncher-workflow-delete-dialog"][data-state="open"]')
+      const dialog = document.querySelector<HTMLElement>('[data-testid="tocklauncher-reset-dialog"][data-state="open"], [data-testid="tocklauncher-workflow-delete-dialog"][data-state="open"], [data-testid="tocklauncher-workflow-discard-dialog"][data-state="open"]')
       if (dialog === null) return
       event.preventDefault()
       event.stopImmediatePropagation()
-      dialog.querySelector<HTMLButtonElement>('[data-testid="tocklauncher-reset-cancel"], [data-testid="tockteam-workflow-delete-cancel"]')?.click()
+      dialog.querySelector<HTMLButtonElement>('[data-testid="tocklauncher-reset-cancel"], [data-testid="tockteam-workflow-delete-cancel"], [data-testid="tocklauncher-workflow-discard-cancel"]')?.click()
     }
     window.addEventListener('keydown', onEscape, true)
     return () => window.removeEventListener('keydown', onEscape, true)

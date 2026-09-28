@@ -123,6 +123,8 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
   })
   const [pendingAction, setPendingAction] = useState<DraftAction>(() => makeAction(currentPlatform))
   const [deletePending, setDeletePending] = useState(false)
+  const [pendingSelection, setPendingSelection] = useState<{ workflow: LauncherWorkflow | null } | null>(null)
+  const selectionTriggerRef = useRef<HTMLButtonElement | null>(null)
   const deleteTriggerRef = useRef<HTMLButtonElement>(null)
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
@@ -161,6 +163,12 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
     setDeletePending(false)
   }
 
+  const requestSelection = (workflow: LauncherWorkflow | null, trigger: HTMLButtonElement): void => {
+    if (workflow?.id === selectedIdRef.current) return
+    if (dirtyRef.current) { selectionTriggerRef.current = trigger; setPendingSelection({ workflow }); return }
+    if (workflow) selectWorkflow(workflow); else addWorkflow()
+  }
+
   const persist = async (next: readonly LauncherWorkflow[], selected: string): Promise<void> => {
     if (savingRef.current) return
     savingRef.current = true
@@ -189,17 +197,26 @@ export function LauncherWorkflowSettings({ busy, save, snapshot }: WorkflowSetti
 
   return (
     <div className="mt-3" data-testid="tocklauncher-workflows">
+      <AlertDialog open={pendingSelection !== null} onOpenChange={open => { if (!open) setPendingSelection(null) }}>
+        <AlertDialogContent data-testid="tocklauncher-workflow-discard-dialog" onCloseAutoFocus={event => { event.preventDefault(); selectionTriggerRef.current?.focus() }}>
+          <AlertDialogHeader><AlertDialogTitle>{fixed('Discard Unsaved Changes?')}</AlertDialogTitle><AlertDialogDescription className="text-popover-foreground">{fixed('Your unsaved changes will be lost.')}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="tocklauncher-workflow-discard-cancel">{fixed('Keep Editing')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (pendingSelection?.workflow) selectWorkflow(pendingSelection.workflow); else addWorkflow(); setPendingSelection(null) }}>{fixed('Discard Changes')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <p className="mb-3 text-xs leading-5 text-muted-foreground">{launcherFixedText('Every action receives exact native approval. Commands use the trusted Desktop home, are time and output bounded, cancellable, and audited without command text or output.')}</p>
       <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(10rem,0.8fr)_minmax(0,1.8fr)]">
         <div aria-label={fixed('Saved Workflows')} className="min-w-0 rounded-md border border-border/60 p-2">
           <div className="mb-2 flex items-center justify-between gap-2">
             <h4 className="text-sm font-medium text-foreground">{fixed('Workflows')}</h4>
-            <Button aria-label={fixed('Add Workflow')} data-testid="tocklauncher-workflow-add" size="sm" type="button" variant="outline" disabled={busy || saving || workflows.length >= 64} onClick={addWorkflow}>{fixed('Add')}</Button>
+            <Button aria-label={fixed('Add Workflow')} data-testid="tocklauncher-workflow-add" size="sm" type="button" variant="outline" disabled={busy || saving || workflows.length >= 64} onClick={event => requestSelection(null, event.currentTarget)}>{fixed('Add')}</Button>
           </div>
           <div className="flex min-w-0 flex-col gap-1" role="list">
             {workflows.length === 0 ? <p className="px-2 py-3 text-xs text-muted-foreground">{fixed('No saved workflows.')}</p> : workflows.map(workflow => (
               <div key={workflow.id} role="listitem">
-                <Button unstyled aria-current={workflow.id === selectedId ? 'true' : undefined} className="w-full min-w-0 rounded px-2 py-2 text-left text-sm hover:bg-muted" disabled={busy || saving} type="button" onClick={() => selectWorkflow(workflow)}>
+                <Button unstyled aria-current={workflow.id === selectedId ? 'true' : undefined} className="w-full min-w-0 rounded px-2 py-2 text-left text-sm hover:bg-muted" disabled={busy || saving} type="button" onClick={event => requestSelection(workflow, event.currentTarget)}>
                   <span className="block truncate" title={workflow.name}>{workflow.name}</span>
                   <span className="block text-xs text-muted-foreground">{workflow.actions.length} {fixed(workflow.actions.length === 1 ? 'action' : 'actions')}</span>
                 </Button>

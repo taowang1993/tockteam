@@ -7,6 +7,19 @@ import type { LauncherSettingsSnapshot } from '../src/launcher-settings-contract
 const source = readFileSync(new URL('../src/launcher-workflow-settings.tsx', import.meta.url), 'utf8')
 const mainSettings = readFileSync(new URL('../src/launcher-settings.tsx', import.meta.url), 'utf8')
 
+test('settings confirmations paint above the owning Desktop settings layer', () => {
+  const css = readFileSync(new URL('../plugins/skins/src/client/tailwind.css', import.meta.url), 'utf8')
+  assert.match(css, /\[data-tockteam-settings-page='true'\] body > \[data-slot='alert-dialog-overlay'\]\s*\{\s*z-index: 1001;/u)
+  assert.match(css, /\[data-tockteam-settings-page='true'\] body > \[data-slot='alert-dialog-content'\]\s*\{\s*z-index: 1002;/u)
+})
+
+test('workflow discard Escape is contained by the owning Settings shell', () => {
+  assert.match(source, /data-testid="tocklauncher-workflow-discard-dialog"/u)
+  assert.match(source, /data-testid="tocklauncher-workflow-discard-cancel"/u)
+  assert.match(mainSettings, /tocklauncher-workflow-discard-dialog.*data-state="open"/u)
+  assert.match(mainSettings, /tocklauncher-workflow-discard-cancel/u)
+})
+
 test('Workflow settings editor preserves foreign-platform entries', () => {
   const snapshot = {
     externalGrantStatus: 'none', logs: [], missingSensitiveKeys: [], recoveredSettings: false, settingsSource: 'managed',
