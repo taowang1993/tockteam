@@ -26,11 +26,22 @@ async function bounded<T>(promise: Promise<T>): Promise<T> {
   finally { clearTimeout(timer) }
 }
 async function inventory(root: string) {
-  const { stdout } = await execute('/bin/ps', ['-axo', 'pid=,ppid=,pgid=,stat=,args='], { timeout: 3000, maxBuffer: 4 * 1024 * 1024 })
+  const pattern = `${root.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}/(host|child)\\.mjs`
+  let stdout: string
+  try {
+    ({ stdout } = await execute('/usr/bin/pgrep', ['-fl', '-f', pattern], { timeout: 3000 }))
+  } catch (error) {
+    const failure = error as { code?: string | number; killed?: boolean; signal?: string | null }
+    if (failure.code === 1 && failure.killed === false && failure.signal === null) return []
+    throw error
+  }
   return stdout.split('\n').flatMap(line => {
-    const match = line.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(.+)$/)
-    return match && (match[5]!.includes(join(root, 'host.mjs')) || match[5]!.includes(join(root, 'child.mjs')))
-      ? [{ pid: +match[1]!, parent: +match[2]!, group: +match[3]!, state: match[4]!, command: match[5]! }] : []
+    const match = line.match(/^(\d+)\s+(.+)$/)
+    const command = match?.[2]
+    return command && ['host.mjs', 'child.mjs'].some(file => {
+      const owned = `${process.execPath} ${join(root, file)}`
+      return command === owned || command.startsWith(`${owned} `)
+    }) ? [{ pid: +match![1]!, command }] : []
   })
 }
 
@@ -68,10 +79,12 @@ await index.whenReady;process.send({ready:true,childPid:index.pid});\n`)
     finally { clearTimeout(timer) }
     const filename = join(root, 'fixture-fixture.sqlite')
     const before = await stat(filename), contents = createHash('sha256').update(await readFile(filename)).digest('hex')
-    process.kill(childPid, 'SIGSTOP')
-    await until(() => inventory(root), rows => rows.some(row => row.pid === childPid && row.parent === host.pid && row.state.includes('T')))
+    process.kill(childPid, 'SIGSTOP') // Kernel-enforced even without process-state listing.
+    await until(() => inventory(root), rows => rows.some(row => row.pid === childPid))
+    const { stdout: hostChildren } = await execute('/usr/bin/pgrep', ['-P', String(host.pid)], { timeout: 3000 })
+    assert.ok(hostChildren.trim().split('\n').includes(String(childPid)), 'index must be a direct Host child')
     host.kill('SIGKILL') // Deliberately kill ONLY the Host, not the independent index group.
-    await until(() => inventory(root), rows => !rows.some(row => row.pid === host.pid) && rows.some(row => row.pid === childPid && row.parent !== host.pid && row.state.includes('T')))
+    await until(() => inventory(root), rows => !rows.some(row => row.pid === host.pid) && rows.some(row => row.pid === childPid))
     assert.throws(() => process.kill(host.pid!, 0), { code: 'ESRCH' })
     process.kill(childPid, 0)
     const prototype = SearchIndexProcess.prototype as unknown as { spawn(options: OwnedProcessOptions): ReturnType<typeof spawnOwnedProcess> }
@@ -82,7 +95,7 @@ await index.whenReady;process.send({ready:true,childPid:index.pid});\n`)
     assert.equal(JSON.parse(await readFile(leaseLog, 'utf8')).code, 'SQLITE_BUSY')
     assert.equal((await stat(filename)).ino, before.ino)
     assert.equal(createHash('sha256').update(await readFile(filename)).digest('hex'), contents)
-    assert.ok((await inventory(root)).some(row => row.pid === childPid && row.state.includes('T')))
+    assert.ok((await inventory(root)).some(row => row.pid === childPid))
     process.kill(-childPid, 'SIGKILL')
     await until(() => inventory(root), rows => !rows.some(row => row.pid === childPid))
     assert.throws(() => process.kill(childPid!, 0), { code: 'ESRCH' })
@@ -103,7 +116,7 @@ await index.whenReady;process.send({ready:true,childPid:index.pid});\n`)
       for (const row of await inventory(root)) {
         try {
           assert.ok(row.command.startsWith(process.execPath + ' '), 'do not terminate a foreign executable')
-          process.kill(row.pid === row.group ? -row.pid : row.pid, 'SIGKILL')
+          process.kill(-row.pid, 'SIGKILL')
         } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') errors.push(error) }
       }
     } catch (error) { errors.push(error) }

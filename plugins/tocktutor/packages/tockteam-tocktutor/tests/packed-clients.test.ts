@@ -94,6 +94,8 @@ const releases: ReleaseArtifact[] = [
       inject: [
         '@deepseek-ai/dsh-api-remotes',
         '@deepseek-ai/dsh-client-ui-session',
+        '@deepseek-ai/dsh-client-ui-conversation',
+        '@deepseek-ai/dsh-client-ui-chat',
         '@tockteam/tocktutor-workbench',
       ],
       platform: 'web',
