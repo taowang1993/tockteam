@@ -620,6 +620,8 @@ export class LauncherPersistenceRepository {
         await rm(`${this.#rankingPath}.bak`, { force: true })
         await syncDirectory(this.#rootPath)
         await this.#writeSettings({})
+        // A completed reset must not recover the credentials/history it just cleared.
+        if (this.#settingsSource === 'managed') await atomicWrite(`${this.#managedSettingsPath}.bak`, '{}', { backup: false })
         this.#ranking = Object.freeze([])
       })
     } finally {

@@ -53,6 +53,31 @@ test('ranking persistence survives restart, recovers its validated backup, and r
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
+test('reset recovery never restores cleared secrets, history, or favorites', async () => {
+  for (const damage of ['missing', 'corrupt']) {
+    const userDataPath = await root()
+    try {
+      const repository = await LauncherPersistenceRepository.open({ userDataPath, secretCodec: codec })
+      await repository.updateSettings({
+        'extension[DeeplTranslator].apiKey': 'private-key',
+        'general.searchHistory.enabled': true,
+        'general.searchHistory.history': ['private query'],
+        favorites: ['private-favorite'],
+      })
+      await repository.resetSettings()
+      await repository.close()
+      const settingsPath = path.join(userDataPath, 'launcher', 'settings.json')
+      if (damage === 'missing') await rm(settingsPath)
+      else await writeFile(settingsPath, '{broken')
+      const recovered = await LauncherPersistenceRepository.open({ userDataPath, secretCodec: codec })
+      try {
+        assert.deepEqual(recovered.snapshot().values, {})
+        assert.ok(recovered.snapshot().missingSensitiveKeys.includes('extension[DeeplTranslator].apiKey'))
+      } finally { await recovered.close() }
+    } finally { await rm(userDataPath, { recursive: true, force: true }) }
+  }
+})
+
 test('app name aliases survive restart while malformed alias data is rejected', async () => {
   const userDataPath = await root()
   try {
