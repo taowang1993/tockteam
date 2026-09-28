@@ -5206,51 +5206,56 @@ export class NoteVaultRuntime extends Service {
         const { root, state } = this.captureExpectedVault(request.expectedVault);
         signal.throwIfAborted();
         const data = encodeDocumentContent(request.content, this.maxReadBytes);
-        let snapshot;
-        let target;
-        try {
-            target = await resolveDocumentTarget(root, request.path);
-            if (typeof request.expectedRevision !== 'string'
-                || fileRevision(target.targetEntry) !== request.expectedRevision) {
-                throw new NoteVaultError('conflict', 'The document changed on disk before it could be saved');
-            }
-            const current = await readVaultDocument(root, target.relativePath, this.maxReadBytes, signal);
-            if (current.revision !== request.expectedRevision) {
-                throw new NoteVaultError('conflict', 'The document changed on disk before it could be saved');
-            }
-            snapshot = await this.captureRecoverySnapshot(target.relativePath, current.content, state, 'save', signal);
+        // ponytail: serialize saves per vault; split by canonical path if write throughput needs it.
+        return this.runDraftOperation(`document-save:${root}`, async () => {
+            signal.throwIfAborted();
             this.assertCapturedVault(state, root);
-            await writeDocumentAtomic(target.canonical, data, false, async () => {
-                signal.throwIfAborted();
+            let snapshot;
+            let target;
+            try {
+                target = await resolveDocumentTarget(root, request.path);
+                if (typeof request.expectedRevision !== 'string'
+                    || fileRevision(target.targetEntry) !== request.expectedRevision) {
+                    throw new NoteVaultError('conflict', 'The document changed on disk before it could be saved');
+                }
+                const current = await readVaultDocument(root, target.relativePath, this.maxReadBytes, signal);
+                if (current.revision !== request.expectedRevision) {
+                    throw new NoteVaultError('conflict', 'The document changed on disk before it could be saved');
+                }
+                snapshot = await this.captureRecoverySnapshot(target.relativePath, current.content, state, 'save', signal);
                 this.assertCapturedVault(state, root);
-                await assertWriteTargetUnchanged(root, target, request.expectedRevision);
-            });
-        }
-        catch (error) {
-            if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError')) {
-                throw error;
+                await writeDocumentAtomic(target.canonical, data, false, async () => {
+                    signal.throwIfAborted();
+                    this.assertCapturedVault(state, root);
+                    await assertWriteTargetUnchanged(root, target, request.expectedRevision);
+                });
             }
-            if (error.code === 'ENOENT') {
-                throw new NoteVaultError('conflict', 'The document changed on disk before it could be saved');
+            catch (error) {
+                if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError')) {
+                    throw error;
+                }
+                if (error.code === 'ENOENT') {
+                    throw new NoteVaultError('conflict', 'The document changed on disk before it could be saved');
+                }
+                throw new NoteVaultError('unsafe-target', 'Vault document could not be saved safely');
             }
-            throw new NoteVaultError('unsafe-target', 'Vault document could not be saved safely');
-        }
-        try {
-            const document = await readVaultDocument(root, target.relativePath, this.maxReadBytes, POST_COMMIT_SIGNAL);
-            const result = {
-                digest: document.digest,
-                generation: state.generation,
-                path: document.path,
-                revision: document.revision,
-                snapshotId: snapshot.id,
-                status: 'saved',
-            };
-            this.emitEntryChange('updated', result.path, state);
-            return result;
-        }
-        catch {
-            throw new NoteVaultError('partial', 'The document was saved but could not be inspected');
-        }
+            try {
+                const document = await readVaultDocument(root, target.relativePath, this.maxReadBytes, POST_COMMIT_SIGNAL);
+                const result = {
+                    digest: document.digest,
+                    generation: state.generation,
+                    path: document.path,
+                    revision: document.revision,
+                    snapshotId: snapshot.id,
+                    status: 'saved',
+                };
+                this.emitEntryChange('updated', result.path, state);
+                return result;
+            }
+            catch {
+                throw new NoteVaultError('partial', 'The document was saved but could not be inspected');
+            }
+        });
     }
 }
 export default NoteVaultRuntime;

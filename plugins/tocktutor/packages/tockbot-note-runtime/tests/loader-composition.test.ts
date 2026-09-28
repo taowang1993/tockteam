@@ -4480,6 +4480,57 @@ test('document write races preserve concurrent files and remove temporary files'
   }
 })
 
+test('two saves of the same revision serialize before the first write commits', async () => {
+  const fixture = await mkdtemp(join(tmpdir(), 'note-vault-concurrent-saves-'))
+  const file = join(fixture, 'Note.md')
+  try {
+    await writeFile(file, 'before')
+    const loaded = await load(`vaultRoot: ${JSON.stringify(fixture)}`)
+    try {
+      const state = loaded.context.noteVault.state
+      if (!state.active) assert.fail('configured vault must be active')
+      const expectedVault = { id: state.id, generation: state.generation }
+      const signal = new AbortController().signal
+      const opened = await loaded.context.noteVault.openDocument('Note.md', expectedVault, signal)
+      const probe = await openFile(file, 'r')
+      const prototype = Object.getPrototypeOf(probe) as { sync: () => Promise<void> }
+      const originalSync = prototype.sync
+      await probe.close()
+      let entered!: () => void
+      let release!: () => void
+      const firstEntered = new Promise<void>(resolve => { entered = resolve })
+      const firstReleased = new Promise<void>(resolve => { release = resolve })
+      let syncs = 0
+      prototype.sync = async function () {
+        await originalSync.call(this)
+        if (++syncs === 1) { entered(); await firstReleased }
+      }
+      try {
+        const request = { expectedRevision: opened.revision, expectedVault, path: 'Note.md' }
+        const first = loaded.context.noteVault.saveDocument({ ...request, content: 'first' }, signal)
+        await firstEntered
+        const second = loaded.context.noteVault.saveDocument({ ...request, content: 'second' }, signal)
+        const settled = Promise.allSettled([first, second])
+        await new Promise(resolve => setTimeout(resolve, 100))
+        const competingWrites = syncs
+        release()
+        const results = await settled
+        assert.equal(competingWrites, 1, 'the second save must not reach the write path while the first is pending')
+        assert.equal(results.filter(result => result.status === 'fulfilled').length, 1)
+        assert.equal(results.filter(result => result.status === 'rejected' && result.reason instanceof NoteVaultError && result.reason.code === 'conflict').length, 1)
+        assert.equal(await readFile(file, 'utf8'), 'first')
+      } finally {
+        release()
+        prototype.sync = originalSync
+      }
+    } finally {
+      await dispose(loaded.context, loaded.root)
+    }
+  } finally {
+    await rm(fixture, { recursive: true, force: true })
+  }
+})
+
 test('every save captures a bounded recovery snapshot and restores it exclusively', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'note-vault-snapshots-'))
   try {

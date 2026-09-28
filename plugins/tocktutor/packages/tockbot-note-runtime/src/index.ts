@@ -6607,10 +6607,14 @@ export class NoteVaultRuntime extends Service {
     const { root, state } = this.captureExpectedVault(request.expectedVault)
     signal.throwIfAborted()
     const data = encodeDocumentContent(request.content, this.maxReadBytes)
-    let snapshot: SnapshotInfo
-    let target: ResolvedDocumentTarget
-    try {
-      target = await resolveDocumentTarget(root, request.path)
+    // ponytail: serialize saves per vault; split by canonical path if write throughput needs it.
+    return this.runDraftOperation(`document-save:${root}`, async () => {
+      signal.throwIfAborted()
+      this.assertCapturedVault(state, root)
+      let snapshot: SnapshotInfo
+      let target: ResolvedDocumentTarget
+      try {
+        target = await resolveDocumentTarget(root, request.path)
       if (
         typeof request.expectedRevision !== 'string'
         || fileRevision(target.targetEntry) !== request.expectedRevision
@@ -6664,6 +6668,7 @@ export class NoteVaultRuntime extends Service {
     } catch {
       throw new NoteVaultError('partial', 'The document was saved but could not be inspected')
     }
+    })
   }
 }
 
