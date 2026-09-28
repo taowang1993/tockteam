@@ -60,6 +60,7 @@ test('calculator and color conversion retain pinned golden vectors', async () =>
     ['1m in cm', {}, '100 cm'],
     ['(1000m in km)/3', { 'extension[Calculator].precision': 2 }, '0.33 km'],
     ['1/3', { 'extension[Calculator].precision': 3 }, '0.333'],
+    ['8888+9999', {}, '18887'],
     ['sqrt(-4)', {}, '2i'],
     ['2.5!', {}, '3.32335097'],
     ['1,3 * (2 + 4,5)', { 'extension[Calculator].argumentSeparator': ';', 'extension[Calculator].decimalSeparator': ',', 'extension[Calculator].precision': 2 }, '8,45'],

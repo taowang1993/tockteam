@@ -13,6 +13,13 @@ function integerWords(value: number): string {
   return `${integerWords(Math.floor(value / size))} ${name}${value % size ? ` ${integerWords(value % size)}` : ''}`
 }
 
+export function launcherCalculatorDisplayAnswer(answer: string): string {
+  // ponytail: Comma-decimal values and collections stay raw; pass separator settings if they need grouping.
+  const scalar = /^([+-]?\d+)(\.\d+)?(\s+\S.*)?$/u.exec(answer)
+  if (!scalar) return answer
+  return `${scalar[1]!.replace(/\B(?=(\d{3})+(?!\d))/gu, ',')}${scalar[2] ?? ''}${scalar[3] ?? ''}`
+}
+
 export function launcherCalculatorCaptions(expression: string, answer: string): Readonly<{ operation: string | undefined; answerWords: string | undefined }> {
   const operation = OPERATION_NAMES[SIMPLE_ARITHMETIC.exec(expression)?.[1] ?? '']
   const numeric = /^(-?)(\d+)(?:[.,](\d+))?$/u.exec(answer)

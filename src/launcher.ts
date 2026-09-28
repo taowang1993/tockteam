@@ -1,5 +1,5 @@
 import { isLauncherExtensionId, launcherProviderAlerts } from './launcher-extension-settings.ts'
-import { launcherCalculatorCaptions } from './launcher-calculator-caption.ts'
+import { launcherCalculatorCaptions, launcherCalculatorDisplayAnswer } from './launcher-calculator-caption.ts'
 import { createTrustedRaycastView } from './trusted-raycast-renderer.ts'
 import { createTrustedRaycastFirstUseView, createTrustedRaycastTrustView } from './trusted-raycast-trust-view.ts'
 import { trustedRaycastCommands, trustedRaycastSetupId, trustedRaycastAssetUrl, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
@@ -768,10 +768,13 @@ async function bootstrap(): Promise<void> {
     footerSelection.replaceChildren()
     const item = selectedItem()
     if (item === undefined) return
+    const displayName = item.sourceExtension === 'Calculator' && item.id === 'calculator:instantResult'
+      ? launcherCalculatorDisplayAnswer(item.name)
+      : item.name
 
     const selectionName = document.createElement('span')
     selectionName.className = 'min-w-0 truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'
-    selectionName.textContent = item.name
+    selectionName.textContent = displayName
     footerSelection.append(createResultMarker(item), selectionName)
 
     const open = document.createElement('button')
@@ -793,7 +796,7 @@ async function bootstrap(): Promise<void> {
     toggle.className = 'launcher-command-footer-action text-[var(--dsw-alias-label-secondary,CanvasText)]'
     toggle.type = 'button'
     toggle.disabled = workflowInteractionBlocked()
-    toggle.setAttribute('aria-label', `${messages().actionsFor} ${item.name}`)
+    toggle.setAttribute('aria-label', `${messages().actionsFor} ${displayName}`)
     toggle.setAttribute('aria-haspopup', 'menu')
     toggle.setAttribute('aria-expanded', String(actionMenuOpen))
     toggle.setAttribute('aria-controls', 'launcher-actions-menu')
@@ -836,7 +839,7 @@ async function bootstrap(): Promise<void> {
     menu.className = 'launcher-command-menu bottom-[calc(100%+10px)] right-0'
     menu.id = 'launcher-actions-menu'
     menu.setAttribute('role', 'menu')
-    menu.setAttribute('aria-label', `${messages().actionsFor} ${item.name}`)
+    menu.setAttribute('aria-label', `${messages().actionsFor} ${displayName}`)
     const actions = [item.defaultAction, ...(item.additionalActions ?? [])]
     for (const action of actions) {
       const actionButton = document.createElement('button')
@@ -914,13 +917,14 @@ async function bootstrap(): Promise<void> {
       listItem.setAttribute('role', 'presentation')
       const button = document.createElement('button')
       const calculator = item.sourceExtension === 'Calculator' && item.id === 'calculator:instantResult'
+      const displayName = calculator ? launcherCalculatorDisplayAnswer(item.name) : item.name
       button.className = calculator ? 'launcher-command-row min-h-28 border-border bg-surface-muted px-5 py-4' : 'launcher-command-row'
       if (calculator) button.dataset.testid = 'tocklauncher-calculator-result'
       button.type = 'button'
       button.disabled = workflowInteractionBlocked()
       button.id = `launcher-result-${encodeURIComponent(item.id)}`
       button.dataset.resultId = item.id
-      button.title = calculator ? `${displayedTerm} = ${item.name}` : item.name
+      button.title = calculator ? `${displayedTerm} = ${displayName}` : displayName
       button.setAttribute('role', 'option')
       button.setAttribute('aria-selected', String(item.id === selectedItemId))
       button.tabIndex = -1
@@ -938,7 +942,7 @@ async function bootstrap(): Promise<void> {
         equals.textContent = messages().equals
         const answer = document.createElement('strong')
         answer.className = 'col-start-3 row-start-1 min-w-0 truncate text-center text-[26px] font-semibold tabular-nums'
-        answer.textContent = item.name
+        answer.textContent = displayName
         const captions = launcherCalculatorCaptions(displayedTerm, item.name)
         equation.append(expression)
         if (captions.operation) {
@@ -962,7 +966,7 @@ async function bootstrap(): Promise<void> {
         copy.className = compact ? 'flex min-w-0 flex-1 items-baseline gap-2' : 'min-w-0 flex-1'
         const nameElement = document.createElement('strong')
         nameElement.className = compact ? 'min-w-0 max-w-[42%] shrink-0 truncate text-[13px] font-medium tracking-[0.004em]' : 'block truncate text-sm font-medium'
-        nameElement.textContent = item.name
+        nameElement.textContent = displayName
         const description = document.createElement('span')
         description.className = compact ? 'min-w-0 flex-1 truncate text-xs font-medium text-[var(--dsw-alias-label-secondary,CanvasText)]' : 'block truncate text-xs text-[var(--dsw-alias-label-secondary,CanvasText)]'
         description.textContent = item.description

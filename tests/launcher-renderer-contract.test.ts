@@ -123,7 +123,9 @@ test('new calculations select their copy result without stealing later keyboard 
 test('calculator uses the typed expression and main-owned answer in an accessible card', () => {
   assert.match(launcherSource, /button\.dataset\.testid = 'tocklauncher-calculator-result'/u)
   assert.match(launcherSource, /expression\.textContent = displayedTerm/u)
-  assert.match(launcherSource, /answer\.textContent = item\.name/u)
+  assert.match(launcherSource, /const displayName = calculator \? launcherCalculatorDisplayAnswer\(item\.name\) : item\.name/u)
+  assert.match(launcherSource, /answer\.textContent = displayName/u)
+  assert.match(launcherSource, /selectionName\.textContent = displayName/u)
   assert.match(launcherSource, /launcherCalculatorCaptions\(displayedTerm, item\.name\)/u)
   assert.match(launcherSource, /item\.sourceExtension === 'Calculator'[^\n]*item\.id === 'calculator:instantResult'/u)
   assert.match(launcherSource, /item\.sourceExtension === 'Calculator' \? messages\(\)\.copyAnswer : messages\(\)\.openCommand/u)
@@ -187,7 +189,7 @@ test('action-menu activation closes the history menu', () => {
 })
 
 test('long result and action labels retain an inspection affordance', () => {
-  assert.match(launcherSource, /button\.title = calculator \? `\$\{displayedTerm\} = \$\{item\.name\}` : item\.name/u)
+  assert.match(launcherSource, /button\.title = calculator \? `\$\{displayedTerm\} = \$\{displayName\}` : displayName/u)
   assert.match(launcherSource, /actionButton\.title = action\.description/u)
 })
 

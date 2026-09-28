@@ -1,6 +1,19 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { launcherCalculatorCaptions } from '../src/launcher-calculator-caption.ts'
+import { launcherCalculatorCaptions, launcherCalculatorDisplayAnswer } from '../src/launcher-calculator-caption.ts'
+
+test('calculator display groups digits without rounding or changing non-scalar answers', () => {
+  for (const [answer, displayed] of [
+    ['18887', '18,887'],
+    ['-1234567.0123456789', '-1,234,567.0123456789'],
+    ['1000000 cm', '1,000,000 cm'],
+    ['999.25', '999.25'],
+    ['18887,5', '18887,5'],
+    ['[1000, 2000]', '[1000, 2000]'],
+    ['1.2e+20', '1.2e+20'],
+    ['2i', '2i'],
+  ] as const) assert.equal(launcherCalculatorDisplayAnswer(answer), displayed, answer)
+})
 
 test('calculator captions follow the operation and spelled-out answer', () => {
   for (const [expression, answer, operation, answerWords] of [
