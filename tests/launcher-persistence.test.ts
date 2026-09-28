@@ -229,6 +229,28 @@ test('external settings cannot be exported over the active grant or a hard-link 
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
 })
 
+test('exports cannot overwrite managed launcher state or adopt it as an external file', async () => {
+  const userDataPath = await root()
+  const repository = await LauncherPersistenceRepository.open({ secretCodec: codec, secureStorageAvailable: true, userDataPath })
+  try {
+    await repository.updateSetting('extension[DeeplTranslator].apiKey', 'keep-this-secret')
+    const managed = path.join(userDataPath, 'launcher', 'settings.json')
+    const original = await readFile(managed, 'utf8')
+    await assert.rejects(repository.exportSettingsToPath(managed), /managed launcher/u)
+    await assert.rejects(repository.exportSettingsToPath(path.join(userDataPath, 'launcher', 'nested', 'export.json')), /managed launcher/u)
+    await assert.rejects(repository.grantExternalSettingsFile(managed), /managed launcher/u)
+    if (process.platform !== 'win32') {
+      const alias = path.join(userDataPath, 'profile-alias')
+      await symlink(userDataPath, alias)
+      await assert.rejects(repository.exportSettingsToPath(path.join(alias, 'launcher', 'nested', 'export.json')), /managed launcher/u)
+      await assert.rejects(repository.grantExternalSettingsFile(path.join(alias, 'launcher', 'settings.json')), /managed launcher/u)
+    }
+    assert.equal(await readFile(managed, 'utf8'), original)
+    assert.equal(repository.snapshot().settingsSource, 'managed')
+    assert.equal(repository.getSetting('extension[DeeplTranslator].apiKey', ''), 'keep-this-secret')
+  } finally { await repository.close(); await rm(userDataPath, { recursive: true, force: true }) }
+})
+
 test('same-inode external edits are preserved and revoke stale launcher state', { skip: process.platform === 'win32' }, async () => {
   const userDataPath = await root()
   try {

@@ -430,6 +430,7 @@ export class LauncherPersistenceRepository {
       return false
     }
     try {
+      await this.#assertOutsideManagedRoot(journal.previous.path)
       if (journal.directory !== undefined && await exists(journal.directory)) {
         await this.#validateExternalTransactionDirectory(journal)
         if (!await exists(journal.previous.path)) {
@@ -491,6 +492,7 @@ export class LauncherPersistenceRepository {
   }
 
   async #loadExternal(grant: ExternalGrant): Promise<void> {
+    await this.#assertOutsideManagedRoot(grant.path)
     const backupPath = this.#externalBackupPath(grant)
     try {
       const currentGrant = await this.#createGrant(grant.path)
@@ -682,9 +684,21 @@ export class LauncherPersistenceRepository {
     })
   }
 
+  async #assertOutsideManagedRoot(filePath: string): Promise<void> {
+    // Resolve the existing ancestor too: exports may name a new file or directory through an alias.
+    let ancestor = path.resolve(filePath)
+    while (!await exists(ancestor)) ancestor = path.dirname(ancestor)
+    const canonical = path.resolve(await realpath(ancestor), path.relative(ancestor, path.resolve(filePath)))
+    const relative = path.relative(await realpath(this.#rootPath), canonical)
+    if (relative === '' || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`))) {
+      throw new Error('TockLauncher selected file is inside managed launcher storage')
+    }
+  }
+
   async exportSettingsToPath(filePath: string): Promise<void> {
     const absolute = path.resolve(filePath)
     await this.#enqueue(async () => {
+      await this.#assertOutsideManagedRoot(absolute)
       if (await exists(absolute)) {
         const target = await this.#createGrant(absolute)
         const active = this.#externalGrant
@@ -838,6 +852,7 @@ export class LauncherPersistenceRepository {
   }
 
   async #createGrant(filePath: string): Promise<ExternalGrant> {
+    await this.#assertOutsideManagedRoot(filePath)
     const absolute = path.resolve(filePath)
     const selected = await lstat(absolute, { bigint: true })
     const selectedDev = identityPart(selected.dev); const selectedIno = identityPart(selected.ino)

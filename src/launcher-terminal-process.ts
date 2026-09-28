@@ -132,9 +132,8 @@ export const MACOS_TERMINAL_SCRIPT = String.raw`on run argv
 set launchCommand to item 1 of argv
 set launchDirectory to item 2 of argv
 tell application "Terminal"
-  if not (exists window 1) then reopen
   activate
-  do script "cd " & quoted form of launchDirectory & " && " & launchCommand in window 1
+  do script "cd " & quoted form of launchDirectory & " && " & launchCommand
 end tell
 end run`
 

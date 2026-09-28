@@ -104,6 +104,14 @@ test('desktop launch keeps source and installed macOS paths distinct', () => {
   })
 })
 
+test('macOS forwards arguments through a new process to the single-instance owner', () => {
+  for (const env of [{}, { TOCKTEAM_DESKTOP_APP: '/Applications/TockTeam Desktop.app' }]) {
+    const spec = desktopLaunchSpec(['--toggle'], env, 'darwin')
+    assert.equal(spec.args[0], '-n')
+    assert.deepEqual(spec.args.slice(-2), ['--args', '--toggle'])
+  }
+})
+
 test('desktop launch resolves paths with target platform semantics', () => {
   assert.deepEqual(desktopLaunchSpec(['--inspect'], {
     TOCKTEAM_DESKTOP_APP: 'C:\\Tools\\TockTeam Desktop.exe',

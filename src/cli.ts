@@ -90,7 +90,7 @@ export function desktopLaunchSpec(
   if (explicitApp !== undefined && explicitApp !== '') {
     if (platform === 'darwin') {
       return {
-        args: [paths.resolve(explicitApp), ...(args.length === 0 ? [] : ['--args', ...args])],
+        args: [...(args.length === 0 ? [] : ['-n']), paths.resolve(explicitApp), ...(args.length === 0 ? [] : ['--args', ...args])],
         command: '/usr/bin/open',
       }
     }
@@ -112,7 +112,7 @@ export function desktopLaunchSpec(
 
   if (platform === 'darwin') {
     return {
-      args: ['-a', 'TockTeam Desktop', ...(args.length === 0 ? [] : ['--args', ...args])],
+      args: [...(args.length === 0 ? [] : ['-n']), '-a', 'TockTeam Desktop', ...(args.length === 0 ? [] : ['--args', ...args])],
       command: '/usr/bin/open',
     }
   }

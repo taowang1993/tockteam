@@ -17,6 +17,7 @@ test('Terminal Launcher keeps macOS scripts static and sends command then fixed 
   assert.equal(invocation.args.at(-1), '/Users/max')
   assert.ok(!invocation.args[1]!.includes(command))
   assert.match(invocation.args[1]!, /on run argv/u)
+  assert.doesNotMatch(invocation.args[1]!, /in window 1|then reopen/u, 'approved commands must create a fresh local session, not type into an existing editor or SSH session')
   const iterm = resolveTerminalInvocation('macOS', { command: 'echo hi', terminalId: 'iTerm', workingDirectory: '/Users/max' })
   assert.match(iterm.args[1]!, /write text "cd /u)
 })
