@@ -1,0 +1,51 @@
+{
+  "product": "TockTeam Desktop",
+  "date": "2026-09-28",
+  "fixture": "Isolated first-run test profile; built-in dark theme, no skin, mock Keychain; no user profile or saved credentials accessed.",
+  "screenshot": {
+    "file": "workspace.png",
+    "heading": "Choose a Workspace",
+    "route": "http://127.0.0.1:54928/tockcoder",
+    "cssViewport": [
+      1512,
+      949
+    ],
+    "deviceScaleFactor": 2,
+    "pngPixels": [
+      3024,
+      1898
+    ],
+    "colorScheme": "dark",
+    "bodySkinId": null,
+    "documentSkinId": null
+  },
+  "chooser": {
+    "defaultPath": "/Users/taowang",
+    "expectedHome": "/Users/taowang",
+    "properties": [
+      "openDirectory",
+      "createDirectory"
+    ],
+    "ownerWindowProvided": true,
+    "nativeDialogOpened": false
+  },
+  "caveat": "The native picker was intentionally intercepted before opening due to the extended-display-only verification guard. The screenshot shows the onboarding entry point, not the native picker; starting folder was verified from actual Electron dialog arguments.",
+  "checks": {
+    "onboardingRemainsOpenOnCancellation": true,
+    "chooseFolderReenabled": true,
+    "noCompletionMarker": true,
+    "rendererErrors": [],
+    "stoppedProcessTrees": [
+      {
+        "rootPid": 76129,
+        "remaining": []
+      }
+    ],
+    "commands": [
+      "node --test tests/desktop-onboarding-bridge.test.ts tests/desktop-onboarding-client.test.ts (7 passed, 0 failed)",
+      "pnpm run typecheck",
+      "pnpm run build",
+      "node scripts/stage-dsh.mjs --quick"
+    ]
+  }
+}
