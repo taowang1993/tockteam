@@ -1,0 +1,12 @@
+{
+  "route": "/tocktutor/Projects/Review.base",
+  "mode": "Reading, executable Base table",
+  "viewport": { "cssWidth": 1512, "cssHeight": 949, "deviceScaleFactor": 2 },
+  "screenshot": { "path": "verified-dark.png", "pixelWidth": 3024, "pixelHeight": 1898, "sha256": "d54baf19620e4fd5b2eab6a1fb31efcc8b0baa812bd553dd689f3e3f66ff5502" },
+  "appearance": { "colorScheme": "dark", "htmlSkin": null, "bodySkin": null },
+  "content": { "rows": ["File Namenote.status", "First"], "baseViewRenamed": "Reviewed", "baseViewAdded": "Extra", "savedSourceSha256": "ee73f4b3ce925e7a3014a6d94e57b34d1859632709f65d56b3bbdaa243d97b11", "viewsHeaderCommentPreserved": true },
+  "runtimeErrors": [],
+  "startupWarnings": 1,
+  "launch": { "id": "e40f8493-e2fa-4877-8ed1-cec4db020944", "rootPid": 62823, "displayId": 17, "ownedCdp": "http://127.0.0.1:57578" },
+  "cleanup": { "playwrightDetached": true, "stopped": true, "recordedPids": [62823,62825,62826,62827,62828,62843,62848,63052,63148,63149,63150,63151,63152,63153,63407,63408,63409,63410,63411,63412,63413,63414], "remaining": [] }
+}
