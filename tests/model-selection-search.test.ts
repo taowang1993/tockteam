@@ -53,6 +53,11 @@ test('composer opens a single Synara-style picker with provider tabs, stars and 
   try {
     addModelSelectionSearch(root)
     const adapted = readFileSync(client, 'utf8')
+    assert.match(adapted, /"tockteam-model-picker"/u)
+    const styles = readFileSync(join(repository, 'plugins', 'skins', 'src', 'client', 'tailwind.css'), 'utf8')
+    assert.match(styles, /@utility tockteam-model-picker/u)
+    assert.match(styles, /& \._7KE1Ra_sliderWrap/u)
+    assert.match(adapted, /\.tockteam-app-rail button\[aria-label=/u)
     assert.match(adapted, /role: "tablist"/u)
     assert.match(adapted, /role: "tab"/u)
     assert.match(adapted, /role: "dialog"/u)
