@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url'
 const NAME = '@deepseek-ai/dsh-client-ui-model-selection'
 const VERSION = '0.1.2-rc.1'
 const ORIGINAL_SHA256 = '4e6bd5d556836d086a329413967ad0a9dfb3a0a0bebe2863a9b073ab09db686d'
-const PATCHED_SHA256 = 'c52d0c7ac01d86771059f4bc7bfba93a85ddd5a1c28499dfde19ae28ee0c933e'
+const PATCHED_SHA256 = '817c8a020612161ad8af257f9bece3f0d4eb5bbe52198b7dd74f64f1a05b5aa2'
 const COMPONENT_START = '\t\tfunction ModelSelect('
 const COMPONENT_END = '\n\t\t//#endregion\n\t\t//#region lib/types/client/locales.js'
 
@@ -177,7 +177,7 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 			itemRefs.current = [];
 			let itemIndex = 0;
 			const itemRef = () => { const at = itemIndex++; return (node) => { itemRefs.current[at] = node; }; };
-			return (0, react_jsx_runtime.jsxs)("div", { ref: rootRef, className: ModelSelect_module_css_default.root, onKeyDown: onRootKeyDown, onBlur, children: [
+			return (0, react_jsx_runtime.jsxs)("div", { ref: rootRef, className: ModelSelect_module_css_default.root, onKeyDown: onRootKeyDown, onBlur, onPointerDownCapture: (event) => { if (event.target instanceof Element && event.target.closest(":disabled")) event.preventDefault(); }, children: [
 				(0, react_jsx_runtime.jsxs)("button", {
 					ref: triggerRef, type: "button", className: ModelSelect_module_css_default.trigger,
 					"aria-label": state.current === null ? t("trigger.selectAria") : effortLabel === void 0 ? t("trigger.aria", { model: modelLabel }) : t("trigger.ariaEffort", { model: modelLabel, effort: effortLabel }),
