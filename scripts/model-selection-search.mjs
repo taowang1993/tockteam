@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url'
 const NAME = '@deepseek-ai/dsh-client-ui-model-selection'
 const VERSION = '0.1.2-rc.1'
 const ORIGINAL_SHA256 = '4e6bd5d556836d086a329413967ad0a9dfb3a0a0bebe2863a9b073ab09db686d'
-const PATCHED_SHA256 = '60b395bc942e5f67443ca5004747999dd15610668093ee53c1cd4b830c8a6333'
+const PATCHED_SHA256 = 'c52d0c7ac01d86771059f4bc7bfba93a85ddd5a1c28499dfde19ae28ee0c933e'
 const COMPONENT_START = '\t\tfunction ModelSelect('
 const COMPONENT_END = '\n\t\t//#endregion\n\t\t//#region lib/types/client/locales.js'
 
@@ -90,6 +90,23 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 				setOpen(false);
 				if (restoreFocus) queueMicrotask(() => triggerRef.current?.focus());
 			};
+			const openModelsSettings = () => {
+				close();
+				const settings = document.querySelector('.tockteam-app-rail button[aria-label="Settings"]') ?? document.querySelector('[data-slot="settings.trigger"]')?.closest("button");
+				if (settings === null || settings === void 0) return;
+				settings.click();
+				const selectModels = () => {
+					const button = [...document.querySelectorAll('[role="dialog"] nav button')].find((item) => item.textContent?.trim() === t("menu.modelsNav"));
+					if (button === void 0) return;
+					observer.disconnect();
+					window.clearTimeout(timeout);
+					button.click();
+				};
+				const observer = new MutationObserver(selectModels);
+				const timeout = window.setTimeout(() => observer.disconnect(), 5000);
+				observer.observe(document.body, { childList: true, subtree: true });
+				selectModels();
+			};
 			const settleSelection = (accepted, keepOpen = false) => {
 				if (accepted) { if (!keepOpen && rootRef.current !== null) close(true); return; }
 				const message = directory.getSnapshot().error;
@@ -156,6 +173,7 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 			};
 			const modelLabel = currentChoice?.model.name ?? (state.current === null ? t("trigger.fallback") : state.current.provider + "/" + state.current.model);
 			const triggerLabel = effortLabel === void 0 ? modelLabel : modelLabel + " · " + effortLabel;
+			const openLabel = t("trigger.open");
 			itemRefs.current = [];
 			let itemIndex = 0;
 			const itemRef = () => { const at = itemIndex++; return (node) => { itemRefs.current[at] = node; }; };
@@ -164,9 +182,9 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 					ref: triggerRef, type: "button", className: ModelSelect_module_css_default.trigger,
 					"aria-label": state.current === null ? t("trigger.selectAria") : effortLabel === void 0 ? t("trigger.aria", { model: modelLabel }) : t("trigger.ariaEffort", { model: modelLabel, effort: effortLabel }),
 					"aria-haspopup": "dialog", "aria-expanded": open, "aria-controls": open ? id + "-menu" : void 0,
-					title: triggerLabel, disabled: locked, onClick: () => open ? close() : show(), children: [
-						(0, react_jsx_runtime.jsx)("span", { className: ModelSelect_module_css_default.triggerLabel, children: modelLabel }),
-						effortLabel !== void 0 && (0, react_jsx_runtime.jsx)("span", { className: ModelSelect_module_css_default.triggerEffort, children: effortLabel }),
+					title: open ? openLabel : triggerLabel, disabled: locked, onClick: () => open ? close() : show(), children: [
+						(0, react_jsx_runtime.jsx)("span", { className: ModelSelect_module_css_default.triggerLabel, children: open ? openLabel : modelLabel }),
+						!open && effortLabel !== void 0 && (0, react_jsx_runtime.jsx)("span", { className: ModelSelect_module_css_default.triggerEffort, children: effortLabel }),
 						(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, { className: clsx(ModelSelect_module_css_default.chevron, open && ModelSelect_module_css_default.chevronOpen) })
 					]
 				}),
@@ -176,7 +194,7 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 							(0, react_jsx_runtime.jsx)("button", { type: "button", id: id + "-tab-0", role: "tab", className: "_7KE1Ra_tab", "aria-selected": activeTab === null, tabIndex: activeTab === null ? 0 : -1, "aria-label": t("menu.starred"), title: t("menu.starred"), onClick: () => { setTab(null); setModelQuery(""); }, children: tockteamStarIcon(true) }),
 							state.groups.map((group, index) => (0, react_jsx_runtime.jsx)("button", { type: "button", id: id + "-tab-" + (index + 1), role: "tab", className: "_7KE1Ra_tab", "aria-selected": activeTab === group.id, tabIndex: activeTab === group.id ? 0 : -1, "aria-label": group.name, title: group.name, onClick: () => { setTab(group.id); setModelQuery(""); }, children: tockteamProviderGlyph(group) }, group.id))
 						] }),
-						(0, react_jsx_runtime.jsx)("button", { type: "button", className: "_7KE1Ra_tab", "aria-label": t("menu.addProviders"), title: t("menu.addProviders"), onClick: () => { close(); (document.querySelector('.tockteam-app-rail button[aria-label="Settings"]') ?? document.querySelector('[data-slot="settings.trigger"]')?.closest("button"))?.click(); }, children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutline16, { size: 14 }) })
+						(0, react_jsx_runtime.jsx)("button", { type: "button", className: "_7KE1Ra_tab", "aria-label": t("menu.addProviders"), title: t("menu.addProviders"), onClick: openModelsSettings, children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutline16, { size: 14 }) })
 					] }),
 					(0, react_jsx_runtime.jsxs)("label", { className: "_7KE1Ra_searchRow", children: [
 						(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutline16, { size: 14, className: "_7KE1Ra_searchIcon" }),
@@ -222,10 +240,10 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 `
 
 const TRANSLATIONS = [
-  ['"menu.effort": "推理等级",', '"menu.effort": "推理等级",\n\t\t\t"effort.unavailable": "不可调整",'],
-  ['"menu.effort": "Effort",', '"menu.effort": "Reasoning Level",\n\t\t\t"effort.unavailable": "Not Available",'],
-  ['"menu.model": "模型",', '"menu.model": "模型",\n\t\t\t"menu.sources": "模型来源",\n\t\t\t"menu.starred": "收藏",\n\t\t\t"menu.addProviders": "添加模型来源",\n\t\t\t"menu.search": "搜索模型",\n\t\t\t"menu.searchPlaceholder": "搜索模型…",\n\t\t\t"action.star": "收藏 {model}",\n\t\t\t"action.unstar": "取消收藏 {model}",\n\t\t\t"action.resetEffort": "恢复默认推理等级",\n\t\t\t"empty.search": "没有匹配的模型。",\n\t\t\t"empty.favorites": "收藏模型后即可在此快速选择。",'],
-  ['"menu.model": "Model",', '"menu.model": "Model",\n\t\t\t"menu.sources": "Model Sources",\n\t\t\t"menu.starred": "Starred",\n\t\t\t"menu.addProviders": "Add Providers",\n\t\t\t"menu.search": "Search Models",\n\t\t\t"menu.searchPlaceholder": "Search models…",\n\t\t\t"action.star": "Star {model}",\n\t\t\t"action.unstar": "Remove {model} from Starred",\n\t\t\t"action.resetEffort": "Reset Effort",\n\t\t\t"empty.search": "No matching models.",\n\t\t\t"empty.favorites": "Star a model to pin it here.",'],
+  ['"menu.effort": "推理等级",', '"menu.effort": "推理等级",\n\t\t\t"trigger.open": "模型与推理等级",\n\t\t\t"effort.unavailable": "不可调整",'],
+  ['"menu.effort": "Effort",', '"menu.effort": "Reasoning Level",\n\t\t\t"trigger.open": "Model & Effort",\n\t\t\t"effort.unavailable": "Not Available",'],
+  ['"menu.model": "模型",', '"menu.model": "模型",\n\t\t\t"menu.sources": "模型来源",\n\t\t\t"menu.starred": "收藏",\n\t\t\t"menu.addProviders": "添加模型来源",\n\t\t\t"menu.modelsNav": "模型",\n\t\t\t"menu.search": "搜索模型",\n\t\t\t"menu.searchPlaceholder": "搜索模型…",\n\t\t\t"action.star": "收藏 {model}",\n\t\t\t"action.unstar": "取消收藏 {model}",\n\t\t\t"action.resetEffort": "恢复默认推理等级",\n\t\t\t"empty.search": "没有匹配的模型。",\n\t\t\t"empty.favorites": "收藏模型后即可在此快速选择。",'],
+  ['"menu.model": "Model",', '"menu.model": "Model",\n\t\t\t"menu.sources": "Model Sources",\n\t\t\t"menu.starred": "Starred",\n\t\t\t"menu.addProviders": "Add Providers",\n\t\t\t"menu.modelsNav": "Models",\n\t\t\t"menu.search": "Search Models",\n\t\t\t"menu.searchPlaceholder": "Search models…",\n\t\t\t"action.star": "Star {model}",\n\t\t\t"action.unstar": "Remove {model} from Starred",\n\t\t\t"action.resetEffort": "Reset Effort",\n\t\t\t"empty.search": "No matching models.",\n\t\t\t"empty.favorites": "Star a model to pin it here.",'],
 ]
 
 function sha256(source) { return createHash('sha256').update(source).digest('hex') }

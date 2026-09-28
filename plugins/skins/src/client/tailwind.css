@@ -50,7 +50,7 @@
   & ._7KE1Ra_tab:is(:hover, :focus-visible) { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); outline: 2px solid var(--dsw-alias-border-l3); outline-offset: -2px; }
   & ._7KE1Ra_tab[aria-selected='true'] { color: var(--dsw-alias-label-primary); }
   & ._7KE1Ra_tab[aria-selected='true']::after { content: ''; position: absolute; bottom: -5px; left: 8px; right: 8px; height: 2px; border-radius: 2px; background: var(--dsw-alias-brand-primary); }
-  & ._7KE1Ra_searchRow { display: flex; align-items: center; gap: 7px; height: 29px; padding: 0 12px; border-bottom: 1px solid var(--dsw-alias-border-l1); color: var(--dsw-alias-label-tertiary); }
+  & ._7KE1Ra_searchRow { display: flex; align-items: center; flex: none; gap: 7px; height: 40px; padding: 0 12px; border-bottom: 1px solid var(--dsw-alias-border-l1); color: var(--dsw-alias-label-tertiary); }
   & ._7KE1Ra_searchIcon { flex: none; }
   & ._7KE1Ra_search { box-sizing: border-box; flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 12px; }
   & ._7KE1Ra_search::placeholder { color: var(--dsw-alias-label-tertiary); }

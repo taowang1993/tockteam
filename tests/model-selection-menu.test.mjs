@@ -55,7 +55,7 @@ const listeners = new Set();
 const directory = {subscribe(fn){listeners.add(fn);return () => listeners.delete(fn)},getSnapshot(){return snapshot}};
 const selections = [];
 function update(next){snapshot={...snapshot,...next};for(const fn of listeners)fn()}
-const dictionaries = {en:{'trigger.selectAria':'Select Model','trigger.aria':'Select model, current {model}','trigger.ariaEffort':'Select model, current {model}, reasoning effort {effort}','trigger.fallback':'Select Model','menu.aria':'Model and Reasoning Effort','menu.sources':'Model Sources','menu.starred':'Starred','menu.addProviders':'Add Providers','menu.search':'Search Models','menu.searchPlaceholder':'Search models…','menu.effort':'Reasoning Level','effort.unavailable':'Not Available','action.star':'Star {model}','action.unstar':'Remove {model} from Starred','action.resetEffort':'Reset Effort','empty.models':'No models available.','empty.search':'No matching models.','empty.favorites':'Star a model to pin it here.','effort.providerDefault':'Default','status.loading':'Refreshing model list…'}};
+const dictionaries = {en:{'trigger.selectAria':'Select Model','trigger.aria':'Select model, current {model}','trigger.ariaEffort':'Select model, current {model}, reasoning effort {effort}','trigger.fallback':'Select Model','trigger.open':'Model & Effort','menu.aria':'Model and Reasoning Effort','menu.sources':'Model Sources','menu.starred':'Starred','menu.addProviders':'Add Providers','menu.modelsNav':'Models','menu.search':'Search Models','menu.searchPlaceholder':'Search models…','menu.effort':'Reasoning Level','effort.unavailable':'Not Available','action.star':'Star {model}','action.unstar':'Remove {model} from Starred','action.resetEffort':'Reset Effort','empty.models':'No models available.','empty.search':'No matching models.','empty.favorites':'Star a model to pin it here.','effort.providerDefault':'Default','status.loading':'Refreshing model list…'}};
 const t=(key,params={})=>(dictionaries.en[key]??key).replace(/\\{(.*?)\\}/g,(_,name)=>params[name]??'');
 const icon=(d)=>jsx.jsx('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true,children:jsx.jsx('path',{d})});
 window.__ModuleLoader__={load({factory}){
@@ -85,7 +85,19 @@ window.proof={directory,select:selection=>{
     return new Promise(resolve=>{window.proof.finish=()=>{update({current:selection,status:'ready'});resolve(true)}});
   }
   update({current:selection});return Promise.resolve(true)
-},selections,groups};
+},selections,groups,openSettings:()=>{
+  setTimeout(()=>{
+    const panel=document.createElement('div');
+    panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Settings');
+    panel.innerHTML='<nav><button type="button" aria-current="true">General</button><button type="button">Models</button></nav><h2>General</h2>';
+    panel.querySelectorAll('nav button').forEach(button=>button.addEventListener('click',()=>{
+      panel.querySelector('h2').textContent=button.textContent;
+      panel.querySelectorAll('nav button').forEach(row=>row.removeAttribute('aria-current'));
+      button.setAttribute('aria-current','true');
+    }));
+    document.getElementById('settings-root').append(panel);
+  },20);
+}};
 `, resolveDir: repository, sourcefile: 'model-picker-fixture.jsx', loader: 'jsx' },
     bundle: true, write: false, platform: 'browser', format: 'iife',
   })
@@ -103,7 +115,7 @@ window.proof={directory,select:selection=>{
       response.setHeader('content-type', 'text/html')
       response.end(`<!doctype html><html style="color-scheme:light"><head><meta charset="utf-8"><link rel="stylesheet" href="/styles.css"><style>
 :root{font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;--dsw-specific-menu:#fff;--dsw-alias-label-primary:#171717;--dsw-alias-label-secondary:#505050;--dsw-alias-label-tertiary:#aaa;--dsw-alias-label-dimmed:#999;--dsw-alias-label-caption:#999;--dsw-alias-border-l1:#e7e7e7;--dsw-alias-border-l3:#7e9df5;--dsw-alias-interactive-bg-hover:#f1f1f1;--dsw-elevation-prominent:0 8px 25px #0002;--dsw-alias-brand-primary:#2966cc}body{margin:0;background:#fff}#root{position:absolute;left:51%;bottom:130px;width:240px}#root button{font-family:inherit}#title{position:absolute;left:42%;top:40%;font-size:26px;font-weight:500}
-</style></head><body><span id="title">TockCoder</span><nav class="tockteam-app-rail" hidden><button aria-label="Settings" onclick="window.proof.settingsOpened=true"></button></nav><div id="root"></div><script src="/fixture.js"></script><script src="/model.js"></script></body></html>`)
+</style></head><body><span id="title">TockCoder</span><nav class="tockteam-app-rail" hidden><button aria-label="Settings" onclick="window.proof.openSettings()"></button></nav><div id="settings-root"></div><div id="root"></div><script src="/fixture.js"></script><script src="/model.js"></script></body></html>`)
     }
   })
   let browser
@@ -122,6 +134,8 @@ window.proof={directory,select:selection=>{
     await page.goto(`http://127.0.0.1:${server.address().port}/tockcoder`)
     await page.getByRole('button', { name: /Select model, current/i }).click()
     await page.getByRole('dialog', { name: 'Model and Reasoning Effort' }).waitFor()
+    assert.equal((await page.getByRole('button', { name: /Select model, current/i }).innerText()).trim(), 'Model & Effort', 'the open trigger labels the combined menu')
+    assert.ok((await page.getByRole('searchbox', { name: 'Search Models' }).boundingBox()).height >= 40, 'search has a comfortable input height')
     assert.equal(await page.getByRole('tab', { name: 'OpenAI' }).getAttribute('aria-selected'), 'true')
     await page.getByRole('tab', { name: 'OpenAI' }).focus()
     await page.getByRole('tab', { name: 'OpenAI' }).press('ArrowRight')
@@ -249,7 +263,8 @@ window.proof={directory,select:selection=>{
     assert.ok(narrow.width <= 296 && narrow.onScreen, 'the wider picker must still fit a narrow window')
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1512, height: 949, deviceScaleFactor: 2, mobile: false })
     await page.getByRole('button', { name: 'Add Providers' }).click()
-    assert.equal(await page.evaluate(() => window.proof.settingsOpened), true, 'the add action uses TockTeam’s Settings trigger')
+    await page.getByRole('dialog', { name: 'Settings' }).getByRole('heading', { name: 'Models' }).waitFor()
+    assert.equal(await page.getByRole('dialog', { name: 'Settings' }).getByRole('heading', { name: 'General' }).count(), 0, 'the add action opens Models, not General')
   } finally {
     await page?.goto('about:blank').catch(() => {})
     await browser?.close()
