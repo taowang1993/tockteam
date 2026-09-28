@@ -40,11 +40,12 @@ test('Desktop shows workspace then recognizes a saved model key without revealin
     assert.ok(dialog.classList.contains('bg-background'), 'setup uses the application theme background, not the lighter popover layer')
     assert.equal(dialog.querySelector('h2')?.textContent, 'Choose a Workspace')
     assert.doesNotMatch(dialog.textContent ?? '', /Current Workspace|Selected/u, 'no previous folder is assumed')
-    assert.match(dialog.textContent ?? '', /continue and choose one later\./u)
+    assert.match(dialog.textContent ?? '', /skip this step and choose one later\./u)
     button(dom.window.document, 'Choose Folder')
-    button(dom.window.document, 'Continue').click()
+    assert.equal(button(dom.window.document, 'Skip').getAttribute('aria-label'), 'Skip Folder Selection')
+    button(dom.window.document, 'Skip').click()
     await tick()
-    assert.equal(opened, 0, 'continuing without a folder must not create one')
+    assert.equal(opened, 0, 'skipping the folder must not create one')
     assert.equal(dialog.querySelector('h2')?.textContent, 'Add a Model')
     assert.match(dialog.textContent ?? '', /already connected/u)
     assert.equal(dialog.querySelector('input[type=password]'), null, 'a stored key must stay hidden')
@@ -145,7 +146,7 @@ test('a refused model-key write keeps setup open and retains the draft for retry
       openPaths: async () => {},
     })
     await tick()
-    button(dom.window.document, 'Continue').click()
+    button(dom.window.document, 'Skip').click()
     await tick()
     const dialog = dom.window.document.querySelector('dialog')!
     const input = dialog.querySelector('input[type=password]') as HTMLInputElement
@@ -162,6 +163,41 @@ test('a refused model-key write keeps setup open and retains the draft for retry
     assert.equal(attempts, 2)
     assert.equal(completed, 1)
     assert.equal(dialog.open, false)
+  } finally {
+    dispose?.()
+    dom.window.close()
+    Object.assign(globalThis, { document: originalDocument })
+  }
+})
+
+test('a failed folder choice can be skipped without assuming a previous folder', async () => {
+  const dom = new JSDOM('<!doctype html><body></body>')
+  const originalDocument = globalThis.document
+  Object.assign(globalThis, { document: dom.window.document })
+  dom.window.HTMLDialogElement.prototype.showModal = function () { this.open = true }
+  dom.window.HTMLDialogElement.prototype.close = function () { this.open = false }
+  let dispose: (() => void) | undefined
+  try {
+    dispose = installDesktopOnboarding({
+      bridge: {
+        onboarding: { status: async () => false, complete: async () => {} },
+        chooseWorkspace: async () => { throw new Error('Folder picker failed') },
+      },
+      credentials: {
+        describe: async () => ({ ok: true as const, value: { OPENROUTER_API_KEY: { configured: false, writable: true } } }),
+        set: async () => ({ ok: true as const, value: undefined }),
+      },
+      openPaths: async () => {},
+    })
+    await tick()
+    button(dom.window.document, 'Choose Folder').click()
+    await tick()
+    const dialog = dom.window.document.querySelector('dialog')!
+    assert.equal(dialog.open, true)
+    assert.equal(dialog.querySelector('[role=alert]')?.textContent, 'Could not open that folder. Choose another or skip this step.')
+    button(dom.window.document, 'Skip').click()
+    await tick()
+    assert.equal(dialog.querySelector('h2')?.textContent, 'Add a Model')
   } finally {
     dispose?.()
     dom.window.close()

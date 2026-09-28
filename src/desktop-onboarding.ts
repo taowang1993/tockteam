@@ -77,7 +77,7 @@ export function installDesktopOnboarding({ bridge, credentials, openPaths }: Set
           <button id="tockteam-onboarding-close" type="button" aria-label="Close Setup" class="absolute -right-1 -top-1 flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-muted-foreground hover:bg-surface hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"></button>
           <h2 id="tockteam-onboarding-title" tabindex="-1" class="m-0 text-[22px] font-semibold leading-[1.2] tracking-tight text-foreground outline-none">${workspace ? 'Choose a Workspace' : 'Add a Model'}</h2>
           <p id="tockteam-onboarding-description" class="m-0 max-w-[65ch] text-sm leading-6 text-muted-foreground">${workspace
-            ? 'Choose a folder for your first session, or continue and choose one later.'
+            ? 'Choose a folder for your first session, or skip this step and choose one later.'
             : 'Connect OpenRouter to start with a free model. You can change models later in Settings → Models.'}</p>
         </header>
         ${workspace ? `
@@ -99,7 +99,7 @@ export function installDesktopOnboarding({ bridge, credentials, openPaths }: Set
           </div>
           <div class="flex items-center gap-2">
             ${workspace ? '' : `<button id="tockteam-onboarding-back" type="button" class="${quiet}">Back</button>`}
-            <button id="${workspace ? 'tockteam-onboarding-next' : 'tockteam-onboarding-finish'}" type="button" class="${primary}">${workspace ? 'Continue' : 'Finish Setup'}</button>
+            <button id="${workspace ? 'tockteam-onboarding-next' : 'tockteam-onboarding-finish'}" type="button" ${workspace ? 'aria-label="Skip Folder Selection"' : ''} class="${primary}">${workspace ? 'Skip' : 'Finish Setup'}</button>
           </div>
         </footer>
       </div>`
@@ -130,7 +130,7 @@ export function installDesktopOnboarding({ bridge, credentials, openPaths }: Set
             focusTitle()
           }
         } catch {
-          if (!disposed) showError('Could not open that folder. Choose another or continue with your current workspace.')
+          if (!disposed) showError('Could not open that folder. Choose another or skip this step.')
         } finally {
           if (!disposed) setBusy(false)
         }
