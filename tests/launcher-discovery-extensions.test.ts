@@ -70,6 +70,20 @@ test('maps applications, bookmarks, JetBrains projects, and VS Code to opaque bo
   assert.equal(instant.after[0]?.defaultAction.argument.includes('file:///work/tockteam'), true)
 })
 
+test('maximum-length project names cannot invalidate result publication', async () => {
+  const provider = createLauncherDiscoveryExtensions({
+    ...baseOptions,
+    scanners: { ...entries, JetBrainsToolbox: async () => (await entries.JetBrainsToolbox()).map(entry => ({ ...entry, name: 'x'.repeat(512) })) },
+    effects: { confirmOpenApplicationAsAdministrator: async () => false, copyText: () => {}, launchExecutable: () => {}, openApplication: () => {}, openApplicationAsAdministrator: () => {}, openExternal: () => {}, revealPath: () => {} },
+  })
+  try {
+    const items = await provider.loadIndexedItems(new AbortController().signal)
+    const published = new LauncherActionStore({ execute: async () => undefined }).publish({ items, owner: { role: 'launcher', webContentsId: 1 } })
+    assert.equal(published.items.length, 3)
+    assert.equal(published.items[2]?.name.length, 512)
+  } finally { await provider.close() }
+})
+
 test('application aliases stay in the Host index without changing action targets', async () => {
   const provider = createLauncherDiscoveryExtensions({
     ...baseOptions,

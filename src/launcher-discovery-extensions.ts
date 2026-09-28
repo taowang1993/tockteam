@@ -499,7 +499,7 @@ export function createLauncherDiscoveryExtensions(options: LauncherDiscoveryOpti
       if (entry.kind === 'jetbrains') {
         if (!bounded(entry.executable) || !isAbsolute(entry.executable) || !bounded(entry.projectPath) || !isAbsolute(entry.projectPath) || !bounded(entry.toolName, 128)) return undefined
         const item = Object.freeze({
-          defaultAction: action(HANDLERS.launch, `Open ${entry.name} with ${entry.toolName}`, { args: [entry.projectPath], executable: entry.executable, kind: 'executable' }),
+          defaultAction: action(HANDLERS.launch, `Open with ${entry.toolName}`, { args: [entry.projectPath], executable: entry.executable, kind: 'executable' }),
           description: `${entry.toolName} Project`, details: entry.projectPath, id: entry.id, imageKey: 'jetbrains-toolbox', name: entry.name, sourceExtension: 'JetBrainsToolbox',
         })
         if (Date.now() >= mappingDeadline) return undefined

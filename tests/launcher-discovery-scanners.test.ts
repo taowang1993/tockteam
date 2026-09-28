@@ -59,6 +59,7 @@ test('built-in node sqlite is available before provider implementation', () => {
 test('parses bounded Linux desktop entries with visibility rules', () => {
   assert.deepEqual(parseLinuxDesktopEntry('[Desktop Entry]\nType=Application\nName=TockTeam\nOnlyShowIn=GNOME;KDE;', ['GNOME']), { name: 'TockTeam' })
   assert.equal(parseLinuxDesktopEntry('[Desktop Entry]\nName=Hidden\nNoDisplay=true', ['GNOME']), undefined)
+  assert.equal(parseLinuxDesktopEntry('[Desktop Entry]\nName=Removed\nHidden=true', ['GNOME']), undefined)
   assert.equal(parseLinuxDesktopEntry('[Desktop Entry]\nName=Wrong\nOnlyShowIn=KDE;', ['GNOME']), undefined)
   assert.equal(parseLinuxDesktopEntry('[Desktop Entry]\nName=Wrong\nNotShowIn=GNOME;', ['GNOME']), undefined)
 })
@@ -217,6 +218,7 @@ test('scans Linux applications sequentially with limits and cancellation', async
   const root = await mkdtemp(join(tmpdir(), 'tockteam-discovery-'))
   try {
     await mkdir(join(root, 'nested'), { recursive: true })
+    await writeFile(join(root, 'removed.desktop'), '[Desktop Entry]\nType=Application\nName=Removed\nHidden=true\n', 'utf8')
     await writeFile(join(root, 'good.desktop'), '[Desktop Entry]\nType=Application\nName=Good\n', 'utf8')
     await writeFile(join(root, 'hidden.desktop'), '[Desktop Entry]\nType=Application\nName=Hidden\nNoDisplay=true\n', 'utf8')
     await writeFile(join(root, 'nested', 'nested.desktop'), '[Desktop Entry]\nType=Application\nName=Nested\n', 'utf8')

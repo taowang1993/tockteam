@@ -201,7 +201,7 @@ export function parseLinuxDesktopEntry(contents: string, desktopEnvironments: re
     if (separator <= 0) continue
     values.set(line.slice(0, separator).trim(), line.slice(separator + 1).trim())
   }
-  if (values.get('NoDisplay')?.toLocaleLowerCase('en-US') === 'true') return undefined
+  if (['NoDisplay', 'Hidden'].some(key => values.get(key)?.toLocaleLowerCase('en-US') === 'true')) return undefined
   if (values.get('Type')?.toLocaleLowerCase('en-US') !== undefined && values.get('Type')?.toLocaleLowerCase('en-US') !== 'application') return undefined
   const list = (key: string): readonly string[] => values.get(key)?.split(';').filter(Boolean) ?? []
   if (list('OnlyShowIn').length > 0 && !list('OnlyShowIn').some(item => desktopEnvironments.includes(item))) return undefined
