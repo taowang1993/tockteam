@@ -204,7 +204,7 @@ function hardKillChild(child: WorkflowChildProcess): void {
   try { child.kill('SIGKILL') } catch { /* already exited */ }
 }
 
-function waitForChildClose(child: WorkflowChildProcess, timeoutMs: number): Promise<boolean> {
+function waitForChildClose(closed: Promise<void>, timeoutMs: number): Promise<boolean> {
   return new Promise(resolve => {
     let settled = false
     const finish = (closed: boolean): void => {
@@ -214,19 +214,19 @@ function waitForChildClose(child: WorkflowChildProcess, timeoutMs: number): Prom
       resolve(closed)
     }
     const timer = setTimeout(() => finish(false), timeoutMs)
-    child.once('close', () => finish(true))
-    child.once('error', () => undefined)
+    void closed.then(() => finish(true))
   })
 }
 
 async function terminateChild(
   child: WorkflowChildProcess,
   killProcess: (pid: number, signal: NodeJS.Signals) => void,
+  closed: Promise<void>,
 ): Promise<void> {
   const waitForTermination = async (): Promise<void> => {
-    if (await waitForChildClose(child, PROCESS_DRAIN_TIMEOUT_MS)) return
+    if (await waitForChildClose(closed, PROCESS_DRAIN_TIMEOUT_MS)) return
     hardKillChild(child)
-    await waitForChildClose(child, PROCESS_DRAIN_TIMEOUT_MS)
+    if (!await waitForChildClose(closed, PROCESS_DRAIN_TIMEOUT_MS)) throw new Error('Workflow command cleanup failed')
   }
   if (child.pid !== undefined && Number.isSafeInteger(child.pid) && child.pid > 0) {
     try { killProcess(-child.pid, 'SIGKILL') } catch { hardKillChild(child) }
@@ -329,6 +329,7 @@ export async function runBoundedWorkflowCommand(
   }
 
   return await new Promise<LauncherWorkflowCommandResult>((resolve, reject) => {
+    const closed = new Promise<void>(resolve => { child.once('close', () => resolve()) })
     let settled = false
     let stopping = false
     let stopError: Error | undefined
@@ -350,6 +351,7 @@ export async function runBoundedWorkflowCommand(
       void terminateChild(
         child,
         options.killProcess ?? ((pid, signal) => process.kill(pid, signal)),
+        closed,
       ).then(() => finish(stopError), () => finish(stopError ?? new Error('Workflow command cleanup failed')))
     }
     const cancel = (): void => stop(new Error('Workflow command cancelled'))

@@ -1,12 +1,12 @@
 import { execFile as nodeExecFile } from 'node:child_process'
 import { DatabaseSync } from 'node:sqlite'
-import { lstat, opendir, open, readdir, stat } from 'node:fs/promises'
+import { lstat, opendir, open, stat } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { Worker } from 'node:worker_threads'
-import { resolveWindowsSystemExecutable } from './launcher-discovery-process.ts'
+import { launcherPowerShellDataScript, resolveWindowsSystemExecutable } from './launcher-discovery-process.ts'
 import type {
   LauncherDiscoveryEntry,
   LauncherDiscoveryExtensionId,
@@ -589,7 +589,17 @@ async function scanJetBrains(context: LauncherDiscoveryScanContext): Promise<rea
       try {
         name = (await readBoundedText(implementation.join(ideaPath, '.name'))).trim()
       } catch {
-        try { name = (await readdir(ideaPath)).find(candidate => candidate.endsWith('.iml'))?.replace(/\.iml$/u, '') } catch { continue }
+        let directory
+        try {
+          directory = await opendir(ideaPath)
+          for (let visits = 0; visits < MAX_DISCOVERY_DIRECTORY_VISITS; visits++) {
+            throwIfAborted(context.signal)
+            const entry = await directory.read()
+            if (entry === null) break
+            if (entry.name.endsWith('.iml')) { name = entry.name.slice(0, -4); break }
+          }
+        } catch { throwIfAborted(context.signal); continue }
+        finally { await directory?.close() }
       }
       if (!boundedDiscoveryString(name, 512) || !isAbsolute(projectPath)) continue
       results.push(Object.freeze({ executable, id: `jetbrains-toolbox-${projectPath}`, installRoot: tool.installLocation, kind: 'jetbrains', name, projectPath, toolName: tool.displayName }))
@@ -625,9 +635,9 @@ export function windowsApplicationScanInvocation(
   settings: Readonly<{ fileExtensions: readonly string[]; folders: readonly string[]; includeStoreApps: boolean }>,
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): Readonly<{ args: readonly string[]; executable: string }> {
-  const script = String.raw`$folders = ConvertFrom-Json $args[0]
-$extensions = ConvertFrom-Json $args[1]
-$includeStore = $args[2] -eq 'true'
+  const script = String.raw`$folders = $data.folders
+$extensions = $data.extensions
+$includeStore = $data.includeStore
 $maxResults = 200
 $maxVisits = 4096
 $deadline = [DateTime]::UtcNow.AddSeconds(8)
@@ -659,7 +669,7 @@ if ($includeStore -and $results.Count -lt $maxResults -and $visits -lt $maxVisit
   }
 }
 $results | Select-Object -First $maxResults | ConvertTo-Json -Compress`.trim()
-  return Object.freeze({ args: Object.freeze(['-NoProfile', '-NonInteractive', '-Command', script, JSON.stringify(settings.folders.slice(0, 32)), JSON.stringify(settings.fileExtensions.slice(0, 16)), String(settings.includeStoreApps)]), executable: resolveWindowsSystemExecutable('powershell', environment) })
+  return Object.freeze({ args: Object.freeze(['-NoProfile', '-NonInteractive', '-Command', launcherPowerShellDataScript(script, { folders: settings.folders.slice(0, 32), extensions: settings.fileExtensions.slice(0, 16), includeStore: settings.includeStoreApps })]), executable: resolveWindowsSystemExecutable('powershell', environment) })
 }
 
 export function createLauncherDiscoveryScanners(options: Readonly<{

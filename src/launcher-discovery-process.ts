@@ -248,6 +248,12 @@ export function resolveLinuxDesktopEntryInvocation(target: string): Readonly<{ a
   return Object.freeze({ args: Object.freeze(['launch', target]), executable: '/usr/bin/gio' })
 }
 
+/** PowerShell -Command treats trailing argv as source, so embed only a base64 JSON literal. */
+export function launcherPowerShellDataScript(script: string, data: unknown): string {
+  const encoded = Buffer.from(JSON.stringify(data), 'utf8').toString('base64')
+  return `$data = ConvertFrom-Json ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encoded}')))\n${script}`
+}
+
 export function resolveWindowsApplicationElevationInvocation(
   target: string,
   digest: string,
@@ -258,9 +264,7 @@ export function resolveWindowsApplicationElevationInvocation(
   return Object.freeze({
     args: Object.freeze([
       ...POWERSHELL_PREFIX,
-      "$target=$args[0]; $expected=$args[1]; $stream=[IO.File]::Open($target,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read); try { $sha=[Security.Cryptography.SHA256]::Create(); try { $actual=([BitConverter]::ToString($sha.ComputeHash($stream))).Replace('-','').ToLowerInvariant() } finally { $sha.Dispose() }; if ($actual -cne $expected) { throw 'Application changed before elevation' }; Start-Process -FilePath $target -Verb RunAs } finally { $stream.Dispose() }",
-      target,
-      digest,
+      launcherPowerShellDataScript("$target=$data.target; $expected=$data.digest; $stream=[IO.File]::Open($target,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read); try { $sha=[Security.Cryptography.SHA256]::Create(); try { $actual=([BitConverter]::ToString($sha.ComputeHash($stream))).Replace('-','').ToLowerInvariant() } finally { $sha.Dispose() }; if ($actual -cne $expected) { throw 'Application changed before elevation' }; Start-Process -FilePath $target -Verb RunAs } finally { $stream.Dispose() }", { target, digest }),
     ]),
     executable: resolveWindowsSystemExecutable('powershell', environment),
   })

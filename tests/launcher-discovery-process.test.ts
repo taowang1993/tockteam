@@ -21,8 +21,10 @@ test('fixed process adapters reject generic or malformed targets', () => {
   const digest = 'a'.repeat(64)
   const elevated = resolveWindowsApplicationElevationInvocation('C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\TockTeam.lnk', digest)
   assert.equal(elevated.executable, 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
-  assert.equal(elevated.args.at(-2), 'C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\TockTeam.lnk')
-  assert.equal(elevated.args.at(-1), digest)
+  assert.equal(elevated.args.length, 5, 'PowerShell receives one command, never trailing data parsed as code')
+  const encoded = elevated.args[4]!.match(/FromBase64String\('([A-Za-z0-9+/=]+)'\)/u)?.[1]
+  assert.ok(encoded)
+  assert.deepEqual(JSON.parse(Buffer.from(encoded, 'base64').toString('utf8')), { target: 'C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\TockTeam.lnk', digest })
   assert.match(elevated.args[4] ?? '', /FileShare\]::Read/u)
   assert.match(elevated.args[4] ?? '', /SHA256/u)
   assert.throws(() => resolveWindowsApplicationElevationInvocation('powershell.exe; evil', digest), /Windows application target/u)

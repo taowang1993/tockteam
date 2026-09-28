@@ -218,6 +218,16 @@ test('Workflow process kill failure has a bounded rejection and never reports cl
   await assert.rejects(pending, /output limit/u)
 })
 
+test('a zero-exit workflow cannot succeed when descendants never close their pipes', async () => {
+  const child = childProcess()
+  child.kill = () => { throw new Error('kill failed') }
+  const pending = runBoundedWorkflowCommand({ command: 'sleep 60 &', platform: 'Linux', signal: new AbortController().signal, workingDirectory: '/tmp' }, {
+    killProcess: () => { throw new Error('group kill failed') }, spawnProcess: () => child,
+  })
+  child.emit('exit', 0, null)
+  await assert.rejects(pending, /cleanup failed/u)
+})
+
 test('Workflow process closes abort race after spawn/listener registration', async () => {
   const child = childProcess()
   const controller = new AbortController()
