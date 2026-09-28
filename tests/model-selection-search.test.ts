@@ -33,18 +33,35 @@ test('composer model menu searches names, providers and IDs without changing sel
     assert.match(adapted, /const normalizedQuery = modelQuery\.trim\(\)\.toLowerCase\(\)/u)
     assert.match(adapted, /group\.name, group\.id, model\.name, model\.id/u)
     assert.match(adapted, /state\.groups\.map\(\(group\) =>/u)
-    assert.match(adapted, /state\.status === "ready" && visibleGroups\.length === 0 && choices\.length > 0/u)
+    assert.match(adapted, /state\.status === "ready" && visibleChoices\.length === 0/u)
     assert.match(adapted, /"empty\.search": "No matching models\."/u)
     assert.match(adapted, /"empty\.search": "没有匹配的模型。"/u)
     assert.match(adapted, /"menu\.search": "Search Models"/u)
     assert.match(adapted, /"menu\.search": "搜索模型"/u)
-    assert.match(adapted, /setModelQuery\(""\);\s+setPane\("model"\)/u)
+    assert.match(adapted, /setModelQuery\(""\);\s+setOpen\(true\)/u)
     assert.match(adapted, /active < 0 \? offset > 0 \? 0 : items\.length - 1/u)
-    assert.match(adapted, /if \(pane !== "root"\) \{\s+setPane\("root"\);\s+triggerRef\.current\?\.focus\(\)/u, 'Escape leaves focus in the menu so a second Escape can close it')
+    assert.match(adapted, /event\.key === "Escape".*close\(true\)/u, 'Escape closes the picker and restores trigger focus')
     assert.equal(readFileSync(join(installed, 'lib', 'client.js'), 'utf8'), original)
     new Script(adapted)
     addModelSelectionSearch(root)
     assert.equal(readFileSync(client, 'utf8'), adapted)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test('composer opens a single Synara-style picker with provider tabs, stars and Host-backed effort', () => {
+  const { root, client } = fixture()
+  try {
+    addModelSelectionSearch(root)
+    const adapted = readFileSync(client, 'utf8')
+    assert.match(adapted, /role: "tablist"/u)
+    assert.match(adapted, /role: "tab"/u)
+    assert.match(adapted, /role: "dialog"/u)
+    assert.match(adapted, /tockteam\.model-favorites\.v1/u)
+    assert.match(adapted, /"aria-label": t\(starred \? "action\.unstar" : "action\.star"/u)
+    assert.match(adapted, /type: "range"/u)
+    assert.match(adapted, /aria-label": t\("menu\.effort"\)/u)
+    assert.match(adapted, /chooseEffort\(effortChoices\[Number\(event\.currentTarget\.value\)\]\?\.effort\)/u)
+    assert.doesNotMatch(adapted, /pane === "root"/u)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
