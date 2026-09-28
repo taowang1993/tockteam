@@ -97,8 +97,11 @@ test('Desktop can choose a folder, save a missing model key, and finish only aft
     assert.doesNotMatch(dialog.textContent ?? '', /Need an API key\?|https:\/\/openrouter\.ai\/settings\/keys/u)
     const keyLink = dialog.querySelector('a[href="https://openrouter.ai/settings/keys"]') as HTMLAnchorElement | null
     assert.ok(keyLink, 'the official OpenRouter key page is linked')
-    assert.equal(keyLink.textContent?.trim(), 'Get API Key')
+    assert.equal(keyLink.textContent?.trim(), 'OpenRouter')
+    assert.equal(keyLink.nextElementSibling, input, 'the linked provider name sits directly above the key field')
+    assert.doesNotMatch(dialog.textContent ?? '', /Get API Key/u)
     assert.equal(keyLink.querySelector('svg')?.getAttribute('aria-hidden'), 'true')
+    assert.equal(keyLink.lastElementChild?.tagName.toLowerCase(), 'svg', 'the icon follows OpenRouter')
     assert.ok(keyLink.querySelector('svg path[d="M15 3h6v6"]'), 'Lucide ExternalLink leads to the key page')
     assert.equal(keyLink.target, '_blank', 'the link must not replace the Desktop workbench')
     assert.equal(keyLink.relList.contains('noopener'), true)
