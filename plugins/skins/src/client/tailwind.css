@@ -1192,7 +1192,8 @@
     overflow: hidden;
   }
 
-  & #tockteam-embedded-layout > #root [data-phase] {
+  /* The composer input also has data-phase; only the conversation root owns the page canvas. */
+  & #tockteam-embedded-layout > #root .wSkVaW_root[data-phase] {
     --dsw-alias-bg-base: var(--tockteam-main-pane);
 
     background: var(--tockteam-main-pane);

@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url'
 const NAME = '@deepseek-ai/dsh-client-ui-model-selection'
 const VERSION = '0.1.2-rc.1'
 const ORIGINAL_SHA256 = '4e6bd5d556836d086a329413967ad0a9dfb3a0a0bebe2863a9b073ab09db686d'
-const PATCHED_SHA256 = 'd4dee857d8f966c41824f06bc16acdfdba973ed148e27f0e0fb3cc75ba16e3cb'
+const PATCHED_SHA256 = '60b395bc942e5f67443ca5004747999dd15610668093ee53c1cd4b830c8a6333'
 const COMPONENT_START = '\t\tfunction ModelSelect('
 const COMPONENT_END = '\n\t\t//#endregion\n\t\t//#region lib/types/client/locales.js'
 
@@ -198,7 +198,7 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 						const starred = favoritesSet.has(JSON.stringify([group.id, model.id]));
 						const index = visibleChoices.findIndex((choice) => choice.provider === group.id && choice.model === model.id);
 						return (0, react_jsx_runtime.jsxs)("div", { className: clsx("_7KE1Ra_row", selected && ModelSelect_module_css_default.selected), children: [
-							(0, react_jsx_runtime.jsx)("button", { ref: itemRef(), type: "button", className: ModelSelect_module_css_default.option, "aria-current": selected ? "true" : void 0, title: model.name, disabled: busy, onClick: () => choose({ provider: group.id, model: model.id }), children: (0, react_jsx_runtime.jsx)("span", { className: ModelSelect_module_css_default.optionCopy, children: (0, react_jsx_runtime.jsx)("span", { className: ModelSelect_module_css_default.modelName, children: model.name }) }) }),
+							(0, react_jsx_runtime.jsx)("button", { ref: itemRef(), type: "button", className: ModelSelect_module_css_default.option, "aria-current": selected ? "true" : void 0, title: model.name, "aria-disabled": busy || void 0, onClick: () => choose({ provider: group.id, model: model.id }), children: (0, react_jsx_runtime.jsx)("span", { className: ModelSelect_module_css_default.optionCopy, children: (0, react_jsx_runtime.jsx)("span", { className: ModelSelect_module_css_default.modelName, children: model.name }) }) }),
 							index < 9 && (0, react_jsx_runtime.jsx)("span", { className: "_7KE1Ra_hint", "aria-hidden": true, children: (/Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl ") + (index + 1) }),
 							(0, react_jsx_runtime.jsx)("button", { type: "button", className: "_7KE1Ra_star", "aria-pressed": starred, "aria-label": t(starred ? "action.unstar" : "action.star", { model: model.name }), title: t(starred ? "action.unstar" : "action.star", { model: model.name }), onClick: () => toggleFavorite(group, model), children: tockteamStarIcon(starred) })
 						] }, model.id);

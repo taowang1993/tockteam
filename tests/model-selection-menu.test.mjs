@@ -102,7 +102,7 @@ window.proof={directory,select:selection=>{
     } else {
       response.setHeader('content-type', 'text/html')
       response.end(`<!doctype html><html style="color-scheme:light"><head><meta charset="utf-8"><link rel="stylesheet" href="/styles.css"><style>
-:root{font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;--dsw-specific-menu:#fff;--dsw-alias-label-primary:#171717;--dsw-alias-label-secondary:#505050;--dsw-alias-label-tertiary:#aaa;--dsw-alias-label-caption:#999;--dsw-alias-border-l1:#e7e7e7;--dsw-alias-border-l3:#7e9df5;--dsw-alias-interactive-bg-hover:#f1f1f1;--dsw-elevation-prominent:0 8px 25px #0002;--dsw-alias-brand-primary:#2966cc}body{margin:0;background:#fff}#root{position:absolute;left:51%;bottom:130px;width:240px}#root button{font-family:inherit}#title{position:absolute;left:42%;top:40%;font-size:26px;font-weight:500}
+:root{font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;--dsw-specific-menu:#fff;--dsw-alias-label-primary:#171717;--dsw-alias-label-secondary:#505050;--dsw-alias-label-tertiary:#aaa;--dsw-alias-label-dimmed:#999;--dsw-alias-label-caption:#999;--dsw-alias-border-l1:#e7e7e7;--dsw-alias-border-l3:#7e9df5;--dsw-alias-interactive-bg-hover:#f1f1f1;--dsw-elevation-prominent:0 8px 25px #0002;--dsw-alias-brand-primary:#2966cc}body{margin:0;background:#fff}#root{position:absolute;left:51%;bottom:130px;width:240px}#root button{font-family:inherit}#title{position:absolute;left:42%;top:40%;font-size:26px;font-weight:500}
 </style></head><body><span id="title">TockCoder</span><nav class="tockteam-app-rail" hidden><button aria-label="Settings" onclick="window.proof.settingsOpened=true"></button></nav><div id="root"></div><script src="/fixture.js"></script><script src="/model.js"></script></body></html>`)
     }
   })
@@ -150,13 +150,28 @@ window.proof={directory,select:selection=>{
     assert.equal(await page.evaluate(() => window.proof.selections.at(-1).reasoningEffort), 'max')
     await page.evaluate(() => { window.proof.holdEffort = true })
     const effort = page.getByRole('slider', { name: 'Reasoning Level' })
+    const modelOption = page.getByRole('button', { name: 'GPT-6 Sol', exact: true })
+    const modelColor = await modelOption.evaluate(element => getComputedStyle(element).color)
     await effort.focus()
     await effort.press('ArrowLeft')
     assert.equal(await page.getByRole('dialog').count(), 1, 'saving a reasoning level must not close or flash the picker')
+    assert.equal(await modelOption.evaluate(element => element.disabled), false, 'saving effort must not dim the model list')
+    assert.equal(await modelOption.evaluate(element => getComputedStyle(element).color), modelColor)
+    assert.equal(await modelOption.getAttribute('aria-disabled'), 'true', 'model selection still waits for the Host')
+    const pendingSelections = await page.evaluate(() => window.proof.selections.length)
+    await modelOption.dispatchEvent('click')
+    assert.equal(await page.evaluate(() => window.proof.selections.length), pendingSelections, 'a model cannot change during an effort save')
     assert.equal(await effort.evaluate(element => element.disabled), false, 'the focused thumb must not be natively disabled mid-save')
     assert.equal(await effort.inputValue(), '2', 'the thumb must show the chosen level while DSH saves it')
     assert.equal(await effort.evaluate(element => document.activeElement === element), true)
-    await page.evaluate(() => window.proof.finish())
+    await page.evaluate(() => {
+      window.proof.menu = document.querySelector('[role="dialog"]')
+      window.proof.finish()
+    })
+    await page.waitForTimeout(200)
+    assert.equal(await page.getByRole('dialog').count(), 1, 'the menu must remain open after the Host settles')
+    assert.equal(await page.evaluate(() => window.proof.menu.isConnected), true, 'saving effort must not remount the menu')
+    assert.equal(await modelOption.evaluate(element => getComputedStyle(element).color), modelColor, 'the model list must not flash when saving finishes')
     assert.equal(await effort.getAttribute('aria-valuetext'), 'High')
     await page.evaluate(() => { window.proof.holdEffort = false })
     const beforeDrag = await page.evaluate(() => window.proof.selections.length)
