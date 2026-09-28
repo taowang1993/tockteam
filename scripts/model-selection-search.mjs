@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url'
 const NAME = '@deepseek-ai/dsh-client-ui-model-selection'
 const VERSION = '0.1.2-rc.1'
 const ORIGINAL_SHA256 = '4e6bd5d556836d086a329413967ad0a9dfb3a0a0bebe2863a9b073ab09db686d'
-const PATCHED_SHA256 = 'eaf768e2e9788b24b1a197f43c30f6a34713c7a95d0293cd2fc1a9ea59939295'
+const PATCHED_SHA256 = 'd4dee857d8f966c41824f06bc16acdfdba973ed148e27f0e0fb3cc75ba16e3cb'
 const COMPONENT_START = '\t\tfunction ModelSelect('
 const COMPONENT_END = '\n\t\t//#endregion\n\t\t//#region lib/types/client/locales.js'
 
@@ -31,6 +31,7 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 			const [open, setOpen] = (0, react.useState)(false);
 			const [tab, setTab] = (0, react.useState)("__current__");
 			const [modelQuery, setModelQuery] = (0, react.useState)("");
+			const [draftIndex, setDraftIndex] = (0, react.useState)(null);
 			const [favorites, setFavorites] = (0, react.useState)(() => {
 				try {
 					const stored = JSON.parse(localStorage.getItem("tockteam.model-favorites.v1") ?? "[]");
@@ -43,6 +44,7 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 			const rootRef = (0, react.useRef)(null);
 			const triggerRef = (0, react.useRef)(null);
 			const itemRefs = (0, react.useRef)([]);
+			const effortCommitRef = (0, react.useRef)(null);
 			const id = (0, react.useId)();
 			const choices = (0, react.useMemo)(() => state.groups.flatMap((group) => group.models.map((model) => ({
 				group, model, selection: { provider: group.id, model: model.id }
@@ -56,7 +58,11 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 			];
 			const effortIndex = Math.max(0, effortChoices.findIndex((level) => level.effort === effectiveEffort));
 			const effortLabel = reasoning === void 0 ? void 0 : effortChoices[effortIndex]?.label ?? t("effort.providerDefault");
+			const previewIndex = draftIndex ?? effortIndex;
+			const previewLabel = effortChoices[previewIndex]?.label ?? t("effort.unavailable");
 			const busy = state.status === "selecting";
+			(0, react.useEffect)(() => { if (!busy && draftIndex !== null && effortIndex === draftIndex) setDraftIndex(null); }, [busy, draftIndex, effortIndex]);
+			(0, react.useEffect)(() => { setDraftIndex(null); }, [state.current?.provider, state.current?.model]);
 			const favoritesSet = new Set(favorites);
 			const activeTab = tab === null ? null : state.groups.some((group) => group.id === tab) ? tab : state.current?.provider ?? state.groups[0]?.id ?? null;
 			const normalizedQuery = modelQuery.trim().toLowerCase();
@@ -76,6 +82,7 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 			const show = () => {
 				setTab(favorites.length > 0 ? null : "__current__");
 				setModelQuery("");
+				setDraftIndex(null);
 				setOpen(true);
 				reload();
 			};
@@ -91,16 +98,26 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 			const choose = (selection) => {
 				if (busy) return;
 				if (state.current?.provider === selection.provider && state.current.model === selection.model) { close(true); return; }
+				setDraftIndex(null);
 				lastActionRef.current = "select";
 				const model = choices.find((choice) => choice.selection.provider === selection.provider && choice.selection.model === selection.model)?.model;
 				select({ ...selection, ...model?.reasoning?.defaultEffort === void 0 ? {} : { reasoningEffort: model.reasoning.defaultEffort } })
 					.then((accepted) => settleSelection(accepted, model?.reasoning?.efforts.length > 0));
 			};
 			const chooseEffort = (effort) => {
-				if (state.current === null || busy || effectiveEffort === effort) return;
+				if (busy) return;
+				if (state.current === null || effectiveEffort === effort) { setDraftIndex(null); return; }
+				const nextIndex = effortChoices.findIndex((level) => level.effort === effort);
+				if (effortCommitRef.current === nextIndex) return;
+				effortCommitRef.current = nextIndex;
+				setDraftIndex(nextIndex);
 				lastActionRef.current = "select";
 				select({ provider: state.current.provider, model: state.current.model, ...effort === void 0 ? {} : { reasoningEffort: effort } })
-					.then((accepted) => settleSelection(accepted, true));
+					.then((accepted) => { effortCommitRef.current = null; if (!accepted) setDraftIndex(null); settleSelection(accepted, true); });
+			};
+			const commitEffort = (value) => {
+				const next = effortChoices[Number(value)];
+				if (next !== void 0) chooseEffort(next.effort);
 			};
 			const toggleFavorite = (group, model) => {
 				const key = JSON.stringify([group.id, model.id]);
@@ -190,12 +207,12 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 					(0, react_jsx_runtime.jsxs)("div", { className: "_7KE1Ra_footer", children: [
 					(0, react_jsx_runtime.jsxs)("div", { className: "_7KE1Ra_effortTop", children: [
 						(0, react_jsx_runtime.jsx)("span", { children: t("menu.effort") }),
-						(0, react_jsx_runtime.jsx)("strong", { children: effortLabel ?? t("effort.unavailable") }),
+						(0, react_jsx_runtime.jsx)("strong", { children: previewLabel }),
 						effortChoices.length > 0 && (0, react_jsx_runtime.jsx)("button", { type: "button", className: "_7KE1Ra_reset", "aria-label": t("action.resetEffort"), title: t("action.resetEffort"), disabled: busy || effectiveEffort === reasoning.defaultEffort, onClick: () => chooseEffort(reasoning.defaultEffort), children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutline14, {}) })
 					] }),
-					(0, react_jsx_runtime.jsxs)("div", { className: "_7KE1Ra_sliderWrap", style: { "--effort-progress": (effortIndex / Math.max(1, effortChoices.length - 1) * 100) + "%" }, children: [
+					(0, react_jsx_runtime.jsxs)("div", { className: "_7KE1Ra_sliderWrap", style: { "--effort-progress": "calc(11.5px + (100% - 23px) * " + (previewIndex / Math.max(1, effortChoices.length - 1)) + ")" }, children: [
 						(0, react_jsx_runtime.jsx)("div", { className: "_7KE1Ra_marks", "aria-hidden": true, children: effortChoices.map((_, index) => (0, react_jsx_runtime.jsx)("span", {}, index)) }),
-						(0, react_jsx_runtime.jsx)("input", { type: "range", className: "_7KE1Ra_slider", min: 0, max: Math.max(1, effortChoices.length - 1), step: 1, value: effortIndex, disabled: busy || effortChoices.length < 2, "aria-label": t("menu.effort"), "aria-valuetext": effortLabel ?? t("effort.unavailable"), onChange: (event) => chooseEffort(effortChoices[Number(event.currentTarget.value)]?.effort) })
+						(0, react_jsx_runtime.jsx)("input", { type: "range", className: "_7KE1Ra_slider", min: 0, max: Math.max(1, effortChoices.length - 1), step: 1, value: previewIndex, disabled: effortChoices.length < 2, "aria-disabled": busy || void 0, "aria-label": t("menu.effort"), "aria-valuetext": previewLabel, onChange: (event) => { if (!busy) setDraftIndex(Number(event.currentTarget.value)); }, onPointerUp: (event) => commitEffort(event.currentTarget.value), onKeyUp: (event) => { if (/^(ArrowLeft|ArrowRight|ArrowUp|ArrowDown|Home|End|PageUp|PageDown)$/.test(event.key)) commitEffort(event.currentTarget.value); }, onBlur: (event) => { if (draftIndex !== null) commitEffort(event.currentTarget.value); }, onPointerCancel: () => setDraftIndex(null) })
 					] })
 				] })
 				] }),

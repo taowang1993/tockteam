@@ -78,7 +78,14 @@ window.__ModuleLoader__={load({factory}){
     load:()=>{},select:selection=>window.proof.select(selection),t
   }));
 }};
-window.proof={directory,select:selection=>{selections.push(selection);update({current:selection});return Promise.resolve(true)},selections,groups};
+window.proof={directory,select:selection=>{
+  selections.push(selection);
+  if(window.proof.holdEffort && selection.reasoningEffort){
+    update({status:'selecting'});
+    return new Promise(resolve=>{window.proof.finish=()=>{update({current:selection,status:'ready'});resolve(true)}});
+  }
+  update({current:selection});return Promise.resolve(true)
+},selections,groups};
 `, resolveDir: repository, sourcefile: 'model-picker-fixture.jsx', loader: 'jsx' },
     bundle: true, write: false, platform: 'browser', format: 'iife',
   })
@@ -135,11 +142,33 @@ window.proof={directory,select:selection=>{selections.push(selection);update({cu
     assert.equal(await page.getByRole('button', { name: 'GPT-5.6 Terra', exact: true }).count(), 1)
     assert.equal(await page.getByRole('button', { name: 'GPT-6 Astra', exact: true }).count(), 0)
     await page.getByRole('searchbox', { name: 'Search Models' }).fill('')
-    await page.getByRole('slider', { name: 'Reasoning Level' }).fill('2')
+    await page.getByRole('slider', { name: 'Reasoning Level' }).focus()
+    await page.getByRole('slider', { name: 'Reasoning Level' }).press('ArrowLeft')
     assert.equal(await page.evaluate(() => window.proof.selections.at(-1).reasoningEffort), 'high')
     assert.equal(await page.getByRole('slider', { name: 'Reasoning Level' }).getAttribute('aria-valuetext'), 'High')
     await page.getByRole('button', { name: 'Reset Effort' }).click()
     assert.equal(await page.evaluate(() => window.proof.selections.at(-1).reasoningEffort), 'max')
+    await page.evaluate(() => { window.proof.holdEffort = true })
+    const effort = page.getByRole('slider', { name: 'Reasoning Level' })
+    await effort.focus()
+    await effort.press('ArrowLeft')
+    assert.equal(await page.getByRole('dialog').count(), 1, 'saving a reasoning level must not close or flash the picker')
+    assert.equal(await effort.evaluate(element => element.disabled), false, 'the focused thumb must not be natively disabled mid-save')
+    assert.equal(await effort.inputValue(), '2', 'the thumb must show the chosen level while DSH saves it')
+    assert.equal(await effort.evaluate(element => document.activeElement === element), true)
+    await page.evaluate(() => window.proof.finish())
+    assert.equal(await effort.getAttribute('aria-valuetext'), 'High')
+    await page.evaluate(() => { window.proof.holdEffort = false })
+    const beforeDrag = await page.evaluate(() => window.proof.selections.length)
+    const box = await effort.boundingBox()
+    await page.mouse.move(box.x + box.width * .67, box.y + box.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width * .38, box.y + box.height / 2, { steps: 4 })
+    await page.mouse.move(box.x + box.width * .06, box.y + box.height / 2, { steps: 4 })
+    assert.equal(await page.evaluate(() => window.proof.selections.length), beforeDrag, 'dragging previews without a Host call per tick')
+    await page.mouse.up()
+    assert.equal(await page.evaluate(() => window.proof.selections.length), beforeDrag + 1, 'releasing the thumb commits once')
+    assert.equal(await page.evaluate(() => window.proof.selections.at(-1).reasoningEffort), 'low')
     await page.getByRole('searchbox', { name: 'Search Models' }).press('Meta+3')
     assert.deepEqual(await page.evaluate(() => window.proof.selections.at(-1)), { provider: 'openai', model: 'luna' })
     assert.equal(await page.getByRole('dialog').count(), 0, 'a model without an effort ladder closes the picker')
@@ -158,6 +187,26 @@ window.proof={directory,select:selection=>{selections.push(selection);update({cu
     assert.deepEqual(errors, [])
     console.log('Verified controlled /tockcoder model seat: light mode, visible picker, 1512×949 CSS at 2×, 3024×1898 PNG, no runtime errors')
     if (process.env.TOCKCODER_SUPPORTED_SCREENSHOT_PATH) writeFileSync(process.env.TOCKCODER_SUPPORTED_SCREENSHOT_PATH, screenshot)
+    await page.getByRole('slider', { name: 'Reasoning Level' }).focus()
+    await page.getByRole('slider', { name: 'Reasoning Level' }).press('ArrowLeft')
+    const track = await page.locator('._7KE1Ra_sliderWrap').evaluate(element => getComputedStyle(element).backgroundImage)
+    assert.match(track, /rgb\(139, 92, 246\)/u, 'the enabled rail keeps its purple fill away from the last stop')
+    await page.evaluate(() => {
+      const root = document.documentElement
+      root.style.colorScheme = 'dark'
+      for (const [name, value] of Object.entries({
+        '--dsw-specific-menu': '#323234', '--dsw-alias-label-primary': '#ffffff',
+        '--dsw-alias-label-tertiary': '#aaa', '--dsw-alias-border-l1': '#454545',
+        '--dsw-alias-interactive-bg-hover': '#444', '--dsw-alias-brand-primary': '#fff',
+      })) root.style.setProperty(name, value)
+      document.body.style.background = '#151517'
+    })
+    assert.match(await page.locator('._7KE1Ra_sliderWrap').evaluate(element => getComputedStyle(element).backgroundImage), /rgb\(139, 92, 246\)/u, 'dark DSH brand white must not replace purple')
+    if (process.env.TOCKCODER_DARK_SCREENSHOT_PATH) {
+      const dark = await page.screenshot()
+      assert.deepEqual([dark.readUInt32BE(16), dark.readUInt32BE(20)], [3024, 1898])
+      writeFileSync(process.env.TOCKCODER_DARK_SCREENSHOT_PATH, dark)
+    }
     await page.getByRole('tab', { name: 'OpenRouter' }).click()
     assert.equal(await page.getByRole('tab', { name: 'DeepSeek' }).innerText(), 'DeepSeek', 'provider names must not collapse to initials')
     assert.equal(await page.getByRole('tab', { name: 'OpenRouter' }).innerText(), 'OpenRouter')
