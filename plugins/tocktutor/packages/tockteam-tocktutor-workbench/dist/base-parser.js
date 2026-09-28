@@ -50,8 +50,9 @@ function splitInlineList(value) {
         }
         else if (character === ',') {
             const item = cleanScalar(current);
-            if (item !== '')
-                items.push(item);
+            if (item === '')
+                return null;
+            items.push(item);
             current = '';
         }
         else {
@@ -61,6 +62,8 @@ function splitInlineList(value) {
     if (quote !== '')
         return null;
     const item = cleanScalar(current);
+    if (item === '' && current.trim() !== '')
+        return null;
     if (item !== '')
         items.push(item);
     return items;
@@ -147,16 +150,18 @@ export function parseExecutableBase(source) {
             continue;
         }
         if (section === 'formulas') {
-            const formula = indent === 2 ? /^([A-Za-z_][\w-]*):\s*(.+)$/u.exec(trimmed) : null;
-            if (formula !== null) {
-                const name = formula[1] ?? '';
-                if (Object.keys(formulas).length >= MAX_EXECUTABLE_BASE_FORMULAS && formulas[name] === undefined) {
-                    return unsupported('Base document exceeds the formula limit.');
-                }
-                const expression = cleanScalar(formula[2] ?? '');
-                if (expression !== '')
-                    formulas[name] = expression;
-            }
+            const formula = indent === 2 ? /^([A-Za-z_][\w-]*):\s*(.*)$/u.exec(trimmed) : null;
+            if (formula === null)
+                return unsupported('Base formulas contain unsupported syntax.');
+            const name = formula[1] ?? '';
+            if (Object.hasOwn(formulas, name))
+                return unsupported('Base formulas contain duplicate names.');
+            if (Object.keys(formulas).length >= MAX_EXECUTABLE_BASE_FORMULAS)
+                return unsupported('Base document exceeds the formula limit.');
+            const expression = cleanScalar(formula[2] ?? '');
+            if (expression === '')
+                return unsupported('Base formula is empty.');
+            formulas[name] = expression;
             continue;
         }
         if (section !== 'views')
