@@ -169,7 +169,7 @@ test('a refused model-key write keeps setup open and retains the draft for retry
   }
 })
 
-test('skipping workspace setup completes once without saving a model key', async () => {
+test('Skip Onboarding from the folder step ends both steps without saving a model key', async () => {
   const dom = new JSDOM('<!doctype html><body></body>')
   const originalDocument = globalThis.document
   Object.assign(globalThis, { document: dom.window.document })
@@ -192,7 +192,7 @@ test('skipping workspace setup completes once without saving a model key', async
     })
     await tick()
     const dialog = dom.window.document.querySelector('dialog')!
-    button(dom.window.document, 'Skip Setup').click()
+    button(dom.window.document, 'Skip Onboarding').click()
     await tick()
     assert.equal(completed, 1)
     assert.equal(keyWrites, 0)

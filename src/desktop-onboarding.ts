@@ -95,7 +95,7 @@ export function installDesktopOnboarding({ bridge, credentials, openPaths }: Set
               <span class="size-1.5 rounded-full ${workspace ? 'bg-foreground' : 'bg-muted-foreground/40'}"></span>
               <span class="size-1.5 rounded-full ${workspace ? 'bg-muted-foreground/40' : 'bg-foreground'}"></span>
             </span>
-            ${workspace ? `<button id="tockteam-onboarding-skip" type="button" class="${quiet}">Skip Setup</button>` : `<button id="tockteam-onboarding-later" type="button" class="${quiet}">Set Up Later</button>`}
+            ${workspace ? `<button id="tockteam-onboarding-skip" type="button" class="${quiet}">Skip Onboarding</button>` : `<button id="tockteam-onboarding-later" type="button" class="${quiet}">Set Up Later</button>`}
           </div>
           <div class="flex items-center gap-2">
             ${workspace ? '' : `<button id="tockteam-onboarding-back" type="button" class="${quiet}">Back</button>`}
