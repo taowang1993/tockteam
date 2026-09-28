@@ -6,6 +6,14 @@ const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
 const preload = readFileSync(new URL('../src/preload.ts', import.meta.url), 'utf8')
 const contracts = readFileSync(new URL('../src/contracts.ts', import.meta.url), 'utf8')
 
+test("Desktop workspace picker requests Electron's current-user home", () => {
+  const chooser = main.match(/async function selectWorkspacePaths\(\): Promise<string\[\]> \{[\s\S]*?\n\}/u)?.[0]
+  assert.ok(chooser)
+  assert.match(chooser, /defaultPath: app\.getPath\('home'\)/u, 'Electron resolves the current user home on macOS, Linux, and Windows')
+  assert.match(chooser, /dialog\.showOpenDialog\(parent, options\)/u, 'the native dialog receives the starting folder')
+  assert.match(main, /ipcMain\.handle\('desktop:choose-workspace',[\s\S]*?return await selectWorkspacePaths\(\)/u)
+})
+
 test('Desktop onboarding exposes only trusted completion facts, not model keys', () => {
   for (const [channel, operation] of [
     ['desktop:onboarding:status', 'readDesktopOnboardingComplete'],

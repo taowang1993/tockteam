@@ -3632,6 +3632,7 @@ async function restartRuntime(message = '正在重新启动 TockTeam…'): Promi
 async function selectWorkspacePaths(): Promise<string[]> {
   const options: Electron.OpenDialogOptions = {
     title: '打开 DSH 工作区',
+    defaultPath: app.getPath('home'),
     properties: ['openDirectory', 'createDirectory'],
   }
   const parent = mainWindow
