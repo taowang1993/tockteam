@@ -605,7 +605,7 @@ const trustedRaycastNativeDeps: TrustedRaycastNativeDeps = Object.freeze({
 })
 const trustedRaycastChannel = new DesktopTrustedRaycastChannel(async active => {
   if (!active) trustedRaycastFirstUse?.cancel()
-  if (!active) await trustedRaycastMutex(async () => await trustedRaycast?.stop('activation-revoked'))
+  if (!active) await trustedRaycast?.stop('activation-revoked')
   if (!quitting) await launcherRescan?.().catch(error => appendLog('desktop', String(error).slice(0, 512)))
 })
 let launcherController: LauncherOverlayController | undefined
@@ -1737,7 +1737,7 @@ function createLauncherWindow(args: Readonly<{
     throw new Error('TockLauncher window was created with an unexpected session')
   }
   const translateOwner = { webContentsId: window.webContents.id }
-  const closeTranslateOwner = (): void => { trustedRaycastOrigin.clear(); trustedRaycastFirstUse?.cancel(translateOwner.webContentsId); void trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(translateOwner)).catch(error => appendLog('desktop', String(error).slice(0, 512))) }
+  const closeTranslateOwner = (): void => { trustedRaycastOrigin.clear(); trustedRaycastFirstUse?.cancel(translateOwner.webContentsId); void trustedRaycast?.closeOwner(translateOwner).catch(error => appendLog('desktop', String(error).slice(0, 512))) }
   window.on('blur', () => trustedRaycastOrigin.clear())
   window.on('hide', closeTranslateOwner)
   window.webContents.on('render-process-gone', closeTranslateOwner)
@@ -2571,7 +2571,8 @@ function initializeLauncher(): void {
     trustedRaycastOrigin.clear()
     const owner = { role: 'launcher' as const, webContentsId: window.webContents.id }
     trustedRaycastFirstUse?.cancel(owner.webContentsId)
-    void trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(owner)).catch(error => appendLog('desktop', String(error).slice(0, 512)))
+    // Revocation cannot be dropped by the bounded mutation queue; the manager coalesces cleanup.
+    void trustedRaycast?.closeOwner(owner).catch(error => appendLog('desktop', String(error).slice(0, 512)))
     // Revoke every provider before clearing this renderer's public action owner.
     invalidateAllLauncherProviders('launcher-owner-clear', owner)
     const ownerGeneration = ++launcherOwnerGeneration
@@ -2629,7 +2630,7 @@ function initializeLauncher(): void {
   controller = nextController
   launcherController = nextController
   launcherCoreFlush = async () => {
-    await trustedRaycastMutex(async () => await trustedRaycast?.close())
+    await trustedRaycast?.close()
     await launcherCustomBrowser?.close()
     const discoveryClose = discovery.close()
     const fileClose = fileSearch.close()
@@ -2674,7 +2675,7 @@ function initializeLauncher(): void {
   const disposeTrustedRaycast = registerTrustedRaycastIpcHandlers({
     guard: launcherGuard, ipcMain,
     onEvent: (owner, event) => { if (!trustedRaycastChannel.active) throw new Error('Translate capability is inactive'); trustedRaycast?.send(owner, event) },
-    onClose: async owner => { trustedRaycastFirstUse?.cancel(owner.webContentsId); await trustedRaycastMutex(async () => await trustedRaycast?.closeOwner(owner)) },
+    onClose: async owner => { trustedRaycastFirstUse?.cancel(owner.webContentsId); await trustedRaycast?.closeOwner(owner) },
     getTrust: extensionId => Object.freeze({ extensionId, state: Object.freeze({ ...(trustStoreFor(extensionId)?.status() ?? Object.freeze({ candidateAvailable: false, candidateDigest: '', digest: '', digestApproved: false, enabled: false, hasPrevious: false, installed: false, previewed: false, recovery: '', staged: false })), active: trustedRaycastChannel.active }) }),
     onFirstUse: async (owner, request) => {
       const store = trustStoreFor(request.extensionId)

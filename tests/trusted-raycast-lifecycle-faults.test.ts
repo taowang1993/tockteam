@@ -1,6 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { createTrustedRaycastMutex } from '../src/trusted-raycast-mutex.ts'
+
+test('mandatory main teardown never competes for bounded mutation queue admission', () => {
+  const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
+  assert.doesNotMatch(main, /trustedRaycastMutex\(async \(\) => await trustedRaycast\?\.(?:closeOwner|close|stop)\(/u)
+})
 // @ts-expect-error JavaScript owned-process helper.
 import { stopOwnedChild } from '../scripts/trusted-raycast-process.mjs'
 
@@ -32,10 +39,18 @@ test('intentional owner close tears down silently instead of rendering an intern
   const messages: unknown[] = []
   const manager = new TrustedRaycastManager({ runtimeDir: '/unused', nodePath: process.execPath, onMessage: (_owner, message) => messages.push(message) })
   Reflect.set(manager, 'session', { child, owner, input: { extensionId: 'google-translate' as const, sessionId: 's', generation: 'g', command: 'translate', preferences: {} }, workspace, revision: 0, querySequence: 0, eventId: '', actions: new Map(), fields: new Map(), reject() {} })
+  const mutex = createTrustedRaycastMutex()
+  let release!: () => void
+  const blocked = new Promise<void>(resolve => { release = resolve })
+  const first = mutex(() => blocked)
+  const second = mutex(() => blocked)
   try {
-    await manager.closeOwner(owner)
+    await assert.rejects(mutex(() => undefined), /busy/)
+    const closing = manager.closeOwner(owner)
+    assert.equal(manager.active, false, 'owner input is revoked before the queue drains')
+    await Promise.all([closing, manager.closeOwner(owner)])
     assert.deepEqual(messages, [])
-  } finally { await stopOwnedChild(child, 30, true); rmSync(workspace, { recursive: true, force: true }) }
+  } finally { release(); await Promise.all([first, second]); await stopOwnedChild(child, 30, true); rmSync(workspace, { recursive: true, force: true }) }
 })
 
 test('failed termination retains workspace and child ownership, revokes input, and permits close retry', { skip: process.platform === 'win32' ? 'POSIX trusted-child integration is unsupported on Windows' : false, timeout: 5000 }, async t => {
