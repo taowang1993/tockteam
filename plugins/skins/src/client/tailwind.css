@@ -54,7 +54,7 @@
   & ._7KE1Ra_searchIcon { flex: none; }
   & ._7KE1Ra_search { box-sizing: border-box; flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 12px; }
   & ._7KE1Ra_search::placeholder { color: var(--dsw-alias-label-tertiary); }
-  & ._7KE1Ra_search:focus-visible { outline: 1px solid var(--dsw-alias-border-l3); outline-offset: -3px; border-radius: 6px; }
+  & ._7KE1Ra_searchRow:has(._7KE1Ra_search:focus-visible) { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
   & ._7KE1Ra_groups { min-height: 80px !important; max-height: min(200px, 35vh); padding: 4px; overflow-y: auto; overscroll-behavior: contain; }
   & ._7KE1Ra_group + ._7KE1Ra_group { margin-top: 1px !important; }
   & ._7KE1Ra_groupTitle { display: none; }

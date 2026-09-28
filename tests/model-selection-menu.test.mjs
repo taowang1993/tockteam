@@ -136,7 +136,15 @@ window.proof={directory,select:selection=>{
     await page.getByRole('dialog', { name: 'Model and Reasoning Effort' }).waitFor()
     assert.equal((await page.getByRole('button', { name: /Select model, current/i }).innerText()).trim(), 'Model & Effort', 'the open trigger labels the combined menu')
     assert.ok((await page.getByRole('searchbox', { name: 'Search Models' }).boundingBox()).height >= 40, 'search has a comfortable input height')
+    await page.getByRole('tab', { name: 'OpenAI' }).focus()
+    const idleSearchBackground = await page.locator('._7KE1Ra_searchRow').evaluate(element => getComputedStyle(element).backgroundColor)
     await page.getByRole('searchbox', { name: 'Search Models' }).focus()
+    const focusedSearch = await page.getByRole('searchbox', { name: 'Search Models' }).evaluate(element => ({
+      outline: getComputedStyle(element).outlineStyle,
+      background: getComputedStyle(element.closest('._7KE1Ra_searchRow')).backgroundColor,
+    }))
+    assert.equal(focusedSearch.outline, 'none', 'focused search has no rectangular focus ring')
+    assert.notEqual(focusedSearch.background, idleSearchBackground, 'focused search remains visibly distinguishable')
     const separators = await page.evaluate(() => {
       const top = getComputedStyle(document.querySelector('._7KE1Ra_tabs'))
       const bottom = getComputedStyle(document.querySelector('._7KE1Ra_searchRow'))
@@ -144,7 +152,6 @@ window.proof={directory,select:selection=>{
     })
     assert.deepEqual(separators.bottom, separators.top, 'both separators use the same width and color')
     assert.equal(separators.extra, 'none', 'focused search must not double the bottom separator')
-    assert.equal(await page.getByRole('searchbox', { name: 'Search Models' }).evaluate(element => getComputedStyle(element).outlineStyle), 'solid', 'search keeps a keyboard focus indicator')
     assert.equal(await page.getByRole('tab', { name: 'OpenAI' }).getAttribute('aria-selected'), 'true')
     await page.getByRole('tab', { name: 'OpenAI' }).focus()
     await page.getByRole('tab', { name: 'OpenAI' }).press('ArrowRight')
