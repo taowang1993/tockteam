@@ -12,7 +12,8 @@ The runtime contract is the revision in `dsh-source.json` (`0.1.2-rc.1` at this 
 | `src/client.ts` | Desktop branding and dispatch from the restricted preload bridge into browser services; no Host filesystem authority |
 | `plugins/sidebar/src/client/plugin.tsx` | App rail and route integration, workspace/Review/Files composition, input history, service registration and lifecycle |
 | `plugins/sidebar/src/client/sidebar-service.ts`, `SideToolsPanel.tsx` | Extensible tab/viewer registry, per-session tabs, activation, restoration and preference saves |
-| `plugins/sidebar/src/client/better-sidebar-api.ts` | Typed browser adapter for Better Sidebar requests |
+| `plugins/sidebar/src/client/runtime-settings.ts` | Revision-guarded Better Sidebar settings load/update; keeps the upstream Host settings separate from `sidebar.json` |
+| `plugins/sidebar/src/client/better-sidebar-api.ts` | Typed browser adapter for Better Sidebar requests and platform-aware file navigation/interception paths |
 | `plugins/sidebar/src/client/review-diff.ts`, `review-comments.ts` | Commit-patch parsing, line-addressable review, persisted comments and composer-chip delivery |
 | `plugins/sidebar/src/index.ts`, `git-workspace.ts`, `preferences-server.ts` | TockTeam workspace facts, branch creation/push, and durable sidebar preferences |
 | `upstream/DSH-better-sidebar/src/` | Pinned Host implementation for Files, Git, PTY, history and commit patches |
@@ -25,7 +26,7 @@ The runtime contract is the revision in `dsh-source.json` (`0.1.2-rc.1` at this 
 
 `scripts/build.mjs` bundles the adapted upstream Host as `@tockteam/better-sidebar-runtime` and builds the separate first-party Host/client entries. Desktop's `cordis.patch.yml`, Web's `web/cordis.patch.yml`, package `dsh.client.inject` metadata, and `src/profile.ts` own composition. `scripts/stage-dsh.mjs` assembles the pinned runtime and built bundles; source edits alone do not update staged code.
 
-Both Desktop and Web include Better Sidebar, sidebar, panel controls and pinned summary. They consume `plugins/shared/surface.ts`; DSH owns `ctx.web`. Only Desktop has `window.dshDesktop`, native menus, pickers, draggable titlebar/window controls, TockLauncher, marketplace and the TockTutor route implementation. Web must not fabricate those capabilities. TUI retains its pinned renderer and does not mount TockCoder's browser plugins.
+Both Desktop and Web include Better Sidebar, sidebar, panel controls and pinned summary. They consume `plugins/shared/surface.ts`; DSH owns `ctx.web`. Only Desktop has `window.dshDesktop`, native menus, pickers, draggable titlebar/window controls, TockLauncher, marketplace, the embedded Browser tab and the TockTutor route implementation. Web does not register the Browser tab or intercept external links into a webview; it must not fabricate those capabilities. TUI retains its pinned renderer and does not mount TockCoder's browser plugins.
 
 TockCoder and TockTutor share route coordination through `plugins/sidebar/src/client/tocktutor-route.ts`. Route changes preserve remembered TockTutor locations and keep hidden terminal/conversation controls from taking editor focus.
 
@@ -41,22 +42,24 @@ These dependencies must appear in both Cordis service injection and the owning b
 
 ## Workspace, Files and Review
 
-The sidebar registry supplies Files, Review and Side Tools, with file viewers selected by priority/type and persisted tabs restored per session. Async workspace, diff and directory results remain attached to the selection that requested them; late responses cannot replace a newer workspace or file.
+The sidebar registry supplies Files, Review and Side Tools, with file viewers selected by priority/type and persisted tabs restored per session. HTML previews use a sandboxed `srcDoc` iframe; binary files offer the surface-owned external opener. The Desktop Browser tab uses the hardened Electron webview, not a Web-surface substitute. Side Chat forks the selected DSH session, or starts a new session through `uiWorkspace` when none is selected. Async workspace, diff and directory results remain attached to the selection that requested them; late responses cannot replace a newer workspace or file.
 
-Review combines status, staged/unstaged diffs, commit history, commit patches, branch operations and running calls. A partially staged file has separate staged and unstaged entries. Patch parsing preserves quoted/escaped Unicode names, rename paths, binary entries and old/new line numbers. Repository identity and filenames must preserve literal POSIX backslashes and trailing whitespace.
+The `workspaces.openPath` browser interception is preference-controlled and only opens an active-workspace file in the panel. Its platform-aware path check preserves literal POSIX backslashes and rejects parent traversal; otherwise it calls the original DSH opener. This browser decision is not filesystem authorization: Better Sidebar still validates every requested file against the Host session. Desktop can also intercept ordinary external HTTP(S) link clicks into its Browser tab when enabled.
+
+Review combines status, staged/unstaged diffs, commit history, commit patches, branch operations and running calls. While visible it refreshes every four seconds and on window focus. The display bounds changes to 200 entries, history to 30 commits and each rendered commit file to 400 diff lines; it does not silently assert that these are all repository changes. Failed branch creation keeps the typed name for retry, and a successful Git action does not hide a subsequent refresh error. A partially staged file has separate staged and unstaged entries. Patch parsing preserves quoted/escaped Unicode names, rename paths, binary entries and old/new line numbers. Repository identity and filenames must preserve literal POSIX backslashes and trailing whitespace.
 
 Comments are scoped to the active session/workspace/branch and retained up to 200 entries. One `tockteam-review` reference represents the selected comments in the composer:
 
 1. Format the repository, branch, commit, location and comment text into a review request.
 2. Insert/update the reference through agent-scoped `slash/input-insert-reference` events. RC.1 edits use detect-coordinate spans, where each reference occupies one character; reported occurrence offsets instead refer to clipboard text. Convert coordinates before replacing or removing a chip.
 3. Preserve unrelated text and references; removing one comment updates the same chip rather than duplicating the request.
-4. A cleared composer is only a pending delivery. Retire comments after a newer durable user message contains that request. Failed sends that restore the reference retain comments for retry.
+4. A cleared composer is only a pending delivery. Retire comments after a newer durable user message contains that request, including when it arrives while another session is selected. Failed sends that restore the reference retain comments for retry.
 
 ## Host Authority and HTTP Boundaries
 
 | Endpoint | Owner and authority |
 | --- | --- |
-| `/sidebar/api/<method>` | Adapted Better Sidebar Host: Files, Git, settings and related operations |
+| `/sidebar/api/<method>` | Adapted Better Sidebar Host: Files, Git, revision-guarded `settings.get`/`settings.update` and related operations |
 | `/sidebar/ws/terminal` | Same Host's session/tab-scoped PTY connection |
 | `/tockteam/workspace` | TockTeam workspace facts and mutations; requested canonical cwd must equal the live Host session's cwd |
 | `/tockteam/sidebar/preferences` | Validated, bounded sidebar preference envelope under the surface data root |
@@ -84,7 +87,8 @@ Pinned summary prefers the latest usable compaction summary, then assistant text
 ## Persistence and Compatibility
 
 - Sidebar tabs, viewer settings and width persist in `<surface data root>/sidebar.json`, with migration from `desktop-sidebar.json`. Validation bounds session/tab counts; state belongs to the active session even during startup or an in-flight save.
-- Review comments use browser storage key `tockteam.sidebar.review-comments.v1`, migrating the older `tockteam.desktop-sidebar.review-comments.v1` key. Browser storage failure falls back to memory; it is not equivalent to Host durability.
+- Better Sidebar runtime settings (`agentTerminalTools`, `bottomPanelAutoTerminal`, `interceptOpenPath`, `browserInterceptLinks`) use its Host settings service and revision-guarded updates, not `sidebar.json`. Missing upstream fields keep their defaults; conflicting or failed saves refresh the confirmed values instead of blindly replaying the edit.
+- Review comments use browser storage key `tockteam.sidebar.review-comments.v1`, migrating the older `tockteam.desktop-sidebar.review-comments.v1` key. A failed write, including during migration, keeps already-readable comments in memory; an unreadable store cannot be recovered. Browser storage is not Host durability.
 - Terminal preferences use the session-scoped `tockteam-desktop.terminal-panel` key family with legacy migration. Pinned-summary visibility retains `tockteam-desktop.pinned-summary.open`.
 - Submitted input history derives from DSH's durable event window, with bounded in-memory navigation and older-page loading, not a second transcript store.
 
