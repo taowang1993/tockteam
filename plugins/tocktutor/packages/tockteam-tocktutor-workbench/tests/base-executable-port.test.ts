@@ -133,6 +133,24 @@ test('search keeps cross-file formula lookup while summarizing only visible rows
   assert.deepEqual(model.summaries.map(summary => summary.value), [3])
 })
 
+test('search excludes hidden rows before evaluating summaries', () => {
+  const parsed = parseExecutableBase('views:\n  - name: Notes\n    order: [file.name]\n    summaries: [sum(note.score)]\n')
+  assert.equal(parsed.status, 'ready')
+  if (parsed.status !== 'ready') return
+  const inputs = ['A', 'B'].map(name => ({ path: `${name}.md`, revision: revision('a'), source: `---\nscore: ${'9'.repeat(308)}\n---\n` }))
+  const all = createBaseViewModel(parsed, inputs)
+  assert.equal(all.status, 'ready')
+  if (all.status === 'ready') assert.deepEqual(all.unsupported.map(entry => entry.kind), ['summary'])
+  for (const [search, count] of [['A', 1], ['Missing', 0]] as const) {
+    const model = createBaseViewModel(parsed, inputs, 'Notes', search)
+    assert.equal(model.status, 'ready')
+    if (model.status !== 'ready') continue
+    assert.deepEqual(model.unsupported, [])
+    assert.equal(model.rows.length, count)
+    assert.equal(model.summaries[0]?.value, count === 0 ? 0 : Number('9'.repeat(308)))
+  }
+})
+
 test('hydrates .markdown files and exposes their basename to Base formulas', () => {
   const parsed = parseExecutableBase(`views:\n  - type: table\n    name: Notes\n    order: [file.name, note.status]\n`)
   assert.equal(parsed.status, 'ready')
@@ -316,6 +334,30 @@ test('fails closed instead of dropping malformed restrictions or ambiguous defin
     'views:\n  - name: First\n    name: Second\n',
     'views:\n  - type: table\n    order: [file.name]\n    order: [note.status]\n',
   ]) assert.equal(parseExecutableBase(source).status, 'unsupported', source)
+})
+
+test('does not silently discard inline sections or nested scalar filters', () => {
+  for (const source of [
+    'formulas: {visible: false}\nviews:\n  - name: Notes\n',
+    'properties: {status: {displayName: State}}\nviews:\n  - name: Notes\n',
+    'views: []\n  - name: Notes\n',
+    'filters: true\n  and:\n    - false\nviews:\n  - name: Notes\n',
+  ]) assert.equal(parseExecutableBase(source).status, 'unsupported', source)
+})
+
+test('top-level comments do not truncate global or view filter blocks', () => {
+  for (const source of [
+    'filters:\n# Keep the restriction\n  and:\n    - false\nviews:\n  - name: Notes\n',
+    'filters:\n  and:\n    - true\n# Keep the restriction\n    - false\nviews:\n  - name: Notes\n',
+    'views:\n  - name: Notes\n    filters:\n# Keep the restriction\n      and:\n        - false\n',
+  ]) {
+    const parsed = parseExecutableBase(source)
+    assert.equal(parsed.status, 'ready', source)
+    if (parsed.status !== 'ready') continue
+    const query = queryExecutableBaseView(parsed, parsed.views[0]!, files)
+    assert.deepEqual(query.unsupported, [], source)
+    assert.deepEqual(query.rows, [], source)
+  }
 })
 
 test('rejects duplicate formula definitions rather than widening a Base filter', () => {

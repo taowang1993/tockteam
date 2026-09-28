@@ -1,0 +1,48 @@
+{
+  "geometry": {
+    "width": 1512,
+    "height": 949,
+    "scale": 2,
+    "colorScheme": "dark",
+    "htmlSkin": null,
+    "bodySkin": null,
+    "route": "/tocktutor/Review.base"
+  },
+  "errors": [],
+  "mode": "Base Table",
+  "checks": [
+    "global filter survives unindented comment",
+    "malformed scalar filter is unavailable",
+    "view filter survives unindented comment",
+    "overflow summary correctly fails without search",
+    "search shows Alpha and its finite summary",
+    "empty search results have no summary error",
+    "Escape restores unfiltered summary error"
+  ],
+  "screenshot": {
+    "width": 3024,
+    "height": 1898,
+    "file": "verified-dark.png"
+  },
+  "cleanup": {
+    "rootPid": 34052,
+    "recordedPids": [
+      34052,
+      34054,
+      34055,
+      34056,
+      34057,
+      34062,
+      34086,
+      34268,
+      34272,
+      34511,
+      34512,
+      34513,
+      34514,
+      34515,
+      34516
+    ],
+    "remaining": []
+  }
+}

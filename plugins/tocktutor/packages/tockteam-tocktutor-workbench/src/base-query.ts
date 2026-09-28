@@ -309,13 +309,11 @@ export function queryExecutableBaseView(
   }
   if (unsupported.length > 0) return { rows: [], summaries: [], unsupported }
 
-  let summary = summariesForRows(document, view.summaries, rows, context)
-  unsupported.push(...summary.unsupported)
-  if (search !== '' && unsupported.length === 0) {
+  if (search !== '') {
     rows = rows.filter(row => columns.some(column => notesBaseValueText(row.values[column]).toLocaleLowerCase().includes(search)))
-    summary = summariesForRows(document, view.summaries, rows, context)
-    unsupported.push(...summary.unsupported)
   }
+  const summary = summariesForRows(document, view.summaries, rows, context)
+  unsupported.push(...summary.unsupported)
   return {
     rows: Object.freeze(rows.map(row => Object.freeze({
       file: Object.freeze({ ...row.file }),

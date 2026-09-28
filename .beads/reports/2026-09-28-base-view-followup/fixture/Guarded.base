@@ -1,0 +1,6 @@
+filters:
+# This comment must not discard the filter
+  and:
+    - false
+views:
+  - name: Guarded

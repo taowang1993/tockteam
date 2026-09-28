@@ -139,13 +139,17 @@ export function parseExecutableBase(source: string): ExecutableBaseParseResult {
       currentView = null
       currentList = ''
       currentProperty = ''
+      const sectionValue = (topLevel[2] ?? '').trim()
+      if (['formulas', 'properties', 'views'].includes(section) && sectionValue !== '' && !sectionValue.startsWith('#')) {
+        return unsupported('Base section contains unsupported inline syntax.')
+      }
       if (section === 'filters') {
         const inline = cleanScalar(topLevel[2] ?? '')
         if (inline !== '') filters.push({ kind: 'statement', statement: inline })
         else {
           const block: string[] = []
           let next = index + 1
-          while (next < lines.length && (lines[next]?.trim() === '' || leadingSpaces(lines[next] ?? '') > 0)) {
+          while (next < lines.length && (lines[next]?.trim() === '' || lines[next]?.trimStart().startsWith('#') || leadingSpaces(lines[next] ?? '') > 0)) {
             block.push(lines[next] ?? '')
             next += 1
           }
@@ -157,6 +161,7 @@ export function parseExecutableBase(source: string): ExecutableBaseParseResult {
     }
 
     if (indent === 0) return unsupported('Base document contains unsupported top-level syntax.')
+    if (section === 'filters') return unsupported('Base scalar filter contains unsupported nested syntax.')
 
     if (section === 'properties') {
       const property = indent === 2 ? /^([^:]+):\s*$/u.exec(trimmed) : null
@@ -252,7 +257,7 @@ export function parseExecutableBase(source: string): ExecutableBaseParseResult {
         else {
           const block: string[] = []
           let next = index + 1
-          while (next < lines.length && (lines[next]?.trim() === '' || leadingSpaces(lines[next] ?? '') > 4)) {
+          while (next < lines.length && (lines[next]?.trim() === '' || lines[next]?.trimStart().startsWith('#') || leadingSpaces(lines[next] ?? '') > 4)) {
             block.push(lines[next] ?? '')
             next += 1
           }

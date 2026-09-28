@@ -1,0 +1,9 @@
+views:
+  - name: Commented
+    filters:
+# This comment must not discard the filter
+      and:
+        - false
+  - name: Summary
+    order: [file.name]
+    summaries: [sum(note.score)]
