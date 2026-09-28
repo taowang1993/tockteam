@@ -318,6 +318,29 @@ test('fails closed instead of dropping malformed restrictions or ambiguous defin
   ]) assert.equal(parseExecutableBase(source).status, 'unsupported', source)
 })
 
+test('rejects duplicate formula definitions rather than widening a Base filter', () => {
+  const source = `formulas:
+  visible: note.active == true
+  visible: true
+filters: formula.visible
+views:
+  - name: Notes
+`
+  assert.equal(parseExecutableBase(source).status, 'unsupported')
+  for (const declaration of ['visible: ""', 'visible:']) {
+    assert.equal(parseExecutableBase(`formulas:\n  ${declaration}\n  visible: true\nfilters: formula.visible\nviews:\n  - name: Notes\n`).status, 'unsupported', declaration)
+  }
+})
+
+test('rejects empty entries in inline Base lists instead of dropping columns or sorts', () => {
+  for (const field of ['order', 'sort', 'summaries']) {
+    for (const list of ['[,]', '[file.name,, note.status]']) {
+      assert.equal(parseExecutableBase(`views:\n  - name: Notes\n    ${field}: ${list}\n`).status, 'unsupported', `${field}: ${list}`)
+    }
+  }
+  assert.equal(parseExecutableBase('views:\n  - name: Notes\n    order: [file.name,]\n').status, 'ready')
+})
+
 test('rejects invalid Base number conversions without crashing rows', () => {
   const parsed = parseExecutableBase(`formulas:\n  converted: 'number(file.properties)'\nviews:\n  - type: table\n    name: Table\n    order: [file.name, formula.converted]\n`)
   assert.equal(parsed.status, 'ready')
