@@ -80,7 +80,8 @@ function fixture(options: { legacyValue?: string; failCurrentWrite?: boolean } =
     first: observable<ComposerHistoryEventWindow>({ entries: [] }),
     second: observable<ComposerHistoryEventWindow>({ entries: [] }),
   }
-  const sessions = { list, scope: () => context, binding: (id: string) => ({ eventSource: events[id as 'first' | 'second'] }) } satisfies ReviewSessionsService
+  const sessions = { list, scope: () => context, binding: (id: string) =>
+    id === 'first' || id === 'second' ? { eventSource: events[id] } : undefined } satisfies ReviewSessionsService
   let source: Parameters<ReviewInputTriggersService['registerSource']>[0] | undefined
   const data = new Map<string, string>(options.legacyValue === undefined
     ? [] : [['tockteam.desktop-sidebar.review-comments.v1', options.legacyValue]])

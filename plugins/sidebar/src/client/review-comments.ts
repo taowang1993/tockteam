@@ -358,7 +358,9 @@ function createComposerBridge(
   function reconcile(): InjectionResult {
     const value = current()
     const nextScope = scopeOf(value)
-    if (initialized && nextScope !== activeScope) {
+    const scopeChanged = initialized && nextScope !== activeScope
+    const checkPending = scopeChanged || watchedSession !== value?.session
+    if (scopeChanged) {
       commentsByScope.set(activeScope, comments)
       const oldOccurrence = watchedInput === undefined
         ? undefined
@@ -379,8 +381,9 @@ function createComposerBridge(
 
     const existing = occurrence(value.input.state.getSnapshot())
     if (pending !== undefined && existing !== undefined) clearPending()
-    if (pending !== undefined && userMessages(value.session).some(entry =>
-      Number(entry.id) > pending!.baselineSeq && entry.value.includes(pending!.text))) completeDelivery()
+    const delivery = pending
+    if (checkPending && delivery !== undefined && userMessages(value.session).some(entry =>
+      Number(entry.id) > delivery.baselineSeq && entry.value.includes(delivery.text))) completeDelivery()
     if (pending !== undefined && existing === undefined) return 'inserted'
     if (comments.size === 0) {
       if (existing !== undefined) {
