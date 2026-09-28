@@ -1,0 +1,48 @@
+{
+  "product": "TockTeam Desktop",
+  "date": "2026-09-28",
+  "fixture": "Fresh isolated test profile, built-in dark theme, no skin, mock Keychain; no user profile or saved credentials accessed.",
+  "screenshot": {
+    "file": "workspace.png",
+    "heading": "Choose a Workspace",
+    "route": "http://127.0.0.1:54027/tockcoder",
+    "cssViewport": [
+      1512,
+      949
+    ],
+    "deviceScaleFactor": 2,
+    "pngPixels": [
+      3024,
+      1898
+    ],
+    "colorScheme": "dark",
+    "bodySkinId": null,
+    "documentSkinId": null,
+    "modalBackground": "rgb(21, 21, 23)",
+    "themeBase": "rgb(21, 21, 23)",
+    "backdrop": "rgba(0, 0, 0, 0.85)",
+    "noCurrentWorkspace": true,
+    "noSelectedChip": true,
+    "canChooseFolder": true,
+    "canSkipFolder": true,
+    "skipFolderLabel": "Skip",
+    "skipFolderAccessibleName": "Skip Folder Selection",
+    "firstSessionCopy": true,
+    "skipOnboardingLabel": "Skip Onboarding"
+  },
+  "checks": {
+    "continuedToModelWithoutChoosingFolder": true,
+    "privateCompletionMarkerPersisted": true,
+    "rendererErrors": [],
+    "processTree": {
+      "rootPid": 71433,
+      "remaining": []
+    },
+    "commands": [
+      "node --test tests/desktop-onboarding-client.test.ts (5 passed, 0 failed)",
+      "pnpm run typecheck",
+      "pnpm run build",
+      "node scripts/stage-dsh.mjs --quick"
+    ]
+  }
+}
