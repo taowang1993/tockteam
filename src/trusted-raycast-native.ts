@@ -130,7 +130,7 @@ export async function pasteTrustedRaycastText(text: string, priorApp: TrustedRay
   if (snapshot.formats.length > 1) throw new Error('Paste cannot preserve a clipboard with multiple formats. Use Copy instead.')
   const wait = deps.wait ?? (ms => new Promise(resolve => setTimeout(resolve, ms)))
   deps.writeClipboard(text)
-  if (deps.readClipboard() !== text) { restoreClipboardSnapshot(deps, snapshot); throw new Error('Clipboard was not accepted') }
+  if (deps.readClipboard() !== text) throw new Error('Clipboard was not accepted')
   const owned = captureClipboardSnapshot(deps)
   const restore = async (): Promise<'restored' | 'external-change-preserved'> => {
     if (!stillOwnsPasteWrite(deps, text, owned)) return 'external-change-preserved'

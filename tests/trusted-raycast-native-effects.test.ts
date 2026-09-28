@@ -225,7 +225,21 @@ test('paste policy denials: no captured target, clipboard refusal, and oversized
   const writes: string[] = []
   await assert.rejects(pasteTrustedRaycastText('x', prior, deps({ readClipboard: () => 'original', writeClipboard: text => writes.push(text), fixture: 'paste' })), /Clipboard was not accepted|Clipboard restoration failed/)
   assert.ok(writes.includes('x'), 'the paste write was attempted')
-  assert.ok(writes.includes(''), 'the snapshot restore cleared and rewrote the clipboard')
+  assert.deepEqual(writes, ['x'], 'a refused write must not clear clipboard content it does not own')
+})
+
+test('paste preserves a concurrent copy during its initial write verification', async () => {
+  let current = 'original'
+  const writes: string[] = []
+  await assert.rejects(pasteTrustedRaycastText('translation', prior, deps({
+    readClipboard: () => current,
+    readClipboardBuffer: () => Buffer.from(current),
+    writeClipboard: text => { writes.push(text); current = 'new user copy' },
+    writeClipboardBuffer: () => assert.fail('must not overwrite the new copy'),
+    execFile: async () => { assert.fail('must not paste after losing clipboard ownership') },
+  })), /Clipboard was not accepted/)
+  assert.equal(current, 'new user copy')
+  assert.deepEqual(writes, ['translation'])
 })
 
 test('the child TMPDIR governs os.tmpdir(), keeping translation.mp3 inside the private workspace', async () => {
