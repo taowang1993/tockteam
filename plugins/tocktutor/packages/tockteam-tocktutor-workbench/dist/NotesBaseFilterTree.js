@@ -25,11 +25,19 @@ function filterBlockText(block) {
 }
 function cleanFilterStatement(value) {
     const trimmed = value.trim();
-    const first = trimmed[0];
-    const last = trimmed.at(-1);
-    return trimmed.length >= 2 && first === last && (first === "'" || first === '"')
-        ? trimmed.slice(1, -1)
-        : trimmed;
+    if (trimmed.length < 2)
+        return trimmed;
+    if (trimmed.startsWith("'") && trimmed.endsWith("'"))
+        return trimmed.slice(1, -1).replaceAll("''", "'");
+    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+        try {
+            return JSON.parse(trimmed);
+        }
+        catch {
+            return trimmed;
+        }
+    }
+    return trimmed;
 }
 /** Parse `- ` items at one indent level; each item is a statement or a nested conjunction. */
 function parseFilterItems(block, depth, budget) {

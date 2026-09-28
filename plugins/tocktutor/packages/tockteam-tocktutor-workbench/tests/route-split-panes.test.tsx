@@ -129,6 +129,43 @@ it.each(['editors', 'assistant', 'tabs'] as const)('mounts real independent edit
   await restored.dispose()
 })
 
+it('keeps a Base cell edit when pointer-down focuses a different split pane before blur', async () => {
+  const files = new Map([
+    ['Tasks.base', 'views:\n  - type: table\n    name: Notes\n    order: [file.name, note.status]\n'],
+    ['Second.md', '---\nstatus: open\n---\n# Second\n'],
+    ['Other.md', '# Other\n'],
+  ])
+  const remote = { $on: () => () => {}, tocktutorWorkbench: {
+    currentVault: () => ok({ displayPath: '~/Fixture', generation: 1, name: 'Fixture', vault }),
+    listTree: () => ok({ complete: true, cursor: null, entries: [...files.keys()].map(path => ({ kind: 'document', path, revision, size: 10, createdAt: 1, modifiedAt: 1 })), generation: 1, scan: { entries: 3 }, truncated: false, truncationReason: null, warnings: [] }),
+    openDocument: (path: string) => ok({ content: files.get(path), digest: `sha256:${'a'.repeat(64)}`, generation: 1, path, revision }),
+    readDraft: () => ok({ draft: null, generation: 1 }),
+    saveDocument: (request: { path: string; content: string }) => { files.set(request.path, request.content); return ok({ generation: 1, path: request.path, revision, status: 'saved' }) },
+  } } as unknown as WorkbenchRouteRemote
+  const controller = new WorkbenchRouteController(remote, () => {})
+  await controller.syncLocation('/tocktutor/Tasks.base')
+  const left = controller.getSnapshot().focusedPaneId
+  await controller.splitPane(left, 'vertical')
+  const right = controller.getSnapshot().focusedPaneId
+  await controller.select('Other.md')
+  await controller.focusPane(left)
+  function Harness() {
+    const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+    return <TockTutorRouteView snapshot={snapshot} paneController={controller} onActivateTab={() => {}} onFocusPane={id => { void controller.focusPane(id) }} onEdit={() => {}} onMode={() => {}} onSave={() => {}} onSelect={() => {}} onMoveCanvas={() => {}} onToggleTask={() => {}} onBaseEdit={(request, basePath) => controller.applyBaseEdit(request, basePath)} />
+  }
+  const view = render(<Harness />)
+  try {
+    const input = await screen.findByRole('textbox', { name: 'Edit note.status for Second.md' }) as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'updated' } })
+    fireEvent.pointerDown(view.container.querySelector(`[data-pane-id="${right}"]`)!, { button: 0 })
+    await waitFor(() => expect(controller.getSnapshot().focusedPaneId).toBe(right))
+    fireEvent.blur(input)
+    await waitFor(() => expect(files.get('Second.md')).toContain('status: updated'))
+    expect(controller.getPaneSnapshot(left).baseFiles?.find(file => file.path === 'Second.md')?.source).toContain('status: updated')
+    expect(controller.getPaneSnapshot(right).path).toBe('Other.md')
+  } finally { view.unmount(); await controller.dispose() }
+})
+
 it('keeps Crepe editors independent across a split and a note switch', async () => {
   const files = new Map([['One.md', '# One\n'], ['Two.md', '# Two\n']])
   const remote = { $on: () => () => {}, tocktutorWorkbench: {

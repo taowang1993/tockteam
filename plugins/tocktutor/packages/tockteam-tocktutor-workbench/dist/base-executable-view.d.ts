@@ -21,6 +21,8 @@ export interface ExecutableBaseViewProps {
         sizeBytes?: number;
     };
     files: readonly BaseHydratedFile[];
+    loadStatus?: 'loading' | 'ready' | 'error' | undefined;
+    onRetry?: (() => void) | undefined;
     onActiveViewChange?: (view: string) => void;
     onCopy?: (request: ExecutableBaseCopyRequest) => void;
     onEdit?: (request: ExecutableBaseFrontmatterEditRequest) => ExecutableBaseEditResult;

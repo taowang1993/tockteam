@@ -2,7 +2,6 @@ import { notesBaseValueText } from './NotesBaseFormulaValue.ts'
 import { MAX_EXECUTABLE_BASE_SEARCH_LENGTH, type ExecutableBaseDocument, type ExecutableBaseViewDefinition } from './base-parser.ts'
 import {
   queryExecutableBaseView,
-  summarizeExecutableBaseRows,
   type BaseHydratedFile,
   type ExecutableBaseQueryResult,
   type ExecutableBaseSummaryResult,
@@ -122,25 +121,16 @@ export function createBaseViewModel(
 ): ExecutableBaseViewModel {
   if (search.length > MAX_EXECUTABLE_BASE_SEARCH_LENGTH) return { reason: 'Base view search exceeds its limit.', status: 'unsupported' }
   const view = selectExecutableBaseView(document, selectedView)
-  const query = queryExecutableBaseView(document, view, files, baseFile)
+  const query = queryExecutableBaseView(document, view, files, baseFile, search.trim().toLocaleLowerCase())
   const columns = view.order.length > 0 ? view.order : ['file.name']
-  const normalizedSearch = search.trim().toLocaleLowerCase()
-  const searchedRows = normalizedSearch === '' || query.unsupported.length > 0
-    ? query.rows
-    : query.rows.filter(row => columns.some(column => notesBaseValueText(row.values[column]).toLocaleLowerCase().includes(normalizedSearch)))
-  const summary = normalizedSearch === '' || query.unsupported.length > 0
-    ? { summaries: query.summaries, unsupported: [] as readonly ExecutableBaseUnsupported[] }
-    : summarizeExecutableBaseRows(document, view, searchedRows, baseFile)
-  const unsupported = [...query.unsupported, ...summary.unsupported]
-  const searchedQuery: ExecutableBaseQueryResult = { rows: searchedRows, summaries: summary.summaries, unsupported }
   return {
     columns: Object.freeze(columns.map(key => Object.freeze({ key, label: document.properties[key] ?? (key === 'file.name' ? 'File Name' : key) }))),
     kind: viewKind(view),
-    rows: Object.freeze(modelRows(document, view, searchedQuery).map(row => Object.freeze(row))),
+    rows: Object.freeze(modelRows(document, view, query).map(row => Object.freeze(row))),
     search,
     status: 'ready',
-    summaries: Object.freeze([...summary.summaries]),
-    unsupported: Object.freeze(unsupported.map(entry => Object.freeze({ ...entry }))),
+    summaries: query.summaries,
+    unsupported: query.unsupported,
     view,
     views: Object.freeze(document.views.map(candidate => Object.freeze({ kind: viewKind(candidate), name: candidate.name }))),
   }

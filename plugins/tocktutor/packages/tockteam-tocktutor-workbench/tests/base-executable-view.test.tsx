@@ -69,6 +69,17 @@ function ControlledBase(props: {
 }
 
 describe('ExecutableBaseView', () => {
+  it('distinguishes loading and failed note hydration from an empty view', () => {
+    const onRetry = vi.fn()
+    const view = render(<ExecutableBaseView source={source} files={[]} loadStatus="loading" onRetry={onRetry} />)
+    expect(screen.getByRole('status').textContent).toContain('Loading Base notes')
+    expect(screen.queryByText('No notes match this view.')).toBeNull()
+    view.rerender(<ExecutableBaseView source={source} files={[]} loadStatus="error" onRetry={onRetry} />)
+    expect(screen.getByRole('alert').textContent).toContain('Base notes could not be loaded')
+    expect(screen.queryByText('No notes match this view.')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(onRetry).toHaveBeenCalledTimes(1)
+  })
   it('opens the full-width selected row into a saved Configure View form', async () => {
     function EditableBase() {
       const [baseSource, setBaseSource] = useState(source)
@@ -415,6 +426,18 @@ describe('ExecutableBaseView', () => {
       value: 'review',
     })
     expect(screen.queryByRole('textbox', { name: /formula/u })).toBeNull()
+  })
+
+  it('restores a rejected numeric edit and explains why it was not saved', () => {
+    const onEdit = vi.fn()
+    render(<ExecutableBaseView source={source.replace('note.status, formula.doubled', 'note.status, note.score, formula.doubled')} files={files} onEdit={onEdit} />)
+    const input = screen.getByRole('spinbutton', { name: 'Edit note.score for Beta.md' }) as HTMLInputElement
+    fireEvent.change(input, { target: { value: '' } })
+    fireEvent.blur(input)
+    expect(input.value).toBe('4')
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+    expect(screen.getByRole('alert').textContent).toContain('valid number')
+    expect(onEdit).not.toHaveBeenCalled()
   })
 
   it('restores an edited cell after a failed write and permits a successful retry', async () => {

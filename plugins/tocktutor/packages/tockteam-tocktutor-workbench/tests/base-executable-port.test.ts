@@ -117,6 +117,22 @@ test('parses and executes the bounded filter, sort, limit, formula, summary, and
   assert.deepEqual(model.summaries.map(summary => summary.value), [2, 2])
 })
 
+test('search keeps cross-file formula lookup while summarizing only visible rows', () => {
+  const parsed = parseExecutableBase(`formulas:\n  related: 'file("B.md").size'\nviews:\n  - type: table\n    name: Notes\n    order: [file.name, formula.related]\n    summaries: [sum(formula.related)]\n`)
+  assert.equal(parsed.status, 'ready')
+  if (parsed.status !== 'ready') return
+  const inputs = [
+    { path: 'A.md', revision: revision('a'), source: '# A' },
+    { path: 'B.md', revision: revision('b'), source: '# B' },
+  ]
+  const model = createBaseViewModel(parsed, inputs, 'Notes', 'A')
+  assert.equal(model.status, 'ready')
+  if (model.status !== 'ready') return
+  assert.deepEqual(model.rows.map(row => row.path), ['A.md'])
+  assert.deepEqual(model.unsupported, [])
+  assert.deepEqual(model.summaries.map(summary => summary.value), [3])
+})
+
 test('hydrates .markdown files and exposes their basename to Base formulas', () => {
   const parsed = parseExecutableBase(`views:\n  - type: table\n    name: Notes\n    order: [file.name, note.status]\n`)
   assert.equal(parsed.status, 'ready')
@@ -156,6 +172,20 @@ test('preserves quotes inside Obsidian Base filter statements', () => {
   const query = queryExecutableBaseView(parsed, parsed.views[0]!, files)
   assert.deepEqual(query.unsupported, [])
   assert.deepEqual(query.rows.map(row => row.file.path), ['Alpha.md', 'Beta.md', 'Gamma.md'])
+})
+
+test('preserves literal quotes and YAML escapes in Base filters', () => {
+  const parsed = parseExecutableBase(`filters:\n  and:\n    - '"a" == "a"'\n    - 'note.title == "O''Brien"'\nviews:\n  - type: table\n    name: Filtered\n`)
+  assert.equal(parsed.status, 'ready')
+  if (parsed.status !== 'ready') return
+  assert.deepEqual(parsed.filters, [{ kind: 'and', children: [
+    { kind: 'statement', statement: '"a" == "a"' },
+    { kind: 'statement', statement: 'note.title == "O\'Brien"' },
+  ] }])
+  const file = { path: 'A.md', revision: revision('a'), source: '---\ntitle: O\'Brien\n---\n# A\n' }
+  const query = queryExecutableBaseView(parsed, parsed.views[0]!, [file])
+  assert.deepEqual(query.unsupported, [])
+  assert.deepEqual(query.rows.map(row => row.file.path), ['A.md'])
 })
 
 test('accepts Obsidian sort property entries and applies their direction', () => {
@@ -273,5 +303,26 @@ test('fails closed for unsupported filters, ambiguous definitions, and invalid h
       source: '',
     })))
     assert.deepEqual(excessive.unsupported.map(entry => entry.kind), ['input'])
+  }
+})
+
+test('rejects invalid Base number conversions without crashing rows', () => {
+  const parsed = parseExecutableBase(`formulas:\n  converted: 'number(file.properties)'\nviews:\n  - type: table\n    name: Table\n    order: [file.name, formula.converted]\n`)
+  assert.equal(parsed.status, 'ready')
+  if (parsed.status !== 'ready') return
+  const model = createBaseViewModel(parsed, [{ path: 'A.md', revision: revision('a'), source: '# A\n' }])
+  assert.equal(model.status, 'ready')
+  if (model.status === 'ready') assert.deepEqual(model.unsupported, [{ expression: 'formula.converted', kind: 'formula' }])
+})
+
+test('refuses nonnumeric Base summary objects without throwing', () => {
+  const file = { path: 'A.md', revision: revision('a'), source: '# A\n' }
+  for (const expression of ['sum(file.properties)', 'range(file.properties)']) {
+    const parsed = parseExecutableBase(`views:\n  - type: table\n    name: Table\n    summaries: [${expression}]\n`)
+    assert.equal(parsed.status, 'ready')
+    if (parsed.status !== 'ready') continue
+    const model = createBaseViewModel(parsed, [file])
+    assert.equal(model.status, 'ready')
+    if (model.status === 'ready') assert.deepEqual(model.unsupported, [{ expression, kind: 'summary' }])
   }
 })

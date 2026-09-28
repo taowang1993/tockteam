@@ -220,30 +220,13 @@ function summariesForRows(
   return { results, unsupported }
 }
 
-/** Recompute configured summaries over an already-visible row set. */
-export function summarizeExecutableBaseRows(
-  document: ExecutableBaseDocument,
-  view: ExecutableBaseViewDefinition,
-  rows: readonly ExecutableBaseRow[],
-  baseFile?: NotesBaseFormulaContext['thisFile'],
-): { summaries: readonly ExecutableBaseSummaryResult[]; unsupported: readonly ExecutableBaseUnsupported[] } {
-  const mutable = rows.map(row => ({
-    file: row.file,
-    formulaCache: new Map<string, NotesBaseFormulaResult>(),
-    properties: { ...row.properties },
-    values: { ...row.values },
-  }))
-  const byPath = new Map(mutable.map(row => [row.file.path, row]))
-  const result = summariesForRows(document, view.summaries, mutable, formulaContext(byPath, baseFile))
-  return { summaries: result.results, unsupported: result.unsupported }
-}
-
 /** Execute filters, sorts, limit, displayed formulas, and summaries for one bounded Base view. */
 export function queryExecutableBaseView(
   document: ExecutableBaseDocument,
   view: ExecutableBaseViewDefinition,
   files: readonly BaseHydratedFile[],
   baseFile?: NotesBaseFormulaContext['thisFile'],
+  search = '',
 ): ExecutableBaseQueryResult {
   const inputError = validateFiles(files)
   if (inputError !== null) return { rows: [], summaries: [], unsupported: [{ expression: inputError, kind: 'input' }] }
@@ -326,8 +309,13 @@ export function queryExecutableBaseView(
   }
   if (unsupported.length > 0) return { rows: [], summaries: [], unsupported }
 
-  const summary = summariesForRows(document, view.summaries, rows, context)
+  let summary = summariesForRows(document, view.summaries, rows, context)
   unsupported.push(...summary.unsupported)
+  if (search !== '' && unsupported.length === 0) {
+    rows = rows.filter(row => columns.some(column => notesBaseValueText(row.values[column]).toLocaleLowerCase().includes(search)))
+    summary = summariesForRows(document, view.summaries, rows, context)
+    unsupported.push(...summary.unsupported)
+  }
   return {
     rows: Object.freeze(rows.map(row => Object.freeze({
       file: Object.freeze({ ...row.file }),

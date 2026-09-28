@@ -70,7 +70,7 @@ import { executableBasePropertyIdentity, type ExecutableBaseFrontmatterEditReque
 import { parseExecutableBase } from './base-parser.ts'
 import { newBaseNotePath } from './base-note.ts'
 import { BaseNewNoteDialog, type BaseNewNoteRequest } from './base-new-note-dialog.tsx'
-import type { BaseHydratedFile } from './base-query.ts'
+import { MAX_EXECUTABLE_BASE_FILES, MAX_EXECUTABLE_BASE_FILE_BYTES, MAX_EXECUTABLE_BASE_TOTAL_BYTES, type BaseHydratedFile } from './base-query.ts'
 import { CanvasBoard } from './canvas-board.tsx'
 import type { CanvasChange } from './canvas-change.ts'
 import {
@@ -327,6 +327,7 @@ export interface WorkbenchRouteSnapshot {
   editorReset?: number
   attachmentPreview?: AttachmentPreviewResult | null
   baseFiles?: readonly BaseHydratedFile[]
+  baseStatus?: 'loading' | 'ready' | 'error'
   bookmarks?: readonly TockTutorBookmark[]
   canGoBack?: boolean
   canGoForward?: boolean
@@ -721,6 +722,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
   return Object.freeze({
     attachmentPreview: null,
     baseFiles: Object.freeze([]),
+    baseStatus: 'ready',
     bookmarks: Object.freeze([]),
     canGoBack: false,
     canGoForward: false,
@@ -787,7 +789,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
 }
 
 /** Bounded route state machine shared by the React contribution and focused tests. */
-const DOCUMENT_FIELDS = ['source', 'revision', 'saveStatus', 'documentKind', 'documentUnavailable', 'draftRecovered', 'embeds', 'links', 'linksLoading', 'outline', 'baseFiles', 'message'] as const
+const DOCUMENT_FIELDS = ['source', 'revision', 'saveStatus', 'documentKind', 'documentUnavailable', 'draftRecovered', 'embeds', 'links', 'linksLoading', 'outline', 'baseFiles', 'baseStatus', 'message'] as const
 const VIEW_FIELDS = ['mode', 'selectionStart', 'selectionEnd', 'selectionRequest', 'editorReset', 'localEditRevision'] as const
 interface RouteDocument {
   key: string
@@ -802,6 +804,7 @@ interface RouteDocument {
   relationshipsAbort?: AbortController | undefined
   embedsAbort?: AbortController | undefined
   baseAbort?: AbortController | undefined
+  baseEdits: Map<Promise<boolean>, AbortController>
   saving: Promise<boolean> | null
   saveAbort: AbortController | null
   draftTimer: ReturnType<typeof setTimeout> | null
@@ -1849,7 +1852,7 @@ export class WorkbenchRouteController {
       const key = this.documentKey(vault, path)
       let document = this.documents.get(key)
       if (!document) {
-        document = { key, vault, path, state: {}, epoch: 0, saving: null, saveAbort: null, draftTimer: null, draftFlight: null }
+        document = { key, vault, path, state: {}, epoch: 0, baseEdits: new Map(), saving: null, saveAbort: null, draftTimer: null, draftFlight: null }
         this.documents.set(key, document)
       }
       const state = { ...document.state }
@@ -2185,7 +2188,7 @@ export class WorkbenchRouteController {
       const referenced = sameVault(this.shellSession.vault, document.vault) && this.shellSession.groups.some(group => group.linkedView?.path === document.path || group.tabs.some(tab => tab.path === document.path))
       if (!referenced && !(this.recoveryTarget?.path === document.path && sameVault(this.recoveryTarget.vault, document.vault)) && (document.state.saveStatus === 'saved' || document.durableEpoch === document.epoch)
         && !this.documentLoads.has(key) && !this.documentSelections.has(key)
-        && !document.saving && !document.draftFlight && document.draftTimer === null) {
+        && !document.saving && document.baseEdits.size === 0 && !document.draftFlight && document.draftTimer === null) {
         document.relationshipsAbort?.abort()
         document.embedsAbort?.abort()
         document.baseAbort?.abort()
@@ -2277,6 +2280,7 @@ export class WorkbenchRouteController {
     this.embedTargets = Object.freeze([])
     this.update({
       baseFiles: Object.freeze([]),
+      baseStatus: 'ready',
       documentKind: null,
       draftRecovered: false,
       embeds: Object.freeze([]),
@@ -2625,7 +2629,7 @@ export class WorkbenchRouteController {
           } catch { if (!current()) return undefined }
         }
         if (!current()) return undefined
-        const document: RouteDocument = previous ?? { key, vault, path, state: {}, epoch: 0, saving: null, saveAbort: null, draftTimer: null, draftFlight: null }
+        const document: RouteDocument = previous ?? { key, vault, path, state: {}, epoch: 0, baseEdits: new Map(), saving: null, saveAbort: null, draftTimer: null, draftFlight: null }
         document.relationshipsAbort?.abort()
         document.embedsAbort?.abort()
         document.baseAbort?.abort()
@@ -2633,7 +2637,7 @@ export class WorkbenchRouteController {
         if (document.state.source !== content || document.state.revision !== opened.revision) document.epoch += 1
         const recovered = content !== opened.content
         if (recovered) document.durableEpoch = document.epoch
-        document.state = { source: content, documentUnavailable: false, revision: opened.revision, documentKind: documentKind(path), draftRecovered: recovered, saveStatus: recovered ? 'unsaved' : 'saved', embeds: [], links: null, outline: null, baseFiles: [], message: recovered ? `${path} opened with its recovered draft.` : `${path} opened.` }
+        document.state = { source: content, documentUnavailable: false, revision: opened.revision, documentKind: documentKind(path), draftRecovered: recovered, saveStatus: recovered ? 'unsaved' : 'saved', embeds: [], links: null, outline: null, baseFiles: [], baseStatus: 'loading', message: recovered ? `${path} opened with its recovered draft.` : `${path} opened.` }
         document.hydratedEpoch = undefined
         this.documents.set(key, document)
         if (this.activeDocument() === document) this.update(document.state)
@@ -2678,6 +2682,16 @@ export class WorkbenchRouteController {
       this.linkedLoads.set(pane.id, { abort: new AbortController(), lifetime: this.paneLifetimeFor(pane.id), state: { linkedLoading: false, linkedError: 'This note is unavailable. Any local draft has been retained.', graph: null, graphLayout: [] } })
     }
     this.update({})
+  }
+
+  private refreshBases(vault: VaultReference): void {
+    for (const document of this.documents.values()) {
+      if (!sameVault(document.vault, vault) || document.state.documentKind !== 'base' || document.state.documentUnavailable) continue
+      document.baseAbort?.abort()
+      document.hydratedEpoch = undefined
+      document.hydration = undefined
+      void this.hydrateDocument(document)
+    }
   }
 
   private refreshRelationships(vault: VaultReference): void {
@@ -2855,6 +2869,7 @@ export class WorkbenchRouteController {
       })
       if (!background && this.snapshot.searchOpen && searchQuery !== '') this.scheduleSearch()
       if (!background) this.refreshRelationships(vault)
+      this.refreshBases(vault)
       for (const pane of this.snapshot.panes) {
         if (!pane.linkedView || !pane.activePath) continue
         // The move is committed, but its response still owns path/tab reconciliation.
@@ -4023,23 +4038,35 @@ export class WorkbenchRouteController {
     document.baseAbort?.abort()
     const abort = new AbortController()
     document.baseAbort = abort
-    const entries = this.snapshot.entries.filter((entry): entry is Extract<VaultTreeEntry, { kind: 'document' }> => entry.kind === 'document' && /\.(?:markdown|md)$/iu.test(entry.path)).slice(0, 2_000)
+    this.publishDocument(document, { baseStatus: 'loading' })
+    const entries = this.snapshot.entries.filter((entry): entry is Extract<VaultTreeEntry, { kind: 'document' }> => entry.kind === 'document' && /\.(?:markdown|md)$/iu.test(entry.path))
     const files: BaseHydratedFile[] = []
     try {
+      if (!this.treeComplete || entries.length > MAX_EXECUTABLE_BASE_FILES) throw new Error('The Base note list is incomplete.')
+      let estimatedBytes = 0
+      for (const entry of entries) {
+        estimatedBytes += entry.size
+        if (entry.size > MAX_EXECUTABLE_BASE_FILE_BYTES || estimatedBytes > MAX_EXECUTABLE_BASE_TOTAL_BYTES) throw new Error('The Base notes exceed the hydration limit.')
+      }
+      let actualBytes = 0
       for (let index = 0; index < entries.length; index += 8) {
         const batch = entries.slice(index, index + 8)
         const opened = await Promise.all(batch.map(entry => this.remote.tocktutorWorkbench.openDocument(entry.path, vault, abort.signal).then(remoteValue)))
         if (!this.documentCurrent(document, epoch) || document.state.revision !== revision || abort.signal.aborted) return false
         for (let offset = 0; offset < opened.length; offset += 1) {
-          const document = opened[offset]!
+          const openedDocument = opened[offset]!
           const entry = batch[offset]!
-          if (document.generation !== vault.generation || document.path !== entry.path || !boundedSource(document.content)) return false
-          files.push({ createdAt: entry.createdAt, modifiedAt: entry.modifiedAt, path: entry.path, revision: document.revision, sizeBytes: entry.size, source: document.content })
+          if (openedDocument.generation !== vault.generation || openedDocument.path !== entry.path || !boundedSource(openedDocument.content)) throw new Error('A Base note changed while loading.')
+          const bytes = new TextEncoder().encode(openedDocument.content).byteLength
+          actualBytes += bytes
+          if (bytes > MAX_EXECUTABLE_BASE_FILE_BYTES || actualBytes > MAX_EXECUTABLE_BASE_TOTAL_BYTES) throw new Error('The Base notes exceed the hydration limit.')
+          files.push({ createdAt: entry.createdAt, modifiedAt: entry.modifiedAt, path: entry.path, revision: openedDocument.revision, sizeBytes: entry.size, source: openedDocument.content })
         }
       }
-      this.publishDocument(document, { baseFiles: Object.freeze(files.map(file => Object.freeze({ ...file }))) })
+      this.publishDocument(document, { baseFiles: Object.freeze(files.map(file => Object.freeze({ ...file }))), baseStatus: 'ready' })
       return true
     } catch {
+      if (this.documentCurrent(document, epoch) && document.state.revision === revision && !abort.signal.aborted) this.publishDocument(document, { baseFiles: Object.freeze([]), baseStatus: 'error' })
       return false
     } finally { if (document.baseAbort === abort) document.baseAbort = undefined }
   }
@@ -4053,24 +4080,34 @@ export class WorkbenchRouteController {
     return await this.save()
   }
 
-  async applyBaseEdit(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean> {
+  applyBaseEdit(request: ExecutableBaseFrontmatterEditRequest, basePath = this.snapshot.path): Promise<boolean> {
     const vault = this.snapshot.vault
-    const basePath = this.snapshot.path
-    if (vault === null || basePath === null || this.snapshot.documentKind !== 'base') return false
-    const operation = this.operation
-    try {
-      const current = remoteValue(await this.remote.tocktutorWorkbench.openDocument(request.path, vault))
-      if (current.generation !== vault.generation || current.path !== request.path || current.revision !== request.expectedRevision || current.content !== request.previousSource) return false
-      const property = parseFrontmatterProperties(current.content).find(entry => entry.key === request.property)
-      if (property === undefined || executableBasePropertyIdentity(property.key, property.value) !== request.expectedPropertyIdentity) return false
-      const saved = remoteValue(await this.remote.tocktutorWorkbench.saveDocument({ content: request.source, expectedRevision: request.expectedRevision, expectedVault: vault, path: request.path }))
-      if (saved.status !== 'saved' || saved.generation !== vault.generation || saved.path !== request.path) return false
-      if (this.operation !== operation || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== basePath) return true
-      this.update({ baseFiles: Object.freeze((this.snapshot.baseFiles ?? []).map(file => file.path === request.path ? Object.freeze({ ...file, revision: saved.revision, source: request.source }) : file)) })
-      return true
-    } catch {
-      return false
-    }
+    const document = vault && basePath && this.documents.get(this.documentKey(vault, basePath))
+    if (!document || document.state.documentKind !== 'base' || document.state.baseStatus !== 'ready' || !this.documentCurrent(document)
+      || !document.state.baseFiles?.some(file => file.path === request.path && file.revision === request.expectedRevision && file.source === request.previousSource)) return Promise.resolve(false)
+    const abort = new AbortController()
+    const flight = (async (): Promise<boolean> => {
+      try {
+        const current = remoteValue(await this.remote.tocktutorWorkbench.openDocument(request.path, document.vault, abort.signal))
+        if (abort.signal.aborted || !this.documentCurrent(document)
+          || current.generation !== document.vault.generation || current.path !== request.path || current.revision !== request.expectedRevision || current.content !== request.previousSource) return false
+        const property = parseFrontmatterProperties(current.content).find(entry => entry.key === request.property)
+        if (property === undefined || executableBasePropertyIdentity(property.key, property.value) !== request.expectedPropertyIdentity) return false
+        const saved = remoteValue(await this.remote.tocktutorWorkbench.saveDocument({ content: request.source, expectedRevision: request.expectedRevision, expectedVault: document.vault, path: request.path }, abort.signal))
+        if (saved.status !== 'saved' || saved.generation !== document.vault.generation || saved.path !== request.path) return false
+        if (this.documentCurrent(document) && !abort.signal.aborted) {
+          document.baseAbort?.abort()
+          document.hydration = undefined
+          document.hydratedEpoch = document.epoch
+          document.hydratedRevision = document.state.revision
+          this.publishDocument(document, { baseFiles: Object.freeze((document.state.baseFiles ?? []).map(file => file.path === request.path ? Object.freeze({ ...file, revision: saved.revision, source: request.source }) : file)), baseStatus: 'ready' })
+        }
+        return true
+      } catch { return false }
+    })()
+    document.baseEdits.set(flight, abort)
+    void flight.finally(() => { document.baseEdits.delete(flight); this.pruneDocuments() }).catch(() => undefined)
+    return flight
   }
 
   async attachFiles(files: readonly File[]): Promise<boolean> {
@@ -4427,7 +4464,7 @@ export class WorkbenchRouteController {
 
   dispose(): Promise<void> {
     if (this.disposal !== null) return this.disposal
-    const flush = Promise.all([...this.documents.values()].map(document => document.saving)).then(() => this.flushPendingDraft())
+    const flush = Promise.all([...this.documents.values()].flatMap(document => [document.saving, ...document.baseEdits.keys()])).then(() => this.flushPendingDraft())
     this.settlePendingDispatch('stale')
     if (this.searchTimer !== null) clearTimeout(this.searchTimer)
     this.searchTimer = null
@@ -4446,6 +4483,7 @@ export class WorkbenchRouteController {
       document.relationshipsAbort?.abort()
       document.embedsAbort?.abort()
       document.baseAbort?.abort()
+      for (const abort of document.baseEdits.values()) abort.abort()
       if (document.draftTimer !== null) clearTimeout(document.draftTimer)
       document.draftTimer = null
     }
@@ -4484,8 +4522,9 @@ export interface TockTutorRouteViewProps {
   onNewBase?(folder: string): void
   onBaseSourceChange?(previous: string, next: string): Promise<boolean>
   onBaseNewNote?(request: BaseNewNoteRequest): Promise<boolean>
+  onBaseRetry?(basePath?: string): void
   onBaseCopy?(request: ExecutableBaseCopyRequest): void
-  onBaseEdit?(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean> | boolean | void
+  onBaseEdit?(request: ExecutableBaseFrontmatterEditRequest, basePath?: string): Promise<boolean> | boolean | void
   onBaseExport?(request: ExecutableBaseExportRequest): void
   onCancelDispatch?(): void
   onCancelOrganization?(): void
@@ -5547,10 +5586,15 @@ function boundPaneProps(props: TockTutorRouteViewProps, id: string): TockTutorRo
     const current = controller.getSnapshot()
     return controller.paneLifetimeFor(id) === lifetime && current.focusedPaneId === id && current.path === snapshot.path && snapshot.vault !== null && sameVault(current.vault, snapshot.vault)
   }
-  for (const name of ['onMode', 'onSelectionChange', 'onSetProperty', 'onToggleTask', 'onRenameTitle', 'onMoveNote', 'onPrepareNoteMerge', 'onAddBookmark', 'onEditBookmark', 'onRemoveBookmark', 'onRevealFile', 'onAttachFiles', 'onUploadImage', 'onCanvasChange', 'onBaseEdit', 'onOpenInternalLink', 'onTrashCurrent', 'onLoadRelationships', 'onOpenRecovery'] as const) {
+  for (const name of ['onMode', 'onSelectionChange', 'onSetProperty', 'onToggleTask', 'onRenameTitle', 'onMoveNote', 'onPrepareNoteMerge', 'onAddBookmark', 'onEditBookmark', 'onRemoveBookmark', 'onRevealFile', 'onAttachFiles', 'onUploadImage', 'onCanvasChange', 'onOpenInternalLink', 'onTrashCurrent', 'onLoadRelationships', 'onOpenRecovery'] as const) {
     const callback = props[name]
     if (callback) Object.assign(bound, { [name]: (...args: never[]) => owns() ? (callback as (...args: never[]) => unknown)(...args) : false })
   }
+  const ownsBase = (): boolean => controller.paneLifetimeFor(id) === lifetime && snapshot.path !== null
+    && snapshot.documentKind === 'base' && controller.getPaneSnapshot(id).path === snapshot.path
+    && snapshot.vault !== null && sameVault(controller.getSnapshot().vault, snapshot.vault)
+  if (props.onBaseEdit) bound.onBaseEdit = request => ownsBase() ? props.onBaseEdit!(request, snapshot.path!) : false
+  if (props.onBaseRetry) bound.onBaseRetry = () => { if (ownsBase()) props.onBaseRetry!(snapshot.path!) }
   const navigateHistory = (direction: 'goBack' | 'goForward'): void => {
     void controller.focusPane(id, undefined, () => controller.paneLifetimeFor(id) === lifetime).then(focused => {
       if (focused && controller.paneLifetimeFor(id) === lifetime) void controller[direction]()
@@ -6277,6 +6321,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               <ExecutableBaseView
                 activeView={baseView}
                 files={snapshot.baseFiles ?? []}
+                loadStatus={snapshot.baseStatus}
+                onRetry={props.onBaseRetry}
                 onActiveViewChange={setBaseView}
                 {...(props.onBaseSourceChange === undefined ? {} : { onSourceChange: props.onBaseSourceChange })}
                 {...(props.onBaseNewNote === undefined ? {} : { onNewNote: () => setBaseNoteOpen(true) })}
@@ -6754,9 +6800,10 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onAddPane={() => { void controller.addPane() }}
         onBack={() => { void controller.goBack() }}
         onBaseCopy={request => { void globalThis.navigator?.clipboard?.writeText(request.text) }}
-        onBaseEdit={request => controller.applyBaseEdit(request)}
+        onBaseEdit={(request, basePath) => controller.applyBaseEdit(request, basePath)}
         onBaseSourceChange={(previous, next) => controller.updateBaseSource(previous, next)}
         onBaseNewNote={request => controller.createBaseNote(request)}
+        onBaseRetry={basePath => { if (basePath) void controller.hydrateBaseRows(basePath) }}
         onBaseExport={request => {
           const url = URL.createObjectURL(new Blob([request.text], { type: 'text/csv;charset=utf-8' }))
           const anchor = document.createElement('a')

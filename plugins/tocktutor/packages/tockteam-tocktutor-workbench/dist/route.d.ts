@@ -7,7 +7,7 @@ import type { WorkbenchQuickAnswerState, WorkbenchSearchIntelligenceRemote, Work
 import { type ExecutableBaseCopyRequest, type ExecutableBaseExportRequest } from './base-executable-view.tsx';
 import { type ExecutableBaseFrontmatterEditRequest } from './base-edit.ts';
 import { type BaseNewNoteRequest } from './base-new-note-dialog.tsx';
-import type { BaseHydratedFile } from './base-query.ts';
+import { type BaseHydratedFile } from './base-query.ts';
 import type { CanvasChange } from './canvas-change.ts';
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, TOCKTUTOR_VAULT_ACTIONS_SLOT, type TockTutorNativeActionsDispatchEvent, type TockTutorNativeActionsDispatchResult, type TockTutorNativeNoteActions, type TockTutorVaultActionsOwnerProps } from './native-actions.ts';
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from './review-panel.ts';
@@ -117,6 +117,7 @@ export interface WorkbenchRouteSnapshot {
     editorReset?: number;
     attachmentPreview?: AttachmentPreviewResult | null;
     baseFiles?: readonly BaseHydratedFile[];
+    baseStatus?: 'loading' | 'ready' | 'error';
     bookmarks?: readonly TockTutorBookmark[];
     canGoBack?: boolean;
     canGoForward?: boolean;
@@ -211,6 +212,7 @@ interface RouteDocument {
     relationshipsAbort?: AbortController | undefined;
     embedsAbort?: AbortController | undefined;
     baseAbort?: AbortController | undefined;
+    baseEdits: Map<Promise<boolean>, AbortController>;
     saving: Promise<boolean> | null;
     saveAbort: AbortController | null;
     draftTimer: ReturnType<typeof setTimeout> | null;
@@ -364,6 +366,7 @@ export declare class WorkbenchRouteController {
     reload(): Promise<void>;
     private loadPaneDocument;
     private invalidateLinkedPath;
+    private refreshBases;
     private refreshRelationships;
     private onVaultChange;
     private loadTreePages;
@@ -430,7 +433,7 @@ export declare class WorkbenchRouteController {
     loadEmbeds(document?: RouteDocument | undefined): Promise<boolean>;
     hydrateBaseRows(basePath: string): Promise<boolean>;
     updateBaseSource(expectedSource: string, nextSource: string): Promise<boolean>;
-    applyBaseEdit(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean>;
+    applyBaseEdit(request: ExecutableBaseFrontmatterEditRequest, basePath?: string | null): Promise<boolean>;
     attachFiles(files: readonly File[]): Promise<boolean>;
     uploadImage(file: File): Promise<string>;
     storeActiveAttachment(fileName: string, dataBase64: string): Promise<boolean>;
@@ -473,8 +476,9 @@ export interface TockTutorRouteViewProps {
     onNewBase?(folder: string): void;
     onBaseSourceChange?(previous: string, next: string): Promise<boolean>;
     onBaseNewNote?(request: BaseNewNoteRequest): Promise<boolean>;
+    onBaseRetry?(basePath?: string): void;
     onBaseCopy?(request: ExecutableBaseCopyRequest): void;
-    onBaseEdit?(request: ExecutableBaseFrontmatterEditRequest): Promise<boolean> | boolean | void;
+    onBaseEdit?(request: ExecutableBaseFrontmatterEditRequest, basePath?: string): Promise<boolean> | boolean | void;
     onBaseExport?(request: ExecutableBaseExportRequest): void;
     onCancelDispatch?(): void;
     onCancelOrganization?(): void;

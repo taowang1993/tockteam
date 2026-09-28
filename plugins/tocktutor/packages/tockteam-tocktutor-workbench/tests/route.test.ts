@@ -1937,6 +1937,181 @@ test('Base view changes save only the current revision and reject a stale editor
   controller.dispose()
 })
 
+test('Base hydration reports a failed note read and succeeds after retry', async () => {
+  const remote = new FakeRemote()
+  const original = remote.tocktutorWorkbench.openDocument
+  remote.tocktutorWorkbench.openDocument = (path, vault, signal) => path === 'Second.md'
+    ? Promise.reject(new Error('The note is unreadable.')) : original(path, vault, signal)
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor')
+    assert.equal(await controller.select('Tasks.base'), true)
+    for (let attempt = 0; attempt < 20 && controller.getSnapshot().baseStatus !== 'error'; attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controller.getSnapshot().baseStatus, 'error')
+    assert.deepEqual(controller.getSnapshot().baseFiles, [])
+    remote.tocktutorWorkbench.openDocument = original
+    assert.equal(await controller.hydrateBaseRows('Tasks.base'), true)
+    assert.equal(controller.getSnapshot().baseStatus, 'ready')
+    assert.ok(controller.getSnapshot().baseFiles?.some(file => file.path === 'Second.md'))
+  } finally { await controller.dispose() }
+})
+
+test('Base hydration rejects a total-byte estimate before opening excess notes', async () => {
+  const remote = new FakeRemote()
+  const largeEntries = Array.from({ length: 17 }, (_, index) => ({ createdAt: 1, kind: 'document' as const, modifiedAt: 2, path: `Extra-${index}.md`, revision: firstRevision, size: 1_000_000 }))
+  remote.treePageOverride = async request => {
+    const page = tree(request.expectedVault)
+    return success({ ...page, entries: [...page.entries, ...largeEntries] })
+  }
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor')
+    await controller.select('Tasks.base')
+    for (let attempt = 0; attempt < 20 && controller.getSnapshot().baseStatus !== 'error'; attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controller.getSnapshot().baseStatus, 'error')
+    assert.deepEqual(remote.calls.filter(call => call.method === 'openDocument' && largeEntries.some(entry => entry.path === call.parameters[0])), [])
+  } finally { await controller.dispose() }
+})
+
+test('Base hydration stops after actual note bytes exceed the total limit even when sizes are understated', async () => {
+  const remote = new FakeRemote()
+  const largeEntries = Array.from({ length: 25 }, (_, index) => ({ createdAt: 1, kind: 'document' as const, modifiedAt: 2, path: `Large-${index}.md`, revision: firstRevision, size: 0 }))
+  remote.treePageOverride = async request => {
+    const page = tree(request.expectedVault)
+    return success({ ...page, entries: [...page.entries, ...largeEntries] })
+  }
+  const original = remote.tocktutorWorkbench.openDocument
+  const content = 'x'.repeat(1_000_000)
+  remote.tocktutorWorkbench.openDocument = (path, vault, signal) => largeEntries.some(entry => entry.path === path)
+    ? (remote.calls.push({ method: 'openDocument', parameters: [path, vault, signal] }), success({ content, digest: `sha256:${'e'.repeat(64)}`, generation: vault.generation, path, revision: firstRevision }))
+    : original(path, vault, signal)
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor')
+    await controller.select('Tasks.base')
+    for (let attempt = 0; attempt < 30 && controller.getSnapshot().baseStatus !== 'error'; attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controller.getSnapshot().baseStatus, 'error')
+    const reads = remote.calls.filter(call => call.method === 'openDocument' && largeEntries.some(entry => entry.path === call.parameters[0]))
+    assert.ok(reads.length < largeEntries.length, 'further batches must not load after the byte limit')
+  } finally { await controller.dispose() }
+})
+
+test('vault entry changes rehydrate an already loaded Base without reopening it', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor')
+    await controller.select('Tasks.base')
+    for (let attempt = 0; attempt < 20 && controller.getSnapshot().baseStatus !== 'ready'; attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    const original = remote.tocktutorWorkbench.openDocument
+    remote.tocktutorWorkbench.openDocument = (path, vault, signal) => path === 'Second.md'
+      ? success({ content: '---\nstatus: updated\n---\n# Second\n', digest: `sha256:${'d'.repeat(64)}`, generation: vault.generation, path, revision: secondRevision })
+      : original(path, vault, signal)
+    remote.emit({ kind: 'entry', action: 'updated', path: 'Second.md', vault: firstVault })
+    for (let attempt = 0; attempt < 30 && !controller.getSnapshot().baseFiles?.some(file => file.path === 'Second.md' && file.source.includes('status: updated')); attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    assert.ok(controller.getSnapshot().baseFiles?.some(file => file.path === 'Second.md' && file.source.includes('status: updated')))
+  } finally { await controller.dispose() }
+})
+
+test('a Base cell save is not replaced by an older note hydration result', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  const saveEntered = deferred<void>()
+  const saveReleased = deferred<void>()
+  const readEntered = deferred<void>()
+  const readReleased = deferred<void>()
+  try {
+    await controller.syncLocation('/tocktutor')
+    await controller.select('Tasks.base')
+    for (let attempt = 0; attempt < 20 && controller.getSnapshot().baseStatus !== 'ready'; attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    const row = controller.getSnapshot().baseFiles?.find(file => file.path === 'Second.md')
+    assert.ok(row)
+    const edit = createExecutableBaseFrontmatterEdit(row, 'note.status', 'updated')
+    assert.ok(edit)
+    remote.saveOverride = async () => {
+      saveEntered.resolve()
+      await saveReleased.promise
+      return success({ digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path: edit.path, revision: secondRevision, snapshotId: '2026-09-28T00-00-00-000Z-deadbeef', status: 'saved' as const })
+    }
+    const editing = controller.applyBaseEdit(edit)
+    await saveEntered.promise
+    const original = remote.tocktutorWorkbench.openDocument
+    let held = false
+    remote.tocktutorWorkbench.openDocument = async (path, vault, signal) => {
+      if (path === 'Second.md' && !held) { held = true; readEntered.resolve(); await readReleased.promise }
+      return original(path, vault, signal)
+    }
+    remote.emit({ kind: 'tree', action: 'changed', vault: firstVault })
+    await readEntered.promise
+    saveReleased.resolve()
+    assert.equal(await editing, true)
+    readReleased.resolve()
+    for (let attempt = 0; attempt < 10; attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    assert.ok(controller.getSnapshot().baseFiles?.some(file => file.path === 'Second.md' && file.source.includes('status: updated')))
+  } finally { saveReleased.resolve(); readReleased.resolve(); await controller.dispose() }
+})
+
+test('disposing during a Base cell read blocks the late write and waits for the edit', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  const pendingRead = deferred<void>()
+  const readEntered = deferred<void>()
+  try {
+    await controller.syncLocation('/tocktutor')
+    await controller.select('Tasks.base')
+    for (let attempt = 0; attempt < 20 && controller.getSnapshot().baseStatus !== 'ready'; attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    const row = controller.getSnapshot().baseFiles?.find(file => file.path === 'Second.md')
+    assert.ok(row)
+    const edit = createExecutableBaseFrontmatterEdit(row, 'note.status', 'updated')
+    assert.ok(edit)
+    const original = remote.tocktutorWorkbench.openDocument
+    remote.tocktutorWorkbench.openDocument = async (path, vault, signal) => {
+      if (path === 'Second.md') { readEntered.resolve(); await pendingRead.promise }
+      return original(path, vault, signal)
+    }
+    const editing = controller.applyBaseEdit(edit)
+    await readEntered.promise
+    let disposed = false
+    const disposal = controller.dispose().then(() => { disposed = true })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(disposed, false, 'disposal must wait for a pending Base edit')
+    pendingRead.resolve()
+    assert.equal(await editing, false)
+    await disposal
+    assert.equal(remote.calls.filter(call => call.method === 'saveDocument').length, 0)
+  } finally { pendingRead.resolve(); await controller.dispose() }
+})
+
+test('disposing waits for an already-started Base cell save to settle', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  const saveEntered = deferred<void>()
+  const saveReleased = deferred<void>()
+  try {
+    await controller.syncLocation('/tocktutor')
+    await controller.select('Tasks.base')
+    for (let attempt = 0; attempt < 20 && controller.getSnapshot().baseStatus !== 'ready'; attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    const row = controller.getSnapshot().baseFiles?.find(file => file.path === 'Second.md')
+    assert.ok(row)
+    const edit = createExecutableBaseFrontmatterEdit(row, 'note.status', 'updated')
+    assert.ok(edit)
+    remote.saveOverride = async () => {
+      saveEntered.resolve()
+      await saveReleased.promise
+      return success({ digest: `sha256:${'e'.repeat(64)}`, generation: firstVault.generation, path: edit.path, revision: secondRevision, snapshotId: '2026-09-28T00-00-00-000Z-deadbeef', status: 'saved' as const })
+    }
+    const editing = controller.applyBaseEdit(edit)
+    await saveEntered.promise
+    let disposed = false
+    const disposal = controller.dispose().then(() => { disposed = true })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(disposed, false)
+    saveReleased.resolve()
+    assert.equal(await editing, true)
+    await disposal
+  } finally { saveReleased.resolve(); await controller.dispose() }
+})
+
 test('Canvas board and executable Base preserve bounded source identities', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})

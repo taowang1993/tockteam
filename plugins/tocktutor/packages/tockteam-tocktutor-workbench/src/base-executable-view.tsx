@@ -49,6 +49,8 @@ export interface ExecutableBaseViewProps {
   activeView?: string | null
   baseFile?: { createdAt?: number; modifiedAt?: number; relativePath: string; sizeBytes?: number }
   files: readonly BaseHydratedFile[]
+  loadStatus?: 'loading' | 'ready' | 'error' | undefined
+  onRetry?: (() => void) | undefined
   onActiveViewChange?: (view: string) => void
   onCopy?: (request: ExecutableBaseCopyRequest) => void
   onEdit?: (request: ExecutableBaseFrontmatterEditRequest) => ExecutableBaseEditResult
@@ -174,7 +176,11 @@ function EditableCell(props: {
   const onEdit = props.onEdit
   const emit = (rawValue: string): void => {
     const request = createExecutableBaseFrontmatterEdit({ path: row.path, revision: row.revision, source: row.source }, cell.column, rawValue)
-    if (request === null) return
+    if (request === null) {
+      setValue(authorityRef.current.text)
+      setError(cell.inputType === 'number' ? 'Enter a valid number before saving.' : 'The Base cell value is invalid.')
+      return
+    }
     const token = tokenRef.current + 1
     tokenRef.current = token
     const requestAuthorityKey = authorityRef.current.key
@@ -406,8 +412,9 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
 
   if (model.status !== 'ready') return <p role="alert">{model.reason}</p>
   const blocked = model.unsupported.length > 0
-  const tsv = blocked ? null : executableBaseViewTsv(model)
-  const csv = blocked ? null : executableBaseViewCsv(model)
+  const available = props.loadStatus === undefined || props.loadStatus === 'ready'
+  const tsv = blocked || !available ? null : executableBaseViewTsv(model)
+  const csv = blocked || !available ? null : executableBaseViewCsv(model)
   const commit = async (next: string | null): Promise<boolean> => {
     if (savingRef.current) return false
     if (next === null || props.onSourceChange === undefined) { setAuthoringError('This Base change is unavailable. Open Base Source to edit it.'); return false }
@@ -527,7 +534,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
           </PopoverContent>
         </Popover>
         <Popover open={resultMenuOpen} onOpenChange={open => { setResultMenuOpen(open); if (open) setLimitValue(model.view.limit === null ? '' : String(model.view.limit)) }}>
-          <PopoverTrigger asChild><Button unstyled type="button" aria-live="polite" className="h-7 cursor-pointer rounded-md border-0 bg-transparent px-1 text-sm tabular-nums text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{resultCount(model.rows.length)}</Button></PopoverTrigger>
+          <PopoverTrigger asChild><Button unstyled type="button" aria-live="polite" disabled={!available} className="h-7 cursor-pointer rounded-md border-0 bg-transparent px-1 text-sm tabular-nums text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{available ? resultCount(model.rows.length) : props.loadStatus === 'loading' ? 'Loading…' : 'Unavailable'}</Button></PopoverTrigger>
           <PopoverContent unstyled align="start" sideOffset={2} className="z-[1002] box-border w-56 rounded-lg border border-border bg-surface-muted p-1 text-foreground shadow-lg outline-none">
             <form className="flex flex-col gap-2 p-1" onSubmit={event => {
               event.preventDefault()
@@ -570,7 +577,11 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
       </header>
       {authoringError && configured === undefined && <p role="alert" className="m-0 text-sm text-destructive">{authoringError}</p>}
       {findOpen && <div id="tocktutor-base-find" role="search" aria-label="Find in Base" className="flex h-9 w-full min-w-0 items-center gap-1 border-b border-border px-1 text-muted-foreground focus-within:border-ring"><Search aria-hidden="true" className="size-4 shrink-0" /><Input unstyled ref={findRef} aria-label="Find in Base" className="box-border h-8 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-foreground outline-none placeholder:text-muted-foreground" maxLength={1_000} placeholder="Find..." type="search" value={model.search} onChange={event => props.onSearchChange?.(model.view.name, event.currentTarget.value)} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); props.onSearchChange?.(model.view.name, ''); setFindOpen(false); searchTriggerRef.current?.focus() } }} /></div>}
-      {blocked ? (
+      {props.loadStatus === 'loading' ? (
+        <p role="status">Loading Base notes…</p>
+      ) : props.loadStatus === 'error' ? (
+        <div role="alert">Base notes could not be loaded. <Button onClick={props.onRetry} type="button" variant="ghost">Retry</Button></div>
+      ) : blocked ? (
         <p role="alert">Unsupported Base expression: {model.unsupported.map(entry => entry.expression).join(', ')}</p>
       ) : model.rows.length === 0 ? (
         <p>{model.search ? 'No notes match this search.' : 'No notes match this view.'}</p>
@@ -579,7 +590,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
       ) : (
         <ReadonlyLayouts model={model} />
       )}
-      <SummaryList model={model} />
+      {available && !blocked && <SummaryList model={model} />}
     </section>
   )
 }

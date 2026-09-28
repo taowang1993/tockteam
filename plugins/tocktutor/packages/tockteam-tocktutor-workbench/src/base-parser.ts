@@ -104,13 +104,6 @@ function boundedList(values: string[]): boolean {
     && values.every(value => value !== '' && value.length <= MAX_BASE_LINE_LENGTH)
 }
 
-function parseFilterLines(lines: string[]): NotesBaseFilterTree {
-  return parseNotesBaseFilterBlock(lines.map(line => {
-    const item = /^(\s*-\s*)(.+)$/u.exec(line)
-    return item === null ? line : `${item[1]}${cleanScalar(item[2] ?? '')}`
-  }))
-}
-
 /** Parse the bounded executable subset of Obsidian Bases without normalizing source bytes. */
 export function parseExecutableBase(source: string): ExecutableBaseParseResult {
   if (new TextEncoder().encode(source).byteLength > MAX_BASE_BYTES) return unsupported('Base document exceeds the byte limit.')
@@ -150,7 +143,7 @@ export function parseExecutableBase(source: string): ExecutableBaseParseResult {
             block.push(lines[next] ?? '')
             next += 1
           }
-          if (block.some(entry => entry.trim() !== '')) filters.push(parseFilterLines(block))
+          if (block.some(entry => entry.trim() !== '')) filters.push(parseNotesBaseFilterBlock(block))
           index = next - 1
         }
       }
@@ -253,7 +246,7 @@ export function parseExecutableBase(source: string): ExecutableBaseParseResult {
             block.push(lines[next] ?? '')
             next += 1
           }
-          if (block.some(entry => entry.trim() !== '')) currentView.filters.push(parseFilterLines(block))
+          if (block.some(entry => entry.trim() !== '')) currentView.filters.push(parseNotesBaseFilterBlock(block))
           index = next - 1
         }
       } else if (currentList !== '') {

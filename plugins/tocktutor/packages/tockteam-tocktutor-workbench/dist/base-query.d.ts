@@ -31,11 +31,6 @@ export interface ExecutableBaseQueryResult {
     summaries: readonly ExecutableBaseSummaryResult[];
     unsupported: readonly ExecutableBaseUnsupported[];
 }
-/** Recompute configured summaries over an already-visible row set. */
-export declare function summarizeExecutableBaseRows(document: ExecutableBaseDocument, view: ExecutableBaseViewDefinition, rows: readonly ExecutableBaseRow[], baseFile?: NotesBaseFormulaContext['thisFile']): {
-    summaries: readonly ExecutableBaseSummaryResult[];
-    unsupported: readonly ExecutableBaseUnsupported[];
-};
 /** Execute filters, sorts, limit, displayed formulas, and summaries for one bounded Base view. */
-export declare function queryExecutableBaseView(document: ExecutableBaseDocument, view: ExecutableBaseViewDefinition, files: readonly BaseHydratedFile[], baseFile?: NotesBaseFormulaContext['thisFile']): ExecutableBaseQueryResult;
+export declare function queryExecutableBaseView(document: ExecutableBaseDocument, view: ExecutableBaseViewDefinition, files: readonly BaseHydratedFile[], baseFile?: NotesBaseFormulaContext['thisFile'], search?: string): ExecutableBaseQueryResult;
 //# sourceMappingURL=base-query.d.ts.map

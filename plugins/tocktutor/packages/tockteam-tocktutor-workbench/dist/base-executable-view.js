@@ -71,8 +71,11 @@ function EditableCell(props) {
     const onEdit = props.onEdit;
     const emit = (rawValue) => {
         const request = createExecutableBaseFrontmatterEdit({ path: row.path, revision: row.revision, source: row.source }, cell.column, rawValue);
-        if (request === null)
+        if (request === null) {
+            setValue(authorityRef.current.text);
+            setError(cell.inputType === 'number' ? 'Enter a valid number before saving.' : 'The Base cell value is invalid.');
             return;
+        }
         const token = tokenRef.current + 1;
         tokenRef.current = token;
         const requestAuthorityKey = authorityRef.current.key;
@@ -270,8 +273,9 @@ export function ExecutableBaseView(props) {
     if (model.status !== 'ready')
         return _jsx("p", { role: "alert", children: model.reason });
     const blocked = model.unsupported.length > 0;
-    const tsv = blocked ? null : executableBaseViewTsv(model);
-    const csv = blocked ? null : executableBaseViewCsv(model);
+    const available = props.loadStatus === undefined || props.loadStatus === 'ready';
+    const tsv = blocked || !available ? null : executableBaseViewTsv(model);
+    const csv = blocked || !available ? null : executableBaseViewCsv(model);
     const commit = async (next) => {
         if (savingRef.current)
             return false;
@@ -337,7 +341,7 @@ export function ExecutableBaseView(props) {
                                                                         setViewQuery('');
                                                                     } }, children: [_jsx(Icon, { "aria-hidden": "true", className: "size-4 shrink-0 text-muted-foreground" }), _jsx("span", { className: "min-w-0 flex-1 truncate", children: view.name }), view.name === model.view.name && _jsx(ChevronRight, { "aria-hidden": "true", className: "size-4 shrink-0 text-muted-foreground" })] }, view.name);
                                                             }) })] })] }), _jsxs(Button, { unstyled: true, type: "button", className: "flex h-9 w-full cursor-pointer items-center gap-2 border-0 border-t border-border bg-transparent px-2 text-sm text-foreground hover:bg-[var(--dsw-alias-interactive-bg-hover)] focus-visible:shadow-[inset_0_-2px_0_var(--dsw-alias-label-secondary)]", onClick: () => { setViewQuery(''); setShowAddView(true); }, children: [_jsx(Plus, { "aria-hidden": "true", className: "size-4" }), "Add View"] })] })) })] }), _jsxs(Popover, { open: resultMenuOpen, onOpenChange: open => { setResultMenuOpen(open); if (open)
-                            setLimitValue(model.view.limit === null ? '' : String(model.view.limit)); }, children: [_jsx(PopoverTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, type: "button", "aria-live": "polite", className: "h-7 cursor-pointer rounded-md border-0 bg-transparent px-1 text-sm tabular-nums text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", children: resultCount(model.rows.length) }) }), _jsxs(PopoverContent, { unstyled: true, align: "start", sideOffset: 2, className: "z-[1002] box-border w-56 rounded-lg border border-border bg-surface-muted p-1 text-foreground shadow-lg outline-none", children: [_jsxs("form", { className: "flex flex-col gap-2 p-1", onSubmit: event => {
+                            setLimitValue(model.view.limit === null ? '' : String(model.view.limit)); }, children: [_jsx(PopoverTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, type: "button", "aria-live": "polite", disabled: !available, className: "h-7 cursor-pointer rounded-md border-0 bg-transparent px-1 text-sm tabular-nums text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", children: available ? resultCount(model.rows.length) : props.loadStatus === 'loading' ? 'Loading…' : 'Unavailable' }) }), _jsxs(PopoverContent, { unstyled: true, align: "start", sideOffset: 2, className: "z-[1002] box-border w-56 rounded-lg border border-border bg-surface-muted p-1 text-foreground shadow-lg outline-none", children: [_jsxs("form", { className: "flex flex-col gap-2 p-1", onSubmit: event => {
                                             event.preventDefault();
                                             if (!/^[1-9]\d{0,3}$/u.test(limitValue) || Number(limitValue) > 2_000)
                                                 return;
@@ -355,6 +359,6 @@ export function ExecutableBaseView(props) {
                             props.onSearchChange?.(model.view.name, '');
                             setFindOpen(false);
                             searchTriggerRef.current?.focus();
-                        } } })] }), blocked ? (_jsxs("p", { role: "alert", children: ["Unsupported Base expression: ", model.unsupported.map(entry => entry.expression).join(', ')] })) : model.rows.length === 0 ? (_jsx("p", { children: model.search ? 'No notes match this search.' : 'No notes match this view.' })) : model.kind === 'table' ? (_jsx(ExecutableTable, { model: model, onCopy: props.onCopy, onEdit: props.onEdit })) : (_jsx(ReadonlyLayouts, { model: model })), _jsx(SummaryList, { model: model })] }));
+                        } } })] }), props.loadStatus === 'loading' ? (_jsx("p", { role: "status", children: "Loading Base notes\u2026" })) : props.loadStatus === 'error' ? (_jsxs("div", { role: "alert", children: ["Base notes could not be loaded. ", _jsx(Button, { onClick: props.onRetry, type: "button", variant: "ghost", children: "Retry" })] })) : blocked ? (_jsxs("p", { role: "alert", children: ["Unsupported Base expression: ", model.unsupported.map(entry => entry.expression).join(', ')] })) : model.rows.length === 0 ? (_jsx("p", { children: model.search ? 'No notes match this search.' : 'No notes match this view.' })) : model.kind === 'table' ? (_jsx(ExecutableTable, { model: model, onCopy: props.onCopy, onEdit: props.onEdit })) : (_jsx(ReadonlyLayouts, { model: model })), available && !blocked && _jsx(SummaryList, { model: model })] }));
 }
 //# sourceMappingURL=base-executable-view.js.map

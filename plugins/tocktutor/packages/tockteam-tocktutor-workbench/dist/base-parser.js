@@ -74,12 +74,6 @@ function boundedList(values) {
     return values.length <= MAX_EXECUTABLE_BASE_LIST_ITEMS
         && values.every(value => value !== '' && value.length <= MAX_BASE_LINE_LENGTH);
 }
-function parseFilterLines(lines) {
-    return parseNotesBaseFilterBlock(lines.map(line => {
-        const item = /^(\s*-\s*)(.+)$/u.exec(line);
-        return item === null ? line : `${item[1]}${cleanScalar(item[2] ?? '')}`;
-    }));
-}
 /** Parse the bounded executable subset of Obsidian Bases without normalizing source bytes. */
 export function parseExecutableBase(source) {
     if (new TextEncoder().encode(source).byteLength > MAX_BASE_BYTES)
@@ -122,7 +116,7 @@ export function parseExecutableBase(source) {
                         next += 1;
                     }
                     if (block.some(entry => entry.trim() !== ''))
-                        filters.push(parseFilterLines(block));
+                        filters.push(parseNotesBaseFilterBlock(block));
                     index = next - 1;
                 }
             }
@@ -239,7 +233,7 @@ export function parseExecutableBase(source) {
                         next += 1;
                     }
                     if (block.some(entry => entry.trim() !== ''))
-                        currentView.filters.push(parseFilterLines(block));
+                        currentView.filters.push(parseNotesBaseFilterBlock(block));
                     index = next - 1;
                 }
             }

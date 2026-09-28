@@ -22,6 +22,7 @@ import { executableBasePropertyIdentity } from "./base-edit.js";
 import { parseExecutableBase } from "./base-parser.js";
 import { newBaseNotePath } from "./base-note.js";
 import { BaseNewNoteDialog } from "./base-new-note-dialog.js";
+import { MAX_EXECUTABLE_BASE_FILES, MAX_EXECUTABLE_BASE_FILE_BYTES, MAX_EXECUTABLE_BASE_TOTAL_BYTES } from "./base-query.js";
 import { CanvasBoard } from "./canvas-board.js";
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, TOCKTUTOR_VAULT_ACTIONS_SLOT, } from "./native-actions.js";
 import { TOCKTUTOR_REVIEW_PANEL_SLOT } from "./review-panel.js";
@@ -357,6 +358,7 @@ function initialSnapshot() {
     return Object.freeze({
         attachmentPreview: null,
         baseFiles: Object.freeze([]),
+        baseStatus: 'ready',
         bookmarks: Object.freeze([]),
         canGoBack: false,
         canGoForward: false,
@@ -422,7 +424,7 @@ function initialSnapshot() {
     });
 }
 /** Bounded route state machine shared by the React contribution and focused tests. */
-const DOCUMENT_FIELDS = ['source', 'revision', 'saveStatus', 'documentKind', 'documentUnavailable', 'draftRecovered', 'embeds', 'links', 'linksLoading', 'outline', 'baseFiles', 'message'];
+const DOCUMENT_FIELDS = ['source', 'revision', 'saveStatus', 'documentKind', 'documentUnavailable', 'draftRecovered', 'embeds', 'links', 'linksLoading', 'outline', 'baseFiles', 'baseStatus', 'message'];
 const VIEW_FIELDS = ['mode', 'selectionStart', 'selectionEnd', 'selectionRequest', 'editorReset', 'localEditRevision'];
 export class WorkbenchRouteController {
     remote;
@@ -1521,7 +1523,7 @@ export class WorkbenchRouteController {
             const key = this.documentKey(vault, path);
             let document = this.documents.get(key);
             if (!document) {
-                document = { key, vault, path, state: {}, epoch: 0, saving: null, saveAbort: null, draftTimer: null, draftFlight: null };
+                document = { key, vault, path, state: {}, epoch: 0, baseEdits: new Map(), saving: null, saveAbort: null, draftTimer: null, draftFlight: null };
                 this.documents.set(key, document);
             }
             const state = { ...document.state };
@@ -1915,7 +1917,7 @@ export class WorkbenchRouteController {
             const referenced = sameVault(this.shellSession.vault, document.vault) && this.shellSession.groups.some(group => group.linkedView?.path === document.path || group.tabs.some(tab => tab.path === document.path));
             if (!referenced && !(this.recoveryTarget?.path === document.path && sameVault(this.recoveryTarget.vault, document.vault)) && (document.state.saveStatus === 'saved' || document.durableEpoch === document.epoch)
                 && !this.documentLoads.has(key) && !this.documentSelections.has(key)
-                && !document.saving && !document.draftFlight && document.draftTimer === null) {
+                && !document.saving && document.baseEdits.size === 0 && !document.draftFlight && document.draftTimer === null) {
                 document.relationshipsAbort?.abort();
                 document.embedsAbort?.abort();
                 document.baseAbort?.abort();
@@ -2004,6 +2006,7 @@ export class WorkbenchRouteController {
         this.embedTargets = Object.freeze([]);
         this.update({
             baseFiles: Object.freeze([]),
+            baseStatus: 'ready',
             documentKind: null,
             draftRecovered: false,
             embeds: Object.freeze([]),
@@ -2363,7 +2366,7 @@ export class WorkbenchRouteController {
                 }
                 if (!current())
                     return undefined;
-                const document = previous ?? { key, vault, path, state: {}, epoch: 0, saving: null, saveAbort: null, draftTimer: null, draftFlight: null };
+                const document = previous ?? { key, vault, path, state: {}, epoch: 0, baseEdits: new Map(), saving: null, saveAbort: null, draftTimer: null, draftFlight: null };
                 document.relationshipsAbort?.abort();
                 document.embedsAbort?.abort();
                 document.baseAbort?.abort();
@@ -2373,7 +2376,7 @@ export class WorkbenchRouteController {
                 const recovered = content !== opened.content;
                 if (recovered)
                     document.durableEpoch = document.epoch;
-                document.state = { source: content, documentUnavailable: false, revision: opened.revision, documentKind: documentKind(path), draftRecovered: recovered, saveStatus: recovered ? 'unsaved' : 'saved', embeds: [], links: null, outline: null, baseFiles: [], message: recovered ? `${path} opened with its recovered draft.` : `${path} opened.` };
+                document.state = { source: content, documentUnavailable: false, revision: opened.revision, documentKind: documentKind(path), draftRecovered: recovered, saveStatus: recovered ? 'unsaved' : 'saved', embeds: [], links: null, outline: null, baseFiles: [], baseStatus: 'loading', message: recovered ? `${path} opened with its recovered draft.` : `${path} opened.` };
                 document.hydratedEpoch = undefined;
                 this.documents.set(key, document);
                 if (this.activeDocument() === document)
@@ -2425,6 +2428,16 @@ export class WorkbenchRouteController {
             this.linkedLoads.set(pane.id, { abort: new AbortController(), lifetime: this.paneLifetimeFor(pane.id), state: { linkedLoading: false, linkedError: 'This note is unavailable. Any local draft has been retained.', graph: null, graphLayout: [] } });
         }
         this.update({});
+    }
+    refreshBases(vault) {
+        for (const document of this.documents.values()) {
+            if (!sameVault(document.vault, vault) || document.state.documentKind !== 'base' || document.state.documentUnavailable)
+                continue;
+            document.baseAbort?.abort();
+            document.hydratedEpoch = undefined;
+            document.hydration = undefined;
+            void this.hydrateDocument(document);
+        }
     }
     refreshRelationships(vault) {
         // Cache validity is vault-wide; live query ownership stays with each represented document.
@@ -2616,6 +2629,7 @@ export class WorkbenchRouteController {
                 this.scheduleSearch();
             if (!background)
                 this.refreshRelationships(vault);
+            this.refreshBases(vault);
             for (const pane of this.snapshot.panes) {
                 if (!pane.linkedView || !pane.activePath)
                     continue;
@@ -3919,26 +3933,42 @@ export class WorkbenchRouteController {
         document.baseAbort?.abort();
         const abort = new AbortController();
         document.baseAbort = abort;
-        const entries = this.snapshot.entries.filter((entry) => entry.kind === 'document' && /\.(?:markdown|md)$/iu.test(entry.path)).slice(0, 2_000);
+        this.publishDocument(document, { baseStatus: 'loading' });
+        const entries = this.snapshot.entries.filter((entry) => entry.kind === 'document' && /\.(?:markdown|md)$/iu.test(entry.path));
         const files = [];
         try {
+            if (!this.treeComplete || entries.length > MAX_EXECUTABLE_BASE_FILES)
+                throw new Error('The Base note list is incomplete.');
+            let estimatedBytes = 0;
+            for (const entry of entries) {
+                estimatedBytes += entry.size;
+                if (entry.size > MAX_EXECUTABLE_BASE_FILE_BYTES || estimatedBytes > MAX_EXECUTABLE_BASE_TOTAL_BYTES)
+                    throw new Error('The Base notes exceed the hydration limit.');
+            }
+            let actualBytes = 0;
             for (let index = 0; index < entries.length; index += 8) {
                 const batch = entries.slice(index, index + 8);
                 const opened = await Promise.all(batch.map(entry => this.remote.tocktutorWorkbench.openDocument(entry.path, vault, abort.signal).then(remoteValue)));
                 if (!this.documentCurrent(document, epoch) || document.state.revision !== revision || abort.signal.aborted)
                     return false;
                 for (let offset = 0; offset < opened.length; offset += 1) {
-                    const document = opened[offset];
+                    const openedDocument = opened[offset];
                     const entry = batch[offset];
-                    if (document.generation !== vault.generation || document.path !== entry.path || !boundedSource(document.content))
-                        return false;
-                    files.push({ createdAt: entry.createdAt, modifiedAt: entry.modifiedAt, path: entry.path, revision: document.revision, sizeBytes: entry.size, source: document.content });
+                    if (openedDocument.generation !== vault.generation || openedDocument.path !== entry.path || !boundedSource(openedDocument.content))
+                        throw new Error('A Base note changed while loading.');
+                    const bytes = new TextEncoder().encode(openedDocument.content).byteLength;
+                    actualBytes += bytes;
+                    if (bytes > MAX_EXECUTABLE_BASE_FILE_BYTES || actualBytes > MAX_EXECUTABLE_BASE_TOTAL_BYTES)
+                        throw new Error('The Base notes exceed the hydration limit.');
+                    files.push({ createdAt: entry.createdAt, modifiedAt: entry.modifiedAt, path: entry.path, revision: openedDocument.revision, sizeBytes: entry.size, source: openedDocument.content });
                 }
             }
-            this.publishDocument(document, { baseFiles: Object.freeze(files.map(file => Object.freeze({ ...file }))) });
+            this.publishDocument(document, { baseFiles: Object.freeze(files.map(file => Object.freeze({ ...file }))), baseStatus: 'ready' });
             return true;
         }
         catch {
+            if (this.documentCurrent(document, epoch) && document.state.revision === revision && !abort.signal.aborted)
+                this.publishDocument(document, { baseFiles: Object.freeze([]), baseStatus: 'error' });
             return false;
         }
         finally {
@@ -3956,30 +3986,41 @@ export class WorkbenchRouteController {
             return false;
         return await this.save();
     }
-    async applyBaseEdit(request) {
+    applyBaseEdit(request, basePath = this.snapshot.path) {
         const vault = this.snapshot.vault;
-        const basePath = this.snapshot.path;
-        if (vault === null || basePath === null || this.snapshot.documentKind !== 'base')
-            return false;
-        const operation = this.operation;
-        try {
-            const current = remoteValue(await this.remote.tocktutorWorkbench.openDocument(request.path, vault));
-            if (current.generation !== vault.generation || current.path !== request.path || current.revision !== request.expectedRevision || current.content !== request.previousSource)
-                return false;
-            const property = parseFrontmatterProperties(current.content).find(entry => entry.key === request.property);
-            if (property === undefined || executableBasePropertyIdentity(property.key, property.value) !== request.expectedPropertyIdentity)
-                return false;
-            const saved = remoteValue(await this.remote.tocktutorWorkbench.saveDocument({ content: request.source, expectedRevision: request.expectedRevision, expectedVault: vault, path: request.path }));
-            if (saved.status !== 'saved' || saved.generation !== vault.generation || saved.path !== request.path)
-                return false;
-            if (this.operation !== operation || !sameVault(this.snapshot.vault, vault) || this.snapshot.path !== basePath)
+        const document = vault && basePath && this.documents.get(this.documentKey(vault, basePath));
+        if (!document || document.state.documentKind !== 'base' || document.state.baseStatus !== 'ready' || !this.documentCurrent(document)
+            || !document.state.baseFiles?.some(file => file.path === request.path && file.revision === request.expectedRevision && file.source === request.previousSource))
+            return Promise.resolve(false);
+        const abort = new AbortController();
+        const flight = (async () => {
+            try {
+                const current = remoteValue(await this.remote.tocktutorWorkbench.openDocument(request.path, document.vault, abort.signal));
+                if (abort.signal.aborted || !this.documentCurrent(document)
+                    || current.generation !== document.vault.generation || current.path !== request.path || current.revision !== request.expectedRevision || current.content !== request.previousSource)
+                    return false;
+                const property = parseFrontmatterProperties(current.content).find(entry => entry.key === request.property);
+                if (property === undefined || executableBasePropertyIdentity(property.key, property.value) !== request.expectedPropertyIdentity)
+                    return false;
+                const saved = remoteValue(await this.remote.tocktutorWorkbench.saveDocument({ content: request.source, expectedRevision: request.expectedRevision, expectedVault: document.vault, path: request.path }, abort.signal));
+                if (saved.status !== 'saved' || saved.generation !== document.vault.generation || saved.path !== request.path)
+                    return false;
+                if (this.documentCurrent(document) && !abort.signal.aborted) {
+                    document.baseAbort?.abort();
+                    document.hydration = undefined;
+                    document.hydratedEpoch = document.epoch;
+                    document.hydratedRevision = document.state.revision;
+                    this.publishDocument(document, { baseFiles: Object.freeze((document.state.baseFiles ?? []).map(file => file.path === request.path ? Object.freeze({ ...file, revision: saved.revision, source: request.source }) : file)), baseStatus: 'ready' });
+                }
                 return true;
-            this.update({ baseFiles: Object.freeze((this.snapshot.baseFiles ?? []).map(file => file.path === request.path ? Object.freeze({ ...file, revision: saved.revision, source: request.source }) : file)) });
-            return true;
-        }
-        catch {
-            return false;
-        }
+            }
+            catch {
+                return false;
+            }
+        })();
+        document.baseEdits.set(flight, abort);
+        void flight.finally(() => { document.baseEdits.delete(flight); this.pruneDocuments(); }).catch(() => undefined);
+        return flight;
     }
     async attachFiles(files) {
         if (files.length === 0 || files.length > 16 || this.snapshot.path === null || this.snapshot.vault === null
@@ -4399,7 +4440,7 @@ export class WorkbenchRouteController {
     dispose() {
         if (this.disposal !== null)
             return this.disposal;
-        const flush = Promise.all([...this.documents.values()].map(document => document.saving)).then(() => this.flushPendingDraft());
+        const flush = Promise.all([...this.documents.values()].flatMap(document => [document.saving, ...document.baseEdits.keys()])).then(() => this.flushPendingDraft());
         this.settlePendingDispatch('stale');
         if (this.searchTimer !== null)
             clearTimeout(this.searchTimer);
@@ -4421,6 +4462,8 @@ export class WorkbenchRouteController {
             document.relationshipsAbort?.abort();
             document.embedsAbort?.abort();
             document.baseAbort?.abort();
+            for (const abort of document.baseEdits.values())
+                abort.abort();
             if (document.draftTimer !== null)
                 clearTimeout(document.draftTimer);
             document.draftTimer = null;
@@ -4858,11 +4901,19 @@ function boundPaneProps(props, id) {
         const current = controller.getSnapshot();
         return controller.paneLifetimeFor(id) === lifetime && current.focusedPaneId === id && current.path === snapshot.path && snapshot.vault !== null && sameVault(current.vault, snapshot.vault);
     };
-    for (const name of ['onMode', 'onSelectionChange', 'onSetProperty', 'onToggleTask', 'onRenameTitle', 'onMoveNote', 'onPrepareNoteMerge', 'onAddBookmark', 'onEditBookmark', 'onRemoveBookmark', 'onRevealFile', 'onAttachFiles', 'onUploadImage', 'onCanvasChange', 'onBaseEdit', 'onOpenInternalLink', 'onTrashCurrent', 'onLoadRelationships', 'onOpenRecovery']) {
+    for (const name of ['onMode', 'onSelectionChange', 'onSetProperty', 'onToggleTask', 'onRenameTitle', 'onMoveNote', 'onPrepareNoteMerge', 'onAddBookmark', 'onEditBookmark', 'onRemoveBookmark', 'onRevealFile', 'onAttachFiles', 'onUploadImage', 'onCanvasChange', 'onOpenInternalLink', 'onTrashCurrent', 'onLoadRelationships', 'onOpenRecovery']) {
         const callback = props[name];
         if (callback)
             Object.assign(bound, { [name]: (...args) => owns() ? callback(...args) : false });
     }
+    const ownsBase = () => controller.paneLifetimeFor(id) === lifetime && snapshot.path !== null
+        && snapshot.documentKind === 'base' && controller.getPaneSnapshot(id).path === snapshot.path
+        && snapshot.vault !== null && sameVault(controller.getSnapshot().vault, snapshot.vault);
+    if (props.onBaseEdit)
+        bound.onBaseEdit = request => ownsBase() ? props.onBaseEdit(request, snapshot.path) : false;
+    if (props.onBaseRetry)
+        bound.onBaseRetry = () => { if (ownsBase())
+            props.onBaseRetry(snapshot.path); };
     const navigateHistory = (direction) => {
         void controller.focusPane(id, undefined, () => controller.paneLifetimeFor(id) === lifetime).then(focused => {
             if (focused && controller.paneLifetimeFor(id) === lifetime)
@@ -5321,7 +5372,7 @@ export function TockTutorRouteView(props) {
                         return;
                     event.preventDefault();
                     props.onAttachFiles?.(event.clipboardData.files);
-                }, children: [snapshot.mergeRecoveryPending && props.onListMergeRecovery && _jsxs(Alert, { children: [_jsx("p", { children: "Merge Recovery Needs Attention" }), _jsx(Button, { variant: "outline", onClick: () => setMergeRecoveryOpen(true), children: "Review Merge Recovery" })] }), snapshot.message.startsWith('This pane changed in another view.') && _jsx(Alert, { role: "alert", children: snapshot.message }), snapshot.path === null ? (_jsx(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: _jsxs(EmptyHeader, { unstyled: true, children: [_jsx("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }), _jsx(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }), _jsx(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })] }) })) : props.paneOnly && snapshot.revision === null ? _jsx(Alert, { unstyled: true, children: "Loading this note\u2026" }) : snapshot.mode === 'source' ? (_jsx("div", { className: "flex h-full min-h-0 flex-col", children: _jsx(SourceEditor, { ariaLabel: sourceLabel, className: "h-full", content: snapshot.source, localEditRevision: snapshot.localEditRevision, onContentChange: props.onEdit, ...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState }), onSelectionChange: selection => { props.onSelectionChange?.(selection.main.from, selection.main.to); }, ...(noteSearchMode === null ? {} : { searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), selectionRequest: snapshot.selectionRequest, ...(snapshot.embeds === undefined ? {} : { resolvedEmbeds: snapshot.embeds }), spellCheck: true, title: noteTitle(snapshot.path) }, `${snapshot.path}:${snapshot.editorReset ?? 0}`) })) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (_jsx(LivePreviewView, { documentKey: snapshot.path, commandRef: liveCommandRef, insertTextRef: liveInsertTextRef, ...(props.onUploadImage === undefined ? {} : { onUploadImage: props.onUploadImage }), slashLinks: props.paneController?.slashLinkContext(snapshot.focusedPaneId), onOpenInternalLink: (target, kind) => { void props.onOpenInternalLink?.(target, kind); }, localEditRevision: snapshot.localEditRevision, embeds: snapshot.embeds, onAddProperty: key => props.onSetProperty?.(key, '') ?? false, onEdit: props.onEdit, onEditSource: () => { props.onMode('source'); }, ...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle }), ...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState }), onSelectionChange: selection => { props.onSelectionChange?.(selection.from, selection.to); }, ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), ...(noteSearchMode === null ? {} : { searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), onToggleTask: props.onToggleTask, source: snapshot.source, title: noteTitle(snapshot.path) }, `${snapshot.path}:${snapshot.editorReset ?? 0}`)) : snapshot.documentKind === 'canvas' ? (_jsx(CanvasBoard, { disabled: snapshot.revision === null || props.onCanvasChange === undefined, onChange: change => { props.onCanvasChange?.(change); }, revision: snapshot.revision ?? 'unavailable', source: snapshot.source })) : snapshot.documentKind === 'base' ? (_jsx(ExecutableBaseView, { activeView: baseView, files: snapshot.baseFiles ?? [], onActiveViewChange: setBaseView, ...(props.onBaseSourceChange === undefined ? {} : { onSourceChange: props.onBaseSourceChange }), ...(props.onBaseNewNote === undefined ? {} : { onNewNote: () => setBaseNoteOpen(true) }), onSearchChange: (view, search) => { setBaseSearches(current => ({ ...current, [view]: search })); }, searches: baseSearches, ...(props.onBaseCopy === undefined ? {} : { onCopy: props.onBaseCopy }), ...(props.onBaseEdit === undefined ? {} : { onEdit: props.onBaseEdit }), ...(props.onBaseExport === undefined ? {} : { onExport: props.onBaseExport }), source: snapshot.source })) : snapshot.documentKind === 'markdown' ? (_jsx(RichReadingView, { embeds: snapshot.embeds, onAddProperty: key => props.onSetProperty?.(key, '') ?? false, ...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl }), ...(props.onOpenInternalLink === undefined ? {} : { onOpenInternalLink: props.onOpenInternalLink }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState, searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), onToggleTask: props.onToggleTask, source: snapshot.source, title: noteTitle(snapshot.path) }, snapshot.path)) : (_jsx(Alert, { unstyled: true, children: "Reading view is unavailable." })), snapshot.path !== null && snapshot.documentKind === 'markdown' && snapshot.settings?.backlinksInDocument && (_jsxs("section", { "aria-label": "Backlinks in Document", className: "mx-auto mt-6 w-[calc(100%-48px)] max-w-[700px] border-t border-[var(--tt-border)] py-6 text-[var(--tt-text)]", children: [_jsx("h2", { className: "mb-3 text-sm font-medium", children: "Backlinks" }), _jsx(NoteBacklinks, { links: snapshot.links?.path === snapshot.path && snapshot.links?.generation === snapshot.vault?.generation ? snapshot.links : null, loading: snapshot.linksLoading === true, onRetry: props.onLoadRelationships, onSelect: props.onSelect }, `${snapshot.vault?.id}:${snapshot.vault?.generation}:${snapshot.path}`)] }))] }), _jsxs("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar absolute right-0 bottom-0 z-10 flex h-[var(--tt-footer-height)] max-w-full min-w-0 items-center overflow-x-auto rounded-tl-md border-t border-l border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [_jsx("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }), props.nativeNoteActions != null && props.nativeNoteActions.message !== 'Ready.' && _jsx("output", { "aria-live": "polite", className: "mr-3 min-w-0 truncate", children: props.nativeNoteActions.message }), _jsxs("div", { className: "tocktutor-document-stats ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [snapshot.path !== null && (_jsxs(_Fragment, { children: [_jsx("span", { children: backlinkLabel }), _jsx("span", { children: snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source' })] })), _jsxs("span", { children: [String(words), " words"] }), _jsxs("span", { children: [String(characters), " characters"] }), snapshot.path !== null && (_jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Open Assistant", "aria-expanded": panel === 'assistant', onClick: () => { setPanel(current => current === 'assistant' ? null : 'assistant'); }, type: "button", className: "border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]", children: _jsx(WorkbenchGlyph, { kind: "chat" }) }) }), _jsx(TooltipContent, { children: "Open Assistant" })] }))] })] })] }));
+                }, children: [snapshot.mergeRecoveryPending && props.onListMergeRecovery && _jsxs(Alert, { children: [_jsx("p", { children: "Merge Recovery Needs Attention" }), _jsx(Button, { variant: "outline", onClick: () => setMergeRecoveryOpen(true), children: "Review Merge Recovery" })] }), snapshot.message.startsWith('This pane changed in another view.') && _jsx(Alert, { role: "alert", children: snapshot.message }), snapshot.path === null ? (_jsx(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: _jsxs(EmptyHeader, { unstyled: true, children: [_jsx("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }), _jsx(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }), _jsx(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })] }) })) : props.paneOnly && snapshot.revision === null ? _jsx(Alert, { unstyled: true, children: "Loading this note\u2026" }) : snapshot.mode === 'source' ? (_jsx("div", { className: "flex h-full min-h-0 flex-col", children: _jsx(SourceEditor, { ariaLabel: sourceLabel, className: "h-full", content: snapshot.source, localEditRevision: snapshot.localEditRevision, onContentChange: props.onEdit, ...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState }), onSelectionChange: selection => { props.onSelectionChange?.(selection.main.from, selection.main.to); }, ...(noteSearchMode === null ? {} : { searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), selectionRequest: snapshot.selectionRequest, ...(snapshot.embeds === undefined ? {} : { resolvedEmbeds: snapshot.embeds }), spellCheck: true, title: noteTitle(snapshot.path) }, `${snapshot.path}:${snapshot.editorReset ?? 0}`) })) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (_jsx(LivePreviewView, { documentKey: snapshot.path, commandRef: liveCommandRef, insertTextRef: liveInsertTextRef, ...(props.onUploadImage === undefined ? {} : { onUploadImage: props.onUploadImage }), slashLinks: props.paneController?.slashLinkContext(snapshot.focusedPaneId), onOpenInternalLink: (target, kind) => { void props.onOpenInternalLink?.(target, kind); }, localEditRevision: snapshot.localEditRevision, embeds: snapshot.embeds, onAddProperty: key => props.onSetProperty?.(key, '') ?? false, onEdit: props.onEdit, onEditSource: () => { props.onMode('source'); }, ...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle }), ...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState }), onSelectionChange: selection => { props.onSelectionChange?.(selection.from, selection.to); }, ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), ...(noteSearchMode === null ? {} : { searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), onToggleTask: props.onToggleTask, source: snapshot.source, title: noteTitle(snapshot.path) }, `${snapshot.path}:${snapshot.editorReset ?? 0}`)) : snapshot.documentKind === 'canvas' ? (_jsx(CanvasBoard, { disabled: snapshot.revision === null || props.onCanvasChange === undefined, onChange: change => { props.onCanvasChange?.(change); }, revision: snapshot.revision ?? 'unavailable', source: snapshot.source })) : snapshot.documentKind === 'base' ? (_jsx(ExecutableBaseView, { activeView: baseView, files: snapshot.baseFiles ?? [], loadStatus: snapshot.baseStatus, onRetry: props.onBaseRetry, onActiveViewChange: setBaseView, ...(props.onBaseSourceChange === undefined ? {} : { onSourceChange: props.onBaseSourceChange }), ...(props.onBaseNewNote === undefined ? {} : { onNewNote: () => setBaseNoteOpen(true) }), onSearchChange: (view, search) => { setBaseSearches(current => ({ ...current, [view]: search })); }, searches: baseSearches, ...(props.onBaseCopy === undefined ? {} : { onCopy: props.onBaseCopy }), ...(props.onBaseEdit === undefined ? {} : { onEdit: props.onBaseEdit }), ...(props.onBaseExport === undefined ? {} : { onExport: props.onBaseExport }), source: snapshot.source })) : snapshot.documentKind === 'markdown' ? (_jsx(RichReadingView, { embeds: snapshot.embeds, onAddProperty: key => props.onSetProperty?.(key, '') ?? false, ...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl }), ...(props.onOpenInternalLink === undefined ? {} : { onOpenInternalLink: props.onOpenInternalLink }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState, searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), onToggleTask: props.onToggleTask, source: snapshot.source, title: noteTitle(snapshot.path) }, snapshot.path)) : (_jsx(Alert, { unstyled: true, children: "Reading view is unavailable." })), snapshot.path !== null && snapshot.documentKind === 'markdown' && snapshot.settings?.backlinksInDocument && (_jsxs("section", { "aria-label": "Backlinks in Document", className: "mx-auto mt-6 w-[calc(100%-48px)] max-w-[700px] border-t border-[var(--tt-border)] py-6 text-[var(--tt-text)]", children: [_jsx("h2", { className: "mb-3 text-sm font-medium", children: "Backlinks" }), _jsx(NoteBacklinks, { links: snapshot.links?.path === snapshot.path && snapshot.links?.generation === snapshot.vault?.generation ? snapshot.links : null, loading: snapshot.linksLoading === true, onRetry: props.onLoadRelationships, onSelect: props.onSelect }, `${snapshot.vault?.id}:${snapshot.vault?.generation}:${snapshot.path}`)] }))] }), _jsxs("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar absolute right-0 bottom-0 z-10 flex h-[var(--tt-footer-height)] max-w-full min-w-0 items-center overflow-x-auto rounded-tl-md border-t border-l border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [_jsx("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }), props.nativeNoteActions != null && props.nativeNoteActions.message !== 'Ready.' && _jsx("output", { "aria-live": "polite", className: "mr-3 min-w-0 truncate", children: props.nativeNoteActions.message }), _jsxs("div", { className: "tocktutor-document-stats ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [snapshot.path !== null && (_jsxs(_Fragment, { children: [_jsx("span", { children: backlinkLabel }), _jsx("span", { children: snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source' })] })), _jsxs("span", { children: [String(words), " words"] }), _jsxs("span", { children: [String(characters), " characters"] }), snapshot.path !== null && (_jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Open Assistant", "aria-expanded": panel === 'assistant', onClick: () => { setPanel(current => current === 'assistant' ? null : 'assistant'); }, type: "button", className: "border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]", children: _jsx(WorkbenchGlyph, { kind: "chat" }) }) }), _jsx(TooltipContent, { children: "Open Assistant" })] }))] })] })] }));
     if (props.paneOnly)
         return _jsx(TooltipProvider, { children: _jsxs("div", { className: "flex h-full min-h-0 min-w-0 flex-col", "data-pane-id": snapshot.focusedPaneId, onPointerDownCapture: () => { props.onFocusPane?.(snapshot.focusedPaneId); }, onFocusCapture: () => { props.onFocusPane?.(snapshot.focusedPaneId); }, onKeyDown: event => {
                     const primary = /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? '') ? event.metaKey : event.ctrlKey;
@@ -5513,7 +5564,8 @@ export function TockTutorRoute(props) {
     }, [controller]);
     return (_jsx("div", { className: "tocktutor-root h-full min-h-0", ref: root, children: _jsx(TockTutorRouteView, { paneController: controller, onSplitPane: (id, axis) => { void controller.splitPane(id, axis); }, assistantPanel: (_jsx(TockTutorAssistantPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, ...((snapshot.selectionEnd ?? 0) > (snapshot.selectionStart ?? 0)
                     ? { selectedText: snapshot.source.slice(snapshot.selectionStart, Math.min(snapshot.selectionEnd ?? 0, (snapshot.selectionStart ?? 0) + 10_000)) }
-                    : {}), vault: snapshot.vault })), nativeNoteActions: nativeNoteActions, nativeActions: (_jsx(TockTutorNativeActionsOutlet, { noteOwnerKey: controller.nativeNoteOwnerKey(), activePath: snapshot.path, noteSource: snapshot.source, saveNote: () => controller.save(), withNoteTarget: (target, save, run) => controller.withNoteTarget(target, save, run), handleDispatch: event => controller.handleDispatch(event), publishNoteActions: publishNoteActions, renderSlot: props.renderSlot, saveCurrent: () => controller.saveAll(), storeAudio: (fileName, dataBase64) => controller.storeActiveAttachment(fileName, dataBase64), vault: snapshot.vault })), onActivateTab: (paneId, path) => { void controller.activateTab(paneId, path); }, onAddBookmark: (title, group) => controller.addActiveBookmark(title, group ?? null), onEditBookmark: (id, title, group) => controller.editActiveBookmark(id, title, group), onAttachFiles: files => { void controller.attachFiles(Array.from(files).slice(0, 16)); }, onUploadImage: file => controller.uploadImage(file), onApplyOrganization: () => { void controller.applyOrganization(); }, onAddPane: () => { void controller.addPane(); }, onBack: () => { void controller.goBack(); }, onBaseCopy: request => { void globalThis.navigator?.clipboard?.writeText(request.text); }, onBaseEdit: request => controller.applyBaseEdit(request), onBaseSourceChange: (previous, next) => controller.updateBaseSource(previous, next), onBaseNewNote: request => controller.createBaseNote(request), onBaseExport: request => {
+                    : {}), vault: snapshot.vault })), nativeNoteActions: nativeNoteActions, nativeActions: (_jsx(TockTutorNativeActionsOutlet, { noteOwnerKey: controller.nativeNoteOwnerKey(), activePath: snapshot.path, noteSource: snapshot.source, saveNote: () => controller.save(), withNoteTarget: (target, save, run) => controller.withNoteTarget(target, save, run), handleDispatch: event => controller.handleDispatch(event), publishNoteActions: publishNoteActions, renderSlot: props.renderSlot, saveCurrent: () => controller.saveAll(), storeAudio: (fileName, dataBase64) => controller.storeActiveAttachment(fileName, dataBase64), vault: snapshot.vault })), onActivateTab: (paneId, path) => { void controller.activateTab(paneId, path); }, onAddBookmark: (title, group) => controller.addActiveBookmark(title, group ?? null), onEditBookmark: (id, title, group) => controller.editActiveBookmark(id, title, group), onAttachFiles: files => { void controller.attachFiles(Array.from(files).slice(0, 16)); }, onUploadImage: file => controller.uploadImage(file), onApplyOrganization: () => { void controller.applyOrganization(); }, onAddPane: () => { void controller.addPane(); }, onBack: () => { void controller.goBack(); }, onBaseCopy: request => { void globalThis.navigator?.clipboard?.writeText(request.text); }, onBaseEdit: (request, basePath) => controller.applyBaseEdit(request, basePath), onBaseSourceChange: (previous, next) => controller.updateBaseSource(previous, next), onBaseNewNote: request => controller.createBaseNote(request), onBaseRetry: basePath => { if (basePath)
+                void controller.hydrateBaseRows(basePath); }, onBaseExport: request => {
                 const url = URL.createObjectURL(new Blob([request.text], { type: 'text/csv;charset=utf-8' }));
                 const anchor = document.createElement('a');
                 anchor.href = url;

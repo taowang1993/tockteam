@@ -31,6 +31,27 @@ describe("NotesBaseFormula", () => {
     expect(evaluateNotesBaseFormula("contains(note.tags, \"review\")", (property) => row[property.replace(/^note\./u, "")])).toEqual({ supported: true, value: true });
   });
 
+  it('rejects concat results above the formula output budget', () => {
+    const large = 'x'.repeat(100_000)
+    const resolve = (property: string) => property === 'note.large' ? large : undefined
+    expect(evaluateNotesBaseFormula('concat(note.large, "x")', resolve).supported).toBe(false)
+    expect(evaluateNotesBaseFormula('concat(note.large, "")', resolve)).toEqual({ supported: true, value: large })
+  })
+
+  it('evaluates nested quoted comparisons rather than treating them as one string', () => {
+    const resolve = () => undefined
+    expect(evaluateNotesBaseFormula('if("a" == "b", 1, 0)', resolve)).toEqual({ supported: true, value: 0 })
+    expect(evaluateNotesBaseFormula('if("a" == "a", true, false)', resolve)).toEqual({ supported: true, value: true })
+    expect(evaluateNotesBaseFormula('if("a" == "b", true, false)', resolve)).toEqual({ supported: true, value: false })
+  })
+
+  it('treats bare scalar formulas like grouped scalars', () => {
+    const resolve = () => undefined
+    for (const scalar of ['1', 'true', 'false', 'null', '"text"']) {
+      expect(evaluateNotesBaseFormula(scalar, resolve), scalar).toEqual(evaluateNotesBaseFormula(`(${scalar})`, resolve))
+    }
+  })
+
   it("resolves bounded quoted Obsidian note-property references", () => {
     const values = {
       "note.owner.team": "platform",

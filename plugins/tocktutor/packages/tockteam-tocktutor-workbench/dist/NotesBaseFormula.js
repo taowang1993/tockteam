@@ -304,8 +304,13 @@ function notesBaseNumberValue(value, operand) {
     }
     if (typeof value === "boolean")
         return value ? 1 : 0;
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
+    try {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    catch {
+        return null;
+    }
 }
 function localCalendarDate(now = new Date()) {
     const year = String(now.getFullYear()).padStart(4, "0");
@@ -790,14 +795,15 @@ function evaluateNotesBaseObjectMemberAccess(expression, resolveProperty, contex
     }
     return { supported: true, value };
 }
-function evaluateArg(arg, resolveProperty, context) {
+function scalarArg(arg) {
     const literal = /^(['"])([\s\S]*)\1$/u.exec(arg);
     if (literal) {
         const quote = literal[1] ?? "";
         const value = literal[2] ?? "";
-        return value.includes(`\\${quote}`)
-            ? { supported: false }
-            : { supported: true, value };
+        if (value.includes(`\\${quote}`))
+            return { supported: false };
+        if (!value.includes(quote))
+            return { supported: true, value };
     }
     if (/^-?\d+(?:\.\d+)?$/u.test(arg))
         return { supported: true, value: Number(arg) };
@@ -805,6 +811,12 @@ function evaluateArg(arg, resolveProperty, context) {
         return { supported: true, value: arg === "true" };
     if (arg === "null")
         return { supported: true, value: null };
+    return null;
+}
+function evaluateArg(arg, resolveProperty, context) {
+    const scalar = scalarArg(arg);
+    if (scalar)
+        return scalar;
     const thisFile = evaluateNotesBaseThisFile(arg, context);
     if (thisFile)
         return thisFile;
@@ -1527,6 +1539,9 @@ export function evaluateNotesBaseFormula(expression, resolveProperty, context) {
             ? evaluateNestedArg(unwrapped, resolveProperty)
             : { supported: false };
     }
+    const scalar = scalarArg(trimmed);
+    if (scalar)
+        return scalar;
     const listIndex = evaluateNotesBaseListIndex(trimmed, resolveProperty, context);
     if (listIndex)
         return listIndex;
@@ -2090,8 +2105,18 @@ export function evaluateNotesBaseFormula(expression, resolveProperty, context) {
     }
     if (name === "length" && resolved.length === 1)
         return { supported: true, value: Array.isArray(resolved[0]) ? resolved[0].length : text(resolved[0]).length };
-    if (name === "concat")
-        return { supported: true, value: resolved.map(text).join("") };
+    if (name === "concat") {
+        const pieces = [];
+        let length = 0;
+        for (const value of resolved) {
+            const piece = text(value);
+            length += piece.length;
+            if (length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH)
+                return { supported: false };
+            pieces.push(piece);
+        }
+        return { supported: true, value: pieces.join("") };
+    }
     if (name === "list" && resolved.length === 1) {
         return { supported: true, value: Array.isArray(resolved[0]) ? resolved[0] : [resolved[0]] };
     }
@@ -2108,7 +2133,13 @@ export function evaluateNotesBaseFormula(expression, resolveProperty, context) {
 function numericValues(rows, property, resolveProperty) {
     const values = [];
     for (const row of rows) {
-        const value = Number(resolveProperty(row, property));
+        let value;
+        try {
+            value = Number(resolveProperty(row, property));
+        }
+        catch {
+            return null;
+        }
         if (Number.isFinite(value))
             values.push(value);
     }
@@ -2163,7 +2194,13 @@ export function evaluateNotesBaseSummary(expression, rows, resolveProperty) {
                 dateCount += 1;
                 continue;
             }
-            const numericValue = Number(value);
+            let numericValue;
+            try {
+                numericValue = Number(value);
+            }
+            catch {
+                return { supported: false };
+            }
             if (Number.isFinite(numericValue)) {
                 numericMinimum = Math.min(numericMinimum, numericValue);
                 numericMaximum = Math.max(numericMaximum, numericValue);
@@ -2188,6 +2225,8 @@ export function evaluateNotesBaseSummary(expression, rows, resolveProperty) {
         return { supported: true, value: Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : 0 };
     }
     const values = numericValues(rows, call[2] ?? "", resolveProperty);
+    if (values === null)
+        return { supported: false };
     if (call[1] === "sum")
         return { supported: true, value: values.reduce((sum, value) => sum + value, 0) };
     if (call[1] === "min")
