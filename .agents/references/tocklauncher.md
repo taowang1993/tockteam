@@ -138,7 +138,7 @@ The renderer provides:
 - native buttons, listbox/menu/dialog semantics, live status, focus restoration, visible focus, and reduced-motion behavior;
 - semantic DSH color tokens, Tailwind v4, shared `@tockteam/ui` React controls, and Lucide icons.
 
-The settings shortcut opens the canonical workbench settings page. There is no second settings application or renderer-owned persistence authority. Active text drafts survive background snapshot refreshes; committed drafts reconcile with the accepted main-owned snapshot. Rejected drafts stay editable after blur, and invalid structured values receive visible and announced field errors.
+The settings shortcut opens the canonical workbench settings page. There is no second settings application or renderer-owned persistence authority. Active text drafts survive background snapshot refreshes; committed drafts reconcile with the accepted main-owned snapshot, including normalized currency lists and JSON formatting, without clearing newer edits. Rejected drafts stay editable after blur, and invalid structured values receive visible and announced field errors.
 
 ## Provider Composition
 
@@ -209,6 +209,8 @@ Windows shortcut elevation is scan-bound and confirmation-gated. Only a bounded 
 
 ### Trusted-Extension Paste
 
+Mandatory trusted-session revocation (owner closure, activation loss, and application shutdown) bypasses bounded mutation-queue admission. The manager revokes input synchronously and coalesces owned cleanup, so a busy queue cannot discard teardown.
+
 Paste into a captured TockTeam workbench uses its bound `webContents.insertText` and never touches the clipboard. External-app Paste captures the clipboard before writing, then checks the text, format set and every format's bytes before restoration; unreadable or changed contents are left untouched, including newer rich content with identical plain text.
 
 Electron 42's macOS `clipboard.writeBuffer()` replaces the pasteboard for each call rather than appending formats. Until there is an atomic multi-format restoration adapter, external Paste rejects a clipboard containing more than one exposed format **before any mutation** and offers Copy instead. Snapshot size is capped at 16 MiB. This is not a native clipboard change-counter guarantee: an identical rewrite cannot be distinguished, and the comparison/restoration sequence is not atomic with another application. Do not claim arbitrary multi-item pasteboard preservation from the Electron format API.
@@ -258,11 +260,11 @@ Expand **TockLauncher** in the Settings sidebar. **General** opens shared search
 
 **Extension Settings** in a launcher's result action menu or active compatibility-command header opens that exact canonical page. Ctrl/Cmd+, still opens TockLauncher settings. Navigation accepts only finite identities; it grants no command, filesystem or installation authority. Unavailable and no-options extensions keep their destinations and saved compatibility values.
 
-Editors stay mounted while moving between extensions or General. Rejected text/JSON, workflow and folder drafts remain editable; Escape or leaving Settings offers **Keep Editing** or **Discard and Leave** when changes remain unsaved. A pending write is not an accepted snapshot. Existing storage/import/export/reset scope is unchanged and does not include the separate compatibility preference files.
+Editors stay mounted while moving between extensions or General. Rejected text/JSON, workflow and folder drafts remain editable; Escape or leaving Settings offers **Keep Editing** or **Discard and Leave** when changes remain unsaved. Switching workflows or adding one also requires confirming unsaved changes; reselecting the current workflow preserves its draft, and Escape dismisses only the nested confirmation. Terminal toggles preserve saved selections for other platforms. UUID format switches use the nested generator format unless an explicit scalar override exists. A pending write is not an accepted snapshot. Existing storage/import/export/reset scope is unchanged and does not include the separate compatibility preference files.
 
 Google Translate exposes **Languages**, **Behavior** and **Network**. **Advanced → Proxy Override** accepts only an explicit HTTP/HTTPS URL without credentials; **Use System Proxy** clears it. Detected system proxies never enter settings snapshots. Legacy private overrides are redacted and retained unless explicitly cleared or replaced. Language defaults do not reset saved language sets. Kaomoji exposes **Display Mode** and **Primary Action**. Can I Use exposes display preferences and pinned exact **Browser Targets**, not automatic/workspace selectors.
 
-Compatibility reads and writes use the workbench-guarded `getExtension`, `updateExtension` and `setExtensionEnabled` methods. Main selects the existing stores. Opening a page neither starts a child nor installs/enables an artifact. Enablement remains an explicit operation over approved installed trust state. Canonical and command-inline writers share serialized, opaque revision-fenced updates; conflicts preserve drafts and **Refresh Settings** merges unchanged fields before another save. Changing enablement never acknowledges a newer preference revision. Preference changes take effect on the next command invocation.
+Compatibility reads and writes use the workbench-guarded `getExtension`, `updateExtension` and `setExtensionEnabled` methods. Main selects the existing stores. Opening a page neither starts a child nor installs/enables an artifact. Enablement remains an explicit operation over approved installed trust state. Canonical and command-inline writers enforce the same pinned language catalog and share serialized, opaque revision-fenced updates; conflicts preserve drafts and **Refresh Settings** merges unchanged fields before another save. Changing enablement never acknowledges a newer preference revision. Preference changes take effect on the next command invocation.
 
 All expandable TockLauncher Settings sidebar menus must use `LauncherSettingsMenu` from `src/launcher-settings-navigation.tsx`, including future nested menus. It provides the shared 200 ms reversible reveal and rotating arrow, skips motion under `prefers-reduced-motion: reduce`, and keeps closed content mounted but inert and hidden from assistive technology. Do not duplicate disclosure markup or add per-menu animation styles.
 
@@ -310,6 +312,7 @@ Persistence rules:
 - exports retain existing user-selected directory permissions while creating private files; managed writes still enforce private directory permissions;
 - settings, index, logs, usage ranking, grants, and transactions are bounded and independently validated;
 - managed writes use exclusive no-follow temporary files, file synchronization, atomic rename, directory synchronization, and validated backups;
+- a successful managed settings reset clears both the primary and recovery copy; later missing/corrupt-primary recovery must not resurrect cleared settings or secrets;
 - mutations are serialized; usage ranking updates in memory before best-effort persistence so opening-screen search never waits on disk, and reset fencing prevents stale writes from restoring cleared usage;
 - the inert cached index drops dynamic image data and acquires no authority until current actions are republished;
 - external grants bind canonical path, canonical parent, device, and inode;
