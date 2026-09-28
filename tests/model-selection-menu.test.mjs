@@ -43,14 +43,19 @@ const groups = [
     {id:'terra',name:'GPT-5.6 Terra'}, {id:'luna-5',name:'GPT-5.6 Luna'},
     {id:'daybreak',name:'Daybreak Blue'}
   ]},
-  {id:'anthropic',name:'Claude',models:[{id:'opus',name:'Claude Opus'}]}
+  {id:'anthropic',name:'Claude',models:[{id:'opus',name:'Claude Opus'}]},
+  {id:'deepseek',name:'DeepSeek',models:[{id:'chat',name:'DeepSeek Chat'}]},
+  {id:'openrouter',name:'OpenRouter',models:[
+    {id:'aion',name:'AionLabs: Aion-2.0'}, {id:'nova-micro',name:'Amazon: Nova Micro 1.0'},
+    ...Array.from({length:18},(_,index)=>({id:'other-'+index,name:'Other Model '+index}))
+  ]}
 ];
 let snapshot = { groups, current:{provider:'openai',model:'sol',reasoningEffort:'max'},status:'ready',failures:[],error:null };
 const listeners = new Set();
 const directory = {subscribe(fn){listeners.add(fn);return () => listeners.delete(fn)},getSnapshot(){return snapshot}};
 const selections = [];
 function update(next){snapshot={...snapshot,...next};for(const fn of listeners)fn()}
-const dictionaries = {en:{'trigger.selectAria':'Select Model','trigger.aria':'Select model, current {model}','trigger.ariaEffort':'Select model, current {model}, reasoning effort {effort}','trigger.fallback':'Select Model','menu.aria':'Model and Reasoning Effort','menu.sources':'Model Sources','menu.starred':'Starred','menu.addProviders':'Add Providers','menu.search':'Search Models','menu.searchPlaceholder':'Search models…','menu.effort':'Effort','action.star':'Star {model}','action.unstar':'Remove {model} from Starred','action.resetEffort':'Reset Effort','empty.models':'No models available.','empty.search':'No matching models.','empty.favorites':'Star a model to pin it here.','effort.providerDefault':'Default','status.loading':'Refreshing model list…'}};
+const dictionaries = {en:{'trigger.selectAria':'Select Model','trigger.aria':'Select model, current {model}','trigger.ariaEffort':'Select model, current {model}, reasoning effort {effort}','trigger.fallback':'Select Model','menu.aria':'Model and Reasoning Effort','menu.sources':'Model Sources','menu.starred':'Starred','menu.addProviders':'Add Providers','menu.search':'Search Models','menu.searchPlaceholder':'Search models…','menu.effort':'Reasoning Level','effort.unavailable':'Not Available','action.star':'Star {model}','action.unstar':'Remove {model} from Starred','action.resetEffort':'Reset Effort','empty.models':'No models available.','empty.search':'No matching models.','empty.favorites':'Star a model to pin it here.','effort.providerDefault':'Default','status.loading':'Refreshing model list…'}};
 const t=(key,params={})=>(dictionaries.en[key]??key).replace(/\\{(.*?)\\}/g,(_,name)=>params[name]??'');
 const icon=(d)=>jsx.jsx('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true,children:jsx.jsx('path',{d})});
 window.__ModuleLoader__={load({factory}){
@@ -130,9 +135,9 @@ window.proof={directory,select:selection=>{selections.push(selection);update({cu
     assert.equal(await page.getByRole('button', { name: 'GPT-5.6 Terra', exact: true }).count(), 1)
     assert.equal(await page.getByRole('button', { name: 'GPT-6 Astra', exact: true }).count(), 0)
     await page.getByRole('searchbox', { name: 'Search Models' }).fill('')
-    await page.getByRole('slider', { name: 'Effort' }).fill('2')
+    await page.getByRole('slider', { name: 'Reasoning Level' }).fill('2')
     assert.equal(await page.evaluate(() => window.proof.selections.at(-1).reasoningEffort), 'high')
-    assert.equal(await page.getByRole('slider', { name: 'Effort' }).getAttribute('aria-valuetext'), 'High')
+    assert.equal(await page.getByRole('slider', { name: 'Reasoning Level' }).getAttribute('aria-valuetext'), 'High')
     await page.getByRole('button', { name: 'Reset Effort' }).click()
     assert.equal(await page.evaluate(() => window.proof.selections.at(-1).reasoningEffort), 'max')
     await page.getByRole('searchbox', { name: 'Search Models' }).press('Meta+3')
@@ -141,7 +146,7 @@ window.proof={directory,select:selection=>{selections.push(selection);update({cu
     await page.getByRole('button', { name: /Select model, current GPT-6 Luna/i }).click()
     await page.getByRole('tab', { name: 'OpenAI' }).click()
     await page.getByRole('button', { name: 'GPT-6 Sol', exact: true }).click()
-    await page.getByRole('slider', { name: 'Effort' }).waitFor()
+    await page.getByRole('slider', { name: 'Reasoning Level' }).waitFor()
     await page.getByRole('searchbox', { name: 'Search Models' }).press('Escape')
     assert.equal(await page.getByRole('dialog').count(), 0)
     assert.match(await page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? ''), /Select model, current GPT-6 Sol/i)
@@ -152,7 +157,33 @@ window.proof={directory,select:selection=>{selections.push(selection);update({cu
     assert.deepEqual([screenshot.readUInt32BE(16), screenshot.readUInt32BE(20)], [3024, 1898])
     assert.deepEqual(errors, [])
     console.log('Verified controlled /tockcoder model seat: light mode, visible picker, 1512×949 CSS at 2×, 3024×1898 PNG, no runtime errors')
-    if (process.env.TOCKCODER_SCREENSHOT_PATH) writeFileSync(process.env.TOCKCODER_SCREENSHOT_PATH, screenshot)
+    if (process.env.TOCKCODER_SUPPORTED_SCREENSHOT_PATH) writeFileSync(process.env.TOCKCODER_SUPPORTED_SCREENSHOT_PATH, screenshot)
+    await page.getByRole('tab', { name: 'OpenRouter' }).click()
+    assert.equal(await page.getByRole('tab', { name: 'DeepSeek' }).innerText(), 'DeepSeek', 'provider names must not collapse to initials')
+    assert.equal(await page.getByRole('tab', { name: 'OpenRouter' }).innerText(), 'OpenRouter')
+    await page.getByRole('button', { name: 'Amazon: Nova Micro 1.0', exact: true }).click()
+    await page.getByRole('button', { name: /Select model, current Amazon: Nova Micro 1.0/i }).click()
+    const slider = page.getByRole('slider', { name: 'Reasoning Level' })
+    assert.equal(await slider.isDisabled(), true, 'unsupported models cannot change DSH reasoning')
+    assert.equal(await page.getByText('Not Available', { exact: true }).count(), 1)
+    const geometry = await page.evaluate(() => {
+      const menu = document.querySelector('.tockteam-model-picker').getBoundingClientRect()
+      const footer = document.querySelector('._7KE1Ra_footer').getBoundingClientRect()
+      return { width: menu.width, contained: footer.top >= menu.top && footer.bottom <= menu.bottom, viewport: menu.left >= 0 && menu.right <= innerWidth }
+    })
+    assert.ok(geometry.width >= 340, 'the menu should be wider than the original 268px')
+    assert.equal(geometry.contained, true, 'the reasoning control must stay visible below long model lists')
+    assert.equal(geometry.viewport, true)
+    if (process.env.TOCKCODER_SCREENSHOT_PATH) writeFileSync(process.env.TOCKCODER_SCREENSHOT_PATH, await page.screenshot())
+    await page.evaluate(() => { document.getElementById('root').style.cssText = 'right:12px;left:auto;width:min(240px,calc(100vw - 24px))' })
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 320, height: 600, deviceScaleFactor: 2, mobile: false })
+    const narrow = await page.evaluate(() => {
+      const menu = document.querySelector('.tockteam-model-picker').getBoundingClientRect()
+      const footer = document.querySelector('._7KE1Ra_footer').getBoundingClientRect()
+      return { width: menu.width, onScreen: menu.left >= 0 && menu.right <= innerWidth && menu.top >= 0 && footer.bottom <= menu.bottom }
+    })
+    assert.ok(narrow.width <= 296 && narrow.onScreen, 'the wider picker must still fit a narrow window')
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1512, height: 949, deviceScaleFactor: 2, mobile: false })
     await page.getByRole('button', { name: 'Add Providers' }).click()
     assert.equal(await page.evaluate(() => window.proof.settingsOpened), true, 'the add action uses TockTeam’s Settings trigger')
   } finally {

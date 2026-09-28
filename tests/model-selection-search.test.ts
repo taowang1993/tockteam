@@ -63,6 +63,8 @@ test('composer opens a single Synara-style picker with provider tabs, stars and 
     assert.match(adapted, /role: "dialog"/u)
     assert.match(adapted, /tockteam\.model-favorites\.v1/u)
     assert.match(adapted, /"aria-label": t\(starred \? "action\.unstar" : "action\.star"/u)
+    assert.doesNotMatch(adapted, /group\.name\.slice\(0, 1\)/u, 'provider tabs must identify DeepSeek and OpenRouter in text')
+    assert.match(adapted, /"effort\.unavailable"/u, 'models without an effort ladder explain the disabled slider')
     assert.match(adapted, /type: "range"/u)
     assert.match(adapted, /aria-label": t\("menu\.effort"\)/u)
     assert.match(adapted, /chooseEffort\(effortChoices\[Number\(event\.currentTarget\.value\)\]\?\.effort\)/u)

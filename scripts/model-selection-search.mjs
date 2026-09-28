@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url'
 const NAME = '@deepseek-ai/dsh-client-ui-model-selection'
 const VERSION = '0.1.2-rc.1'
 const ORIGINAL_SHA256 = '4e6bd5d556836d086a329413967ad0a9dfb3a0a0bebe2863a9b073ab09db686d'
-const PATCHED_SHA256 = '0cc0e9182b7cb2c55f36dfe863a5c11c09afb867e939df6c54d19700cd78ae8f'
+const PATCHED_SHA256 = 'eaf768e2e9788b24b1a197f43c30f6a34713c7a95d0293cd2fc1a9ea59939295'
 const COMPONENT_START = '\t\tfunction ModelSelect('
 const COMPONENT_END = '\n\t\t//#endregion\n\t\t//#region lib/types/client/locales.js'
 
@@ -21,7 +21,7 @@ const CLAUDE_ICON = 'M5.92405 15.2962L9.85823 13.0903L9.92405 12.8981L9.85823 12
 const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 			const icon = /openai/i.test(group.name) ? "${OPENAI_ICON}" : /anthropic|claude/i.test(group.name) ? "${CLAUDE_ICON}" : null;
 			if (icon) return (0, react_jsx_runtime.jsx)("svg", { viewBox: "0 0 24 24", fill: "currentColor", "aria-hidden": true, children: (0, react_jsx_runtime.jsx)("path", { d: icon }) });
-			return group.name.slice(0, 1).toUpperCase();
+			return group.name;
 		}
 		function tockteamStarIcon(filled) {
 			return (0, react_jsx_runtime.jsx)("svg", { width: 16, height: 16, viewBox: "0 0 24 24", fill: filled ? "currentColor" : "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true, children: (0, react_jsx_runtime.jsx)("path", { d: "m12 2 3.09 6.26 6.91 1.01-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" }) });
@@ -187,15 +187,15 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 						] }, model.id);
 					}) }, group.id)) }),
 					state.status === "ready" && visibleChoices.length === 0 && (0, react_jsx_runtime.jsx)("div", { className: ModelSelect_module_css_default.empty, role: "status", children: choices.length === 0 ? t("empty.models") : normalizedQuery !== "" ? t("empty.search") : t("empty.favorites") }),
-					effortChoices.length > 0 && (0, react_jsx_runtime.jsxs)("div", { className: "_7KE1Ra_footer", children: [
+					(0, react_jsx_runtime.jsxs)("div", { className: "_7KE1Ra_footer", children: [
 					(0, react_jsx_runtime.jsxs)("div", { className: "_7KE1Ra_effortTop", children: [
-						(0, react_jsx_runtime.jsx)("span", { "aria-hidden": true }),
-						(0, react_jsx_runtime.jsx)("strong", { children: effortLabel }),
-						(0, react_jsx_runtime.jsx)("button", { type: "button", className: "_7KE1Ra_reset", "aria-label": t("action.resetEffort"), title: t("action.resetEffort"), disabled: busy || effectiveEffort === reasoning.defaultEffort, onClick: () => chooseEffort(reasoning.defaultEffort), children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutline14, {}) })
+						(0, react_jsx_runtime.jsx)("span", { children: t("menu.effort") }),
+						(0, react_jsx_runtime.jsx)("strong", { children: effortLabel ?? t("effort.unavailable") }),
+						effortChoices.length > 0 && (0, react_jsx_runtime.jsx)("button", { type: "button", className: "_7KE1Ra_reset", "aria-label": t("action.resetEffort"), title: t("action.resetEffort"), disabled: busy || effectiveEffort === reasoning.defaultEffort, onClick: () => chooseEffort(reasoning.defaultEffort), children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutline14, {}) })
 					] }),
 					(0, react_jsx_runtime.jsxs)("div", { className: "_7KE1Ra_sliderWrap", style: { "--effort-progress": (effortIndex / Math.max(1, effortChoices.length - 1) * 100) + "%" }, children: [
 						(0, react_jsx_runtime.jsx)("div", { className: "_7KE1Ra_marks", "aria-hidden": true, children: effortChoices.map((_, index) => (0, react_jsx_runtime.jsx)("span", {}, index)) }),
-						(0, react_jsx_runtime.jsx)("input", { type: "range", className: "_7KE1Ra_slider", min: 0, max: effortChoices.length - 1, step: 1, value: effortIndex, disabled: busy || effortChoices.length < 2, "aria-label": t("menu.effort"), "aria-valuetext": effortLabel, onChange: (event) => chooseEffort(effortChoices[Number(event.currentTarget.value)]?.effort) })
+						(0, react_jsx_runtime.jsx)("input", { type: "range", className: "_7KE1Ra_slider", min: 0, max: Math.max(1, effortChoices.length - 1), step: 1, value: effortIndex, disabled: busy || effortChoices.length < 2, "aria-label": t("menu.effort"), "aria-valuetext": effortLabel ?? t("effort.unavailable"), onChange: (event) => chooseEffort(effortChoices[Number(event.currentTarget.value)]?.effort) })
 					] })
 				] })
 				] }),
@@ -205,6 +205,8 @@ const PICKER = String.raw`		function tockteamProviderGlyph(group) {
 `
 
 const TRANSLATIONS = [
+  ['"menu.effort": "推理等级",', '"menu.effort": "推理等级",\n\t\t\t"effort.unavailable": "不可调整",'],
+  ['"menu.effort": "Effort",', '"menu.effort": "Reasoning Level",\n\t\t\t"effort.unavailable": "Not Available",'],
   ['"menu.model": "模型",', '"menu.model": "模型",\n\t\t\t"menu.sources": "模型来源",\n\t\t\t"menu.starred": "收藏",\n\t\t\t"menu.addProviders": "添加模型来源",\n\t\t\t"menu.search": "搜索模型",\n\t\t\t"menu.searchPlaceholder": "搜索模型…",\n\t\t\t"action.star": "收藏 {model}",\n\t\t\t"action.unstar": "取消收藏 {model}",\n\t\t\t"action.resetEffort": "恢复默认推理等级",\n\t\t\t"empty.search": "没有匹配的模型。",\n\t\t\t"empty.favorites": "收藏模型后即可在此快速选择。",'],
   ['"menu.model": "Model",', '"menu.model": "Model",\n\t\t\t"menu.sources": "Model Sources",\n\t\t\t"menu.starred": "Starred",\n\t\t\t"menu.addProviders": "Add Providers",\n\t\t\t"menu.search": "Search Models",\n\t\t\t"menu.searchPlaceholder": "Search models…",\n\t\t\t"action.star": "Star {model}",\n\t\t\t"action.unstar": "Remove {model} from Starred",\n\t\t\t"action.resetEffort": "Reset Effort",\n\t\t\t"empty.search": "No matching models.",\n\t\t\t"empty.favorites": "Star a model to pin it here.",'],
 ]
