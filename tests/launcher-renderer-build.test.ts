@@ -29,7 +29,7 @@ const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.me
 
 test('launcher document is standalone, strict, external, and accessible', () => {
   assert.match(html, /Content-Security-Policy/u)
-  assert.match(html, /default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'/u)
+  assert.match(html, /default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'/u)
   assert.match(html, /<link rel="stylesheet" href="\.\/launcher\.css"/u)
   assert.match(html, /<script type="module" src="\.\/launcher\.js"><\/script>/u)
   assert.match(html, /<main[^>]+id="launcher-root"/u)
