@@ -657,18 +657,18 @@ async function bootstrap(): Promise<void> {
     setStatus(messages().invoking(action.description), 'muted')
     try {
       await historyPending
-      const result = await pending
-      if (sequence !== toolSequence) return
-      if (!result.ok) {
-        if (isWorkflowAction) {
-          invoking = false
+      let result: LauncherInvokeResult
+      try { result = await pending }
+      finally {
+        if (sequence === toolSequence && isWorkflowAction) {
           invokingWorkflow = false
           activeCancellation = undefined
           cancellationPending = false
-          cancellationRequested = false
           setWorkflowBusy(false)
-          renderDetails()
         }
+      }
+      if (sequence !== toolSequence) return
+      if (!result.ok) {
         const refreshed = await renderSearch(search.value)
         if (refreshed) setStatus(messages().refreshed, 'muted')
         restoreSearchFocus()
