@@ -122,14 +122,15 @@ test('Desktop image lightboxes stay below the owned titlebar without changing Ra
   assert.doesNotMatch(css, /\[role='presentation'\] > \[role='dialog'\][^{]*\{[^}]*max-height:/u)
 })
 
-test('desktop skins are namespaced and keep every app surface on one opaque base', () => {
+test('desktop skins keep the editor base darker than their shared shell and sidebar surface', () => {
   assert.equal(DESKTOP_SKINS.length, 4)
   assert.equal(new Set(DESKTOP_SKINS.map(skin => skin.id)).size, DESKTOP_SKINS.length)
   for (const skin of DESKTOP_SKINS) {
     assert.match(skin.id, /^tockteam-skin-/)
     assert.ok(Object.keys(skin.tokens).length >= 30)
     assert.match(skin.tokens['--dsw-alias-bg-base'] ?? '', /^#[0-9a-f]{6}$/i)
-    assert.equal(skin.tokens['--dsw-alias-bg-base'], skin.tokens['--dsw-specific-sidebar-fill'])
+    assert.equal(skin.tokens['--dsw-alias-bg-layer-1'], skin.tokens['--dsw-specific-sidebar-fill'])
+    assert.notEqual(skin.tokens['--dsw-alias-bg-base'], skin.tokens['--dsw-specific-sidebar-fill'])
     assert.equal(skin.css, undefined)
   }
 })

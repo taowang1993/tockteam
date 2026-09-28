@@ -52,10 +52,13 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.match(builtinDark, /--dsw-alias-bg-layer-1:#1e1e1e/, 'the built-in dark shell uses the former note color')
   assert.match(builtinDark, /--tockteam-shell-chrome:var\(--dsw-alias-bg-layer-1\)/)
   assert.match(builtinDark, /--tockteam-main-pane:var\(--dsw-alias-bg-base\)/, 'the editor uses the former dark sidebar color')
+  const namedSkin = css.match(/\.tockteam-sidebar-styles body\[data-tockteam-skin\]\{([^}]*)\}/)?.[1] ?? ''
+  assert.match(namedSkin, /--tockteam-shell-chrome:var\(--dsw-alias-bg-layer-1\)/, 'named skins use their lighter layer for shell chrome')
+  assert.match(namedSkin, /--tockteam-main-pane:var\(--dsw-alias-bg-base\)/, 'named skins use their darker base for the editor')
   assert.match(css, /#tockteam-embedded-layout>#root \.wSkVaW_root\[data-phase\]\{--dsw-alias-bg-base:var\(--tockteam-main-pane\);background:var\(--tockteam-main-pane\)\}/u, 'only the conversation canvas receives the editor background')
   assert.doesNotMatch(css, /#tockteam-embedded-layout>#root \[data-phase\]\{/u, 'composer input phases must not paint a dark rectangle inside the card')
-  assert.match(css, /body:not\(\[data-tockteam-skin\]\) \.tocktutor-editor\{--tt-panel:var\(--tockteam-main-pane\)\}/, 'the note canvas follows the shared editor surface without overriding named skins')
-  assert.match(css, /body:not\(\[data-tockteam-skin\]\) \.tocktutor-titlebar\{--tt-panel:var\(--tockteam-main-pane\)\}/, 'the active note tab joins the editor surface')
+  assert.match(css, /body \.tocktutor-editor\{--tt-panel:var\(--tockteam-main-pane\)\}/, 'all note canvases follow the shared editor surface')
+  assert.match(css, /body \.tocktutor-titlebar\{--tt-panel:var\(--tockteam-main-pane\)\}/, 'active note tabs join the editor surface in every skin')
   const settingsSurface = css.match(/\[data-tockteam-settings-page-surface\]\{([^}]*)\}/)?.[1] ?? ''
   assert.match(settingsSurface, /background:var\(--tockteam-main-pane\)!important/, 'every Settings page shares the editor canvas')
   const settingsNav = css.match(/\[data-tockteam-settings-page-surface\]>nav\{([^}]*)\}/)?.[1] ?? ''

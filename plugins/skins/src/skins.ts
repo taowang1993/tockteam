@@ -105,7 +105,7 @@ const DEEP_CURRENT_TOKENS = {
   '--dsw-specific-bubble': '#123143',
   '--dsw-specific-input-major': '#0a202c',
   '--dsw-specific-menu': '#103041',
-  '--dsw-specific-sidebar-fill': '#071923',
+  '--dsw-specific-sidebar-fill': '#0b2230',
   '--dsw-specific-sidebar-nav-item-active': '#123143',
   '--dsw-specific-sidebar-nav-item-hover': '#0d2938',
 } as const
@@ -140,7 +140,7 @@ const JADE_CIRCUIT_TOKENS = {
   '--dsw-specific-bubble': '#14372d',
   '--dsw-specific-input-major': '#0a211b',
   '--dsw-specific-menu': '#123329',
-  '--dsw-specific-sidebar-fill': '#071a16',
+  '--dsw-specific-sidebar-fill': '#0b241e',
   '--dsw-specific-sidebar-nav-item-active': '#14372d',
   '--dsw-specific-sidebar-nav-item-hover': '#0e2b23',
 } as const
@@ -175,7 +175,7 @@ const PORCELAIN_TOKENS = {
   '--dsw-specific-bubble': '#e8f0ee',
   '--dsw-specific-input-major': '#fbfdfc',
   '--dsw-specific-menu': '#edf4f2',
-  '--dsw-specific-sidebar-fill': '#f3f7f6',
+  '--dsw-specific-sidebar-fill': '#f8fbfa',
   '--dsw-specific-sidebar-nav-item-active': '#dfeae8',
   '--dsw-specific-sidebar-nav-item-hover': '#e8f0ee',
 } as const
@@ -210,7 +210,7 @@ const EMBER_DUSK_TOKENS = {
   '--dsw-specific-bubble': '#3b2636',
   '--dsw-specific-input-major': '#281923',
   '--dsw-specific-menu': '#382331',
-  '--dsw-specific-sidebar-fill': '#21161f',
+  '--dsw-specific-sidebar-fill': '#2a1b27',
   '--dsw-specific-sidebar-nav-item-active': '#3b2636',
   '--dsw-specific-sidebar-nav-item-hover': '#301e2b',
 } as const
