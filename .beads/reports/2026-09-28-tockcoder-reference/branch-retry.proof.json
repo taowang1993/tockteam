@@ -1,0 +1,18 @@
+{
+  "kind": "controlled browser-client fixture, not a real Host or model submission",
+  "route": "/tockcoder",
+  "surface": "generic Electron on extended display 17 (non-main), app-scoped Playwright CDP",
+  "viewportCss": { "width": 1512, "height": 949 },
+  "deviceScaleFactor": 2,
+  "screenshotPixels": { "width": 3024, "height": 1898 },
+  "theme": { "documentColorScheme": "dark", "documentSkin": null },
+  "visibleState": "Review is open; a failed branch creation shows Branch rejected while the new-branch input retains retry-this-branch.",
+  "browserVerification": "tests/tockcoder-panel.test.mjs passed; playwright-cli also confirmed /tockcoder, dark/no skin, Branch rejected and retained keep-this-name",
+  "runtimeErrors": [],
+  "fixtureServerRootPids": [86266, 86411],
+  "fixtureServersStopped": true,
+  "electronRootPid": 84403,
+  "electronStopped": true,
+  "electronProcessTreeRemaining": [],
+  "screenshot": "branch-retry.png"
+}
