@@ -100,6 +100,21 @@ test('calculation also matches indexed filenames without the math symbols', asyn
   } finally { await core.close() }
 })
 
+test('symbolic calculations still show matching files when other results fill the limit', async () => {
+  const calculator = { ...item('calculator:instantResult', '3.14'), sourceExtension: 'Calculator' }
+  const file = { ...item('simple-file-search:pi', 'pi.md'), sourceExtension: 'SimpleFileSearch' }
+  for (const searchEngineId of ['fuzzysort', 'Fuse.js'] as const) {
+    const core = createLauncherCoreSearch({
+      loadIndexedItems: async () => [item('bookmark-1', 'pi'), item('bookmark-2', 'pi'), file],
+      searchInstant: async () => ({ before: [], after: [calculator] }),
+    })
+    try {
+      const result = await core.search('pi', { ...options, maxSearchResultItems: 2, searchEngineId })
+      assert.deepEqual(result.after.map(entry => entry.id), [calculator.id, file.id])
+    } finally { await core.close() }
+  }
+})
+
 test('calculator remains available when file search finds no matches', async () => {
   const calculator = { ...item('calculator:instantResult', '13'), sourceExtension: 'Calculator' }
   const core = createLauncherCoreSearch({

@@ -352,7 +352,7 @@ export function createLauncherCoreSearch(options: LauncherCoreSearchOptions): Re
 
     const calculation = instantAfter.find(item => item.sourceExtension === 'Calculator' && item.id === 'calculator:instantResult' && !excluded.has(item.id))
     const filenameTerm = launcherFileSearchFilenameTerm(trimmedSearchTerm)
-    const indexedFiles = calculation !== undefined && filenameTerm !== trimmedSearchTerm
+    const indexedFiles = calculation !== undefined
       ? searchIndexedItems(available.filter(item => item.sourceExtension === 'SimpleFileSearch'), filenameTerm, searchOptions, ranking, favorites, now())
       : []
     let beforeItems = calculation === undefined ? favoriteItems.slice(0, LAUNCHER_MAX_RESULT_ITEMS) : []
