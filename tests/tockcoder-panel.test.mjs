@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
+import { writeFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { build } from 'esbuild'
 import { loadInstalledPlaywright } from '../scripts/launcher-installed-smoke.mjs'
@@ -97,11 +98,30 @@ test('TockCoder panels keep workspace, diff, and directory responses attached to
       tab => tab.resource === `/first/${filename}` && tab.title === filename.slice(0, 240),
     ), longFilename)
     assert.equal(await page.getByText('sidebar preferences save failed (400)', { exact: true }).count(), 0)
+
+    await page.evaluate(() => window.panelProof.openPath('/first\\outside.txt'))
+    await page.evaluate(() => window.panelProof.openPath('/first/../outside.txt'))
+    assert.deepEqual(await page.evaluate(() => window.panelProof.openedPaths()),
+      ['/first\\outside.txt', '/first/../outside.txt'], 'out-of-workspace paths must use the original opener')
+    await page.evaluate(() => window.panelProof.openPath('/first/inside.txt'))
+    assert.equal(await page.evaluate(() => window.panelProof.hasFileTab('/first/inside.txt')), true)
+
+    await page.evaluate(() => window.panelProof.open())
+    const branchName = page.getByRole('textbox', { name: 'workspace.new-branch-name' })
+    await page.evaluate(() => window.panelProof.failNextRefresh())
+    await branchName.fill('refresh-fails')
+    await page.getByRole('button', { name: 'workspace.create' }).click()
+    await page.getByText('Status refresh failed', { exact: true }).waitFor({ timeout: 3000 })
+    await branchName.fill('retry-this-branch')
+    await page.getByRole('button', { name: 'workspace.create' }).click()
+    await page.getByText('Branch rejected', { exact: true }).waitFor()
+    assert.equal(await branchName.inputValue(), 'retry-this-branch', 'a failed create must preserve the typed branch')
     const screenshot = await page.screenshot()
     assert.equal(screenshot.readUInt32BE(16), 3024)
     assert.equal(screenshot.readUInt32BE(20), 1898)
     console.log('Verified /tockcoder: 1512×949 CSS, 2× scale, 3024×1898 PNG, dark theme, no skin')
     assert.deepEqual(errors, [])
+    if (process.env.TOCKCODER_SCREENSHOT_PATH) writeFileSync(process.env.TOCKCODER_SCREENSHOT_PATH, screenshot)
     await page.evaluate(() => window.panelProof.dispose())
   } finally {
     await page?.goto('about:blank').catch(() => {})

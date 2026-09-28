@@ -130,7 +130,9 @@ function readComments(storage: Storage): ReviewComment[] {
       const migrated = (JSON.parse(legacy) as unknown)
       if (Array.isArray(migrated)) {
         const comments = migrated.filter(isReviewComment).slice(-MAX_PERSISTED_COMMENTS)
-        storage.setItem(STORAGE_KEY, JSON.stringify(comments))
+        try { storage.setItem(STORAGE_KEY, JSON.stringify(comments)) } catch {
+          // A failed migration write must not hide readable legacy comments.
+        }
         return comments
       }
     }
@@ -208,12 +210,13 @@ function createComposerBridge(
   let stopInput: (() => void) | undefined
   let stopSession: (() => void) | undefined
   let previousInputState: ReviewInputState | undefined
-  let pending: {
-    input: ReviewInput
+  type PendingDelivery = {
     ids: readonly string[]
     baselineSeq: number
     text: string
-  } | undefined
+  }
+  let pending: PendingDelivery | undefined
+  const pendingByScope = new Map<ScopeKey, PendingDelivery>()
 
   const label = (): string => `${String(comments.size)} comment${comments.size === 1 ? '' : 's'}`
   const payload = (): string => formatReviewRequest([...comments.values()])
@@ -287,14 +290,17 @@ function createComposerBridge(
     }) === true
   }
 
+  const clearPending = (): void => {
+    pendingByScope.delete(activeScope)
+    pending = undefined
+  }
   const completeDelivery = (): void => {
     if (pending === undefined) return
     const ids = pending.ids
-    pending = undefined
+    clearPending()
     for (const id of ids) comments.delete(id)
     commentsByScope.set(activeScope, comments)
     onDelivered(ids)
-    reconcile()
   }
 
   const watch = (value: ReturnType<typeof current>): void => {
@@ -326,23 +332,26 @@ function createComposerBridge(
       previousInputState = next
       if (mutating) return
       // A failed send restores its chip; typing a new draft is not a failure.
-      if (pending !== undefined && occurrence(next) !== undefined) pending = undefined
+      if (pending !== undefined && occurrence(next) !== undefined) clearPending()
       if (pending === undefined && previous !== undefined
         && occurrence(previous) !== undefined && occurrence(next) === undefined
         && next.draft === '' && comments.size > 0) {
         pending = {
-          input: value.input,
           ids: [...comments.keys()],
           baselineSeq: latestUserSeq(value.session),
           text: payload(),
         }
+        pendingByScope.set(activeScope, pending)
       }
       reconcile()
     })
     stopSession = value.session?.subscribe(() => {
       const delivery = pending
       if (delivery !== undefined && userMessages(value.session).some(entry =>
-        Number(entry.id) > delivery.baselineSeq && entry.value.includes(delivery.text))) completeDelivery()
+        Number(entry.id) > delivery.baselineSeq && entry.value.includes(delivery.text))) {
+        completeDelivery()
+        reconcile()
+      }
     })
   }
 
@@ -359,7 +368,7 @@ function createComposerBridge(
         try { removeOccurrence(watchedContext, watchedInput, oldOccurrence) } finally { mutating = false }
       }
       comments = commentsByScope.get(nextScope) ?? new Map()
-      pending = undefined
+      pending = pendingByScope.get(nextScope)
     } else if (!initialized) {
       comments = commentsByScope.get(nextScope) ?? comments
     }
@@ -369,7 +378,10 @@ function createComposerBridge(
     if (value === null) return 'unavailable'
 
     const existing = occurrence(value.input.state.getSnapshot())
-    if (pending?.input === value.input && existing === undefined) return 'inserted'
+    if (pending !== undefined && existing !== undefined) clearPending()
+    if (pending !== undefined && userMessages(value.session).some(entry =>
+      Number(entry.id) > pending!.baselineSeq && entry.value.includes(pending!.text))) completeDelivery()
+    if (pending !== undefined && existing === undefined) return 'inserted'
     if (comments.size === 0) {
       if (existing !== undefined) {
         mutating = true
@@ -402,6 +414,13 @@ function createComposerBridge(
     removeComment(id) {
       let removed = comments.delete(id)
       for (const scoped of commentsByScope.values()) removed = scoped.delete(id) || removed
+      for (const [scope, delivery] of pendingByScope) {
+        const scoped = scope === activeScope ? comments : commentsByScope.get(scope)
+        if (delivery.ids.every(candidate => !scoped?.has(candidate))) {
+          pendingByScope.delete(scope)
+          if (scope === activeScope) pending = undefined
+        }
+      }
       if (removed) reconcile()
     },
     setScope(nextBranch) {

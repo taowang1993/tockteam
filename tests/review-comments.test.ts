@@ -30,7 +30,7 @@ const commit: GitReviewCommit = {
   authoredAt: '2026-09-19', message: 'Change', files: [],
 }
 
-function fixture() {
+function fixture(options: { legacyValue?: string; failCurrentWrite?: boolean } = {}) {
   type Occurrence = { source: string; ref: string; offset: number; length: number; label: string; clipboardText: string }
   const state = observable({ draft: '', draftRev: 0, occurrences: [] as Occurrence[] })
   const input = {
@@ -73,20 +73,27 @@ function fixture() {
       return true
     },
   }
-  const list = observable({ current: 'first', byId: {
+  const list = observable({ current: 'first' as 'first' | 'second', byId: {
     first: { cwd: '/first' }, second: { cwd: '/second' },
   } })
-  const events = observable<ComposerHistoryEventWindow>({ entries: [] })
-  const sessions = { list, scope: () => context, binding: () => ({ eventSource: events }) } satisfies ReviewSessionsService
+  const events = {
+    first: observable<ComposerHistoryEventWindow>({ entries: [] }),
+    second: observable<ComposerHistoryEventWindow>({ entries: [] }),
+  }
+  const sessions = { list, scope: () => context, binding: (id: string) => ({ eventSource: events[id as 'first' | 'second'] }) } satisfies ReviewSessionsService
   let source: Parameters<ReviewInputTriggersService['registerSource']>[0] | undefined
-  const data = new Map<string, string>()
+  const data = new Map<string, string>(options.legacyValue === undefined
+    ? [] : [['tockteam.desktop-sidebar.review-comments.v1', options.legacyValue]])
   const storage: Storage = {
     get length() { return data.size },
     clear: () => data.clear(),
     getItem: key => data.get(key) ?? null,
     key: index => [...data.keys()][index] ?? null,
     removeItem: key => { data.delete(key) },
-    setItem: (key, value) => { data.set(key, value) },
+    setItem: (key, value) => {
+      if (options.failCurrentWrite && key === 'tockteam.sidebar.review-comments.v1') throw new Error('quota exceeded')
+      data.set(key, value)
+    },
   }
   const service = new ReviewCommentsService(sessions, {
     registerSource(value) { source = value; return () => { source = undefined } },
@@ -96,12 +103,16 @@ function fixture() {
     service,
     state,
     storage,
-    events,
+    events: events.first,
     clearDraft: () => { input.setDraft('') },
     setDraft: input.setDraft,
     receive(text: string, kind = 'user') {
-      const entries = events.getSnapshot().entries
-      events.set({ entries: [...entries, { type: 'event', event: {
+      this.receiveFor(list.getSnapshot().current, text, kind)
+    },
+    receiveFor(sessionId: 'first' | 'second', text: string, kind = 'user') {
+      const source = events[sessionId]
+      const entries = source.getSnapshot().entries
+      source.set({ entries: [...entries, { type: 'event', event: {
         type: 'user/message', seq: entries.length + 1,
         data: { source: { kind }, content: [{ type: 'text', text }] },
       } }] })
@@ -146,6 +157,61 @@ test('review comments retire only after their request arrives in the pinned even
     assert.equal(f.storage.getItem('tockteam.sidebar.review-comments.v1'), '[]')
     f.add('next')
     assert.doesNotMatch(await f.payload(), /Comment sent/)
+  } finally {
+    f.service.dispose()
+  }
+})
+
+test('review request is not reinserted after delivery while another session is selected', async () => {
+  const f = fixture()
+  try {
+    f.add('switched')
+    const sent = await f.payload()
+    f.clearDraft()
+    f.select('second')
+    f.receiveFor('first', sent)
+    f.select('first')
+    assert.equal(f.service.getSnapshot().length, 0)
+    assert.equal(f.state.getSnapshot().draft, '')
+    assert.equal(await f.payload(), '')
+  } finally {
+    f.service.dispose()
+  }
+})
+
+test('review delivery remains pending independently in two sessions', async () => {
+  const f = fixture()
+  try {
+    f.add('first')
+    const firstRequest = await f.payload()
+    f.clearDraft()
+    f.select('second')
+    f.add('second')
+    const secondRequest = await f.payload()
+    f.clearDraft()
+    f.receiveFor('first', firstRequest)
+    f.select('first')
+    assert.equal(await f.payload(), '')
+    assert.equal(f.service.getSnapshot().length, 1)
+    f.select('second')
+    assert.equal(f.state.getSnapshot().draft, '', 'the second request remains pending')
+    f.receiveFor('second', secondRequest)
+    assert.equal(f.service.getSnapshot().length, 0)
+  } finally {
+    f.service.dispose()
+  }
+})
+
+test('legacy review comments survive a failed migration write in memory', async () => {
+  const previous = fixture()
+  previous.add('legacy')
+  const legacyValue = previous.storage.getItem('tockteam.sidebar.review-comments.v1')!
+  previous.service.dispose()
+  const f = fixture({ legacyValue, failCurrentWrite: true })
+  try {
+    assert.equal(f.service.getSnapshot().length, 1)
+    assert.match(await f.payload(), /Comment legacy/)
+    assert.equal(f.storage.getItem('tockteam.sidebar.review-comments.v1'), null)
   } finally {
     f.service.dispose()
   }

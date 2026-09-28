@@ -229,11 +229,18 @@ function normalizedPath(path: string): string {
   return normalized.replace(/\/+$/, '') || '/'
 }
 
-function workspaceParent(cwd: string, path: string): string | null {
+export function isWorkspacePath(cwd: string, path: string): boolean {
   const root = normalizedPath(cwd)
   const current = normalizedPath(path)
   const prefix = root.endsWith('/') ? root : `${root}/`
-  if (current === root || !current.startsWith(prefix)) return null
+  return current === root || (current.startsWith(prefix)
+    && !current.slice(prefix.length).split('/').includes('..'))
+}
+
+function workspaceParent(cwd: string, path: string): string | null {
+  const root = normalizedPath(cwd)
+  const current = normalizedPath(path)
+  if (current === root || !isWorkspacePath(cwd, path)) return null
   const parent = current.slice(0, current.lastIndexOf('/'))
   return parent.length >= root.length ? parent : root
 }

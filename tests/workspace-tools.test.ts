@@ -10,6 +10,7 @@ import {
   readWorkspaceFacts,
 } from '../plugins/sidebar/src/git-workspace.ts'
 import {
+  isWorkspacePath,
   mapBetterSidebarFile,
   mapBetterSidebarTree,
   workspaceChangesFromBetterSidebar,
@@ -119,12 +120,27 @@ test('workspace file navigation preserves POSIX path identity and filesystem roo
     ['/workspace/', '/workspace/child/', '/workspace'],
     ['/workspace', '/workspace-sibling/child', null],
     ['/workspace', '/elsewhere/child', null],
+    ['/workspace', '/workspace/../outside', null],
   ] as const) {
     const listing = mapBetterSidebarTree(cwd, { path, entries: [], truncated: false })
     assert.equal(listing.parent, parent, `parent of ${path} in ${cwd}`)
     const file = mapBetterSidebarFile(cwd, path, { kind: 'text', content: '', truncated: false })
     assert.equal(file.parent, parent ?? cwd, `file parent of ${path} in ${cwd}`)
   }
+})
+
+test('browser file interception preserves POSIX backslashes and rejects traversal', () => {
+  for (const [cwd, path, expected] of [
+    ['/workspace', '/workspace/file.txt', true],
+    ['/workspace', '/workspace\\outside.txt', false],
+    ['/workspace\\name', '/workspace\\name/file.txt', true],
+    ['/workspace', '/workspace/../outside.txt', false],
+    ['/workspace', '/workspace/folder/../../outside.txt', false],
+    ['/workspace', '/workspace-sibling/file.txt', false],
+    ['/', '/child', true],
+    ['C:\\workspace', 'C:\\workspace\\file.txt', true],
+    ['C:\\workspace', 'C:\\workspace\\..\\outside.txt', false],
+  ] as const) assert.equal(isWorkspacePath(cwd, path), expected, `${cwd} -> ${path}`)
 })
 
 test('workspace file navigation keeps Windows drive roots absolute and supports UNC paths', () => {

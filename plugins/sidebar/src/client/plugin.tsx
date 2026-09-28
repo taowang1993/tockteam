@@ -88,6 +88,7 @@ import { HttpSidebarPreferencesStorage } from './sidebar-storage.ts'
 import { DesktopLauncherFallback } from './desktop-launcher-fallback.tsx'
 import {
   betterSidebarApi,
+  isWorkspacePath,
   type BetterSidebarGitLogEntry,
   type BetterSidebarScope,
   workspaceChangesFromBetterSidebar,
@@ -1147,8 +1148,8 @@ function WorkspacePanel({
     reviewComments.activate(sessionId ?? null, cwd, branch)
   }, [branch, cwd, reviewComments, sessionId])
 
-  const mutate = async (mutation: WorkspaceMutation): Promise<void> => {
-    if (cwd === undefined || scope === undefined || busy) return
+  const mutate = async (mutation: WorkspaceMutation): Promise<boolean> => {
+    if (cwd === undefined || scope === undefined || busy) return false
     setBusy(true)
     try {
       if (mutation.action === 'checkout') {
@@ -1168,9 +1169,10 @@ function WorkspacePanel({
       refreshRequest.current?.abort()
       refreshRequest.current = null
       await refresh()
-      setError('')
+      return true
     } catch (nextError) {
       setError(errorMessage(nextError))
+      return false
     } finally {
       setBusy(false)
     }
@@ -1537,7 +1539,7 @@ function WorkspacePanel({
                   <Button unstyled
                     type="button"
                     disabled={busy || newBranch.trim() === ''}
-                    onClick={() => { void mutate({ action: 'create-branch', branch: newBranch }).then(() => { setNewBranch('') }) }}
+                    onClick={() => { void mutate({ action: 'create-branch', branch: newBranch }).then(created => { if (created) setNewBranch('') }) }}
                   >{t('workspace.create')}</Button>
                 </div>
               )}
@@ -2096,11 +2098,7 @@ function pathBelongsToActiveWorkspace(
   path: string,
 ): boolean {
   const cwd = activeWorkspace(sessions)
-  if (cwd === undefined) return false
-  const normalizedRoot = cwd.replaceAll('\\', '/').replace(/\/+$/, '')
-  const normalizedPath = path.replaceAll('\\', '/').replace(/\/+$/, '')
-  return normalizedPath === normalizedRoot
-    || normalizedPath.startsWith(`${normalizedRoot}/`)
+  return cwd !== undefined && isWorkspacePath(cwd, path)
 }
 
 function AppRailIcon({ kind }: { kind: 'agent' | 'notebook' }): ReactNode {

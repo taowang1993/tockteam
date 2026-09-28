@@ -7,6 +7,7 @@ const listeners = new Set<() => void>()
 let current: string | undefined = 'first'
 let snapshot = { current: current as string | undefined, byId: { first: { cwd: '/first' }, second: { cwd: '/second' } } }
 let startedSessions = 0
+const openedExternalPaths: string[] = []
 const chatListeners = new Set<() => void>()
 let chat = { legacy: { runningCalls: [] as Array<{ callId: string; name: string; argsRaw: string }> } }
 const services = new Map<string, any>()
@@ -15,6 +16,7 @@ const pendingFacts: Array<() => void> = []
 const pendingDiffs: Array<() => void> = []
 const pendingTrees: Array<() => void> = []
 let holdFacts = false
+let failNextStatus = false
 let holdDiffs = false
 let holdTrees = false
 const longFilename = `${'a'.repeat(245)}.txt`
@@ -32,6 +34,9 @@ window.fetch = async (input, init) => {
     return json(preferences)
   }
   if (url.pathname === '/tockteam/workspace') {
+    if (init?.method === 'POST') return JSON.parse(String(init.body)).branch === 'refresh-fails'
+      ? json({ message: 'Created refresh-fails', facts: facts(url.searchParams.get('cwd')!) })
+      : new Response(JSON.stringify({ error: 'Branch rejected' }), { status: 400 })
     const value = facts(url.searchParams.get('cwd')!)
     if (holdFacts) {
       holdFacts = false
@@ -41,7 +46,13 @@ window.fetch = async (input, init) => {
   }
   const payload = JSON.parse(String(init?.body ?? '{}'))
   let value: unknown = {}
-  if (url.pathname.endsWith('/git.status')) value = { isRepo: true, branch: payload.sessionId, entries: [{ path: 'one.ts', xy: ' M' }, { path: 'two.ts', xy: ' M' }, { path: 'partial.ts', xy: 'MM' }] }
+  if (url.pathname.endsWith('/git.status')) {
+    if (failNextStatus) {
+      failNextStatus = false
+      return json({ ok: false, error: { message: 'Status refresh failed' } })
+    }
+    value = { isRepo: true, branch: payload.sessionId, entries: [{ path: 'one.ts', xy: ' M' }, { path: 'two.ts', xy: ' M' }, { path: 'partial.ts', xy: 'MM' }] }
+  }
   if (url.pathname.endsWith('/git.branch')) value = { current: payload.sessionId, names: [payload.sessionId] }
   if (url.pathname.endsWith('/git.log')) value = []
   if (url.pathname.endsWith('/settings.get')) value = { revision: 0, value: {} }
@@ -86,7 +97,7 @@ services.set('inputTriggers', { registerSource: subscribe })
 services.set(TOCKTEAM_SURFACE_VIEW_SERVICE, { kind: 'web' })
 services.set('desktopPanels', { subscribe, isBottomPanelOpen: () => false, setAutoOpenTerminal: () => {} })
 services.set('pinnedSummary', { subscribe, setOpen: () => {}, isOpen: () => false })
-services.set('workspaces', { openPath: async () => {} })
+services.set('workspaces', { openPath: async (path: string) => { openedExternalPaths.push(path) } })
 services.set('uiWorkspace', { startSession: () => { startedSessions += 1 } })
 services.set('uiConversation', { binding: () => ({ target: () => ({
   getSnapshot: () => chat,
@@ -117,6 +128,7 @@ Object.assign(window, { panelProof: {
   },
   ready: () => services.get('desktopSidebar').getSnapshot().ready,
   holdFacts: () => { holdFacts = true },
+  failNextRefresh: () => { failNextStatus = true },
   releaseFacts: () => { for (const release of pendingFacts.splice(0)) release() },
   factsPending: () => pendingFacts.length,
   holdDiffs: () => { holdDiffs = true },
@@ -127,5 +139,8 @@ Object.assign(window, { panelProof: {
   releaseTrees: () => { for (const release of pendingTrees.splice(0)) release() },
   treesPending: () => pendingTrees.length,
   preferences: () => preferences,
+  openPath: async (path: string) => await services.get('workspaces').openPath(path),
+  openedPaths: () => [...openedExternalPaths],
+  hasFileTab: (path: string) => services.get('desktopSidebar').getSnapshot().tabs.some((tab: { resource?: string }) => tab.resource === path),
   dispose: () => { for (const dispose of disposers.reverse()) dispose() },
 } })
