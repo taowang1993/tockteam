@@ -2605,8 +2605,10 @@ export class WorkbenchRouteController {
             && generation === this.treeGeneration && sameVault(this.snapshot.vault, vault);
         try {
             const tree = await this.loadTreePages(vault, abort.signal, requestCurrent);
-            if (tree === null || !requestCurrent())
+            if (!requestCurrent())
                 return false;
+            if (tree === null)
+                throw new RemoteCallError('invalid-result', 'The vault tree response changed generation.');
             this.treeComplete = !tree.truncated;
             const entries = Object.freeze(tree.entries.toSorted((left, right) => left.path.localeCompare(right.path)));
             const searchQuery = this.snapshot.searchQuery.trim();
@@ -2645,6 +2647,15 @@ export class WorkbenchRouteController {
         }
         catch (error) {
             if (requestCurrent()) {
+                this.treeComplete = false;
+                for (const document of this.documents.values()) {
+                    if (!sameVault(document.vault, vault) || document.state.documentKind !== 'base')
+                        continue;
+                    document.baseAbort?.abort();
+                    document.hydratedEpoch = undefined;
+                    document.hydration = undefined;
+                    this.publishDocument(document, { baseFiles: Object.freeze([]), baseStatus: 'error' });
+                }
                 const message = this.failureMessage(error, 'The vault tree could not be refreshed.');
                 this.update(background ? { warnings: Object.freeze([...this.snapshot.warnings, message].slice(-32)) } : { message });
             }
@@ -2654,6 +2665,12 @@ export class WorkbenchRouteController {
             if (this.treeAbort === abort)
                 this.treeAbort = null;
         }
+    }
+    async retryBaseRows(basePath) {
+        const vault = this.snapshot.vault;
+        if (!vault)
+            return false;
+        return this.treeComplete ? this.hydrateBaseRows(basePath) : this.refreshTree(vault, true);
     }
     async createManagedVault(name) {
         if (!await this.saveAll())
@@ -5173,7 +5190,7 @@ export function TockTutorRouteView(props) {
         setBookmarkDialog(null);
         setMergeOpen(false);
         setMergeRecoveryOpen(false);
-    }, [snapshot.path]);
+    }, [snapshot.path, snapshot.vault?.id, snapshot.vault?.generation]);
     useEffect(() => {
         if (snapshot.mode === 'source' || snapshot.mode === 'live-preview')
             lastEditingModeRef.current = snapshot.mode;
@@ -5573,7 +5590,7 @@ export function TockTutorRoute(props) {
     return (_jsx("div", { className: "tocktutor-root h-full min-h-0", ref: root, children: _jsx(TockTutorRouteView, { paneController: controller, onSplitPane: (id, axis) => { void controller.splitPane(id, axis); }, assistantPanel: (_jsx(TockTutorAssistantPanelOutlet, { activePath: snapshot.path, renderSlot: props.renderSlot, ...((snapshot.selectionEnd ?? 0) > (snapshot.selectionStart ?? 0)
                     ? { selectedText: snapshot.source.slice(snapshot.selectionStart, Math.min(snapshot.selectionEnd ?? 0, (snapshot.selectionStart ?? 0) + 10_000)) }
                     : {}), vault: snapshot.vault })), nativeNoteActions: nativeNoteActions, nativeActions: (_jsx(TockTutorNativeActionsOutlet, { noteOwnerKey: controller.nativeNoteOwnerKey(), activePath: snapshot.path, noteSource: snapshot.source, saveNote: () => controller.save(), withNoteTarget: (target, save, run) => controller.withNoteTarget(target, save, run), handleDispatch: event => controller.handleDispatch(event), publishNoteActions: publishNoteActions, renderSlot: props.renderSlot, saveCurrent: () => controller.saveAll(), storeAudio: (fileName, dataBase64) => controller.storeActiveAttachment(fileName, dataBase64), vault: snapshot.vault })), onActivateTab: (paneId, path) => { void controller.activateTab(paneId, path); }, onAddBookmark: (title, group) => controller.addActiveBookmark(title, group ?? null), onEditBookmark: (id, title, group) => controller.editActiveBookmark(id, title, group), onAttachFiles: files => { void controller.attachFiles(Array.from(files).slice(0, 16)); }, onUploadImage: file => controller.uploadImage(file), onApplyOrganization: () => { void controller.applyOrganization(); }, onAddPane: () => { void controller.addPane(); }, onBack: () => { void controller.goBack(); }, onBaseCopy: request => { void globalThis.navigator?.clipboard?.writeText(request.text); }, onBaseEdit: (request, basePath) => controller.applyBaseEdit(request, basePath), onBaseSourceChange: (previous, next) => controller.updateBaseSource(previous, next), onBaseNewNote: request => controller.createBaseNote(request), onBaseRetry: basePath => { if (basePath)
-                void controller.hydrateBaseRows(basePath); }, onBaseExport: request => {
+                void controller.retryBaseRows(basePath); }, onBaseExport: request => {
                 const url = URL.createObjectURL(new Blob([request.text], { type: 'text/csv;charset=utf-8' }));
                 const anchor = document.createElement('a');
                 anchor.href = url;

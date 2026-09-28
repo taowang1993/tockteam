@@ -17,7 +17,7 @@ export function setBaseViewField(source: string, viewName: string, field: 'sort'
   if (field === 'type' && (typeof value !== 'string' || !['table', 'list', 'cards', 'map'].includes(value))) return null
   if (field === 'rowHeight' && (typeof value !== 'string' || !['short', 'medium', 'tall'].includes(value))) return null
   const { lines, newline, ending } = sourceLines(source)
-  const viewsStart = lines.findIndex(line => /^views:\s*$/u.test(line))
+  const viewsStart = lines.findIndex(line => /^views:\s*(?:#.*)?$/u.test(line))
   if (viewsStart < 0) return null
   const nextSection = lines.findIndex((line, index) => index > viewsStart && /^[A-Za-z][\w.-]*:/u.test(line))
   const viewsEnd = nextSection < 0 ? lines.length : nextSection
@@ -64,7 +64,7 @@ export function appendBaseView(source: string, kind: ExecutableBaseViewDefinitio
   if (parsed.status !== 'ready' || !/^[\p{L}\p{N}][\p{L}\p{N} _-]{0,79}$/u.test(name)
     || parsed.views.some(view => view.name.toLocaleLowerCase() === name.toLocaleLowerCase())) return null
   const { lines, newline, ending } = sourceLines(source)
-  const viewsIndex = lines.findIndex(line => line === 'views:')
+  const viewsIndex = lines.findIndex(line => /^views:\s*(?:#.*)?$/u.test(line))
   if (viewsIndex < 0) return null
   const next = lines.findIndex((line, index) => index > viewsIndex && /^[A-Za-z][\w.-]*:/u.test(line))
   lines.splice(next < 0 ? lines.length : next, 0, `  - type: ${kind}`, `    name: ${JSON.stringify(name)}`)

@@ -2848,7 +2848,8 @@ export class WorkbenchRouteController {
       && generation === this.treeGeneration && sameVault(this.snapshot.vault, vault)
     try {
       const tree = await this.loadTreePages(vault, abort.signal, requestCurrent)
-      if (tree === null || !requestCurrent()) return false
+      if (!requestCurrent()) return false
+      if (tree === null) throw new RemoteCallError('invalid-result', 'The vault tree response changed generation.')
       this.treeComplete = !tree.truncated
       const entries = Object.freeze(tree.entries.toSorted((left, right) => left.path.localeCompare(right.path)))
       const searchQuery = this.snapshot.searchQuery.trim()
@@ -2880,6 +2881,14 @@ export class WorkbenchRouteController {
       return true
     } catch (error) {
       if (requestCurrent()) {
+        this.treeComplete = false
+        for (const document of this.documents.values()) {
+          if (!sameVault(document.vault, vault) || document.state.documentKind !== 'base') continue
+          document.baseAbort?.abort()
+          document.hydratedEpoch = undefined
+          document.hydration = undefined
+          this.publishDocument(document, { baseFiles: Object.freeze([]), baseStatus: 'error' })
+        }
         const message = this.failureMessage(error, 'The vault tree could not be refreshed.')
         this.update(background ? { warnings: Object.freeze([...this.snapshot.warnings, message].slice(-32)) } : { message })
       }
@@ -2887,6 +2896,12 @@ export class WorkbenchRouteController {
     } finally {
       if (this.treeAbort === abort) this.treeAbort = null
     }
+  }
+
+  async retryBaseRows(basePath: string): Promise<boolean> {
+    const vault = this.snapshot.vault
+    if (!vault) return false
+    return this.treeComplete ? this.hydrateBaseRows(basePath) : this.refreshTree(vault, true)
   }
 
   async createManagedVault(name: string): Promise<boolean> {
@@ -5820,7 +5835,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
     setBookmarkDialog(null)
     setMergeOpen(false)
     setMergeRecoveryOpen(false)
-  }, [snapshot.path])
+  }, [snapshot.path, snapshot.vault?.id, snapshot.vault?.generation])
   useEffect(() => {
     if (snapshot.mode === 'source' || snapshot.mode === 'live-preview') lastEditingModeRef.current = snapshot.mode
   }, [snapshot.mode])
@@ -6811,7 +6826,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onBaseEdit={(request, basePath) => controller.applyBaseEdit(request, basePath)}
         onBaseSourceChange={(previous, next) => controller.updateBaseSource(previous, next)}
         onBaseNewNote={request => controller.createBaseNote(request)}
-        onBaseRetry={basePath => { if (basePath) void controller.hydrateBaseRows(basePath) }}
+        onBaseRetry={basePath => { if (basePath) void controller.retryBaseRows(basePath) }}
         onBaseExport={request => {
           const url = URL.createObjectURL(new Blob([request.text], { type: 'text/csv;charset=utf-8' }))
           const anchor = document.createElement('a')

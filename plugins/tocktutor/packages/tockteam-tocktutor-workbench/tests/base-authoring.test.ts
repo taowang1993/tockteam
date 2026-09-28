@@ -26,6 +26,14 @@ test('sort and filter changes preserve unrelated views, source comments and unkn
   if (cleared.status === 'ready') assert.deepEqual(cleared.views[0]?.filters, [])
 })
 
+test('authors views with an inline comment on the section header without erasing it', () => {
+  const source = 'views: # Keep the view collection\n  - name: Notes\n'
+  const parsed = parseExecutableBase(source)
+  assert.equal(parsed.status, 'ready')
+  assert.equal(setBaseViewField(source, 'Notes', 'name', 'Renamed'), 'views: # Keep the view collection\n  - name: "Renamed"\n')
+  assert.equal(appendBaseView(source, 'list', 'Other'), 'views: # Keep the view collection\n  - name: Notes\n  - type: list\n    name: "Other"\n')
+})
+
 test('authors valid Base files without requiring a final newline or changing their line endings', () => {
   for (const newline of ['\n', '\r\n']) for (const finalNewline of ['', newline]) {
     const body = ['views:', '  - type: table', '    name: Notes', '    # Keep'].join(newline)

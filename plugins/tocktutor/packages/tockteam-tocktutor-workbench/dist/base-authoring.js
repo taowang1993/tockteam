@@ -20,7 +20,7 @@ export function setBaseViewField(source, viewName, field, value) {
     if (field === 'rowHeight' && (typeof value !== 'string' || !['short', 'medium', 'tall'].includes(value)))
         return null;
     const { lines, newline, ending } = sourceLines(source);
-    const viewsStart = lines.findIndex(line => /^views:\s*$/u.test(line));
+    const viewsStart = lines.findIndex(line => /^views:\s*(?:#.*)?$/u.test(line));
     if (viewsStart < 0)
         return null;
     const nextSection = lines.findIndex((line, index) => index > viewsStart && /^[A-Za-z][\w.-]*:/u.test(line));
@@ -88,7 +88,7 @@ export function appendBaseView(source, kind, name) {
         || parsed.views.some(view => view.name.toLocaleLowerCase() === name.toLocaleLowerCase()))
         return null;
     const { lines, newline, ending } = sourceLines(source);
-    const viewsIndex = lines.findIndex(line => line === 'views:');
+    const viewsIndex = lines.findIndex(line => /^views:\s*(?:#.*)?$/u.test(line));
     if (viewsIndex < 0)
         return null;
     const next = lines.findIndex((line, index) => index > viewsIndex && /^[A-Za-z][\w.-]*:/u.test(line));

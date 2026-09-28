@@ -2013,6 +2013,44 @@ test('vault entry changes rehydrate an already loaded Base without reopening it'
   } finally { await controller.dispose() }
 })
 
+test('a failed vault refresh makes a loaded Base unavailable until a fresh inventory succeeds', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor')
+    await controller.select('Tasks.base')
+    for (let attempt = 0; attempt < 20 && controller.getSnapshot().baseFiles?.length === 0; attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controller.getSnapshot().baseStatus, 'ready')
+    assert.ok(controller.getSnapshot().baseFiles?.length)
+    remote.treePageOverride = async () => { throw new Error('Vault inventory unavailable.') }
+    remote.emit({ kind: 'tree', action: 'changed', vault: firstVault })
+    for (let attempt = 0; attempt < 20 && !controller.getSnapshot().warnings.includes('Vault inventory unavailable.'); attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controller.getSnapshot().baseStatus, 'error')
+    assert.deepEqual(controller.getSnapshot().baseFiles, [])
+    remote.treePageOverride = null
+    assert.equal(await controller.retryBaseRows('Tasks.base'), true)
+    for (let attempt = 0; attempt < 20 && controller.getSnapshot().baseStatus !== 'ready'; attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controller.getSnapshot().baseStatus, 'ready')
+    assert.ok(controller.getSnapshot().baseFiles?.length)
+  } finally { await controller.dispose() }
+})
+
+test('a wrong-generation inventory cannot leave stale Base results visible', async () => {
+  const remote = new FakeRemote()
+  const controller = new WorkbenchRouteController(remote, () => {})
+  try {
+    await controller.syncLocation('/tocktutor')
+    await controller.select('Tasks.base')
+    for (let attempt = 0; attempt < 20 && controller.getSnapshot().baseFiles?.length === 0; attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    assert.ok(controller.getSnapshot().baseFiles?.length)
+    remote.treePageOverride = async request => success({ ...tree(request.expectedVault), generation: request.expectedVault.generation + 1 })
+    remote.emit({ kind: 'tree', action: 'changed', vault: firstVault })
+    for (let attempt = 0; attempt < 20 && controller.getSnapshot().baseStatus === 'ready'; attempt += 1) await new Promise(resolve => setImmediate(resolve))
+    assert.equal(controller.getSnapshot().baseStatus, 'error')
+    assert.deepEqual(controller.getSnapshot().baseFiles, [])
+  } finally { await controller.dispose() }
+})
+
 test('a Base cell save is not replaced by an older note hydration result', async () => {
   const remote = new FakeRemote()
   const controller = new WorkbenchRouteController(remote, () => {})

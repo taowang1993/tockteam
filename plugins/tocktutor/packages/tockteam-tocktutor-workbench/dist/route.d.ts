@@ -371,6 +371,7 @@ export declare class WorkbenchRouteController {
     private onVaultChange;
     private loadTreePages;
     private refreshTree;
+    retryBaseRows(basePath: string): Promise<boolean>;
     createManagedVault(name: string): Promise<boolean>;
     openSandboxVault(): Promise<boolean>;
     setRecoveryOpen(open: boolean, target?: NoteTarget | null): Promise<void>;

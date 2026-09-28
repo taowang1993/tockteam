@@ -543,6 +543,24 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByText('1 Result')).toBeTruthy()
   })
 
+  it('does not carry Base view selection or search into another vault with the same file path', async () => {
+    const baseSource = 'views:\n  - name: First\n    order: [file.name]\n  - name: Second\n    order: [file.name]\n'
+    const baseFiles = [{ path: 'Alpha.md', revision: `file:${'a'.repeat(64)}`, source: '# Alpha\n' }]
+    const first = { ...snapshot, baseFiles, documentKind: 'base' as const, path: 'Tasks.base', phase: 'ready' as const, source: baseSource,
+      vault: { generation: 1, id: `vault:${'a'.repeat(64)}` } }
+    const second = { ...first, vault: { generation: 2, id: `vault:${'b'.repeat(64)}` } }
+    const view = (state: WorkbenchRouteSnapshot) => <TockTutorRouteView snapshot={state} onActivateTab={() => {}} onAddPane={() => {}} onEdit={() => {}} onFocusPane={() => {}} onMode={() => {}} onMoveCanvas={() => {}} onSave={() => {}} onSelect={() => {}} onToggleTask={() => {}} />
+    const mounted = render(view(first))
+    fireEvent.click(screen.getByRole('button', { name: 'Base View' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Second' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Search', exact: true }))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find in Base' }), { target: { value: 'absent' } })
+    expect(screen.getByText('0 Results')).toBeTruthy()
+    mounted.rerender(view(second))
+    await waitFor(() => expect(screen.getByRole('grid', { name: 'First Results' })).toBeTruthy())
+    expect(screen.getByText('1 Result')).toBeTruthy()
+  })
+
   it('evaluates this.file against the Base document in the mounted route', () => {
     const source = `filters: 'file.folder == this.file.folder'\nformulas:\n  owner: this.file.name\nviews:\n  - type: table\n    name: Nearby\n    order: [file.name, formula.owner]\n`
     renderRoute({
