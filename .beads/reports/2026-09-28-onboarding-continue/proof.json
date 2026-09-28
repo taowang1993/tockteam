@@ -1,0 +1,139 @@
+{
+  "product": "TockTeam Desktop",
+  "date": "2026-09-28",
+  "fixtures": "Fresh and previously configured isolated Desktop profiles (the saved key is synthetic); built-in dark theme, no skin, mock Keychain. No user profile or real credentials accessed.",
+  "screenshots": [
+    {
+      "file": "model-connected.png",
+      "state": {
+        "route": "http://127.0.0.1:55585/tockcoder",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "scheme": "dark",
+        "documentSkin": null,
+        "bodySkin": null,
+        "heading": "Add a Model",
+        "dialogOpen": true,
+        "themeBase": "rgb(21, 21, 23)",
+        "dialogBackground": "rgb(21, 21, 23)",
+        "backdrop": "rgba(0, 0, 0, 0.85)",
+        "description": {
+          "first": "Connect OpenRouter to start with a free model.",
+          "breakTag": "BR",
+          "second": "You can change models later in Settings → Models.",
+          "firstRect": [
+            {
+              "top": 312.3984375,
+              "left": 393,
+              "width": 305.703125
+            }
+          ],
+          "secondRect": [
+            {
+              "top": 336.3984375,
+              "left": 393,
+              "width": 329.328125
+            }
+          ]
+        },
+        "connectedStatus": "OpenRouter is already connected. Your saved API key stays private and unchanged.",
+        "connectedBadge": true,
+        "buttonLabel": "Continue",
+        "buttonEnabled": true,
+        "visibleFinishSetup": false,
+        "passwordFieldPresent": false
+      },
+      "pixelSize": [
+        3024,
+        1898
+      ],
+      "fixture": "previously configured synthetic key"
+    },
+    {
+      "file": "model-missing.png",
+      "state": {
+        "route": "http://127.0.0.1:55641/tockcoder",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "scheme": "dark",
+        "documentSkin": null,
+        "bodySkin": null,
+        "heading": "Add a Model",
+        "dialogOpen": true,
+        "themeBase": "rgb(21, 21, 23)",
+        "dialogBackground": "rgb(21, 21, 23)",
+        "backdrop": "rgba(0, 0, 0, 0.85)",
+        "description": {
+          "first": "Connect OpenRouter to start with a free model.",
+          "breakTag": "BR",
+          "second": "You can change models later in Settings → Models.",
+          "firstBox": {
+            "lineCount": 1,
+            "top": 312.3984375
+          },
+          "secondBox": {
+            "lineCount": 1,
+            "top": 336.3984375
+          },
+          "firstRect": [
+            {
+              "top": 312.3984375
+            }
+          ],
+          "secondRect": [
+            {
+              "top": 336.3984375
+            }
+          ]
+        },
+        "keyPlaceholder": "OPENROUTER_API_KEY",
+        "keyLink": {
+          "text": "OpenRouter",
+          "target": "_blank",
+          "hasExternalLink": true
+        },
+        "primaryButton": {
+          "text": "Save and Finish",
+          "disabled": true
+        }
+      },
+      "pixelSize": [
+        3024,
+        1898
+      ],
+      "fixture": "no OpenRouter key"
+    }
+  ],
+  "checks": {
+    "connectedContinueCompletesOnboarding": true,
+    "configuredKeyPreservedByteForByte": true,
+    "freshKeyFlowStillRequiresInput": {
+      "text": "Save and Finish",
+      "disabled": true
+    },
+    "freshCredentialsPreservedByteForByte": true,
+    "rendererErrors": [],
+    "stoppedProcessTrees": [
+      {
+        "rootPid": 78403,
+        "remaining": []
+      },
+      {
+        "rootPid": 79072,
+        "remaining": []
+      }
+    ],
+    "commands": [
+      "node --test tests/desktop-onboarding-client.test.ts tests/desktop-onboarding-bridge.test.ts (7 passed, 0 failed)",
+      "pnpm run typecheck",
+      "pnpm run build",
+      "node scripts/stage-dsh.mjs --quick"
+    ]
+  }
+}
