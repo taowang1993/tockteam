@@ -78,7 +78,7 @@ export function installDesktopOnboarding({ bridge, credentials, openPaths }: Set
           <h2 id="tockteam-onboarding-title" tabindex="-1" class="m-0 text-[22px] font-semibold leading-[1.2] tracking-tight text-foreground outline-none">${workspace ? 'Choose a Workspace' : 'Add a Model'}</h2>
           <p id="tockteam-onboarding-description" class="m-0 max-w-[65ch] text-sm leading-6 text-muted-foreground">${workspace
             ? 'Choose a folder for your first session, or skip this step and choose one later.'
-            : 'Connect OpenRouter to start with a free model. You can change models later in Settings → Models.'}</p>
+            : 'Connect OpenRouter to start with a free model.<br>You can change models later in Settings → Models.'}</p>
         </header>
         ${workspace ? `
           <div class="flex flex-1 flex-col gap-3 pt-1">
@@ -99,7 +99,7 @@ export function installDesktopOnboarding({ bridge, credentials, openPaths }: Set
           </div>
           <div class="flex items-center gap-2">
             ${workspace ? '' : `<button id="tockteam-onboarding-back" type="button" class="${quiet}">Back</button>`}
-            <button id="${workspace ? 'tockteam-onboarding-next' : 'tockteam-onboarding-finish'}" type="button" ${workspace ? 'aria-label="Skip Folder Selection"' : ''} class="${primary}">${workspace ? 'Skip' : 'Finish Setup'}</button>
+            <button id="${workspace ? 'tockteam-onboarding-next' : 'tockteam-onboarding-finish'}" type="button" ${workspace ? 'aria-label="Skip Folder Selection"' : ''} class="${primary}">${workspace ? 'Skip' : 'Continue'}</button>
           </div>
         </footer>
       </div>`
