@@ -1,0 +1,31 @@
+# TockTutor Base View Remediation — September 28, 2026
+
+**Result:** All **13 confirmed findings** from [the baseline audit](2026-09-28-tocktutor-base-view-audit.md) are fixed and covered by focused regression checks. The baseline report records the pre-fix state; its original “Unfixed” labels are historical.
+
+## Fixed Findings — 13 Total
+
+1. **[P1] Concurrent saves overwrote one another.** Impact: two edits from the same revision could both report success. **Affected:** `plugins/tocktutor/packages/tockbot-note-runtime/src/index.ts`. **Fix/verification:** serialize saves within a vault before revision checks and commit; `two saves of the same revision serialize before the first write commits` proves one success and one conflict.
+2. **[P1] Numeric summaries crashed on property objects.** Impact: a valid Base could fail to render. **Affected:** `plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/NotesBaseFormula.ts`. **Fix/verification:** unsafe numeric conversions return unsupported; focused `base-executable-port.test.ts` covers `sum` and `range`.
+3. **[P1] `concat()` exceeded the formula-output limit.** Impact: formulas could produce unbounded text. **Affected:** `src/NotesBaseFormula.ts` in the workbench package. **Fix/verification:** accumulate length before joining; `base-formula-upstream.test.tsx` checks the limit boundary.
+4. **[P1] Switching split panes discarded a Base cell edit.** Impact: pointer-down in another pane could reject the edited pane’s blur. **Affected:** `src/route.tsx` in the workbench package. **Fix/verification:** bind edits to the source pane/document lifetime rather than current focus; `route-split-panes.test.tsx` covers pointer-down then blur in a real React split.
+5. **[P2] Already-loaded Base rows became stale.** Impact: external note changes did not update filters, summaries, or rows. **Affected:** `src/route.tsx`. **Fix/verification:** tree refresh invalidates and reloads Base hydration; `route.test.ts` covers a vault entry update, and an isolated Desktop fixture updated after an external note appeared without reopening the Base.
+6. **[P2] One failed note read looked like an empty Base.** Impact: users could mistake incomplete data for no matching notes. **Affected:** `src/route.tsx`, `src/base-executable-view.tsx`. **Fix/verification:** separate loading, failed, and ready states with Retry; route and component tests cover failure/recovery and prohibit the empty message during loading or failure.
+7. **[P2] A Base cell edit outlived route disposal.** Impact: a late read could start a write after shutdown. **Affected:** `src/route.tsx`. **Fix/verification:** track and abort each edit, reject precommit continuation after disposal, and await already-started work; two route tests cover held read and held save.
+8. **[P2] Invalid numeric input remained on screen as if saved.** Impact: a cleared number disagreed with formulas and export. **Affected:** `src/base-executable-view.tsx`. **Fix/verification:** restore the confirmed value and show a named validation error; component test and guarded Desktop proof show rollback, then a valid edit updates both the formula and summary.
+9. **[P2] The aggregate hydration limit was checked too late.** Impact: many notes could be fetched before a 16 MB rejection. **Affected:** `src/route.tsx`. **Fix/verification:** preflight advertised sizes and stop further batches at actual returned-byte bounds; route tests cover both paths.
+10. **[P2] Quoted comparisons chose the wrong `if()` branch.** Impact: formula filters could select the wrong rows. **Affected:** `src/NotesBaseFormula.ts`. **Fix/verification:** recognize only a complete quoted scalar; `base-formula-upstream.test.tsx` covers a quoted comparison.
+11. **[P2] Bare scalar formulas disagreed with parenthesized formulas.** Impact: `1` and `true` were interpreted inconsistently. **Affected:** `src/NotesBaseFormula.ts`. **Fix/verification:** use the same bounded scalar parser at both entry points; focused formula tests cover both forms.
+12. **[P2] Quoted filter items were unquoted twice.** Impact: valid YAML filter expressions became invalid. **Affected:** `src/base-parser.ts`, `src/NotesBaseFilterTree.ts`. **Fix/verification:** decode at the filter-tree boundary once; focused parser/query tests cover literal quotes and YAML escapes.
+13. **[P2] Search broke cross-file summaries.** Impact: filtering visible rows removed hidden files needed by `file(...)` formulas. **Affected:** `src/base-query.ts`, `src/base-view-model.ts`. **Fix/verification:** search and resummarize against the original hydrated file context; `base-executable-port.test.ts` covers a referenced hidden file.
+
+A further route regression prevents an older in-flight hydration result from replacing a just-saved Base cell.
+
+## Verification
+
+- Red checks were run before each affected implementation group; the new regressions then passed.
+- `pnpm run typecheck:tocktutor` and `pnpm run test:tocktutor` passed across the nested workspace.
+- `pnpm run build:tocktutor`, `node scripts/tocktutor-build-manifest.mjs --check`, and `node scripts/stage-dsh.mjs --quick` passed.
+- `pnpm run typecheck`, `pnpm test`, and `pnpm run build` passed; root tests: **1,514 passed, 0 failed, 17 skipped**.
+- A guarded real Desktop instance used a fresh managed vault and an isolated Profile. `skins.json` contained `{"activeId":null,"fallbackTheme":"dark"}`. On `/tocktutor/Untitled.base`, the verified CSS viewport was **1512 × 949** at **2×**; both screenshots are **3024 × 1898**. The document color scheme was `dark` and neither `html` nor `body` had a TockTeam skin. One screenshot shows number rollback and feedback; the other shows two live Base rows and the recalculated summary. No browser console errors or page errors were observed; two existing development warnings were reported. The owned Electron root PID **75265** and every recorded descendant were stopped (`remaining: []`).
+
+**Residual boundary:** The save queue serializes writers in one NoteVault Runtime, including separate Desktop windows. Uncooperative external programs editing the same file at precisely the commit boundary cannot be made to honor that in-process queue; the existing disk revision check remains in place. This is not counted as an additional confirmed finding.
