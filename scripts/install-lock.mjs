@@ -34,9 +34,10 @@ function sameLock(left, right) {
     && left.ownerText === right.ownerText
 }
 
-async function recoverInstallLock(lockPath, observed) {
+async function recoverInstallLock(lockPath, observed, depth) {
   const recoveryPath = join(lockPath, RECOVERY_DIRECTORY)
-  try { await mkdir(recoveryPath) }
+  // Recovery is itself owned: a crash must not leave an immortal anonymous claim.
+  try { await acquireOwnedLock(recoveryPath, 'installer recovery is busy', depth + 1) }
   catch { return false }
 
   const temporaryOwner = join(lockPath, `${OWNER_FILE}.${process.pid}.${randomUUID()}.tmp`)
@@ -52,7 +53,9 @@ async function recoverInstallLock(lockPath, observed) {
   }
 }
 
-export async function acquireInstallLock(lockPath, conflictMessage) {
+async function acquireOwnedLock(lockPath, conflictMessage, depth) {
+  // Bound repeated crashes or hostile nested claims; uncertain ownership always fails closed.
+  if (depth > 8) throw new Error(conflictMessage)
   try {
     await mkdir(lockPath)
     try {
@@ -65,7 +68,11 @@ export async function acquireInstallLock(lockPath, conflictMessage) {
   } catch (error) {
     if (error?.code !== 'EEXIST') throw error
     const observed = await inspectLock(lockPath)
-    if (observed?.stale && await recoverInstallLock(lockPath, observed)) return
+    if (observed?.stale && await recoverInstallLock(lockPath, observed, depth)) return
     throw new Error(conflictMessage)
   }
+}
+
+export async function acquireInstallLock(lockPath, conflictMessage) {
+  await acquireOwnedLock(lockPath, conflictMessage, 0)
 }

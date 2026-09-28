@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { access, copyFile, lstat, mkdir, readFile, realpath, readdir, rename, rm, stat, symlink } from 'node:fs/promises'
-import { constants, existsSync, readFileSync } from 'node:fs'
+import { constants, createReadStream, existsSync, readFileSync } from 'node:fs'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
@@ -114,7 +114,13 @@ async function regularAncestorReal(rootPath, candidate, label) {
   return await realpath(resolvedCandidate)
 }
 
-async function validateRuntimeLinks(rootPath, marker, roots, { allowStaleLinks = false } = {}) {
+async function fileDigest(path) {
+  const hash = createHash('sha256')
+  for await (const chunk of createReadStream(path)) hash.update(chunk)
+  return hash.digest('hex')
+}
+
+async function validateRuntimeLinks(rootPath, marker, roots, { allowStaleLinks = false, restoredFiles = false } = {}) {
   const runtimeRoot = roots.runtimeRoot
   const canonicalRoot = roots.canonicalRuntimeRoot
   const entries = []
@@ -161,7 +167,10 @@ async function validateRuntimeLinks(rootPath, marker, roots, { allowStaleLinks =
       assert.equal((await readdir(entry.linkPath)).length, 0, `portable runtime-link directory placeholder is nonempty: ${entry.path}`)
     } else {
       assert.equal(linkStats.isFile(), true, `portable runtime-link file placeholder is invalid: ${entry.path}`)
-      assert.equal(linkStats.size, 0, `portable runtime-link file placeholder is nonempty: ${entry.path}`)
+      if (restoredFiles) {
+        assert.equal(linkStats.size, targetStats.size, `portable runtime-link restored file size differs: ${entry.path}`)
+        assert.equal(await fileDigest(entry.linkPath), await fileDigest(entry.targetPath), `portable runtime-link restored file differs: ${entry.path}`)
+      } else assert.equal(linkStats.size, 0, `portable runtime-link file placeholder is nonempty: ${entry.path}`)
     }
   }
   return entries
@@ -170,7 +179,7 @@ async function validateRuntimeLinks(rootPath, marker, roots, { allowStaleLinks =
 export async function restoreWindowsPortableRuntimeLinks(rootPath, options = {}) {
   const marker = await readPortableMarker(rootPath)
   const roots = await extractedRoots(rootPath)
-  const entries = await validateRuntimeLinks(rootPath, marker, roots, { allowStaleLinks: true })
+  const entries = await validateRuntimeLinks(rootPath, marker, roots, { allowStaleLinks: true, restoredFiles: options.restoredFiles === true })
   const createDirectoryLink = options.createDirectoryLink ?? ((target, path) => symlink(target, path, 'junction'))
   const copyRegularFile = options.copyFile ?? ((target, path) => copyFile(target, path))
   for (const entry of entries) {
@@ -299,7 +308,7 @@ export async function replaceWindowsPortableArchive(options) {
     try {
       await rename(pending, destination)
       promoted = true
-      await restoreWindowsPortableRuntimeLinks(destination)
+      await restoreWindowsPortableRuntimeLinks(destination, { restoredFiles: true })
       await validateInstall(destination)
     } catch (error) {
       try {

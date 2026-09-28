@@ -394,11 +394,16 @@ test('Windows first install creates its parent and recreates absolute runtime li
       await mkdir(join(runtime, 'node_modules', '@deepseek-ai', 'dsh-app-boot'), { recursive: true })
       await writeFile(join(target, 'package.json'), '{}')
       await writeFile(join(target, 'lib', 'index.js'), 'export default true')
+      await mkdir(join(runtime, 'node_modules', '.bin'), { recursive: true })
+      await writeFile(join(runtime, 'node_modules', '.bin', 'fixture.js'), '')
       await writeFile(join(pending, 'win-unpacked', 'TockTeam Desktop.exe'), '')
       await writeFile(join(pending, WINDOWS_PORTABLE_MARKER), JSON.stringify({
         schemaVersion: 1,
         ...expected,
-        runtimeLinks: [{ path: 'node_modules/@deepseek-ai/dsh-app-boot', target: 'workspace/packages/boot/app-boot', kind: 'dir' }],
+        runtimeLinks: [
+          { path: 'node_modules/@deepseek-ai/dsh-app-boot', target: 'workspace/packages/boot/app-boot', kind: 'dir' },
+          { path: 'node_modules/.bin/fixture.js', target: 'workspace/packages/boot/app-boot/lib/index.js', kind: 'file' },
+        ],
       }))
     }
     await replaceWindowsPortableArchive({
@@ -412,6 +417,7 @@ test('Windows first install creates its parent and recreates absolute runtime li
     const target = join(destination, 'win-unpacked', 'resources', 'dsh-runtime', 'workspace', 'packages', 'boot', 'app-boot')
     assert.equal(await readlink(link), target)
     assert.equal(await readFile(join(link, 'lib', 'index.js'), 'utf8'), 'export default true')
+    assert.equal(await readFile(join(destination, 'win-unpacked', 'resources', 'dsh-runtime', 'node_modules', '.bin', 'fixture.js'), 'utf8'), 'export default true')
   } finally {
     await rm(rootPath, { recursive: true, force: true })
   }
