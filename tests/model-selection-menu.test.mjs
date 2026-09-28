@@ -85,7 +85,7 @@ window.proof={directory,select:selection=>{
     return new Promise(resolve=>{window.proof.finish=()=>{update({current:selection,status:'ready'});resolve(true)}});
   }
   update({current:selection});return Promise.resolve(true)
-},selections,groups,openSettings:()=>{
+},selections,groups,addProviders:()=>update({groups:[...snapshot.groups,...['One','Two','Three','Four','Five'].map((name,index)=>({id:'additional-'+index,name:'Provider '+name,models:[{id:'model',name:'Model '+name}]}))]}),openSettings:()=>{
   setTimeout(()=>{
     const panel=document.createElement('div');
     panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Settings');
@@ -136,6 +136,15 @@ window.proof={directory,select:selection=>{
     await page.getByRole('dialog', { name: 'Model and Reasoning Effort' }).waitFor()
     assert.equal((await page.getByRole('button', { name: /Select model, current/i }).innerText()).trim(), 'Model & Effort', 'the open trigger labels the combined menu')
     assert.ok((await page.getByRole('searchbox', { name: 'Search Models' }).boundingBox()).height >= 40, 'search has a comfortable input height')
+    await page.getByRole('searchbox', { name: 'Search Models' }).focus()
+    const separators = await page.evaluate(() => {
+      const top = getComputedStyle(document.querySelector('._7KE1Ra_tabs'))
+      const bottom = getComputedStyle(document.querySelector('._7KE1Ra_searchRow'))
+      return { top: [top.borderBottomWidth, top.borderBottomColor], bottom: [bottom.borderBottomWidth, bottom.borderBottomColor], extra: bottom.boxShadow }
+    })
+    assert.deepEqual(separators.bottom, separators.top, 'both separators use the same width and color')
+    assert.equal(separators.extra, 'none', 'focused search must not double the bottom separator')
+    assert.equal(await page.getByRole('searchbox', { name: 'Search Models' }).evaluate(element => getComputedStyle(element).outlineStyle), 'solid', 'search keeps a keyboard focus indicator')
     assert.equal(await page.getByRole('tab', { name: 'OpenAI' }).getAttribute('aria-selected'), 'true')
     await page.getByRole('tab', { name: 'OpenAI' }).focus()
     await page.getByRole('tab', { name: 'OpenAI' }).press('ArrowRight')
@@ -268,6 +277,37 @@ window.proof={directory,select:selection=>{
     assert.equal(geometry.contained, true, 'the reasoning control must stay visible below long model lists')
     assert.equal(geometry.viewport, true)
     if (process.env.TOCKCODER_SCREENSHOT_PATH) writeFileSync(process.env.TOCKCODER_SCREENSHOT_PATH, await page.screenshot())
+    await page.evaluate(() => window.proof.addProviders())
+    const providerLayout = await page.evaluate(() => {
+      const tabs = document.querySelector('._7KE1Ra_tabs')
+      const rail = tabs.querySelector('._7KE1Ra_tabButtons')
+      const add = tabs.querySelector('button[aria-label="Add Providers"]').getBoundingClientRect()
+      const bounds = tabs.getBoundingClientRect()
+      return { count: rail.querySelectorAll('[role="tab"]').length - 1, scrollable: rail.scrollWidth > rail.clientWidth, addVisible: add.left >= bounds.left && add.right <= bounds.right, outerScroll: tabs.scrollWidth > tabs.clientWidth }
+    })
+    assert.equal(providerLayout.count, 9, 'five additional providers appear alongside the existing four')
+    assert.equal(providerLayout.scrollable, true, 'provider names scroll within their own region')
+    assert.equal(providerLayout.addVisible, true, 'Add Providers stays visible without scrolling')
+    assert.equal(providerLayout.outerScroll, false, 'the entire header must not scroll away')
+    await page.getByRole('tab', { name: 'OpenRouter' }).focus()
+    for (let index = 0; index < 5; index++) await page.locator('[role="tab"]:focus').press('ArrowRight')
+    assert.equal(await page.getByRole('tab', { name: 'Provider Five' }).getAttribute('aria-selected'), 'true', 'keyboard navigation reaches hidden provider tabs')
+    const lastTabVisible = await page.getByRole('tab', { name: 'Provider Five' }).evaluate(element => {
+      const tab = element.getBoundingClientRect()
+      const rail = element.closest('._7KE1Ra_tabButtons').getBoundingClientRect()
+      return tab.left >= rail.left && tab.right <= rail.right
+    })
+    assert.equal(lastTabVisible, true, 'keyboard-selected provider scrolls into view')
+    const underlineVisible = await page.getByRole('tab', { name: 'Provider Five' }).evaluate(element => {
+      const indicator = getComputedStyle(element, '::after')
+      const tab = element.getBoundingClientRect()
+      const rail = element.parentElement.getBoundingClientRect()
+      return indicator.content !== 'none' && parseFloat(indicator.bottom) >= 0 && tab.bottom <= rail.bottom + .5
+    })
+    assert.equal(underlineVisible, true, 'scrolling must not clip the selected provider underline')
+    await page.getByRole('searchbox', { name: 'Search Models' }).focus()
+    const extraProvidersScreenshot = process.env.TOCKCODER_EXTRA_PROVIDERS_SCREENSHOT_PATH ? await page.screenshot() : null
+    if (extraProvidersScreenshot) assert.deepEqual([extraProvidersScreenshot.readUInt32BE(16), extraProvidersScreenshot.readUInt32BE(20)], [3024, 1898])
     await page.evaluate(() => { document.getElementById('root').style.cssText = 'right:12px;left:auto;width:min(240px,calc(100vw - 24px))' })
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 320, height: 600, deviceScaleFactor: 2, mobile: false })
     const narrow = await page.evaluate(() => {
@@ -280,6 +320,8 @@ window.proof={directory,select:selection=>{
     await page.getByRole('button', { name: 'Add Providers' }).click()
     await page.getByRole('dialog', { name: 'Settings' }).getByRole('heading', { name: 'Models' }).waitFor()
     assert.equal(await page.getByRole('dialog', { name: 'Settings' }).getByRole('heading', { name: 'General' }).count(), 0, 'the add action opens Models, not General')
+    assert.deepEqual(errors, [])
+    if (extraProvidersScreenshot) writeFileSync(process.env.TOCKCODER_EXTRA_PROVIDERS_SCREENSHOT_PATH, extraProvidersScreenshot)
   } finally {
     await page?.goto('about:blank').catch(() => {})
     await browser?.close()
