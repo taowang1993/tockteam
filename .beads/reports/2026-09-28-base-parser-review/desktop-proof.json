@@ -1,0 +1,12 @@
+{
+  "surface": "isolated TockTeam Desktop",
+  "viewport": { "cssWidth": 1512, "cssHeight": 949, "deviceScale": 2, "pngWidth": 3024, "pngHeight": 1898 },
+  "appearance": { "colorScheme": "dark", "htmlSkin": null, "bodySkin": null },
+  "checks": [
+    { "route": "/tocktutor/Malformed.base", "mode": "Reading", "alert": "Base order must be a list.", "gridCount": 0, "screenshot": "malformed-dark.png" },
+    { "route": "/tocktutor/Ambiguous.base", "mode": "Reading", "alert": "Base formulas contain duplicate names.", "gridCount": 0, "screenshot": "ambiguous-dark.png" }
+  ],
+  "browserErrors": [],
+  "startupWarnings": 1,
+  "cleanup": { "rootPid": 13341, "stopped": true, "remaining": [] }
+}
