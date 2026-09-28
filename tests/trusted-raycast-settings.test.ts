@@ -51,6 +51,18 @@ test('settings reads launch nothing; preferences save with revision fencing inde
   assert.equal(writes.length, 1)
 })
 
+test('both preference writers reject language codes outside the pinned catalog', async () => {
+  const { service, writes } = harness()
+  const current = service.get('google-translate')
+  for (const key of ['langFrom', 'lang1', 'lang2']) {
+    assert.deepEqual(await service.update({ extensionId: current.extensionId, revision: current.revision, patch: { [key]: 'zz' } }), { ok: false, reason: 'invalid' })
+    await assert.rejects(service.saveFromCommand('google-translate', { ...current.values, [key]: 'zz' }, current.values), /Invalid/)
+  }
+  assert.deepEqual(writes, [])
+  await service.saveFromCommand('google-translate', { ...current.values, lang1: 'zh-CN' }, current.values)
+  assert.equal(service.get('google-translate').values.lang1, 'zh-CN')
+})
+
 test('parallel writes and stale inline preferences cannot silently overwrite a workbench edit', async () => {
   const { service } = harness()
   const before = service.get('kaomoji-search')

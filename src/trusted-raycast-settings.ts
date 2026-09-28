@@ -1,7 +1,7 @@
 import { createHmac, randomBytes } from 'node:crypto'
 import { KAOMOJI_PREFERENCE_DEFAULTS, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS, type TrustedRaycastTrustState } from './trusted-raycast-contract.ts'
 import { TRUSTED_RAYCAST_CAN_I_USE_PREFERENCE_DEFAULTS, prepareTrustedRaycastCanIUsePreferences } from './trusted-raycast-can-i-use-preferences.ts'
-import { CAN_I_USE_SETTINGS_DEFAULT_TARGETS, CAN_I_USE_SETTINGS_TARGETS } from './trusted-raycast-settings-catalog.ts'
+import { CAN_I_USE_SETTINGS_DEFAULT_TARGETS, CAN_I_USE_SETTINGS_TARGETS, TRANSLATE_SETTINGS_LANGUAGES } from './trusted-raycast-settings-catalog.ts'
 import { isSafeSettingsProxy, parseTrustedSettingsId, parseTrustedSettingsSnapshot, parseTrustedSettingsUpdate, validTrustedSettingsValues, type TrustedSettingsResult, type TrustedSettingsSnapshot, type TrustedSettingsValues } from './trusted-raycast-settings-contract.ts'
 import type { TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
 
@@ -36,6 +36,7 @@ export function createTrustedRaycastSettings(options: Readonly<{
   }
   const prepare = (id: TrustedRaycastExtensionId, values: TrustedSettingsValues): TrustedSettingsValues => {
     if (!validTrustedSettingsValues(id, values)) throw new Error('Invalid preferences')
+    if (id === 'google-translate' && ['langFrom', 'lang1', 'lang2'].some(key => !Object.hasOwn(TRANSLATE_SETTINGS_LANGUAGES, String(values[key])))) throw new Error('Invalid translation language')
     return id === 'can-i-use' ? prepareTrustedRaycastCanIUsePreferences(values, { canonicalTargets: CAN_I_USE_SETTINGS_TARGETS }).preferences : values
   }
   return Object.freeze({
