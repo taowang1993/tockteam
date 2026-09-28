@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
@@ -106,10 +107,15 @@ test('launcher IPC guard rejects identity, frame, URL, role, and session drift b
   for (const candidate of cases) assert.throws(() => guard.assert(candidate), /Blocked launcher IPC/u)
 })
 
+test('launcher CSP permits only bundled local and data fonts', () => {
+  assert.match(LAUNCHER_CSP, /(?:^|; )font-src 'self' data:(?:;|$)/u)
+  assert.ok(readFileSync(new URL('../src/launcher.html', import.meta.url), 'utf8').includes(`content="${LAUNCHER_CSP}"`))
+})
+
 test('launcher CSP is strict and contains no unsafe or network sources', () => {
   assert.equal(
     LAUNCHER_CSP,
-    "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'",
+    "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'",
   )
   assert.doesNotMatch(LAUNCHER_CSP, /unsafe-|\*/u)
 })

@@ -233,7 +233,7 @@ The launcher uses `persist:tockteam-launcher` with:
 
 - `sandbox: true`, `contextIsolation: true`, `nodeIntegration: false`, and `webSecurity: true`;
 - deny-all permission request and permission check handlers;
-- CSP `default-src 'none'`, same-origin scripts/styles, local/data images, and `connect-src 'none'`;
+- CSP `default-src 'none'`, same-origin scripts/styles, local/data fonts and images, and `connect-src 'none'`; bundled KaTeX fonts use data URLs. The file-loaded meta CSP's `frame-ancestors 'none'` directive is ignored by Chromium and is not an iframe-embedding guarantee; main-frame IPC identity checks remain enforced;
 - the exact packaged `launcher.html` URL for the launcher role;
 - denied unexpected navigation and new windows;
 - main-frame, sender URL, registered-window role, dedicated-session, and `webContents` identity checks for every IPC handler.

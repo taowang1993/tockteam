@@ -137,7 +137,7 @@ test('packaged smoke is actual TockTeam ASAR execution, not a source fixture', (
   assert.equal(contract.identity.displayName, 'TockTeam')
   assert.equal(contract.identity.appId, 'ai.deepseek.tockteam-desktop')
   assert.equal(contract.identity.executableName, 'tockteam-desktop')
-  assert.equal(LAUNCHER_CSP, "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'")
+  assert.equal(LAUNCHER_CSP, "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'")
 })
 
 test('packaged dependency contract has no unreviewed Ueli runtime closure', () => {

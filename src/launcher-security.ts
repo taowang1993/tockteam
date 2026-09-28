@@ -5,7 +5,7 @@ import type { LauncherRendererRole } from './launcher-window-contract.ts'
 
 export const LAUNCHER_SESSION_PARTITION = 'persist:tockteam-launcher'
 
-export const LAUNCHER_CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'"
+export const LAUNCHER_CSP = "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data:; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; object-src 'none'"
 
 export const LAUNCHER_ROLE: LauncherRendererRole = 'launcher'
 
