@@ -95,7 +95,7 @@ function cancelClipPreview(preview: ClipPreview | null): void {
   if (preview) void requestClipCancel(preview.reviewId, AbortSignal.timeout(5_000)).catch(() => undefined)
 }
 
-function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBookmark' | 'externalUrl' | 'webClipFolder'>> = {}): ReactNode {
+function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBookmark' | 'externalUrl' | 'externalUrlRequestId' | 'webClipFolder'>> = {}): ReactNode {
   const bridge = window.dshDesktop?.webClip
   const host = useRef<HTMLDivElement | null>(null)
   const webview = useRef<WebClipWebview | null>(null)
@@ -227,7 +227,7 @@ function WebViewer(props: Partial<Pick<TockTutorWebViewerOwnerProps, 'addLinkBoo
 
   useEffect(() => {
     if (props.externalUrl) navigate(props.externalUrl)
-  }, [navigate, props.externalUrl])
+  }, [navigate, props.externalUrl, props.externalUrlRequestId])
 
   useEffect(() => {
     const container = host.current
@@ -620,6 +620,7 @@ export function apply(ctx: Context): void {
     }, (owner: TockTutorWebViewerOwnerProps) => <WebViewer
       addLinkBookmark={owner.addLinkBookmark}
       externalUrl={owner.externalUrl}
+      externalUrlRequestId={owner.externalUrlRequestId}
       webClipFolder={owner.webClipFolder}
     />),
   )

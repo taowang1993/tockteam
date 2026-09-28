@@ -62,6 +62,19 @@ test('fails malformed nested groups and excessive local state closed', () => {
   assert.deepEqual(loadBookmarks(storage, vault), [{ id: 'valid', kind: 'note', path: 'A.md', title: 'A' }])
 })
 
+test('rejects duplicate bookmark IDs across groups before one removal can erase two entries', () => {
+  const storage = new MemoryStorage()
+  const child = { id: 'same', kind: 'note' as const, path: 'Child.md', title: 'Child' }
+  const topLevel = { id: 'same', kind: 'note' as const, path: 'Other.md', title: 'Other' }
+  const group = { id: 'group', kind: 'group' as const, title: 'Group', children: [child] }
+  storage.setItem(`tocktutor.bookmarks.v1.${vault}`, JSON.stringify([group, topLevel]))
+  const loaded = loadBookmarks(storage, vault)
+  assert.deepEqual(loaded, [group])
+  assert.deepEqual(removeBookmark(loaded, 'same'), [{ ...group, children: [] }])
+  assert.equal(saveBookmarks(storage, vault, [group, topLevel]), false)
+  assert.equal(saveBookmarks(storage, vault, [{ ...group, children: [child, child] }]), false)
+})
+
 test('removes groups and edits duplicate-title groups by ID without changing child order', () => {
   const first = { id: 'a', kind: 'note' as const, path: 'A.md', title: 'A' }
   const second = { id: 'b', kind: 'note' as const, path: 'B.md', title: 'B' }

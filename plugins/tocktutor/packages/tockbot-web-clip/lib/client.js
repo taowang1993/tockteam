@@ -865,7 +865,7 @@ function WebViewer(props = {}) {
   }, [navigate]);
   (0, import_react3.useEffect)(() => {
     if (props.externalUrl) navigate(props.externalUrl);
-  }, [navigate, props.externalUrl]);
+  }, [navigate, props.externalUrl, props.externalUrlRequestId]);
   (0, import_react3.useEffect)(() => {
     const container = host.current;
     if (!container || !bridge) return;
@@ -1379,6 +1379,7 @@ function apply(ctx) {
       {
         addLinkBookmark: owner.addLinkBookmark,
         externalUrl: owner.externalUrl,
+        externalUrlRequestId: owner.externalUrlRequestId,
         webClipFolder: owner.webClipFolder
       }
     ))

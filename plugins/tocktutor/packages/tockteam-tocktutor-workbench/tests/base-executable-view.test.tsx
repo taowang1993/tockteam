@@ -480,6 +480,15 @@ describe('ExecutableBaseView', () => {
     expect(checkbox.getAttribute('aria-invalid')).toBe('true')
   })
 
+  it('recovers from invalid Base source without changing React hook order', () => {
+    const view = render(<ExecutableBaseView files={files} source="views: [" />)
+    expect(screen.getByRole('alert')).toBeTruthy()
+    view.rerender(<ExecutableBaseView files={files} source={source} />)
+    expect(screen.getByRole('toolbar', { name: 'Base View Controls' })).toBeTruthy()
+    view.rerender(<ExecutableBaseView files={files} source="views: [" />)
+    expect(screen.getByRole('alert')).toBeTruthy()
+  })
+
   it('renders unsupported executable expressions as an inert alert', () => {
     render(
       <ExecutableBaseView

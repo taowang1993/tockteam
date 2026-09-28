@@ -5632,6 +5632,15 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const toggleReadingView = (): void => { props.onMode(snapshot.mode === 'reading' ? lastEditingModeRef.current : 'reading') }
   const activeBookmarks = noteBookmarksForPath(snapshot.bookmarks ?? [], snapshot.path)
   const bookmarkGroupOptions = bookmarkGroups(snapshot.bookmarks ?? [])
+  const openBookmark = (id: string): void => {
+    const bookmark = getBookmark(snapshot.bookmarks ?? [], id)
+    if (bookmark?.kind === 'link') {
+      if (props.onOpenExternalUrl) {
+        props.onOpenExternalUrl(bookmark.url)
+        setPanel('web')
+      }
+    } else props.onOpenBookmark?.(id)
+  }
   const bookmarkActionLabel = activeBookmarks.length > 0 ? 'Edit Bookmark…' : 'Bookmark Note…'
   const nativeNoteActionAvailable = props.nativeNoteActions != null
     && !props.nativeNoteActions.disabled
@@ -6491,7 +6500,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           )}
           <div className="tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden">{props.assistantPanel}</div>
         </aside>
-        <WorkbenchUtilities {...props} snapshot={panel === 'recovery' ? props.paneController?.getRecoverySnapshot() ?? snapshot : snapshot} onInsertCurrentDateTime={kind => { props.onInsertCurrentDateTime?.(kind, snapshot.mode === 'live-preview' ? liveInsertTextRef.current ?? undefined : undefined) }} onClose={() => { if (panel === 'recovery') void props.paneController?.setRecoveryOpen(false); setPanel(null) }} onOpenGraphNode={(path, mode) => {
+        <WorkbenchUtilities {...props} onOpenBookmark={openBookmark} snapshot={panel === 'recovery' ? props.paneController?.getRecoverySnapshot() ?? snapshot : snapshot} onInsertCurrentDateTime={kind => { props.onInsertCurrentDateTime?.(kind, snapshot.mode === 'live-preview' ? liveInsertTextRef.current ?? undefined : undefined) }} onClose={() => { if (panel === 'recovery') void props.paneController?.setRecoveryOpen(false); setPanel(null) }} onOpenGraphNode={(path, mode) => {
           const result = props.onOpenGraphNode?.(path, mode)
           if (mode !== 'note' || result === undefined) return
           void Promise.resolve(result).then(success => { if (success === true) setPanel(null) })
@@ -6543,7 +6552,8 @@ function TockTutorReviewPanelOutlet(props: {
 function TockTutorWebViewerOutlet(props: {
   activePath: string | null
   addLinkBookmark(title: string, url: string): boolean
-  externalUrl?: string | null
+  externalUrl?: string | null | undefined
+  externalUrlRequestId?: number | undefined
   renderSlot: TockTutorRouteProps['renderSlot']
   vault: VaultReference | null
   webClipFolder: string
@@ -6552,6 +6562,7 @@ function TockTutorWebViewerOutlet(props: {
     activePath: props.activePath,
     addLinkBookmark: props.addLinkBookmark,
     externalUrl: props.externalUrl,
+    externalUrlRequestId: props.externalUrlRequestId,
     vault: props.vault,
     webClipFolder: props.webClipFolder,
   }, {
@@ -6623,7 +6634,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
   )
   const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
   const root = useRef<HTMLDivElement>(null)
-  const [externalUrl, setExternalUrl] = useState<string | null>(null)
+  const [externalRequest, setExternalRequest] = useState<{ id: number; url: string } | null>(null)
   const [nativeNoteActions, publishNoteActions] = useState<TockTutorNativeNoteActions | null>(null)
   useEffect(() => {
     if (!active) return
@@ -6788,7 +6799,7 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
         onNewBase={folder => { void controller.createBase(folder) }}
         onOpenBookmark={id => { void controller.openBookmark(id) }}
         onOpenCommandPalette={() => { controller.setCommandPaletteOpen(true) }}
-        onOpenExternalUrl={url => { setExternalUrl(url) }}
+        onOpenExternalUrl={url => { setExternalRequest(current => ({ id: (current?.id ?? 0) + 1, url })) }}
         onOpenGraphNode={(path, mode) => controller.openGraphNode(path, mode)}
         onOpenInternalLink={(target, kind) => controller.openInternalLink(target, kind)}
         onOpenRecovery={() => { void controller.setRecoveryOpen(true, null) }}
@@ -6857,7 +6868,8 @@ export function TockTutorRoute(props: TockTutorRouteProps): ReactNode {
           <TockTutorWebViewerOutlet
             activePath={snapshot.path}
             addLinkBookmark={(title, url) => controller.addLinkBookmark(title, url)}
-            externalUrl={externalUrl}
+            externalUrl={externalRequest?.url}
+            externalUrlRequestId={externalRequest?.id}
             renderSlot={props.renderSlot}
             vault={snapshot.vault}
             webClipFolder={snapshot.settings?.webClipFolder ?? 'Clips'}

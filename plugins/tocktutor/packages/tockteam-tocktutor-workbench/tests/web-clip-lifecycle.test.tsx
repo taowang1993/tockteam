@@ -7,6 +7,7 @@ import { MAX_VIEWER_TABS } from '../../tockbot-web-clip/src/viewer.ts'
 interface Owner {
   addLinkBookmark?: (title: string, url: string) => boolean
   externalUrl?: string | null
+  externalUrlRequestId?: number
   webClipFolder?: string
 }
 
@@ -160,6 +161,27 @@ it('queues an external URL before readiness and prevents stored restoration or l
     await act(async () => { element.dispatchEvent(new Event('dom-ready')) })
     expect(fetch).toHaveBeenCalledTimes(1)
     expect(loads).toEqual(['https://example.com/external'])
+  } finally {
+    mounted.unmount()
+  }
+})
+
+it('reopens the same saved URL after navigating elsewhere in the viewer', async () => {
+  const fetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    const { url } = JSON.parse(String(init?.body)) as { url: string }
+    return response(url, 'Page')
+  })
+  vi.stubGlobal('fetch', fetch)
+  const { element, loads } = installWebview()
+  const mounted = mountViewer({ externalUrl: 'https://example.com/saved', externalUrlRequestId: 1 }, element)
+  try {
+    await act(async () => { element.dispatchEvent(new Event('dom-ready')) })
+    await waitFor(() => expect(loads).toEqual(['https://example.com/saved']))
+    fireEvent.change(screen.getByRole('textbox', { name: 'URL' }), { target: { value: 'https://example.com/elsewhere' } })
+    fireEvent.submit(screen.getByRole('textbox', { name: 'URL' }).closest('form')!)
+    await waitFor(() => expect(loads.at(-1)).toBe('https://example.com/elsewhere'))
+    mounted.rerender({ externalUrl: 'https://example.com/saved', externalUrlRequestId: 2 })
+    await waitFor(() => expect(loads).toEqual(['https://example.com/saved', 'https://example.com/elsewhere', 'https://example.com/saved']))
   } finally {
     mounted.unmount()
   }

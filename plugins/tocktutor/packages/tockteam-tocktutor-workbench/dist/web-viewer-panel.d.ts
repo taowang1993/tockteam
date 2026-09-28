@@ -4,6 +4,8 @@ export interface TockTutorWebViewerOwnerProps {
     activePath: string | null;
     addLinkBookmark(title: string, url: string): boolean;
     externalUrl?: string | null | undefined;
+    /** New requests can reopen the same URL after the viewer has navigated elsewhere. */
+    externalUrlRequestId?: number | undefined;
     vault: VaultReference | null;
     webClipFolder: string;
 }

@@ -10,6 +10,7 @@ import { LivePreviewView } from '../src/editor-surface.tsx'
 import { createWorkbenchSession } from '../src/session.ts'
 import { loadTockTutorSettings } from '../src/settings.ts'
 import { MAX_EDITOR_SEARCH_MATCHES } from '../src/editor-search.ts'
+import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT, type TockTutorWebViewerOwnerProps } from '../src/web-viewer-panel.ts'
 
 const DEFAULT_TOCKTUTOR_SETTINGS = loadTockTutorSettings(localStorage, `vault:${'a'.repeat(64)}`)
 
@@ -56,6 +57,8 @@ function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
   onMode?(mode: 'live-preview' | 'reading' | 'source'): void
   onMoveNote?(folder: string): Promise<boolean> | boolean
   onMoveTab?(paneId: string, path: string, direction: -1 | 1): void
+  onOpenBookmark?(id: string): void
+  onOpenExternalUrl?(url: string): void
   onOpenGraphNode?(path: string, mode: 'local' | 'note'): boolean | void | Promise<boolean>
   onOpenInternalLink?(target: string): void | Promise<{ fragment: string | null } | null>
   onEditBookmark?(id: string, title: string, group: string | null): boolean | void
@@ -1667,6 +1670,70 @@ describe('TockTutor titlebar panel controls', () => {
     expect(backlinks.textContent).not.toContain('Outline')
     expect(backlinks.textContent).not.toContain('Footnotes')
     expect(backlinks.textContent).not.toContain('Outgoing Links')
+  })
+
+  it('opens a saved Web Viewer link in the isolated viewer instead of the note dispatcher', () => {
+    const onOpenExternalUrl = vi.fn()
+    const onOpenBookmark = vi.fn()
+    renderRoute({ bookmarks: [{ id: 'web-link', kind: 'link', title: 'Reference', url: 'https://example.com/page' }] }, { onOpenBookmark, onOpenExternalUrl })
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Bookmarks' }))
+    fireEvent.click(within(screen.getByRole('region', { name: 'Bookmarks' })).getByRole('button', { name: 'Reference · link' }))
+    expect(onOpenExternalUrl).toHaveBeenCalledExactlyOnceWith('https://example.com/page')
+    expect(onOpenBookmark).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('web')
+  })
+
+  it('sends each Web Viewer bookmark activation as a distinct viewer request', async () => {
+    const vault = { generation: 1, id: `vault:${'a'.repeat(64)}` }
+    const key = `tocktutor.bookmarks.v1.${vault.id}`
+    localStorage.setItem(key, JSON.stringify([{ id: 'web-link', kind: 'link', title: 'Saved Page', url: 'https://example.com/saved' }]))
+    const remote = {
+      $on: () => () => {},
+      tocktutorWorkbench: {
+        currentVault: async () => ({ ok: true, value: { displayPath: '~/Fixture', generation: 1, name: 'Fixture', vault } }),
+        listTree: async () => ({ ok: true, value: { complete: true, cursor: null, entries: [], generation: 1, scan: { entries: 0 }, truncated: false, truncationReason: null, warnings: [] } }),
+      },
+    }
+    try {
+      render(<TockTutorRoute location={{ hash: '', pathname: '/tocktutor', search: '' }} navigate={() => {}} remote={remote as never}
+        renderSlot={(name, owner) => name === TOCKTUTOR_WEB_VIEWER_PANEL_SLOT
+          ? <output aria-label="Viewer Navigation Request">{`${(owner as TockTutorWebViewerOwnerProps).externalUrl ?? ''}#${String((owner as TockTutorWebViewerOwnerProps).externalUrlRequestId ?? 0)}`}</output>
+          : null} />)
+      await screen.findByText('No supported notes found.')
+      for (const id of [1, 2]) {
+        openNoteActions()
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Bookmarks' }))
+        fireEvent.click(within(screen.getByRole('region', { name: 'Bookmarks' })).getByRole('button', { name: 'Saved Page · link' }))
+        await waitFor(() => expect(screen.getByRole('status', { name: 'Viewer Navigation Request' }).textContent).toBe(`https://example.com/saved#${String(id)}`))
+        expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('web')
+      }
+    } finally {
+      localStorage.removeItem(key)
+    }
+  })
+
+  it('keeps a grouped bookmark visible and openable without a dead group button', () => {
+    const onOpenBookmark = vi.fn()
+    renderRoute({ bookmarks: [{ id: 'group', kind: 'group', title: 'Lessons', children: [{ id: 'child', kind: 'note', path: 'Notes/Lesson.md', title: 'Lesson' }] }] }, { onOpenBookmark })
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Bookmarks' }))
+    const list = screen.getByRole('region', { name: 'Bookmarks' })
+    expect(within(list).queryByRole('button', { name: /Lessons · group/u })).toBeNull()
+    expect(within(list).getByText('Lessons')).toBeTruthy()
+    fireEvent.click(within(list).getByRole('button', { name: 'Lesson · note' }))
+    expect(onOpenBookmark).toHaveBeenCalledExactlyOnceWith('child')
+  })
+
+  it('does not offer a Page Preview switch without a preview feature', () => {
+    const onSettingsChange = vi.fn()
+    renderRoute({ settings: DEFAULT_TOCKTUTOR_SETTINGS }, { onSettingsChange })
+    openNoteActions()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Workspaces and Panes' }))
+    const settings = screen.getByRole('region', { name: 'TockTutor Settings' })
+    expect(within(settings).queryByText('Page Preview')).toBeNull()
+    fireEvent.click(within(settings).getByRole('checkbox', { name: 'Backlinks in Document' }))
+    expect(onSettingsChange).toHaveBeenCalledExactlyOnceWith({ backlinksInDocument: true })
   })
 
   it('keeps Bookmarks and Tags as compact separate utility views', () => {

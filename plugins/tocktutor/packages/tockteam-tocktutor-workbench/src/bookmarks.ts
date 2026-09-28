@@ -84,6 +84,13 @@ function flattenCount(bookmarks: readonly Bookmark[]): number {
   return bookmarks.reduce((count, bookmark) => count + 1 + (bookmark.kind === 'group' ? bookmark.children.length : 0), 0)
 }
 
+function reserveBookmarkIds(bookmark: Bookmark, seen: Set<string>): boolean {
+  const ids = [bookmark.id, ...(bookmark.kind === 'group' ? bookmark.children.map(child => child.id) : [])]
+  if (new Set(ids).size !== ids.length || ids.some(id => seen.has(id))) return false
+  for (const id of ids) seen.add(id)
+  return true
+}
+
 export function loadBookmarks(storage: KeyValueStorage, vaultId: string): Bookmark[] {
   if (!/^vault:[0-9a-f]{64}$/u.test(vaultId)) return []
   try {
@@ -95,9 +102,9 @@ export function loadBookmarks(storage: KeyValueStorage, vaultId: string): Bookma
     const ids = new Set<string>()
     for (const candidate of value) {
       const bookmark = parseBookmark(candidate, true)
-      if (bookmark === null || ids.has(bookmark.id)) continue
+      if (bookmark === null) continue
       if (flattenCount([...bookmarks, bookmark]) > MAX_BOOKMARK_ITEMS) break
-      ids.add(bookmark.id)
+      if (!reserveBookmarkIds(bookmark, ids)) continue
       bookmarks.push(bookmark)
     }
     return bookmarks
@@ -109,7 +116,8 @@ export function loadBookmarks(storage: KeyValueStorage, vaultId: string): Bookma
 export function saveBookmarks(storage: KeyValueStorage, vaultId: string, bookmarks: readonly Bookmark[]): boolean {
   if (!/^vault:[0-9a-f]{64}$/u.test(vaultId) || flattenCount(bookmarks) > MAX_BOOKMARK_ITEMS) return false
   const parsed = bookmarks.map(bookmark => parseBookmark(bookmark, true))
-  if (parsed.some(bookmark => bookmark === null)) return false
+  const ids = new Set<string>()
+  for (const bookmark of parsed) if (bookmark === null || !reserveBookmarkIds(bookmark, ids)) return false
   try {
     const raw = JSON.stringify(parsed)
     if (new TextEncoder().encode(raw).byteLength > MAX_BOOKMARK_BYTES) return false

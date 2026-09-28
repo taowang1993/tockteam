@@ -9,6 +9,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { ExecutableBaseView } from './base-executable-view.tsx'
 import { CanvasBoard } from './canvas-board.tsx'
 import { BUILTIN_TEMPLATES } from './capture.ts'
+import type { Bookmark } from './bookmarks.ts'
 import { renderMarkdownHtml } from './rich-markdown.ts'
 import type { TockTutorRouteViewProps } from './route.tsx'
 import { MAX_PANE_GROUPS } from './session.ts'
@@ -71,6 +72,14 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
     props.onReadSnapshot?.(id)
     snapshotOptionRefs.current.get(id)?.focus()
   }
+  const bookmarkRow = (bookmark: Bookmark): ReactNode => (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-1" key={bookmark.id}>
+      {bookmark.kind === 'group'
+        ? <span className="truncate px-2 py-1.5 text-xs font-medium">{bookmark.title}</span>
+        : <Button unstyled className="truncate rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" disabled={bookmark.kind === 'graph' || (bookmark.kind === 'link' && props.onOpenExternalUrl === undefined)} onClick={() => { props.onOpenBookmark?.(bookmark.id) }} type="button">{bookmark.title} · {bookmark.kind}{bookmark.missing === true ? ' · Missing' : ''}</Button>}
+      <Button unstyled aria-label={`Remove Bookmark ${bookmark.title}`} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onRemoveBookmark?.(bookmark.id) }} type="button">Remove</Button>
+    </div>
+  )
   return (
         <aside
           aria-hidden={!open}
@@ -176,12 +185,12 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
           </div>
           <section aria-label="Bookmarks" className="p-3" hidden={props.view !== 'bookmarks'}>
             <div className="grid gap-1">
-              {(snapshot.bookmarks ?? []).map(bookmark => (
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-1" key={bookmark.id}>
-                  <Button unstyled className="truncate rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" onClick={() => { props.onOpenBookmark?.(bookmark.id) }} type="button">{bookmark.title} · {bookmark.kind}{bookmark.missing === true ? ' · Missing' : ''}</Button>
-                  <Button unstyled aria-label={`Remove Bookmark ${bookmark.title}`} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onRemoveBookmark?.(bookmark.id) }} type="button">Remove</Button>
-                </div>
-              ))}
+              {(snapshot.bookmarks ?? []).map(bookmark => bookmark.kind === 'group'
+                ? <div aria-label={bookmark.title} className="grid gap-1" key={bookmark.id} role="group">
+                    {bookmarkRow(bookmark)}
+                    <div className="ml-2 grid gap-1 border-l border-[var(--tt-border)] pl-2">{bookmark.children.map(bookmarkRow)}</div>
+                  </div>
+                : bookmarkRow(bookmark))}
               {(snapshot.bookmarks?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No bookmarks.</span>}
             </div>
           </section>
@@ -273,7 +282,6 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               <Button unstyled className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={snapshot.settings === undefined} onClick={props.onSaveWorkspace} type="button">Save Workspace</Button>
             </div>
             <div className="mt-2 grid gap-2 text-xs">
-              <Label unstyled className="flex items-center justify-between gap-2">Page Preview<Checkbox checked={snapshot.settings?.pagePreview ?? true} disabled={snapshot.settings === undefined} onCheckedChange={checked => { props.onSettingsChange?.({ pagePreview: checked === true }) }} /></Label>
               <Label unstyled className="flex items-center justify-between gap-2">Backlinks in Document<Checkbox checked={snapshot.settings?.backlinksInDocument ?? false} disabled={snapshot.settings === undefined} onCheckedChange={checked => { props.onSettingsChange?.({ backlinksInDocument: checked === true }) }} /></Label>
               <Label unstyled className="grid gap-1">Default Editing Mode
                 <NativeSelect unstyled className="rounded border border-[var(--tt-border)] bg-transparent p-1" disabled={snapshot.settings === undefined} onChange={event => { props.onSettingsChange?.({ defaultEditingMode: event.target.value === 'source' ? 'source' : 'live-preview' }) }} value={snapshot.settings?.defaultEditingMode ?? 'live-preview'}>

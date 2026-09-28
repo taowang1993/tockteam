@@ -262,16 +262,16 @@ export function ExecutableBaseView(props) {
     const configured = document.status === 'ready' ? document.views.find(view => view.name === configuringView) : undefined;
     useEffect(() => { if (findOpen)
         findRef.current?.focus(); }, [findOpen]);
+    const properties = useMemo(() => model.status === 'ready' ? [...new Set([
+            'file.name', 'file.path', 'file.folder', 'file.mtime', 'file.size',
+            ...model.columns.map(column => column.key),
+            ...props.files.flatMap(file => parseFrontmatterProperties(file.source).map(property => `note.${property.key}`)),
+        ])].filter(key => /^[\w.-]+$/u.test(key)).slice(0, 256) : [], [model, props.files]);
     if (model.status !== 'ready')
         return _jsx("p", { role: "alert", children: model.reason });
     const blocked = model.unsupported.length > 0;
     const tsv = blocked ? null : executableBaseViewTsv(model);
     const csv = blocked ? null : executableBaseViewCsv(model);
-    const properties = useMemo(() => [...new Set([
-            'file.name', 'file.path', 'file.folder', 'file.mtime', 'file.size',
-            ...model.columns.map(column => column.key),
-            ...props.files.flatMap(file => parseFrontmatterProperties(file.source).map(property => `note.${property.key}`)),
-        ])].filter(key => /^[\w.-]+$/u.test(key)).slice(0, 256), [model.columns, props.files]);
     const commit = async (next) => {
         if (savingRef.current)
             return false;
