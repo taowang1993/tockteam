@@ -92,6 +92,8 @@ export function parseExecutableBase(source) {
     let currentView = null;
     let currentList = '';
     let currentProperty = '';
+    const sections = new Set();
+    let viewFields = new Set();
     for (let index = 0; index < lines.length; index += 1) {
         const line = lines[index] ?? '';
         const trimmed = line.trim();
@@ -101,6 +103,9 @@ export function parseExecutableBase(source) {
         const topLevel = indent === 0 ? /^([A-Za-z][\w.-]*):\s*(.*)$/u.exec(trimmed) : null;
         if (topLevel !== null) {
             section = topLevel[1] ?? '';
+            if (sections.has(section))
+                return unsupported('Base document contains duplicate sections.');
+            sections.add(section);
             currentView = null;
             currentList = '';
             currentProperty = '';
@@ -122,6 +127,8 @@ export function parseExecutableBase(source) {
             }
             continue;
         }
+        if (indent === 0)
+            return unsupported('Base document contains unsupported top-level syntax.');
         if (section === 'properties') {
             const property = indent === 2 ? /^([^:]+):\s*$/u.exec(trimmed) : null;
             if (property !== null) {
@@ -181,6 +188,7 @@ export function parseExecutableBase(source) {
                 currentView.name = cleanScalar(newView[2] ?? '');
             }
             views.push(currentView);
+            viewFields = new Set(newView[1] ? [newView[1]] : []);
             currentList = '';
             continue;
         }
@@ -189,6 +197,9 @@ export function parseExecutableBase(source) {
         const field = indent === 4 ? /^([A-Za-z][\w.-]*):\s*(.*)$/u.exec(trimmed) : null;
         if (field !== null) {
             const key = field[1] ?? '';
+            if (viewFields.has(key))
+                return unsupported('Base view contains duplicate fields.');
+            viewFields.add(key);
             const raw = field[2] ?? '';
             const value = cleanScalar(raw);
             currentList = key === 'order' || key === 'sort' || key === 'summaries' ? key : '';
@@ -304,8 +315,7 @@ export function parseExecutableBase(source) {
                 return unsupported('Base view list exceeds its limit.');
             continue;
         }
-        if (indent >= 4)
-            return unsupported('Base views contain unsupported nested syntax.');
+        return unsupported('Base views contain unsupported nested syntax.');
     }
     if (views.length === 0)
         return unsupported('Base document has no executable views.');

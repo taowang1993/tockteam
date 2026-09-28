@@ -5593,6 +5593,7 @@ function boundPaneProps(props: TockTutorRouteViewProps, id: string): TockTutorRo
   const ownsBase = (): boolean => controller.paneLifetimeFor(id) === lifetime && snapshot.path !== null
     && snapshot.documentKind === 'base' && controller.getPaneSnapshot(id).path === snapshot.path
     && snapshot.vault !== null && sameVault(controller.getSnapshot().vault, snapshot.vault)
+  if (props.onBaseSourceChange) bound.onBaseSourceChange = (previous, next) => owns() ? props.onBaseSourceChange!(previous, next) : Promise.resolve(false)
   if (props.onBaseEdit) bound.onBaseEdit = request => ownsBase() ? props.onBaseEdit!(request, snapshot.path!) : false
   if (props.onBaseRetry) bound.onBaseRetry = () => { if (ownsBase()) props.onBaseRetry!(snapshot.path!) }
   const navigateHistory = (direction: 'goBack' | 'goForward'): void => {
@@ -5624,6 +5625,11 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const backlinkLabel = `${String(backlinkCount)} backlink${backlinkCount === 1 ? '' : 's'}`
   const documents = snapshot.entries.filter(entry => entry.kind === 'document' && supportedDocument(entry.path))
   const focusedPane = snapshot.panes.find(pane => pane.id === snapshot.focusedPaneId)
+  const baseFile = useMemo(() => {
+    if (snapshot.documentKind !== 'base' || snapshot.path === null) return undefined
+    const entry = snapshot.entries.find(entry => entry.path === snapshot.path && entry.kind === 'document')
+    return { relativePath: snapshot.path, ...(entry?.kind === 'document' ? { createdAt: entry.createdAt, modifiedAt: entry.modifiedAt, sizeBytes: entry.size } : {}) }
+  }, [snapshot.documentKind, snapshot.path, snapshot.entries])
   const visibleTreeEntries = snapshot.entries.filter(entry => entry.kind === 'directory'
     || (entry.kind === 'document' && supportedDocument(entry.path)))
   const [localPanel, setLocalPanel] = useState<'assistant' | WorkbenchUtilityView | null>(null)
@@ -6319,7 +6325,9 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               />
             ) : snapshot.documentKind === 'base' ? (
               <ExecutableBaseView
+                key={`${snapshot.vault?.id}:${snapshot.vault?.generation}:${snapshot.path}`}
                 activeView={baseView}
+                {...(baseFile === undefined ? {} : { baseFile })}
                 files={snapshot.baseFiles ?? []}
                 loadStatus={snapshot.baseStatus}
                 onRetry={props.onBaseRetry}

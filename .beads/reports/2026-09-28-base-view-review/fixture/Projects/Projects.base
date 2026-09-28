@@ -1,0 +1,11 @@
+metadata:
+  - name: Keep
+    sort: [file.name desc]
+filters: 'file.folder == this.file.folder'
+formulas:
+  owner: this.file.name
+views:
+  - type: table
+    name: Projects
+    order: [file.name, note.status, formula.owner]
+    sort: [file.name asc]

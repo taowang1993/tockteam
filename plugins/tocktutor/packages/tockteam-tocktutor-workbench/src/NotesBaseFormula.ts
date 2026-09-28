@@ -323,12 +323,13 @@ function isNotesBaseSafeShortCircuitOperand(value: string) {
   return true;
 }
 
-function text(value: unknown) {
-  if (Array.isArray(value)) return value.join(", ");
-  if (value == null) return "";
-  const linkText = notesBaseLinkText(value);
-  if (linkText !== null) return linkText;
-  return String(value);
+function text(value: unknown): string | null {
+  try {
+    const result = Array.isArray(value) ? value.join(", ") : value == null ? "" : notesBaseLinkText(value) ?? String(value);
+    return result.length <= MAX_NOTES_BASE_FORMULA_STRING_LENGTH ? result : null;
+  } catch {
+    return null;
+  }
 }
 
 function escapeNotesBaseHtml(value: string) {
@@ -2282,8 +2283,10 @@ export function evaluateNotesBaseFormula(
   if (values.some((value) => !value.supported)) return { supported: false };
   const resolved = values.map((value) => value.supported ? value.value : "");
 
-  if (name === "upper" && resolved.length === 1) return { supported: true, value: text(resolved[0]).toUpperCase() };
-  if (name === "lower" && resolved.length === 1) return { supported: true, value: text(resolved[0]).toLowerCase() };
+  if ((name === "upper" || name === "lower") && resolved.length === 1) {
+    const value = text(resolved[0]);
+    return value === null ? { supported: false } : { supported: true, value: name === "upper" ? value.toUpperCase() : value.toLowerCase() };
+  }
   if (name === "escapehtml" && resolved.length === 1 && typeof resolved[0] === "string" && !/,\s*$/u.test(call[2] ?? "")) {
     const value = escapeNotesBaseHtml(resolved[0]);
     return value === null ? { supported: false } : { supported: true, value };
@@ -2334,12 +2337,16 @@ export function evaluateNotesBaseFormula(
     const value = parseFixedDuration(resolved[0]);
     return value === null ? { supported: false } : { supported: true, value };
   }
-  if (name === "length" && resolved.length === 1) return { supported: true, value: Array.isArray(resolved[0]) ? resolved[0].length : text(resolved[0]).length };
+  if (name === "length" && resolved.length === 1) {
+    const value = Array.isArray(resolved[0]) ? resolved[0] : text(resolved[0]);
+    return value === null ? { supported: false } : { supported: true, value: value.length };
+  }
   if (name === "concat") {
     const pieces: string[] = [];
     let length = 0;
     for (const value of resolved) {
       const piece = text(value);
+      if (piece === null) return { supported: false };
       length += piece.length;
       if (length > MAX_NOTES_BASE_FORMULA_STRING_LENGTH) return { supported: false };
       pieces.push(piece);
@@ -2351,7 +2358,10 @@ export function evaluateNotesBaseFormula(
   }
   if (name === "contains" && resolved.length === 2) {
     const [source, needle] = resolved;
-    return { supported: true, value: Array.isArray(source) ? source.map(text).includes(text(needle)) : text(source).includes(text(needle)) };
+    const sourceText = Array.isArray(source) ? source.map(text) : text(source);
+    const needleText = text(needle);
+    if (sourceText === null || needleText === null || (Array.isArray(sourceText) && sourceText.includes(null))) return { supported: false };
+    return { supported: true, value: sourceText.includes(needleText) };
   }
   if (name === "number" && resolved.length === 1) {
     const value = notesBaseNumberValue(resolved[0], args[0] ?? "");
@@ -2438,7 +2448,10 @@ export function evaluateNotesBaseSummary<Row>(expression: string, rows: Row[], r
   }
   const values = numericValues(rows, call[2] ?? "", resolveProperty);
   if (values === null) return { supported: false };
-  if (call[1] === "sum") return { supported: true, value: values.reduce((sum, value) => sum + value, 0) };
+  if (call[1] === "sum") {
+    const value = values.reduce((sum, value) => sum + value, 0);
+    return Number.isFinite(value) ? { supported: true, value } : { supported: false };
+  }
   if (call[1] === "min") return { supported: true, value: values.length > 0 ? values.reduce((minimum, value) => Math.min(minimum, value)) : 0 };
   if (call[1] === "max") return { supported: true, value: values.length > 0 ? values.reduce((maximum, value) => Math.max(maximum, value)) : 0 };
   if (call[1] === "median") {
@@ -2460,5 +2473,7 @@ export function evaluateNotesBaseSummary<Row>(expression: string, rows: Row[], r
     const standardDeviation = Math.sqrt(variance) * scale;
     return Number.isFinite(standardDeviation) ? { supported: true, value: standardDeviation } : { supported: false };
   }
-  return { supported: true, value: values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : 0 };
+  const scale = values.reduce((maximum, value) => Math.max(maximum, Math.abs(value)), 0);
+  const average = scale === 0 ? 0 : (values.reduce((sum, value) => sum + value / scale, 0) / values.length) * scale;
+  return Number.isFinite(average) ? { supported: true, value: average } : { supported: false };
 }

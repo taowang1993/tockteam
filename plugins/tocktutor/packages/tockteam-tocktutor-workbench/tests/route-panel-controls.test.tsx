@@ -543,6 +543,22 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByText('1 Result')).toBeTruthy()
   })
 
+  it('evaluates this.file against the Base document in the mounted route', () => {
+    const source = `filters: 'file.folder == this.file.folder'\nformulas:\n  owner: this.file.name\nviews:\n  - type: table\n    name: Nearby\n    order: [file.name, formula.owner]\n`
+    renderRoute({
+      baseFiles: [
+        { path: 'Notes/Task.md', revision: `file:${'a'.repeat(64)}`, source: '# Task\n' },
+        { path: 'Elsewhere.md', revision: `file:${'b'.repeat(64)}`, source: '# Elsewhere\n' },
+      ],
+      documentKind: 'base', path: 'Notes/Tasks.base', phase: 'ready', source,
+      entries: [{ createdAt: 1, kind: 'document', modifiedAt: 2, path: 'Notes/Tasks.base', revision: `file:${'c'.repeat(64)}`, size: source.length }],
+    })
+    const grid = screen.getByRole('grid', { name: 'Nearby Results' })
+    expect(within(grid).getByRole('gridcell', { name: 'Task', exact: true })).toBeTruthy()
+    expect(within(grid).getByRole('gridcell', { name: 'Tasks.base', exact: true })).toBeTruthy()
+    expect(within(grid).queryByText('Elsewhere')).toBeNull()
+  })
+
   it('opens note search in a modal dialog that matches the Files sidebar surface', () => {
     const revision = '1'.repeat(64)
     renderRoute({

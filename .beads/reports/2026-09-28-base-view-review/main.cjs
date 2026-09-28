@@ -1,0 +1,11 @@
+const { app } = require('electron')
+const { mkdirSync, writeFileSync } = require('node:fs')
+const { join } = require('node:path')
+app.commandLine.appendSwitch('use-mock-keychain')
+const root = '/tmp/tocktutor-base-review'
+const data = join(app.getPath('appData'), 'TockTeam-Desktop-Dev')
+mkdirSync(join(data, 'tocktutor', 'vault-state'), { recursive: true })
+writeFileSync(join(data, 'skins.json'), JSON.stringify({ activeId: null, fallbackTheme: 'dark' }))
+writeFileSync(join(data, 'tocktutor', 'vault-state', 'selection.json'), JSON.stringify({ activeRoot: join(root, 'vault'), recents: [] }))
+process.chdir('/Users/taowang/projects/tockteam')
+void import('file:///Users/taowang/projects/tockteam/dist/main.js')

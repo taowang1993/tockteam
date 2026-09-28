@@ -143,6 +143,14 @@ The remaining actions are **Open in New Window**, **Duplicate**, **Move Note…*
 
 Desktop verification checks live in `scripts/tocktutor-sidebar-menu-checks.js`; evidence and limitations are recorded in `.beads/reports/2026-09-26-tocktutor-sidebar-note-menu/`.
 
+#### Base Views
+
+Base views hydrate a complete, generation-bound Markdown inventory in batches of eight, with ceilings of 2,000 notes, 1 MB per note, and 16 MB total. Incomplete inventories or failed reads show an explicit unavailable state rather than partial results. Filters, sort, and the view limit run before the selected view's text search; search covers visible columns only, and summaries follow the displayed rows. Table cells edit supported existing scalar frontmatter properties through revision-checked runtime saves. Lists and cards are read-only projections; Map is a coordinate-label list, not an interactive geographic map.
+
+The mounted route supplies the Base's own path and available tree metadata for `this.file` formulas. Configuration callbacks remain bound to the exact focused pane/document, and navigation remounts Base controls so a pending name or menu cannot edit a different Base. Source changes are confined to the selected entry inside `views:` and preserve unrelated sections. LF/CRLF files work with or without a final newline. Unsupported top-level syntax and duplicate sections/view fields fail closed; this is a bounded YAML subset, not a general YAML implementation.
+
+Formulas never execute JavaScript or fetch resources. Native regular-expression matching, replacement, and splitting use a conservative work budget that includes admitted repetitions, so expensive patterns can be reported as unsupported even when JavaScript would accept them. Failed/oversized text conversions and nonfinite sums are unsupported; averages use scaled arithmetic to avoid intermediate overflow. CSV/TSV output remains spreadsheet-safe. The focused review and fresh verification are recorded in `.beads/reports/2026-09-28-base-view-review/`.
+
 #### Search Intelligence
 
 The mounted search palette supports **Keyword** and **Related** modes, title/folder/modified-date filters, keyboard selection, result previews, and **Quick Answer** with source citations. Related retrieval is bounded lexical/metadata ranking, optionally augmented by model-generated alternate queries; it is not a vector database. The route controller in `src/route.tsx` owns query/navigation cancellation and stale-result rejection. The assistant's `aiSearch` policy is `off`, `on-demand` (default), or `automatic`; missing/disabled providers do not remove local search. `src/search-intelligence.ts` validates bounded model output and rechecks vault/settings ownership; Quick Answer rereads candidate evidence and accepts only supported citations.

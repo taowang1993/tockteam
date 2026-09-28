@@ -1,11 +1,16 @@
 import { parseExecutableBase } from "./base-parser.js";
+function sourceLines(source) {
+    const newline = /\r\n|\n|\r/u.exec(source)?.[0] ?? '\n';
+    const ending = /(?:\r\n|\n|\r)$/u.exec(source)?.[0] ?? '';
+    return { lines: (ending ? source.slice(0, -ending.length) : source).split(/\r\n|\n|\r/u), newline, ending };
+}
 /** Replace only one bounded view field; refuse ambiguous or unsupported source. */
 export function setBaseViewField(source, viewName, field, value) {
     const parsed = parseExecutableBase(source);
     if (parsed.status !== 'ready')
         return null;
     const view = parsed.views.find(entry => entry.name === viewName);
-    if (!view || !source.endsWith('\n'))
+    if (!view)
         return null;
     if (field === 'name' && (typeof value !== 'string' || !/^[\p{L}\p{N}][\p{L}\p{N} _-]{0,79}$/u.test(value)
         || parsed.views.some(entry => entry !== view && entry.name.toLocaleLowerCase() === value.toLocaleLowerCase())))
@@ -14,13 +19,19 @@ export function setBaseViewField(source, viewName, field, value) {
         return null;
     if (field === 'rowHeight' && (typeof value !== 'string' || !['short', 'medium', 'tall'].includes(value)))
         return null;
-    const lines = source.slice(0, -1).split('\n');
-    const starts = lines.map((line, index) => /^  -(?: type| name):/u.test(line) ? index : -1).filter(index => index >= 0);
+    const { lines, newline, ending } = sourceLines(source);
+    const viewsStart = lines.findIndex(line => /^views:\s*$/u.test(line));
+    if (viewsStart < 0)
+        return null;
+    const nextSection = lines.findIndex((line, index) => index > viewsStart && /^[A-Za-z][\w.-]*:/u.test(line));
+    const viewsEnd = nextSection < 0 ? lines.length : nextSection;
+    const starts = lines.flatMap((line, index) => index > viewsStart && index < viewsEnd && /^  -\s*(?:(?:type|name):\s*.+)?$/u.test(line) ? [index] : []);
+    if (starts.length !== parsed.views.length)
+        return null;
     const start = starts[view.index];
     if (start === undefined)
         return null;
-    const end = starts[view.index + 1] ?? lines.findIndex((line, index) => index > start && /^[A-Za-z][\w.-]*:/u.test(line));
-    const stop = end < 0 ? lines.length : end;
+    const stop = starts[view.index + 1] ?? viewsEnd;
     const matches = [];
     for (let index = start + 1; index < stop; index += 1)
         if (new RegExp(`^    ${field}:`, 'u').test(lines[index] ?? ''))
@@ -47,7 +58,7 @@ export function setBaseViewField(source, viewName, field, value) {
     }
     else if (!clear)
         lines.splice(stop, 0, replacement);
-    const output = `${lines.join('\n')}\n`;
+    const output = lines.join(newline) + ending;
     const checked = parseExecutableBase(output);
     if (checked.status !== 'ready')
         return null;
@@ -73,16 +84,16 @@ export function setBaseViewField(source, viewName, field, value) {
 }
 export function appendBaseView(source, kind, name) {
     const parsed = parseExecutableBase(source);
-    if (parsed.status !== 'ready' || !source.endsWith('\n') || !/^[\p{L}\p{N}][\p{L}\p{N} _-]{0,79}$/u.test(name)
+    if (parsed.status !== 'ready' || !/^[\p{L}\p{N}][\p{L}\p{N} _-]{0,79}$/u.test(name)
         || parsed.views.some(view => view.name.toLocaleLowerCase() === name.toLocaleLowerCase()))
         return null;
-    const lines = source.slice(0, -1).split('\n');
+    const { lines, newline, ending } = sourceLines(source);
     const viewsIndex = lines.findIndex(line => line === 'views:');
     if (viewsIndex < 0)
         return null;
     const next = lines.findIndex((line, index) => index > viewsIndex && /^[A-Za-z][\w.-]*:/u.test(line));
     lines.splice(next < 0 ? lines.length : next, 0, `  - type: ${kind}`, `    name: ${JSON.stringify(name)}`);
-    const output = `${lines.join('\n')}\n`;
+    const output = lines.join(newline) + ending;
     const checked = parseExecutableBase(output);
     return checked.status === 'ready' && checked.views.length === parsed.views.length + 1 ? output : null;
 }

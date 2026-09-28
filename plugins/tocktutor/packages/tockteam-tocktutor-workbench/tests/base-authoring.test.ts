@@ -26,6 +26,26 @@ test('sort and filter changes preserve unrelated views, source comments and unkn
   if (cleared.status === 'ready') assert.deepEqual(cleared.views[0]?.filters, [])
 })
 
+test('authors valid Base files without requiring a final newline or changing their line endings', () => {
+  for (const newline of ['\n', '\r\n']) for (const finalNewline of ['', newline]) {
+    const body = ['views:', '  - type: table', '    name: Notes', '    # Keep'].join(newline)
+    const source = body + finalNewline
+    const changed = setBaseViewField(source, 'Notes', 'name', 'Renamed')
+    assert.equal(changed, source.replace('name: Notes', 'name: "Renamed"'))
+    const added = appendBaseView(source, 'list', 'Other')
+    assert.equal(added, [body, '  - type: list', '    name: "Other"'].join(newline) + finalNewline)
+  }
+})
+
+test('binds changes to the views section and recognizes bare-dash view entries', () => {
+  const prefix = 'metadata:\n  - name: Keep\n    sort: [file.name desc]\n'
+  for (const start of ['  - name: Notes', '  -\n    name: Notes']) {
+    const source = `${prefix}views:\n${start}\n    sort: [file.name asc]\n`
+    const changed = setBaseViewField(source, 'Notes', 'sort', ['file.name asc'])
+    assert.equal(changed, `${prefix}views:\n${start}\n    sort: ["file.name asc"]\n`)
+  }
+})
+
 test('renames an inline view name without losing the default layout', () => {
   const original = 'views:\n  - name: Old\n    # Keep\n'
   const renamed = setBaseViewField(original, 'Old', 'name', 'New Name')

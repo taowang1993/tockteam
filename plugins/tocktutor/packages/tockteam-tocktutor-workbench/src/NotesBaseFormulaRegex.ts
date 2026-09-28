@@ -22,6 +22,7 @@ function parseNotesBaseRegexpLiteralPrefix(
   let captureGroupStart = -1;
   let closingSlash = -1;
   let escapedAtom = false;
+  let repetitions = 0;
   for (
     let index = 1;
     index < value.length && index <= MAX_NOTES_BASE_REGEXP_PATTERN_LENGTH + 1;
@@ -66,6 +67,7 @@ function parseNotesBaseRegexpLiteralPrefix(
     }
     if (!inCharacterClass && character === "+") {
       if (!escapedAtom) return null;
+      repetitions += 1;
       escapedAtom = false;
       continue;
     }
@@ -97,11 +99,17 @@ function parseNotesBaseRegexpLiteralPrefix(
       captureGroupCount,
       expression: new RegExp(source, flags),
       length: flagEnd,
+      repetitions,
       source,
     };
   } catch {
     return null;
   }
+}
+
+function boundedMatchWork(parsed: { source: string; repetitions: number }, length: number): boolean {
+  // Each admitted + can backtrack across the input, plus one scan for unanchored matches.
+  return parsed.source.length * (length + 1) ** (parsed.repetitions + 1) <= MAX_NOTES_BASE_REGEXP_MATCH_WORK;
 }
 
 function tokenizeNotesBaseCaptureReplacement(replacement: string, captureGroupCount: number) {
@@ -187,7 +195,7 @@ export function evaluateNotesBaseRegexpReplaceCall(
     || !replacement.supported
     || typeof replacement.value !== "string"
     || replacement.value.length > maxOutputLength
-    || parsed.source.length * receiver.value.length > MAX_NOTES_BASE_REGEXP_MATCH_WORK
+    || !boundedMatchWork(parsed, receiver.value.length)
   ) {
     return { supported: false };
   }
@@ -230,7 +238,7 @@ function parseNotesBaseRegexpLiteral(value: string, maxCaptureGroups = 0) {
     NOTES_BASE_REGEXP_FLAGS,
     maxCaptureGroups,
   );
-  return parsed?.length === value.length ? parsed.expression : null;
+  return parsed?.length === value.length ? parsed : null;
 }
 
 export function splitNotesBaseRegexpIsTypeCall(value: string) {
@@ -283,12 +291,12 @@ export function evaluateNotesBaseRegexpMatchesCall(
     || !candidate.supported
     || typeof candidate.value !== "string"
     || candidate.value.length > MAX_NOTES_BASE_REGEXP_INPUT_LENGTH
-    || expression.source.length * candidate.value.length > MAX_NOTES_BASE_REGEXP_MATCH_WORK
+    || !boundedMatchWork(expression, candidate.value.length)
   ) {
     return { supported: false };
   }
 
-  return { supported: true, value: expression.test(candidate.value) };
+  return { supported: true, value: expression.expression.test(candidate.value) };
 }
 
 export function evaluateNotesBaseRegexpSplitCall(
@@ -331,7 +339,7 @@ export function evaluateNotesBaseRegexpSplitCall(
     !receiver.supported
     || typeof receiver.value !== "string"
     || receiver.value.length > MAX_NOTES_BASE_REGEXP_INPUT_LENGTH
-    || parsed.expression.source.length * receiver.value.length > MAX_NOTES_BASE_REGEXP_MATCH_WORK
+    || !boundedMatchWork(parsed, receiver.value.length)
   ) {
     return { supported: false };
   }

@@ -306,6 +306,18 @@ test('fails closed for unsupported filters, ambiguous definitions, and invalid h
   }
 })
 
+test('fails closed instead of dropping malformed restrictions or ambiguous definitions', () => {
+  for (const source of [
+    '"filters": false\nviews:\n  - type: table\n',
+    'filters:\nfalse\nviews:\n  - type: table\n',
+    'views:\n  - type: table\n  filters: false\n',
+    'filters: false\nfilters: true\nviews:\n  - type: table\n',
+    'views:\n  - type: table\n    limit: 1\n    limit: 2\n',
+    'views:\n  - name: First\n    name: Second\n',
+    'views:\n  - type: table\n    order: [file.name]\n    order: [note.status]\n',
+  ]) assert.equal(parseExecutableBase(source).status, 'unsupported', source)
+})
+
 test('rejects invalid Base number conversions without crashing rows', () => {
   const parsed = parseExecutableBase(`formulas:\n  converted: 'number(file.properties)'\nviews:\n  - type: table\n    name: Table\n    order: [file.name, formula.converted]\n`)
   assert.equal(parsed.status, 'ready')
@@ -313,6 +325,18 @@ test('rejects invalid Base number conversions without crashing rows', () => {
   const model = createBaseViewModel(parsed, [{ path: 'A.md', revision: revision('a'), source: '# A\n' }])
   assert.equal(model.status, 'ready')
   if (model.status === 'ready') assert.deepEqual(model.unsupported, [{ expression: 'formula.converted', kind: 'formula' }])
+})
+
+test('reports unsupported object-to-text formulas without crashing the Base', () => {
+  const file = { path: 'A.md', revision: revision('a'), source: '# A\n' }
+  for (const expression of ['upper(file.properties)', 'lower(file.properties)', 'length(file.properties)', 'concat(file.properties)', 'contains(file.properties, "x")', 'contains(list(file.properties), "x")']) {
+    const parsed = parseExecutableBase(`formulas:\n  text: '${expression}'\nviews:\n  - type: table\n    order: [file.name, formula.text]\n`)
+    assert.equal(parsed.status, 'ready')
+    if (parsed.status !== 'ready') continue
+    const model = createBaseViewModel(parsed, [file])
+    assert.equal(model.status, 'ready')
+    if (model.status === 'ready') assert.deepEqual(model.unsupported, [{ expression: 'formula.text', kind: 'formula' }])
+  }
 })
 
 test('refuses nonnumeric Base summary objects without throwing', () => {

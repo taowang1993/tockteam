@@ -25,6 +25,8 @@ export const TOCKBOT_BASE_EVALUATOR_PROVENANCE = Object.freeze({
         'Replace Convex-only Value annotations with unknown without changing runtime behavior.',
         'Extract only the pure date, image-extension, and nested-tag helpers from broader Tockbot modules.',
         'Evaluate every supported conjunction child so a later unsupported filter still fails closed.',
+        'Bound native regexp work conservatively by input length and the number of admitted repetitions before matches, replace, or split.',
+        'Report failed or oversized text conversions and nonfinite sums as unsupported; scale averages to avoid intermediate overflow.',
     ]),
 });
 //# sourceMappingURL=base-evaluator-provenance.js.map
