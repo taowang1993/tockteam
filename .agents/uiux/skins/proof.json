@@ -1,5 +1,5 @@
 {
-  "sourceCommit": "12c97924",
+  "sourceCommit": "43166b8e",
   "viewport": [
     1512,
     949,
@@ -21,19 +21,20 @@
       "selected": true,
       "colors": {
         "background": "#fff",
+        "pane": "#fff",
         "text": "#0f1115",
         "accent": "#0f1115"
       },
       "contrast": 18.9,
       "preview": {
         "name": "Default",
-        "light": "#fafafa",
+        "light": "#fff",
         "dark": "#151517",
-        "backgroundImage": "linear-gradient(135deg, rgb(250, 250, 250) 0px, rgb(250, 250, 250) 49%, rgb(21, 21, 23) 50%, rgb(21, 21, 23) 100%)"
+        "backgroundImage": "linear-gradient(135deg, rgb(255, 255, 255) 0px, rgb(255, 255, 255) 49%, rgb(21, 21, 23) 50%, rgb(21, 21, 23) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "9079d70c8e7df054140848acfe9cf67284e33dc1daae07b692321bc70ec51bda"
+      "sha256": "c988b85803012ffb365d9ef84d4f7df5bbe2e76035d8f3c902df83913ce6fe5b"
     },
     {
       "file": "default-dark.png",
@@ -45,19 +46,20 @@
       "selected": true,
       "colors": {
         "background": "#151517",
+        "pane": "#151517",
         "text": "#f9fafb",
         "accent": "#f9fafb"
       },
       "contrast": 17.45,
       "preview": {
         "name": "Default",
-        "light": "#fafafa",
+        "light": "#fff",
         "dark": "#151517",
-        "backgroundImage": "linear-gradient(135deg, rgb(250, 250, 250) 0px, rgb(250, 250, 250) 49%, rgb(21, 21, 23) 50%, rgb(21, 21, 23) 100%)"
+        "backgroundImage": "linear-gradient(135deg, rgb(255, 255, 255) 0px, rgb(255, 255, 255) 49%, rgb(21, 21, 23) 50%, rgb(21, 21, 23) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "6ee8c6c582604086c2b3f3b24d2bf98ceebbc3226b565236862802ace5875aab"
+      "sha256": "6850ae9708445791f4fd5579c9ae6eb982a222d57d5e703095c8b9c586a1b8e9"
     },
     {
       "file": "cyan-light.png",
@@ -69,6 +71,7 @@
       "selected": true,
       "colors": {
         "background": "#eaf4f7",
+        "pane": "#eaf4f7",
         "text": "#17313a",
         "accent": "#17667d"
       },
@@ -76,12 +79,12 @@
       "preview": {
         "name": "Cyan",
         "light": "#eaf4f7",
-        "dark": "#193e50",
-        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 247) 0px, rgb(234, 244, 247) 49%, rgb(25, 62, 80) 50%, rgb(25, 62, 80) 100%)"
+        "dark": "#071923",
+        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 247) 0px, rgb(234, 244, 247) 49%, rgb(7, 25, 35) 50%, rgb(7, 25, 35) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "a13d31f0f8e0cde0036fac09baf409e18da96cdba6911e648db8cbcf94f294b6"
+      "sha256": "a4fcce2297fa9f6982076d827d8fc6d2a1636e3b0f0d61b7a4c0548b3763430e"
     },
     {
       "file": "cyan-dark.png",
@@ -93,6 +96,7 @@
       "selected": true,
       "colors": {
         "background": "#071923",
+        "pane": "#071923",
         "text": "#e9f8fb",
         "accent": "#49c8eb"
       },
@@ -100,12 +104,12 @@
       "preview": {
         "name": "Cyan",
         "light": "#eaf4f7",
-        "dark": "#193e50",
-        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 247) 0px, rgb(234, 244, 247) 49%, rgb(25, 62, 80) 50%, rgb(25, 62, 80) 100%)"
+        "dark": "#071923",
+        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 247) 0px, rgb(234, 244, 247) 49%, rgb(7, 25, 35) 50%, rgb(7, 25, 35) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "bfd4802327be5ed7ab924dba2c7e1ded05f289804edafe87c0971a6e50d995af"
+      "sha256": "2fa610b7bf318829974487610e92c597a2b2e09a1869602e642c4ab850ab6d3c"
     },
     {
       "file": "aurora-light.png",
@@ -117,6 +121,7 @@
       "selected": true,
       "colors": {
         "background": "#eaf4eb",
+        "pane": "#eaf4eb",
         "text": "#1b3529",
         "accent": "#246c4a"
       },
@@ -124,12 +129,12 @@
       "preview": {
         "name": "Aurora",
         "light": "#eaf4eb",
-        "dark": "#1b493b",
-        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 235) 0px, rgb(234, 244, 235) 49%, rgb(27, 73, 59) 50%, rgb(27, 73, 59) 100%)"
+        "dark": "#071a16",
+        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 235) 0px, rgb(234, 244, 235) 49%, rgb(7, 26, 22) 50%, rgb(7, 26, 22) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "f4236af972864a6549aae3612a06148d88bc0ad6214466bbcb7b8c6fa1f7c56c"
+      "sha256": "060ddbe114f06b3c403db4229b81f11dfb9b10f048b27ce513bf6994b2d3e10a"
     },
     {
       "file": "aurora-dark.png",
@@ -141,6 +146,7 @@
       "selected": true,
       "colors": {
         "background": "#071a16",
+        "pane": "#071a16",
         "text": "#e9fbf3",
         "accent": "#52d6a0"
       },
@@ -148,12 +154,12 @@
       "preview": {
         "name": "Aurora",
         "light": "#eaf4eb",
-        "dark": "#1b493b",
-        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 235) 0px, rgb(234, 244, 235) 49%, rgb(27, 73, 59) 50%, rgb(27, 73, 59) 100%)"
+        "dark": "#071a16",
+        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 235) 0px, rgb(234, 244, 235) 49%, rgb(7, 26, 22) 50%, rgb(7, 26, 22) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "5710a57a1b64bcc67566f45e8e69ed2c016f1b90559edbf718e62962713198c7"
+      "sha256": "41a8d143eb3c62ba24119a79d7ad1a820e0be63b4755f4442445c95db59eb350"
     },
     {
       "file": "ember-dusk-light.png",
@@ -165,6 +171,7 @@
       "selected": true,
       "colors": {
         "background": "#f6ede9",
+        "pane": "#f6ede9",
         "text": "#3a2931",
         "accent": "#944b42"
       },
@@ -172,12 +179,12 @@
       "preview": {
         "name": "Ember Dusk",
         "light": "#f6ede9",
-        "dark": "#4b3042",
-        "backgroundImage": "linear-gradient(135deg, rgb(246, 237, 233) 0px, rgb(246, 237, 233) 49%, rgb(75, 48, 66) 50%, rgb(75, 48, 66) 100%)"
+        "dark": "#21161f",
+        "backgroundImage": "linear-gradient(135deg, rgb(246, 237, 233) 0px, rgb(246, 237, 233) 49%, rgb(33, 22, 31) 50%, rgb(33, 22, 31) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "9e51b9c3e3c6aef0667311855d53222d42228b11f7d297c73d1f4637059b9a12"
+      "sha256": "a396f16698d26bd939dde3c21a2452fa0615cab11a579ae254954424033036d8"
     },
     {
       "file": "ember-dusk-dark.png",
@@ -189,6 +196,7 @@
       "selected": true,
       "colors": {
         "background": "#21161f",
+        "pane": "#21161f",
         "text": "#fff0ea",
         "accent": "#ff9275"
       },
@@ -196,41 +204,31 @@
       "preview": {
         "name": "Ember Dusk",
         "light": "#f6ede9",
-        "dark": "#4b3042",
-        "backgroundImage": "linear-gradient(135deg, rgb(246, 237, 233) 0px, rgb(246, 237, 233) 49%, rgb(75, 48, 66) 50%, rgb(75, 48, 66) 100%)"
+        "dark": "#21161f",
+        "backgroundImage": "linear-gradient(135deg, rgb(246, 237, 233) 0px, rgb(246, 237, 233) 49%, rgb(33, 22, 31) 50%, rgb(33, 22, 31) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "f1b3e25949fad2120978e5bc875b86e48328b7e62124778cd86f14a7340a28fe"
+      "sha256": "e94c5d0e7cc290180071e56734723da1e709e81c6d0c47df61e75909dcdd0faa"
     }
   ],
   "cleanup": {
     "stopped": true,
-    "rootPid": 43032,
+    "rootPid": 53122,
     "recordedPids": [
-      43032,
-      43034,
-      43036,
-      43039,
-      43040,
-      43064,
-      43258,
-      43363,
-      43364,
-      43365,
-      43366,
-      43367,
-      43368,
-      43369,
-      43370,
-      43594,
-      43595,
-      43596,
-      43597,
-      43598,
-      43599,
-      43600,
-      43601
+      53122,
+      53124,
+      53125,
+      53127,
+      53128,
+      53149,
+      53284,
+      53285,
+      53286,
+      53287,
+      53288,
+      53289,
+      53352
     ],
     "remaining": []
   },
