@@ -89,7 +89,7 @@ test('unsupported no-view APIs fail visibly and cancellation stops the owned chi
     for (const [extensionId, script] of [
       ['unsupported-api', `const {Clipboard}=require('@raycast/api');exports.default=async()=>Clipboard.paste('not admitted')`],
       ['pending-command', `exports.default=async()=>new Promise(()=>{})`],
-    ]) {
+    ] as const) {
       const folder = join(root, extensionId)
       mkdirSync(folder)
       writeFileSync(join(folder, 'package.json'), JSON.stringify({ name: extensionId, title: extensionId, commands: [{ name: 'run', title: 'Run', mode: 'no-view' }] }))
