@@ -62,7 +62,7 @@ interface SkinOption {
   id: string | null
   label: DesktopSkinsMessage
   mode: DesktopSkinsMessage
-  preview: string
+  preview: { light: string; dark: string }
   accent: string
 }
 
@@ -75,7 +75,7 @@ const DEFAULT_OPTION: SkinOption = {
   id: null,
   label: 'skins.name.default',
   mode: 'skins.mode.system',
-  preview: 'linear-gradient(135deg, #fafafa 0 49%, #30343b 50% 100%)',
+  preview: { light: '#fafafa', dark: '#30343b' },
   accent: '#80868f',
 }
 
@@ -84,7 +84,7 @@ function optionFor(skin: DesktopSkin, mode: 'light' | 'dark'): SkinOption {
     id: skin.id,
     label: skin.label,
     mode: 'skins.mode.system',
-    preview: skin.palettes[mode].preview,
+    preview: { light: skin.palettes.light.preview, dark: skin.palettes.dark.preview },
     accent: skin.palettes[mode].accent,
   }
 }
@@ -109,10 +109,10 @@ function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
               className="relative flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-[14px] border border-border bg-surface p-0 text-left font-[inherit] text-foreground transition-[border-color,box-shadow,transform] duration-[120ms] ease-in-out hover:-translate-y-px hover:border-border-strong disabled:cursor-wait disabled:opacity-[.58] disabled:transform-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand data-[state=on]:border-brand data-[state=on]:shadow-[0_0_0_1px_var(--dsw-alias-brand-primary)] motion-reduce:transition-none"
               aria-label={t(option.label)}
             >
-              <span
-                className="block aspect-video w-full border-b border-[var(--dsw-alias-border-l1)] bg-cover bg-center"
-                style={{ background: option.preview }}
-              />
+              <span className="flex aspect-video w-full border-b border-[var(--dsw-alias-border-l1)]">
+                <span aria-hidden="true" data-tockteam-skin-preview="light" className="w-1/2 bg-cover bg-center" style={{ background: option.preview.light }} />
+                <span aria-hidden="true" data-tockteam-skin-preview="dark" className="w-1/2 bg-cover bg-center" style={{ background: option.preview.dark }} />
+              </span>
               <span className="grid grid-cols-[9px_minmax(0,1fr)_auto] items-center gap-1.5 px-[9px] pt-2 pb-[9px]">
                 <span className="size-2 rounded-full" style={{ background: option.accent }} />
                 <span className="flex min-w-0 flex-col">
