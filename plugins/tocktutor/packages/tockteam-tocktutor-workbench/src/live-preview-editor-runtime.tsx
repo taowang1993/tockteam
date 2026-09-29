@@ -26,6 +26,7 @@ import { classifyExternalEmbed } from './external-embeds.ts'
 import { collectEmbedTargets } from './embeds.ts'
 import { SlashMenu, slashMenuPlugin, slashKey } from './live-preview-slash-menu.tsx'
 import { SlashLinkDialog } from './slash-link-dialog.tsx'
+import { ImageViewerDialog, mountImageViewerAction, safeRasterImageDataUrl, type ViewerImage } from './image-viewer.tsx'
 
 const searchKey = new PluginKey('tocktutor-crepe-search')
 // Leading hashes + Space choose the level, even inside an existing heading.
@@ -75,6 +76,8 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
   const [ready, setReady] = useState(false)
   const [slashMenu, setSlashMenu] = useState(null)
   const [error, setError] = useState('')
+  const [viewerImage, setViewerImage] = useState<ViewerImage | null>(null)
+  const viewerTriggerRef = useRef<HTMLElement | null>(null)
   const imageWaiters = useRef(new Set<() => void>())
 
   const publishSearch = (view, error?: string) => {
@@ -293,9 +296,19 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
     }
   }, [])
 
+  useEffect(() => { setViewerImage(null) }, [props.content, props.documentKey])
+
   useEffect(() => {
     if (!ready || !root.current) return
     const element = root.current
+    const imageActions = new Map<HTMLImageElement, { dispose: () => void; host: HTMLElement; image: ViewerImage }>()
+    const removeImageAction = (image: HTMLImageElement): void => {
+      const action = imageActions.get(image)
+      if (!action) return
+      action.dispose()
+      action.host.remove()
+      imageActions.delete(image)
+    }
     const labelControls = () => {
       for (const block of element.querySelectorAll<HTMLElement>('.milkdown-code-block[data-code-language]')) {
         const button = block.querySelector<HTMLButtonElement>('.language-button')
@@ -317,9 +330,26 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
         row.setAttribute('aria-label', checked ? 'Mark Task as Incomplete' : 'Mark Task as Complete')
         row.tabIndex = 0
       }
+      for (const image of element.querySelectorAll<HTMLImageElement>('img')) {
+        const src = safeRasterImageDataUrl(image.getAttribute('src'))
+        const alt = image.alt
+        const existing = imageActions.get(image)
+        if (src === null) { removeImageAction(image); continue }
+        if (existing?.image.src === src && existing.image.alt === alt) continue
+        removeImageAction(image)
+        const host = document.createElement('span')
+        host.className = 'inline-flex align-middle'
+        host.contentEditable = 'false'
+        const anchor = image.closest('a')
+        ;(anchor ?? image).insertAdjacentElement('afterend', host)
+        const action = { alt, src }
+        const dispose = mountImageViewerAction(host, action, (value, trigger) => { viewerTriggerRef.current = trigger; setViewerImage(value) })
+        imageActions.set(image, { dispose, host, image: action })
+      }
+      for (const image of imageActions.keys()) if (!image.isConnected) removeImageAction(image)
     }
     const observer = new MutationObserver(labelControls)
-    observer.observe(element, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'data-code-language'] })
+    observer.observe(element, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'data-code-language', 'src'] })
     labelControls()
     const activate = (event: KeyboardEvent) => {
       if (event.key !== ' ' && event.key !== 'Enter' || !(event.target instanceof Element) || !event.target.matches('.milkdown-list-item-block .label-wrapper[role="checkbox"]')) return
@@ -327,7 +357,11 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
       event.target.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }))
     }
     element.addEventListener('keydown', activate)
-    return () => { observer.disconnect(); element.removeEventListener('keydown', activate) }
+    return () => {
+      observer.disconnect()
+      element.removeEventListener('keydown', activate)
+      for (const image of imageActions.keys()) removeImageAction(image)
+    }
   }, [ready])
 
   useEffect(() => {
@@ -433,5 +467,6 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
     {error && <p role="alert">{error}</p>}
     <div ref={root} />
     {slashMenu && (slashMenu.form ? <SlashLinkDialog action={slashMenu.action} /> : <SlashMenu menu={slashMenu} />)}
+    <ImageViewerDialog image={viewerImage} onClose={() => { setViewerImage(null) }} returnFocusRef={viewerTriggerRef} />
   </div>
 }

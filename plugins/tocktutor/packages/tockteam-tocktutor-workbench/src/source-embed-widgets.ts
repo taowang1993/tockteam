@@ -6,6 +6,7 @@ import {
   WidgetType,
 } from '@codemirror/view'
 import type { ResolvedEmbedNode } from './embeds.ts'
+import { mountImageViewerButton, safeRasterImageDataUrl } from './image-viewer.tsx'
 import { projectEditorStaticWidgets, projectEditorWidgets, type EditorStaticWidgetTarget } from './editor-widgets.ts'
 
 const refreshSourceEmbeds = StateEffect.define<void>()
@@ -62,6 +63,8 @@ class StaticSourceWidget extends WidgetType {
   ignoreEvent(): boolean { return false }
 }
 
+const imageViewerDisposers = new WeakMap<HTMLElement, () => void>()
+
 class SourceEmbedWidget extends WidgetType {
   constructor(
     readonly embed: ResolvedEmbedNode,
@@ -84,6 +87,11 @@ class SourceEmbedWidget extends WidgetType {
     widget.dataset.embedKind = this.embed.target.kind
     widget.setAttribute('aria-label', `${this.embed.target.kind} Embed: ${this.embed.target.display ?? this.embed.target.path}`)
     widget.tabIndex = 0
+    const mime = this.embed.mimeType?.toLocaleLowerCase().split(';', 1)[0] ?? ''
+    const imageSrc = this.embed.target.kind === 'media' && mime.startsWith('image/')
+      ? safeRasterImageDataUrl(`data:${mime};base64,${this.embed.content}`)
+      : null
+    widget.setAttribute('role', imageSrc === null ? 'button' : 'group')
 
     const label = document.createElement('strong')
     label.className = 'truncate text-xs'
@@ -94,6 +102,12 @@ class SourceEmbedWidget extends WidgetType {
     if (media !== null) {
       media.className = 'max-h-80 max-w-full object-contain'
       widget.append(media)
+      if (media instanceof HTMLImageElement && imageSrc !== null) {
+        const action = document.createElement('span')
+        action.contentEditable = 'false'
+        widget.append(action)
+        imageViewerDisposers.set(widget, mountImageViewerButton(action, { alt: media.alt, src: imageSrc }))
+      }
     } else {
       const preview = document.createElement('pre')
       preview.className = 'm-0 max-h-48 max-w-full overflow-auto whitespace-pre-wrap text-xs'
@@ -103,6 +117,11 @@ class SourceEmbedWidget extends WidgetType {
       widget.append(preview)
     }
     return widget
+  }
+
+  destroy(dom: HTMLElement): void {
+    imageViewerDisposers.get(dom)?.()
+    imageViewerDisposers.delete(dom)
   }
 
   ignoreEvent(event: Event): boolean {
@@ -146,7 +165,9 @@ export function buildSourceEmbedWidgetExtension(getEmbeds: () => readonly Resolv
     ],
   })
   const reveal = (event: Event, view: EditorView): boolean => {
-    const widget = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-embed-from][data-embed-to]') : null
+    const target = event.target instanceof Element ? event.target : null
+    if (target?.closest('button') !== null && target !== null) return false
+    const widget = target?.closest<HTMLElement>('[data-embed-from][data-embed-to]') ?? null
     if (widget === null || event.type === 'keydown' && (event as KeyboardEvent).key !== 'Enter' && (event as KeyboardEvent).key !== ' ') return false
     const from = Number(widget.dataset.embedFrom)
     const to = Number(widget.dataset.embedTo)
