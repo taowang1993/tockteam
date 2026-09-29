@@ -38,6 +38,21 @@ test('round-trips supported property types without corrupting the Markdown body'
   assert.equal(inferPropertyType(['one', 'two']), 'list')
 })
 
+test('keeps supported imported property types on empty values without coercing incompatible YAML', async () => {
+  const { parseFrontmatterProperties } = await import('../src/properties.ts')
+  const source = '---\ndue:\nfinished:\nlabels: []\nrating: "not a number"\nstructured: {child: value}\n---\n# Body\n'
+  assert.deepEqual(parseFrontmatterProperties(source, {
+    due: 'date', finished: 'checkbox', labels: 'multitext', rating: 'number', structured: 'text',
+  }).map(({ key, type, value }) => ({ key, type, value })), [
+    { key: 'due', type: 'date', value: '' },
+    { key: 'finished', type: 'checkbox', value: '' },
+    { key: 'labels', type: 'list', value: [] },
+    { key: 'rating', type: 'mixed', value: 'not a number' },
+    { key: 'structured', type: 'mixed', value: 'structured: {child: value}' },
+  ])
+  assert.equal(source, '---\ndue:\nfinished:\nlabels: []\nrating: "not a number"\nstructured: {child: value}\n---\n# Body\n')
+})
+
 test('inserts properties before the closing delimiter without changing surrounding content', () => {
   for (const eol of ['\n', '\r\n']) {
     for (const marker of ['---', '...']) {

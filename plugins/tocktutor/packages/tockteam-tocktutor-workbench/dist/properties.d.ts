@@ -1,3 +1,4 @@
+import type { ObsidianPropertyTypes } from './types.ts';
 export type PropertyType = 'text' | 'list' | 'number' | 'checkbox' | 'date' | 'datetime' | 'mixed';
 export type PropertyValue = string | string[] | number | boolean | null;
 export interface FrontmatterProperty {
@@ -35,7 +36,7 @@ export type PropertyRenameResult = {
 export declare const MAX_FRONTMATTER_BYTES = 1000000;
 export declare const MAX_PROPERTIES = 1000;
 export declare function inferPropertyType(value: unknown): PropertyType;
-export declare function parseFrontmatterProperties(source: string): FrontmatterProperty[];
+export declare function parseFrontmatterProperties(source: string, declared?: ObsidianPropertyTypes): FrontmatterProperty[];
 export declare function setFrontmatterProperty(source: string, key: string, value: PropertyValue): string;
 export declare function renameFrontmatterProperty(source: string, from: string, to: string): string;
 export declare function renamePropertiesRecoverably(files: readonly PropertyRenameFile[], from: string, to: string, operations: PropertyRenameOperations): Promise<PropertyRenameResult>;

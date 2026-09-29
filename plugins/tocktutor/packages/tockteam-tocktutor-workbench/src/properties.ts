@@ -1,3 +1,5 @@
+import type { ObsidianPropertyTypes } from './types.ts'
+
 export type PropertyType = 'text' | 'list' | 'number' | 'checkbox' | 'date' | 'datetime' | 'mixed'
 export type PropertyValue = string | string[] | number | boolean | null
 
@@ -156,8 +158,19 @@ function ranges(source: string): PropertyRange[] {
   return properties
 }
 
-export function parseFrontmatterProperties(source: string): FrontmatterProperty[] {
-  return ranges(source).map(({ key, type, value }) => ({ key, type, value }))
+export function parseFrontmatterProperties(source: string, declared: ObsidianPropertyTypes = {}): FrontmatterProperty[] {
+  return ranges(source).map(({ key, type, value }) => {
+    const imported = Object.hasOwn(declared, key) ? declared[key] : undefined
+    const expected: PropertyType | undefined = imported === 'multitext' || imported === 'tags' || imported === 'aliases'
+      ? 'list' : imported
+    if (!expected || type === 'mixed') return { key, type, value }
+    const compatible = expected === 'list' ? Array.isArray(value)
+      : expected === 'text' ? typeof value === 'string'
+        : expected === 'number' ? typeof value === 'number'
+          : expected === 'checkbox' ? typeof value === 'boolean'
+            : typeof value === 'string' && type === expected
+    return { key, type: compatible || value === '' || value === null ? expected : 'mixed', value }
+  })
 }
 
 function quoteText(value: string): string {

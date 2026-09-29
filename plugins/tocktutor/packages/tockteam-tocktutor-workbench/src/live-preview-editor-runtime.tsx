@@ -356,7 +356,7 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
         if (existing?.image.src === src && existing.image.alt === alt && existing.authored === (current?.authored ?? null)) continue
         removeImageAction(image)
         const row = document.createElement('span')
-        row.className = 'tocktutor-image-actions flex w-fit max-w-full flex-wrap items-center gap-2 rounded-md bg-surface-muted px-1 py-1 text-foreground'
+        row.className = 'tocktutor-image-actions flex w-fit max-w-full flex-wrap items-center gap-2 rounded-md bg-surface-muted !p-1 text-foreground [&_button]:!px-2 [&_button]:!py-1 [&_input]:!px-2 [&_input]:!py-1'
         row.contentEditable = 'false'
         row.setAttribute('role', 'group')
         row.setAttribute('aria-label', 'Image Actions')

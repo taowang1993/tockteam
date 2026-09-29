@@ -146,8 +146,20 @@ function ranges(source) {
     }
     return properties;
 }
-export function parseFrontmatterProperties(source) {
-    return ranges(source).map(({ key, type, value }) => ({ key, type, value }));
+export function parseFrontmatterProperties(source, declared = {}) {
+    return ranges(source).map(({ key, type, value }) => {
+        const imported = Object.hasOwn(declared, key) ? declared[key] : undefined;
+        const expected = imported === 'multitext' || imported === 'tags' || imported === 'aliases'
+            ? 'list' : imported;
+        if (!expected || type === 'mixed')
+            return { key, type, value };
+        const compatible = expected === 'list' ? Array.isArray(value)
+            : expected === 'text' ? typeof value === 'string'
+                : expected === 'number' ? typeof value === 'number'
+                    : expected === 'checkbox' ? typeof value === 'boolean'
+                        : typeof value === 'string' && type === expected;
+        return { key, type: compatible || value === '' || value === null ? expected : 'mixed', value };
+    });
 }
 function quoteText(value) {
     if (listString(value) === null || /^(?:true|false|null|~|-?(?:0|[1-9]\d*)(?:\.\d+)?|\d{4}-\d{2}-\d{2}(?:T.*)?)$/iu.test(value)

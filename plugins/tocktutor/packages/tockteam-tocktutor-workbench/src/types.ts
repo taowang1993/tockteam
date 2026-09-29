@@ -26,6 +26,9 @@ export interface VaultReference {
   id: string
 }
 
+export type ObsidianPropertyType = 'text' | 'multitext' | 'number' | 'checkbox' | 'date' | 'datetime' | 'tags' | 'aliases'
+export type ObsidianPropertyTypes = Readonly<Record<string, ObsidianPropertyType>>
+
 export interface ActiveVaultResult {
   /** UI-only path; never accepted as filesystem authority. */
   displayPath: string | null
