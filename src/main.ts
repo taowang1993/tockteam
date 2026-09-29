@@ -2323,6 +2323,11 @@ function initializeLauncher(): void {
         if (window !== undefined && !window.isDestroyed()) window.webContents.send(USER_RAYCAST_IPC.view, message)
       },
       onError: (_owner, error) => appendLog('desktop', `User extension failed: ${error.message.slice(0, 512)}`),
+      copyText: (owner, text) => {
+        if (trustedRaycastDenyEffectsProofEnabled || !BrowserWindow.getAllWindows().some(window => !window.isDestroyed() && window.webContents.id === owner.webContentsId)) throw new Error('Copy is unavailable for this owner')
+        clipboard.writeText(text)
+        if (clipboard.readText() !== text) throw new Error('Copy was not accepted')
+      },
     })
   }
   const translatePreferencesPath = googleTrustedPaths.preferencesFile

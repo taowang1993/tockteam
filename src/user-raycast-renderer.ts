@@ -67,12 +67,12 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
       label.append(checkbox, document.createTextNode('I reviewed the selected source and accept account-level access.'))
       controls.append(label, button('Review and Install', 'approve', async () => { state = await bridge.userRaycastApprove(candidate.digest); reviewed = false }, !reviewed))
     }
+    if (state.hasPrevious) controls.append(button('Restore Previous Version', 'recover', async () => { await bridge.userRaycastClose(); active = undefined; rendered.replaceChildren(); state = await bridge.userRaycastMutate('recover') }))
     if (!state.installed) return
     if (state.enabled) {
       controls.append(button('Open Command', 'open', async () => { active = undefined; await bridge.userRaycastOpen() }))
       controls.append(button('Disable', 'disable', async () => { await bridge.userRaycastClose(); active = undefined; rendered.replaceChildren(); state = await bridge.userRaycastMutate('disable') }))
     } else controls.append(button('Enable', 'enable', async () => { state = await bridge.userRaycastMutate('enable') }))
-    if (state.hasPrevious) controls.append(button('Restore Previous Version', 'recover', async () => { await bridge.userRaycastClose(); active = undefined; rendered.replaceChildren(); state = await bridge.userRaycastMutate('recover') }))
     controls.append(button(removing ? 'Confirm Remove' : 'Remove Extension', 'remove', async () => {
       if (!removing) { removing = true; feedback.textContent = 'Select Confirm Remove to remove this extension.'; return }
       await bridge.userRaycastClose(); active = undefined; rendered.replaceChildren(); state = await bridge.userRaycastMutate('remove'); removing = false

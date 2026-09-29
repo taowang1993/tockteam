@@ -16,7 +16,9 @@ const command = process.env.TOCKTEAM_USER_RAYCAST_COMMAND!
 let revision = -1
 let ready = false
 let handles = new Map<string, () => unknown>()
-let activeAction = false
+let activeAction: { eventId: string; revision: number } | undefined
+let nativeSequence = 0
+const nativePending = new Map<string, { resolve: () => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
 console.log = (...values: unknown[]) => console.error(...values)
 const send = (value: object): void => { process.stdout.write(`${JSON.stringify(value)}\n`) }
 const serialize = (value: Node | string): unknown => {
@@ -41,7 +43,14 @@ const emit = (): void => {
 }
 const reportError = (error: unknown): void => send({ type: 'error', extensionId, sessionId, revision: ++revision, message: String(error).slice(0, 512) })
 api.configureCompatibility({
-  native: async () => { throw new Error('This Raycast native effect is unsupported for user extensions') },
+  native: (request: { kind: string; text?: string }) => new Promise<void>((resolve, reject) => {
+    if (request.kind !== 'copy') { reject(new Error(`Raycast native effect ${request.kind} is unsupported for user extensions`)); return }
+    if (!activeAction || typeof request.text !== 'string' || Buffer.byteLength(request.text) > 131072) { reject(new Error('Copy requires a current approved action and bounded text')); return }
+    const requestId = `native-${++nativeSequence}`
+    const timer = setTimeout(() => { nativePending.delete(requestId); reject(new Error('Copy timed out')) }, 10000)
+    nativePending.set(requestId, { resolve, reject, timer })
+    send({ type: 'native', extensionId, sessionId, revision: activeAction.revision, eventId: activeAction.eventId, requestId, kind: 'copy', text: request.text })
+  }),
   selection: async () => { throw new Error('Selected text is unsupported for user extensions') },
   toast: (toast: object) => send({ type: 'toast', extensionId, sessionId, revision, ...toast }),
 })
@@ -75,7 +84,7 @@ registerHooks({ resolve(specifier, context, nextResolve) {
 } })
 // Every imported byte is from an approved digest snapshot. No build or source probe runs before approval.
 const imported = await import(pathToFileURL(join(process.cwd(), 'source', `${command}.js`)).href)
-const Command = imported.default
+const Command = typeof imported.default === 'function' ? imported.default : imported.default?.default
 if (typeof Command !== 'function') throw new Error('Selected command has no renderable default export')
 let searchHandler: ((value: string) => void) | undefined
 const mount = (view?: unknown): void => renderer.updateContainer(view ?? React.createElement(Command), container, null, () => {
@@ -87,7 +96,14 @@ process.stdin.setEncoding('utf8')
 const readLines = createTrustedRaycastLineReader(TRUSTED_RAYCAST_INPUT_FRAME_BYTES)
 process.stdin.on('data', (chunk: string) => {
   for (const line of readLines(chunk)) {
-    const event = JSON.parse(line) as { type?: string; revision?: number; eventId?: string; kind?: string; value?: string }
+    const event = JSON.parse(line) as { type?: string; revision?: number; eventId?: string; kind?: string; value?: string; requestId?: string; succeeded?: boolean; message?: string }
+    if (event.type === 'native-result') {
+      const waiting = typeof event.requestId === 'string' ? nativePending.get(event.requestId) : undefined
+      if (!waiting || event.revision !== activeAction?.revision || event.eventId !== activeAction?.eventId || typeof event.succeeded !== 'boolean') throw new Error('Stale native outcome')
+      clearTimeout(waiting.timer); nativePending.delete(event.requestId!)
+      if (event.succeeded) waiting.resolve(); else waiting.reject(new Error(event.message ?? 'Copy failed'))
+      continue
+    }
     if (event.type !== 'event' || event.revision !== revision) throw new Error('Stale user extension event')
     if (event.kind === 'searchChanged') {
       if (typeof event.value !== 'string' || event.value.length > 16384) throw new Error('Invalid search input')
@@ -96,9 +112,9 @@ process.stdin.on('data', (chunk: string) => {
     }
     const action = event.kind === 'action' && typeof event.eventId === 'string' ? handles.get(event.eventId) : undefined
     if (!action || activeAction) throw new Error('Stale or busy user extension action')
-    activeAction = true
+    activeAction = { eventId: event.eventId!, revision }
     const actionRevision = revision
-    Promise.resolve().then(action).then(() => send({ type: 'outcome', extensionId, sessionId, revision: actionRevision, eventId: event.eventId, succeeded: true, message: '' }), error => send({ type: 'outcome', extensionId, sessionId, revision: actionRevision, eventId: event.eventId, succeeded: false, message: String(error).slice(0, 512) })).finally(() => { activeAction = false })
+    Promise.resolve().then(action).then(() => send({ type: 'outcome', extensionId, sessionId, revision: actionRevision, eventId: event.eventId, succeeded: true, message: '' }), error => send({ type: 'outcome', extensionId, sessionId, revision: actionRevision, eventId: event.eventId, succeeded: false, message: String(error).slice(0, 512) })).finally(() => { activeAction = undefined })
   }
 })
 process.stdin.on('end', () => process.exit(0))

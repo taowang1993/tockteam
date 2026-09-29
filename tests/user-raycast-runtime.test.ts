@@ -11,7 +11,7 @@ import { UserRaycastManager } from '../src/user-raycast-manager.ts'
 const artifact = resolve('plugins/trusted-raycast/vendor/google-translate.tar')
 const manifest = { name: 'example-list', title: 'Example List', commands: [{ name: 'browse', title: 'Browse', mode: 'view' }] }
 const source = `const React = require('react'); const { List, Action, ActionPanel } = require('@raycast/api');
-module.exports = function Browse() { return React.createElement(List, { onSearchTextChange() {} }, React.createElement(List.Item, { title: 'Pinned Item', actions: React.createElement(ActionPanel, null, React.createElement(Action, { title: 'Choose Item', onAction: () => console.error('CHOSEN') })) })) }`
+exports.default = function Browse() { return React.createElement(List, { onSearchTextChange() {} }, React.createElement(List.Item, { title: 'Pinned Item', actions: React.createElement(ActionPanel, null, React.createElement(Action.CopyToClipboard, { title: 'Copy Item', content: 'Pinned Item' })) })) }`
 const owner = { webContentsId: 17 }
 
 test('packaged Desktop includes the first-party user extension host outside ASAR', () => {
@@ -19,6 +19,27 @@ test('packaged Desktop includes the first-party user extension host outside ASAR
   assert.ok(packageManifest.build.asarUnpack.includes('dist/user-raycast/**'))
   assert.ok(packageManifest.build.files.includes('dist/user-raycast/**'))
   assert.match(readFileSync(resolve('scripts/build.mjs'), 'utf8'), /await buildUserRaycast\(join\(dist, 'user-raycast'\)\)/)
+})
+
+test('an extension cannot request a native effect before a user-owned action', async t => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-user-raycast-unowned-'))
+  const folder = join(root, 'source')
+  mkdirSync(folder)
+  writeFileSync(join(folder, 'package.json'), JSON.stringify(manifest))
+  writeFileSync(join(folder, 'browse.js'), `process.stdout.write(JSON.stringify({ type: 'native', extensionId: process.env.TOCKTEAM_USER_RAYCAST_ID, sessionId: process.env.TOCKTEAM_USER_RAYCAST_SESSION, revision: 0, eventId: 'forged', requestId: 'native-1', kind: 'copy', text: 'must-not-copy' }) + '\\n'); exports.default = function Browse() { return null }`)
+  try {
+    const runtime = join(root, 'host')
+    await buildUserRaycast(runtime)
+    const install = new UserRaycastInstall(join(root, 'installed'))
+    const selected = install.prepare(folder, 'browse')
+    install.approve(selected.digest); install.enable()
+    const copied: string[] = []
+    const manager = new UserRaycastManager({ install, runtime, nodePath: process.execPath, artifact, onMessage: () => {}, copyText: (_owner, text) => { copied.push(text) } })
+    t.after(async () => manager.close())
+    await assert.rejects(manager.start(owner), /unowned|exited/i)
+    assert.deepEqual(copied, [])
+    assert.equal(manager.childPid, undefined)
+  } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
 test('a selected local List stays inert until approved and enabled, then runs in an owned child', async t => {
@@ -33,7 +54,8 @@ test('a selected local List stays inert until approved and enabled, then runs in
     const install = new UserRaycastInstall(join(root, 'installed'))
     const candidate = install.prepare(folder, 'browse')
     const messages: unknown[] = []
-    const manager = new UserRaycastManager({ install, runtime, nodePath: process.execPath, artifact, onMessage: (_owner, message) => messages.push(message) })
+    const copied: string[] = []
+    const manager = new UserRaycastManager({ install, runtime, nodePath: process.execPath, artifact, onMessage: (_owner, message) => messages.push(message), copyText: (_owner, text) => { copied.push(text) } })
     t.after(async () => manager.close())
     await assert.rejects(manager.start(owner), /not enabled|not approved/i)
     assert.equal(manager.childPid, undefined)
@@ -50,6 +72,7 @@ test('a selected local List stays inert until approved and enabled, then runs in
     manager.send(owner, { revision: ready.revision, eventId: action[1]!, kind: 'action' })
     await new Promise<void>((yes, no) => { const until = setTimeout(() => no(new Error('No action outcome')), 2000); const check = setInterval(() => { if (messages.some((message: any) => message.type === 'outcome')) { clearInterval(check); clearTimeout(until); yes() } }, 10) })
     assert.equal((messages.find((message: any) => message.type === 'outcome') as any).succeeded, true)
+    assert.deepEqual(copied, ['Pinned Item'])
     const pid = manager.childPid
     await manager.closeOwner(owner)
     assert.equal(manager.childPid, undefined)

@@ -1,0 +1,11 @@
+# Local Raycast View Check — 2026-09-29
+
+This is an intermediate macOS Desktop child check, **not installed-app or universal Raycast compatibility evidence**.
+
+- Approved selected source: MIT-declared `color-picker/color-names` from `https://github.com/raycast/extensions` revision `1063bfaa34be81528c4e397c91b57c42ec370d79`, source tree `63400ca55daa1c9bf4cf5ec1dc08d75c0f2e3dd5`. The owner explicitly approved building and running this command with its packages in a disposable profile. No other public command was approved or run.
+- Preparation: copied the local pinned snapshot to `/tmp`, ran `npm ci --ignore-scripts --no-audit --no-fund` with isolated public-registry cache and no user npm configuration, then compiled `color-names.tsx` with first-party esbuild. No extension lifecycle script was run. Dependency lock SHA-256: `bb60278b1a8b48ae556786ad4925d66eb8bb9affcf631871a8f43faa3e51c3ea`. Built command SHA-256: `3b286c166ae323beb8bb58f7ea379a19ea126049e47a159efca17b3cf2d7c2b3`.
+- Store candidate digest: `b48be1cf2d81814de96cabe4c3243fc934cb8feb161f7d6a77f4a5d34a1bfa6c`. Separate prepare, approve and enable states were checked before starting the owned child.
+- Measured: **boot yes**, **List render yes**, **search render yes** for `#00ff00`, **Copy Name action callback yes** through a Host-injected copy fixture (four bytes captured); **real system clipboard effect not run**. Process PID `45475` and its owned group were stopped. The full package/GUI installed proof remains pending.
+- Safety regression: forged native-copy request before any owner action was rejected; `node --test tests/user-raycast-runtime.test.ts` passes. The child has account-level authority after approval; process separation is not an OS sandbox.
+
+Limits: one local built view-command slot, one generic List presentation, limited Raycast API exports, no guaranteed native dependencies, no online Store installer, no-view, menu or OAuth support yet. A successful import is not a compatibility claim for other commands or platforms.

@@ -85,7 +85,7 @@ test('the launcher capture boundary preserves IME defaults before root and neste
 
 test('reopening clears a revoked trusted command instead of focusing its stale view', () => {
   const focus = launcherSource.slice(launcherSource.indexOf('focusSearchHandler = ():', launcherSource.indexOf('async function bootstrap')), launcherSource.indexOf('const rememberSearch ='))
-  assert.match(focus, /if \(trustedView \|\| trustedOpening \|\| trustedInvocation \|\| firstUseView\) \{ closeLocalTool\(\); return \}/u)
+  assert.match(focus, /if \(trustedView \|\| trustedOpening \|\| trustedInvocation \|\| firstUseView \|\| userView\) \{ closeLocalTool\(\); return \}/u)
   assert.doesNotMatch(focus, /trustedView\.focus/u)
 })
 
@@ -97,6 +97,7 @@ test('startup theme and focus updates do not duplicate the first search', () => 
   assert.match(focus, /currentItems\.length === 0 && document\.documentElement\.dataset\.launcherReady === 'true'/u)
   const close = launcherSource.slice(launcherSource.indexOf('const closeLocalTool ='), launcherSource.indexOf('const hideLauncherControls ='))
   assert.match(close, /trustedView\.dispose\(\);\s*trustedView = undefined\b/u)
+  assert.match(close, /userView\.dispose\(\);\s*userView = undefined; void bridge\.userRaycastClose\(\)/u)
   const ready = launcherSource.slice(launcherSource.indexOf("if (message.type === 'ready')"), launcherSource.indexOf('trustedView?.update(message)'))
   assert.match(ready, /if \(!trustedOpening\) \{ closeTrusted\(\); return \}/u)
   assert.ok(ready.indexOf('if (!trustedOpening)') < ready.indexOf('firstUseView?.dispose()'), 'reject unowned readiness before disposing approval')

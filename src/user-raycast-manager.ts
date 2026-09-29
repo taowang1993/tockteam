@@ -12,7 +12,8 @@ import type { UserRaycastCandidate, UserRaycastInstall } from './user-raycast-in
 
 export type UserRaycastOwner = Readonly<{ webContentsId: number }>
 export type UserRaycastMessage = Readonly<{ extensionId: string; sessionId: string; revision: number; type: 'ready' | 'patch' | 'error' | 'outcome' | 'toast'; root?: unknown; message?: string; eventId?: string; succeeded?: boolean; title?: string; style?: string }>
-type Session = { child: ChildProcessWithoutNullStreams; workspace: string; owner: UserRaycastOwner; candidate: UserRaycastCandidate; id: string; revision: number; actions: Set<string>; resolve: () => void; reject: (error: Error) => void; settled: boolean }
+type Session = { child: ChildProcessWithoutNullStreams; workspace: string; owner: UserRaycastOwner; candidate: UserRaycastCandidate; id: string; revision: number; actions: Set<string>; action?: { eventId: string; revision: number; nativeUsed: boolean }; resolve: () => void; reject: (error: Error) => void; settled: boolean }
+type NativeRequest = { type: 'native'; extensionId: string; sessionId: string; revision: number; eventId: string; requestId: string; kind: 'copy'; text: string }
 const frameBytes = 1024 * 1024
 const types = new Set(['root', 'raycast-list', 'raycast-list-item', 'raycast-section', 'raycast-detail', 'raycast-empty', 'raycast-dropdown', 'raycast-dropdown-item', 'raycast-grid', 'raycast-grid-item', 'raycast-action-panel', 'raycast-action-section', 'raycast-action', 'raycast-form', 'raycast-text-field', 'raycast-form-dropdown', 'raycast-form-dropdown-item'])
 const validNode = (value: unknown, state = { nodes: 0, text: 0, actions: new Set<string>() }, depth = 0): boolean => {
@@ -34,8 +35,8 @@ const validNode = (value: unknown, state = { nodes: 0, text: 0, actions: new Set
 export class UserRaycastManager {
   private session: Session | undefined
   private stopping: Promise<void> | undefined
-  private readonly options: Readonly<{ install: UserRaycastInstall; runtime: string; nodePath: string; artifact: string; onMessage: (owner: UserRaycastOwner, message: UserRaycastMessage) => void; onError?: (owner: UserRaycastOwner, error: Error) => void }>
-  constructor(options: Readonly<{ install: UserRaycastInstall; runtime: string; nodePath: string; artifact: string; onMessage: (owner: UserRaycastOwner, message: UserRaycastMessage) => void; onError?: (owner: UserRaycastOwner, error: Error) => void }>) { this.options = options }
+  private readonly options: Readonly<{ install: UserRaycastInstall; runtime: string; nodePath: string; artifact: string; onMessage: (owner: UserRaycastOwner, message: UserRaycastMessage) => void; onError?: (owner: UserRaycastOwner, error: Error) => void; copyText?: (owner: UserRaycastOwner, text: string) => void | Promise<void> }>
+  constructor(options: Readonly<{ install: UserRaycastInstall; runtime: string; nodePath: string; artifact: string; onMessage: (owner: UserRaycastOwner, message: UserRaycastMessage) => void; onError?: (owner: UserRaycastOwner, error: Error) => void; copyText?: (owner: UserRaycastOwner, text: string) => void | Promise<void> }>) { this.options = options }
   get childPid(): number | undefined { return this.session?.child.pid }
   async start(owner: UserRaycastOwner): Promise<void> {
     if (this.session || this.stopping) throw new Error('User extension is busy')
@@ -71,9 +72,20 @@ export class UserRaycastManager {
           for (const line of readLines(chunk)) {
             const raw: unknown = JSON.parse(line)
             if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Invalid extension message')
-            const message = raw as UserRaycastMessage
+            const message = raw as UserRaycastMessage | NativeRequest
             if (message.extensionId !== chosen.extensionId || message.sessionId !== id || !Number.isSafeInteger(message.revision) || message.revision < 0) throw new Error('Invalid extension message identity')
-            if (message.type === 'ready' || message.type === 'patch') {
+            if (message.type === 'native') {
+              if (Object.keys(message).sort().join(',') !== 'eventId,extensionId,kind,requestId,revision,sessionId,text,type' || message.kind !== 'copy' || typeof message.requestId !== 'string' || message.requestId.length > 128 || typeof message.text !== 'string' || Buffer.byteLength(message.text) > 131072 || !session.action || session.action.nativeUsed || message.eventId !== session.action.eventId || message.revision !== session.action.revision) throw new Error('Unowned native extension request')
+              session.action.nativeUsed = true
+              void Promise.resolve().then(() => {
+                if (this.session !== session || !this.options.copyText) throw new Error('Copy is unavailable')
+                return this.options.copyText(owner, message.text)
+              }).then(() => {
+                if (this.session === session) child.stdin.write(`${JSON.stringify({ type: 'native-result', revision: message.revision, eventId: message.eventId, requestId: message.requestId, succeeded: true })}\n`)
+              }, error => {
+                if (this.session === session) child.stdin.write(`${JSON.stringify({ type: 'native-result', revision: message.revision, eventId: message.eventId, requestId: message.requestId, succeeded: false, message: error instanceof Error ? error.message.slice(0, 512) : 'Copy failed' })}\n`)
+              })
+            } else if (message.type === 'ready' || message.type === 'patch') {
               if (message.revision <= session.revision || (session.revision === -1) !== (message.type === 'ready') || !validNode(message.root) || inspectTrustedRaycastProjection(message.root).rootBytes > frameBytes) throw new Error('Invalid extension projection')
               session.revision = message.revision
               session.actions = new Set<string>()
@@ -81,7 +93,10 @@ export class UserRaycastManager {
               collect(message.root)
               this.options.onMessage(owner, message)
               if (!session.settled) { session.settled = true; session.resolve() }
-            } else if (message.type === 'outcome' && Number.isSafeInteger(message.revision) && typeof message.eventId === 'string' && message.eventId.length <= 128 && typeof message.succeeded === 'boolean' && typeof message.message === 'string' && message.message.length <= 512) this.options.onMessage(owner, message)
+            } else if (message.type === 'outcome' && message.revision === session.action?.revision && message.eventId === session.action.eventId && typeof message.succeeded === 'boolean' && typeof message.message === 'string' && message.message.length <= 512) {
+              delete session.action
+              this.options.onMessage(owner, message)
+            }
             else if (message.type === 'toast' && message.revision === session.revision && typeof message.title === 'string' && message.title.length <= 512 && typeof message.message === 'string' && message.message.length <= 4096 && ['failure', 'success', 'animated'].includes(message.style ?? '')) this.options.onMessage(owner, message)
             else if (message.type === 'error' && typeof message.message === 'string') throw new Error(message.message.slice(0, 512))
             else throw new Error('Invalid extension message')
@@ -104,8 +119,9 @@ export class UserRaycastManager {
   send(owner: UserRaycastOwner, event: Readonly<{ revision: number; eventId: string; kind: 'action' | 'searchChanged'; value?: string }>): void {
     const session = this.session
     if (!session || owner.webContentsId !== session.owner.webContentsId) throw new Error('Extension owner is stale')
-    if (event.revision !== session.revision || !Number.isSafeInteger(event.revision) || typeof event.eventId !== 'string' || event.eventId.length > 128 || event.kind !== 'action' && event.kind !== 'searchChanged' || event.kind === 'action' && !session.actions.has(event.eventId) || event.kind === 'searchChanged' && (typeof event.value !== 'string' || event.value.length > 16384)) throw new Error('Extension event is stale')
+    if (event.revision !== session.revision || !Number.isSafeInteger(event.revision) || typeof event.eventId !== 'string' || event.eventId.length > 128 || event.kind !== 'action' && event.kind !== 'searchChanged' || event.kind === 'action' && !session.actions.has(event.eventId) || event.kind === 'searchChanged' && (typeof event.value !== 'string' || event.value.length > 16384) || session.action) throw new Error('Extension event is stale or busy')
     if (session.child.stdin.writableLength > 32768) throw new Error('Extension input is busy')
+    if (event.kind === 'action') session.action = { eventId: event.eventId, revision: event.revision, nativeUsed: false }
     session.child.stdin.write(`${JSON.stringify({ type: 'event', ...event })}\n`)
   }
   async closeOwner(owner: UserRaycastOwner): Promise<void> { if (this.session?.owner.webContentsId === owner.webContentsId) await this.close() }

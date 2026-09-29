@@ -44,6 +44,7 @@
     "dist/trusted-raycast/**",
     "dist/trusted-raycast-kaomoji/**",
     "dist/trusted-raycast-can-i-use/**",
+    "dist/user-raycast/**",
     "dist/client.js",
     "dist/client.js.map",
     "dist/client-api.js",

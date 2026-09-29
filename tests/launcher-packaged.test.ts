@@ -48,6 +48,7 @@ test('package contract admits the complete launcher resource inventory', () => {
     'dist/trusted-raycast/**',
     'dist/trusted-raycast-kaomoji/**',
     'dist/trusted-raycast-can-i-use/**',
+    'dist/user-raycast/**',
   ])
   assert.equal(contract.resources.asar, true)
   assert.deepEqual(packageJson.build?.files, contract.resources.builderFiles)

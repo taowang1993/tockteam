@@ -18,6 +18,20 @@ test('the Desktop launcher exposes the local-extension review without Web or TUI
   assert.match(readFileSync(resolve('scripts/build.mjs'), 'utf8'), /src\/user-raycast-renderer\.ts/)
 })
 
+test('an interrupted update exposes recovery even when current bytes are invalid', async () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>')
+  const document = dom.window.document as Document
+  let recovered = false
+  const bridge = { userRaycastState: async () => ({ ...empty, hasPrevious: true }), userRaycastMutate: async (action: string) => { assert.equal(action, 'recover'); recovered = true; return { ...empty, installed: true, digest: candidate.digest } }, userRaycastClose: async () => {}, onUserRaycastView: () => () => {} } as unknown as LauncherPreloadBridge
+  const view = createUserRaycastView(document, bridge, () => {})
+  document.body.append(view.element)
+  await flush()
+  document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="recover"]')!.click()
+  await flush()
+  assert.equal(recovered, true)
+  view.dispose(); dom.window.close()
+})
+
 test('local extension approval shows account authority and does not run before separate enablement', async () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>')
   const document = dom.window.document as Document
