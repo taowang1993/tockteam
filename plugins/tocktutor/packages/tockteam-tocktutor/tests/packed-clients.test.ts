@@ -230,6 +230,7 @@ test('every packed browser component activates exactly once through ClientModule
       staticModules: {
         react: await import(pathToFileURL(packageRequire.resolve('react')).href),
         'react-dom': await import(pathToFileURL(packageRequire.resolve('react-dom')).href),
+        'react-dom/client': await import(pathToFileURL(packageRequire.resolve('react-dom/client')).href),
         'react/jsx-runtime': await import(pathToFileURL(packageRequire.resolve('react/jsx-runtime')).href),
         '@tockteam/desktop/client': shellApi,
       },

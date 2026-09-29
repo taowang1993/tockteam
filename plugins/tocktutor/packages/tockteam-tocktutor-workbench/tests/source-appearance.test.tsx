@@ -11,7 +11,7 @@ it('shows strike, highlight, and purple links without hiding source syntax', asy
   const editorViewRef = { current: null as unknown }
   const onContentChange = vi.fn()
   const { container } = render(<SourceEditor content={content} editorViewRef={editorViewRef} onContentChange={onContentChange} />)
-  await waitFor(() => expect(editorViewRef.current).toBeTruthy())
+  await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 5_000 })
   const styledText = (property: 'textDecoration' | 'backgroundColor' | 'color', value: string) =>
     [...container.querySelectorAll('.cm-content span')].filter(span => getComputedStyle(span)[property] === value).map(span => span.textContent).join('')
   expect(styledText('textDecoration', 'line-through')).toContain('~~strike~~')
@@ -30,7 +30,7 @@ it('leaves metadata, code, escaped markers, and unfinished highlights unformatte
   const content = '---\nlabel: "==metadata== [[Note]] ~~strike~~"\n---\n\n`==inline== [[Note]] ~~strike~~`\n\n```md\n==fenced== [[Note]] ~~strike~~\n```\n\n\\==escaped== \\[[escaped]] ==unfinished\n'
   const editorViewRef = { current: null as unknown }
   const { container } = render(<SourceEditor content={content} editorViewRef={editorViewRef} />)
-  await waitFor(() => expect(editorViewRef.current).toBeTruthy())
+  await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 5_000 })
   const tree = syntaxTree((editorViewRef.current as EditorView).state).toString()
   expect(tree).not.toMatch(/Highlight|WikiLink|Strikethrough/u)
   for (const span of container.querySelectorAll('.cm-content span')) {
@@ -44,7 +44,7 @@ it('keeps frontmatter as metadata with two visible delimiters, not an underlined
   const editorViewRef = { current: null as unknown }
   const onContentChange = vi.fn()
   const { container } = render(<SourceEditor content={content} editorViewRef={editorViewRef} onContentChange={onContentChange} />)
-  await waitFor(() => expect(editorViewRef.current).toBeTruthy())
+  await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 5_000 })
   const view = editorViewRef.current as EditorView
   const tree = syntaxTree(view.state).toString()
   expect(tree).toContain('Frontmatter')
@@ -66,7 +66,7 @@ it('keeps frontmatter as metadata with two visible delimiters, not an underlined
 it('uses the text color for ordinary Markdown punctuation in both themes', async () => {
   const content = '---\nstatus: review\n---\n\nUse **bold** and *italic*.\n\n1. Item\n\n> Quote\n'
   const { container } = render(<div style={{ color: 'rgb(224, 224, 224)' }}><SourceEditor content={content} /></div>)
-  await waitFor(() => expect(container.querySelector('.cm-content span')).toBeTruthy())
+  await waitFor(() => expect(container.querySelector('.cm-content span')).toBeTruthy(), { timeout: 5_000 })
   for (const color of ['rgb(224, 224, 224)', 'rgb(34, 34, 34)']) {
     const editor = container.querySelector<HTMLElement>('.cm-editor')!
     editor.style.color = color

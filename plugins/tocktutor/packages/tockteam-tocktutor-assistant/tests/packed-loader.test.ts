@@ -281,6 +281,7 @@ test('a fresh packed artifact loads through pinned Host and web ClientModule loa
       staticModules: {
         react: await import(pathToFileURL(consumerRequire.resolve('react')).href),
         'react-dom': await import(pathToFileURL(consumerRequire.resolve('react-dom')).href),
+        'react-dom/client': await import(pathToFileURL(consumerRequire.resolve('react-dom/client')).href),
         'react/jsx-runtime': await import(pathToFileURL(consumerRequire.resolve('react/jsx-runtime')).href),
         '@tockteam/desktop/client': await import(
           pathToFileURL(consumerRequire.resolve('@tockteam/desktop/client')).href

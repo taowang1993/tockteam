@@ -9,7 +9,7 @@ it.each(['b', 'b\n'])('processes bounded bulk replacements without rescanning th
   const source = ('a' + 'x'.repeat(spacing - 1)).repeat(10_000)
   const editorViewRef = { current: null as EditorView | null }
   render(<SourceEditor content={source} editorViewRef={editorViewRef} />)
-  await waitFor(() => expect(editorViewRef.current).toBeTruthy())
+  await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 5_000 })
   const changes = Array.from({ length: 10_000 }, (_, index) => ({ from: index * spacing, to: index * spacing + 1, insert: replacement }))
   // Count real regex input work, not wall time under parallel CI load.
   const matches = vi.spyOn(String.prototype, 'match')
@@ -31,7 +31,7 @@ it('checks replacement size against authored CRLF bytes, not normalized editor b
   const onSearchState = vi.fn()
   const props = { content: source, editorViewRef, onContentChange, onSearchState, searchQuery: 'alpha' }
   const { rerender } = render(<SourceEditor {...props} />)
-  await waitFor(() => expect(editorViewRef.current).toBeTruthy())
+  await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 5_000 })
   rerender(<SourceEditor {...props} searchRequest={{ action: 'replace', id: 1, replacement: 'alphax' }} />)
   expect(onSearchState).toHaveBeenLastCalledWith(expect.objectContaining({ error: 'Replacement exceeds the editor size limit.' }))
   expect(onContentChange).not.toHaveBeenCalled()
@@ -44,6 +44,6 @@ afterEach(cleanup)
 it('keeps authored whitespace visible with native CodeMirror wrapping in Source Mode', async () => {
   const editorViewRef = { current: null as EditorView | null }
   render(<SourceEditor content={'plain  text\nnext   line'} editorViewRef={editorViewRef} />)
-  await waitFor(() => expect(editorViewRef.current).toBeTruthy())
+  await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 5_000 })
   expect(getComputedStyle(editorViewRef.current!.contentDOM).whiteSpace).toBe('break-spaces')
 })

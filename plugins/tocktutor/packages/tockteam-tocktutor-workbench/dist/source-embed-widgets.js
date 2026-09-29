@@ -1,6 +1,7 @@
 // @ts-nocheck -- CodeMirror's extensionless declaration graph is incompatible with the pinned NodeNext analyzer.
 import { StateEffect, StateField } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType, } from '@codemirror/view';
+import { mountImageViewerButton, safeRasterImageDataUrl } from "./image-viewer.js";
 import { projectEditorStaticWidgets, projectEditorWidgets } from "./editor-widgets.js";
 const refreshSourceEmbeds = StateEffect.define();
 function mediaElement(embed) {
@@ -57,6 +58,7 @@ class StaticSourceWidget extends WidgetType {
     }
     ignoreEvent() { return false; }
 }
+const imageViewerDisposers = new WeakMap();
 class SourceEmbedWidget extends WidgetType {
     embed;
     from;
@@ -81,6 +83,11 @@ class SourceEmbedWidget extends WidgetType {
         widget.dataset.embedKind = this.embed.target.kind;
         widget.setAttribute('aria-label', `${this.embed.target.kind} Embed: ${this.embed.target.display ?? this.embed.target.path}`);
         widget.tabIndex = 0;
+        const mime = this.embed.mimeType?.toLocaleLowerCase().split(';', 1)[0] ?? '';
+        const imageSrc = this.embed.target.kind === 'media' && mime.startsWith('image/')
+            ? safeRasterImageDataUrl(`data:${mime};base64,${this.embed.content}`)
+            : null;
+        widget.setAttribute('role', imageSrc === null ? 'button' : 'group');
         const label = document.createElement('strong');
         label.className = 'truncate text-xs';
         label.textContent = this.embed.target.display ?? this.embed.target.path;
@@ -89,6 +96,12 @@ class SourceEmbedWidget extends WidgetType {
         if (media !== null) {
             media.className = 'max-h-80 max-w-full object-contain';
             widget.append(media);
+            if (media instanceof HTMLImageElement && imageSrc !== null) {
+                const action = document.createElement('span');
+                action.contentEditable = 'false';
+                widget.append(action);
+                imageViewerDisposers.set(widget, mountImageViewerButton(action, { alt: media.alt, src: imageSrc }));
+            }
         }
         else {
             const preview = document.createElement('pre');
@@ -99,6 +112,10 @@ class SourceEmbedWidget extends WidgetType {
             widget.append(preview);
         }
         return widget;
+    }
+    destroy(dom) {
+        imageViewerDisposers.get(dom)?.();
+        imageViewerDisposers.delete(dom);
     }
     ignoreEvent(event) {
         return event.target instanceof Element && event.target.closest('audio,video') !== null;
@@ -142,7 +159,10 @@ export function buildSourceEmbedWidgetExtension(getEmbeds) {
         ],
     });
     const reveal = (event, view) => {
-        const widget = event.target instanceof Element ? event.target.closest('[data-embed-from][data-embed-to]') : null;
+        const target = event.target instanceof Element ? event.target : null;
+        if (target?.closest('button') !== null && target !== null)
+            return false;
+        const widget = target?.closest('[data-embed-from][data-embed-to]') ?? null;
         if (widget === null || event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ')
             return false;
         const from = Number(widget.dataset.embedFrom);

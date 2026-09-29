@@ -27,6 +27,7 @@ import { classifyExternalEmbed } from "./external-embeds.js";
 import { collectEmbedTargets } from "./embeds.js";
 import { SlashMenu, slashMenuPlugin, slashKey } from "./live-preview-slash-menu.js";
 import { SlashLinkDialog } from "./slash-link-dialog.js";
+import { ImageViewerDialog, mountImageViewerAction, safeRasterImageDataUrl } from "./image-viewer.js";
 const searchKey = new PluginKey('tocktutor-crepe-search');
 // Leading hashes + Space choose the level, even inside an existing heading.
 const headingInputRule = $inputRule(ctx => textblockTypeInputRule(/^(#{1,6}) $/, headingSchema.type(ctx), match => ({ level: match[1].length })));
@@ -80,6 +81,8 @@ export function LivePreviewEditorRuntime(props) {
     const [ready, setReady] = useState(false);
     const [slashMenu, setSlashMenu] = useState(null);
     const [error, setError] = useState('');
+    const [viewerImage, setViewerImage] = useState(null);
+    const viewerTriggerRef = useRef(null);
     const imageWaiters = useRef(new Set());
     const publishSearch = (view, error) => {
         const query = latest.current.searchQuery ?? '';
@@ -338,10 +341,20 @@ export function LivePreviewEditorRuntime(props) {
                 void crepe.destroy();
         };
     }, []);
+    useEffect(() => { setViewerImage(null); }, [props.content, props.documentKey]);
     useEffect(() => {
         if (!ready || !root.current)
             return;
         const element = root.current;
+        const imageActions = new Map();
+        const removeImageAction = (image) => {
+            const action = imageActions.get(image);
+            if (!action)
+                return;
+            action.dispose();
+            action.host.remove();
+            imageActions.delete(image);
+        };
         const labelControls = () => {
             for (const block of element.querySelectorAll('.milkdown-code-block[data-code-language]')) {
                 const button = block.querySelector('.language-button');
@@ -365,9 +378,32 @@ export function LivePreviewEditorRuntime(props) {
                 row.setAttribute('aria-label', checked ? 'Mark Task as Incomplete' : 'Mark Task as Complete');
                 row.tabIndex = 0;
             }
+            for (const image of element.querySelectorAll('img')) {
+                const src = safeRasterImageDataUrl(image.getAttribute('src'));
+                const alt = image.alt;
+                const existing = imageActions.get(image);
+                if (src === null) {
+                    removeImageAction(image);
+                    continue;
+                }
+                if (existing?.image.src === src && existing.image.alt === alt)
+                    continue;
+                removeImageAction(image);
+                const host = document.createElement('span');
+                host.className = 'inline-flex align-middle';
+                host.contentEditable = 'false';
+                const anchor = image.closest('a');
+                (anchor ?? image).insertAdjacentElement('afterend', host);
+                const action = { alt, src };
+                const dispose = mountImageViewerAction(host, action, (value, trigger) => { viewerTriggerRef.current = trigger; setViewerImage(value); });
+                imageActions.set(image, { dispose, host, image: action });
+            }
+            for (const image of imageActions.keys())
+                if (!image.isConnected)
+                    removeImageAction(image);
         };
         const observer = new MutationObserver(labelControls);
-        observer.observe(element, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'data-code-language'] });
+        observer.observe(element, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'data-code-language', 'src'] });
         labelControls();
         const activate = (event) => {
             if (event.key !== ' ' && event.key !== 'Enter' || !(event.target instanceof Element) || !event.target.matches('.milkdown-list-item-block .label-wrapper[role="checkbox"]'))
@@ -377,7 +413,12 @@ export function LivePreviewEditorRuntime(props) {
             event.target.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
         };
         element.addEventListener('keydown', activate);
-        return () => { observer.disconnect(); element.removeEventListener('keydown', activate); };
+        return () => {
+            observer.disconnect();
+            element.removeEventListener('keydown', activate);
+            for (const image of imageActions.keys())
+                removeImageAction(image);
+        };
     }, [ready]);
     useEffect(() => {
         const view = viewRef.current;
@@ -508,6 +549,6 @@ export function LivePreviewEditorRuntime(props) {
                 props.insertTextRef.current = null;
         };
     }, [ready, props.commandRef, props.insertTextRef]);
-    return _jsxs("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: `tocktutor-crepe-editor tocktutor-note-links relative min-h-0 min-w-0 flex-1 ${props.className ?? ''}`, children: [error && _jsx("p", { role: "alert", children: error }), _jsx("div", { ref: root }), slashMenu && (slashMenu.form ? _jsx(SlashLinkDialog, { action: slashMenu.action }) : _jsx(SlashMenu, { menu: slashMenu }))] });
+    return _jsxs("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: `tocktutor-crepe-editor tocktutor-note-links relative min-h-0 min-w-0 flex-1 ${props.className ?? ''}`, children: [error && _jsx("p", { role: "alert", children: error }), _jsx("div", { ref: root }), slashMenu && (slashMenu.form ? _jsx(SlashLinkDialog, { action: slashMenu.action }) : _jsx(SlashMenu, { menu: slashMenu })), _jsx(ImageViewerDialog, { image: viewerImage, onClose: () => { setViewerImage(null); }, returnFocusRef: viewerTriggerRef })] });
 }
 //# sourceMappingURL=live-preview-editor-runtime.js.map
