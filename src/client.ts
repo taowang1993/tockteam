@@ -12,6 +12,7 @@ import {
   type LauncherWorkbenchRoute,
 } from './launcher-navigation.ts'
 import type { DesktopPanels } from '../plugins/panel-controls/src/client.ts'
+import type { DesktopSkins } from '../plugins/skins/src/client.ts'
 import type { PinnedSummary } from '../plugins/pinned-summary/src/client.ts'
 import type { WorkspaceTools } from '../plugins/sidebar/src/client.ts'
 import {
@@ -87,7 +88,7 @@ declare global {
 }
 
 /** Wait for the DSH services used by native menu commands. */
-export const inject = ['workspaces', 'uiWorkspace', 'desktopPanels', 'pinnedSummary', 'theme', 'remote', 'remote.credentials', ...launcherSettingsInject]
+export const inject = ['workspaces', 'uiWorkspace', 'desktopPanels', 'pinnedSummary', 'theme', 'desktopSkins', 'remote', 'remote.credentials', ...launcherSettingsInject]
 
 function installDesktopChrome(): () => void {
   const originalTitle = document.title
@@ -429,21 +430,25 @@ export function apply(ctx: ClientContext): void {
     })
     const unsubscribeRoute = bridge.onRoute((route) => { navigateLauncherRoute(route) })
     const theme = ctx.get('theme') as ThemeService
+    const skins = ctx.get('desktopSkins') as DesktopSkins
     const locale = ctx.get('locale') as LocaleService
     const syncLocale = (): void => {
       void bridge.syncLauncherLocale(localeTag(locale)).catch(() => {})
     }
     const syncTheme = (): void => {
-      void bridge.syncLauncherTheme(projectLauncherThemeSource(theme.getTheme())).catch(() => {})
+      void bridge.syncLauncherTheme(projectLauncherThemeSource(
+        theme.getTheme(),
+        skins.getSnapshot().activeId,
+      )).catch(() => {})
     }
     syncLocale()
     syncTheme()
     const unsubscribeLocale = locale.subscribe(syncLocale)
-    const unsubscribeTheme = ctx.on('theme/change', snapshot => {
-      void bridge.syncLauncherTheme(projectLauncherThemeSource(snapshot)).catch(() => {})
-    })
+    const unsubscribeSkin = skins.subscribe(syncTheme)
+    const unsubscribeTheme = ctx.on('theme/change', syncTheme)
     return () => {
       unsubscribeLocale()
+      unsubscribeSkin()
       unsubscribeTheme()
       unsubscribeRoute()
       unsubscribeCommand()

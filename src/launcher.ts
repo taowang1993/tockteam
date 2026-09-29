@@ -169,7 +169,7 @@ function applyLauncherTheme(projection: LauncherThemeProjection): void {
   for (const token of appliedThemeTokens) root.style.removeProperty(token)
   appliedThemeTokens = new Set<string>()
   const skin = projection.skinId === null ? undefined : tockTeamSkin(projection.skinId)
-  for (const [token, value] of Object.entries(skin?.tokens ?? launcherOriginalThemeTokens(projection.mode))) {
+  for (const [token, value] of Object.entries(skin?.palettes[projection.mode].tokens ?? launcherOriginalThemeTokens(projection.mode))) {
     root.style.setProperty(token, value)
     appliedThemeTokens.add(token)
   }

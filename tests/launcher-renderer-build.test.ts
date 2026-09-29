@@ -203,16 +203,19 @@ test('TockTutor titlebar and all shared skins use valid TockTeam token contracts
   assert.match(tockTutor, /--tt-panel:var\(--dsw-alias-bg-layer-1/u)
   assert.match(tockTutor, /--tt-text:var\(--dsw-alias-label-primary/u)
   assert.doesNotMatch(tockTutor, /dsw-alias-(?:accent-primary|fg-muted|bg-elevated|fg-primary)/u)
-  assert.equal(TOCKTEAM_SKINS.length, 4)
+  assert.equal(TOCKTEAM_SKINS.length, 3)
   assert.deepEqual(new Set(TOCKTEAM_SKINS.map(skin => skin.id)), new Set(SKIN_IDS))
   for (const skin of TOCKTEAM_SKINS) {
-    for (const token of ['--dsw-alias-brand-primary', '--dsw-alias-brand-primary-invert', '--dsw-alias-label-secondary', '--dsw-alias-interactive-bg-active']) {
-      assert.equal(typeof skin.tokens[token], 'string', `${skin.id}:${token}`)
+    for (const mode of ['light', 'dark'] as const) {
+      for (const token of ['--dsw-alias-brand-primary', '--dsw-alias-brand-primary-invert', '--dsw-alias-label-secondary', '--dsw-alias-interactive-bg-active']) {
+        assert.equal(typeof skin.palettes[mode].tokens[token], 'string', `${skin.id}:${mode}:${token}`)
+      }
     }
   }
   assert.match(skinIds, /deepCurrent/u)
   assert.match(skinIds, /jadeCircuit/u)
-  assert.match(skinIds, /porcelain/u)
+  assert.match(skinIds, /LEGACY_PORCELAIN_ID/u)
+  assert.doesNotMatch(skinIds, /porcelain: /u)
   assert.match(skinIds, /emberDusk/u)
 })
 

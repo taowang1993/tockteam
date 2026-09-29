@@ -81,9 +81,6 @@ export function parseLauncherThemeSource(value: unknown): LauncherThemeSource {
   }
   const mode = parseMode(value.mode)
   const skinId = parseSkinId(value.skinId)
-  if (skinId !== null && tockTeamSkin(skinId)?.colorScheme !== mode) {
-    throw new Error('Launcher theme skin color scheme does not match mode')
-  }
   return Object.freeze({ mode, skinId })
 }
 
@@ -100,19 +97,16 @@ export function parseLauncherThemeProjection(value: unknown): LauncherThemeProje
   }
   const mode = parseMode(value.mode)
   const skinId = parseSkinId(value.skinId)
-  if (skinId !== null && tockTeamSkin(skinId)?.colorScheme !== mode) {
-    throw new Error('Launcher theme skin color scheme does not match mode')
-  }
   return Object.freeze({ mode, skinId, revision: value.revision as number })
 }
 
 /** Reduce a DSH snapshot to the two facts the isolated launcher can consume. */
-export function projectLauncherThemeSource(snapshot: ThemeSnapshotLike): LauncherThemeSource {
+export function projectLauncherThemeSource(snapshot: ThemeSnapshotLike, selectedSkinId: string | null = null): LauncherThemeSource {
   const mode = parseMode(snapshot.active.colorScheme)
-  const skin = tockTeamSkin(snapshot.active.id)
+  const skinId = parseSkinId(selectedSkinId)
   return Object.freeze({
     mode,
-    skinId: skin?.colorScheme === mode ? skin.id : null,
+    skinId: snapshot.active.id === 'light' || snapshot.active.id === 'dark' ? skinId : null,
   })
 }
 
