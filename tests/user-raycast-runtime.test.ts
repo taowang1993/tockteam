@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
@@ -13,6 +13,13 @@ const manifest = { name: 'example-list', title: 'Example List', commands: [{ nam
 const source = `const React = require('react'); const { List, Action, ActionPanel } = require('@raycast/api');
 module.exports = function Browse() { return React.createElement(List, { onSearchTextChange() {} }, React.createElement(List.Item, { title: 'Pinned Item', actions: React.createElement(ActionPanel, null, React.createElement(Action, { title: 'Choose Item', onAction: () => console.error('CHOSEN') })) })) }`
 const owner = { webContentsId: 17 }
+
+test('packaged Desktop includes the first-party user extension host outside ASAR', () => {
+  const packageManifest = JSON.parse(readFileSync(resolve('package.json'), 'utf8')) as { build: { asarUnpack: string[]; files: string[] } }
+  assert.ok(packageManifest.build.asarUnpack.includes('dist/user-raycast/**'))
+  assert.ok(packageManifest.build.files.includes('dist/user-raycast/**'))
+  assert.match(readFileSync(resolve('scripts/build.mjs'), 'utf8'), /await buildUserRaycast\(join\(dist, 'user-raycast'\)\)/)
+})
 
 test('a selected local List stays inert until approved and enabled, then runs in an owned child', async t => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-user-raycast-test-'))

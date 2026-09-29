@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
 import { buildTrustedRaycast } from './trusted-raycast-build.mjs'
+import { buildUserRaycast } from './user-raycast-build.mjs'
 import {
   LAUNCHER_LOCAL_EXTENSION_ASSET_HASHES,
   LAUNCHER_LOCAL_EXTENSION_IMAGE_KEYS,
@@ -79,6 +80,7 @@ const tailwindDefine = {
 await buildTrustedRaycast(dist, join(root, 'plugins', 'trusted-raycast', 'vendor', 'google-translate.tar'), 'google-translate')
 await buildTrustedRaycast(dist, join(root, 'plugins', 'trusted-raycast', 'vendor', 'kaomoji-search.tar'), 'kaomoji-search')
 await buildTrustedRaycast(dist, join(root, 'plugins', 'trusted-raycast', 'vendor', 'can-i-use.tar'), 'can-i-use')
+await buildUserRaycast(join(dist, 'user-raycast'))
 
 const pluginPackages = [
   { directory: 'trusted-raycast', hostOnly: true },
