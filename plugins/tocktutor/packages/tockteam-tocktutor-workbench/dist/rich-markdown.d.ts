@@ -33,6 +33,10 @@ export interface BuildMarkdownExportDocumentOptions extends RenderMarkdownOption
     title: string;
 }
 export declare function escapeMarkdownHtml(value: string): string;
+export declare function imageWidthHint(display: string | null): {
+    height?: number;
+    width: number;
+} | null;
 export declare function renderMarkdownHtml(markdown: string, options?: RenderMarkdownOptions): string;
 export declare function buildMarkdownSlides(markdown: string, options?: RenderMarkdownOptions): string[];
 export declare function buildMarkdownExportDocument(options: BuildMarkdownExportDocumentOptions): string;

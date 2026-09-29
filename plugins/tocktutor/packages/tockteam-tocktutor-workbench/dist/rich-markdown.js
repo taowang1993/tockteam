@@ -89,13 +89,13 @@ function replaceResolvedEmbedSources(markdown, replacements) {
     }).join('\n');
     return { markdown: replaced, tokens };
 }
-function resolvedEmbedDimensions(display) {
-    const match = display?.match(/^(\d{1,4})x(\d{1,4})$/iu);
-    if (match === null || match === undefined)
+export function imageWidthHint(display) {
+    const match = display?.match(/(?:^|\|)(\d{1,4})(?:x(\d{1,4}))?$/iu);
+    if (!match)
         return null;
-    const width = Number(match[1]);
-    const height = Number(match[2]);
-    return width >= 1 && width <= 2_000 && height >= 1 && height <= 2_000 ? { height, width } : null;
+    const width = Number(match[1]), height = match[2] === undefined ? undefined : Number(match[2]);
+    return width >= 1 && width <= 2_000 && (height === undefined || height >= 1 && height <= 2_000)
+        ? { width, ...(height === undefined ? {} : { height }) } : null;
 }
 function resolvedEmbedMime(mimeType) {
     const mime = mimeType?.toLocaleLowerCase().split(';', 1)[0]?.trim();
@@ -107,7 +107,10 @@ function renderResolvedEmbed(embed, externalEmbedMode, resolvedEmbeds, ancestors
     if (ancestors.length > MAX_EMBED_DEPTH || ancestors.includes(embed.target.path))
         return escapeMarkdownHtml(embed.target.source);
     const path = escapeMarkdownHtml(embed.target.path);
-    const label = escapeMarkdownHtml(embed.target.display ?? embed.target.path);
+    const dimensions = imageWidthHint(embed.target.display);
+    const label = escapeMarkdownHtml(dimensions && embed.target.display?.includes('|')
+        ? embed.target.display.replace(/\|\d{1,4}(?:x\d{1,4})?$/iu, '') || embed.target.path
+        : embed.target.display ?? embed.target.path);
     if (embed.target.kind === 'note') {
         return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="note" data-embed-path="${path}">${renderMarkdownHtml(embed.content, { externalEmbedMode, resolvedEmbeds, resolvedEmbedParentPath: embed.target.path, resolvedEmbedAncestors: [...ancestors, embed.target.path] })}</span>`;
     }
@@ -118,8 +121,7 @@ function renderResolvedEmbed(embed, externalEmbedMode, resolvedEmbeds, ancestors
     if (mimeType === null || bytes(embed.content) > 64 * 1024 * 1024 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(embed.content))
         return '';
     const source = `data:${escapeMarkdownHtml(mimeType)};base64,${escapeMarkdownHtml(embed.content)}`;
-    const dimensions = resolvedEmbedDimensions(embed.target.display);
-    const sizing = dimensions === null ? '' : ` height="${String(dimensions.height)}" width="${String(dimensions.width)}"`;
+    const sizing = dimensions === null ? '' : `${dimensions.height === undefined ? '' : ` height="${String(dimensions.height)}"`} width="${String(dimensions.width)}"`;
     if (mimeType.startsWith('image/'))
         return `<span class="tocktutor-local-embed inline-block max-w-full align-middle" data-embed-kind="media" data-embed-path="${path}"><img alt="${label}" class="max-h-80 max-w-full object-contain" loading="lazy"${sizing} src="${source}"></span>`;
     if (mimeType.startsWith('audio/'))

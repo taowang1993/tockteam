@@ -28,6 +28,7 @@ import { collectEmbedTargets } from "./embeds.js";
 import { SlashMenu, slashMenuPlugin, slashKey } from "./live-preview-slash-menu.js";
 import { SlashLinkDialog } from "./slash-link-dialog.js";
 import { ImageViewerDialog, mountImageViewerAction, safeRasterImageDataUrl } from "./image-viewer.js";
+import { mountImageResizeControl, resizedImageAlt, resizeWikilinkToken } from "./image-resize.js";
 const searchKey = new PluginKey('tocktutor-crepe-search');
 // Leading hashes + Space choose the level, even inside an existing heading.
 const headingInputRule = $inputRule(ctx => textblockTypeInputRule(/^(#{1,6}) $/, headingSchema.type(ctx), match => ({ level: match[1].length })));
@@ -347,6 +348,31 @@ export function LivePreviewEditorRuntime(props) {
             return;
         const element = root.current;
         const imageActions = new Map();
+        const imageNode = (image) => {
+            const view = viewRef.current;
+            const owner = image.closest('.tocktutor-rich-inline, .milkdown-image-block');
+            if (!view || !owner || !element.contains(owner))
+                return null;
+            let position;
+            try {
+                position = view.posAtDOM(owner, 0);
+            }
+            catch {
+                return null;
+            }
+            for (const pos of [position, position - 1]) {
+                if (pos < 0)
+                    continue;
+                const node = view.state.doc.nodeAt(pos);
+                if (owner.classList.contains('tocktutor-rich-inline') && node?.type.name === 'tocktutor_inline'
+                    && resizeWikilinkToken(node.textContent, 320) !== null)
+                    return { authored: node.textContent, node, pos, kind: 'wiki' };
+                if (owner.classList.contains('milkdown-image-block') && node?.type.name === 'image-block'
+                    && typeof node.attrs.alt === 'string')
+                    return { authored: node.attrs.alt, node, pos, kind: 'markdown' };
+            }
+            return null;
+        };
         const removeImageAction = (image) => {
             const action = imageActions.get(image);
             if (!action)
@@ -386,24 +412,46 @@ export function LivePreviewEditorRuntime(props) {
                     removeImageAction(image);
                     continue;
                 }
-                if (existing?.image.src === src && existing.image.alt === alt)
+                const current = imageNode(image);
+                if (existing?.image.src === src && existing.image.alt === alt && existing.authored === (current?.authored ?? null))
                     continue;
                 removeImageAction(image);
                 const host = document.createElement('span');
-                host.className = 'inline-flex align-middle';
+                host.className = 'inline-flex items-center gap-1 align-middle';
                 host.contentEditable = 'false';
                 const anchor = image.closest('a');
                 (anchor ?? image).insertAdjacentElement('afterend', host);
                 const action = { alt, src };
-                const dispose = mountImageViewerAction(host, action, (value, trigger) => { viewerTriggerRef.current = trigger; setViewerImage(value); });
-                imageActions.set(image, { dispose, host, image: action });
+                const disposeViewer = mountImageViewerAction(host, action, (value, trigger) => { viewerTriggerRef.current = trigger; setViewerImage(value); });
+                const resizeHost = document.createElement('span');
+                resizeHost.className = 'inline-flex items-center gap-1 align-middle';
+                host.insertAdjacentElement('afterend', resizeHost);
+                resizeHost.contentEditable = 'false';
+                const resizeHint = current?.kind === 'wiki' && current.authored.includes('|')
+                    ? current.authored.slice(current.authored.lastIndexOf('|'), -2) : current?.authored ?? '';
+                const disposeResize = current && !anchor ? mountImageResizeControl(resizeHost, image, resizeHint, width => {
+                    const view = viewRef.current, next = imageNode(image);
+                    if (!view || !next || next.authored !== current.authored || next.kind !== current.kind)
+                        return false;
+                    const value = next.kind === 'wiki'
+                        ? resizeWikilinkToken(next.authored, width)
+                        : resizedImageAlt(next.authored, width);
+                    if (value === null || value === next.authored)
+                        return false;
+                    const tr = next.kind === 'wiki'
+                        ? view.state.tr.insertText(value, next.pos + 1, next.pos + next.node.nodeSize - 1)
+                        : view.state.tr.setNodeMarkup(next.pos, undefined, { ...next.node.attrs, alt: value });
+                    view.dispatch(tr);
+                    return true;
+                }) : () => { };
+                imageActions.set(image, { dispose: () => { disposeResize(); resizeHost.remove(); disposeViewer(); }, host, image: action, authored: current?.authored ?? null });
             }
             for (const image of imageActions.keys())
                 if (!image.isConnected)
                     removeImageAction(image);
         };
         const observer = new MutationObserver(labelControls);
-        observer.observe(element, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'data-code-language', 'src'] });
+        observer.observe(element, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'data-code-language', 'data-image-revision', 'src'] });
         labelControls();
         const activate = (event) => {
             if (event.key !== ' ' && event.key !== 'Enter' || !(event.target instanceof Element) || !event.target.matches('.milkdown-list-item-block .label-wrapper[role="checkbox"]'))
@@ -549,6 +597,6 @@ export function LivePreviewEditorRuntime(props) {
                 props.insertTextRef.current = null;
         };
     }, [ready, props.commandRef, props.insertTextRef]);
-    return _jsxs("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: `tocktutor-crepe-editor tocktutor-note-links relative min-h-0 min-w-0 flex-1 ${props.className ?? ''}`, children: [error && _jsx("p", { role: "alert", children: error }), _jsx("div", { ref: root }), slashMenu && (slashMenu.form ? _jsx(SlashLinkDialog, { action: slashMenu.action }) : _jsx(SlashMenu, { menu: slashMenu })), _jsx(ImageViewerDialog, { image: viewerImage, onClose: () => { setViewerImage(null); }, returnFocusRef: viewerTriggerRef })] });
+    return _jsxs("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: `tocktutor-crepe-editor tocktutor-note-links relative min-h-0 min-w-0 flex-1 [&_.milkdown-image-block_.image-resize-handle]:hidden ${props.className ?? ''}`, children: [error && _jsx("p", { role: "alert", children: error }), _jsx("div", { ref: root }), slashMenu && (slashMenu.form ? _jsx(SlashLinkDialog, { action: slashMenu.action }) : _jsx(SlashMenu, { menu: slashMenu })), _jsx(ImageViewerDialog, { image: viewerImage, onClose: () => { setViewerImage(null); }, returnFocusRef: viewerTriggerRef })] });
 }
 //# sourceMappingURL=live-preview-editor-runtime.js.map
