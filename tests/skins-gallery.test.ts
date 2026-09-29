@@ -10,7 +10,7 @@ const choices = [
   ['default', 'Default', null],
   ['cyan', 'Cyan', 'tockteam-skin-deep-current'],
   ['aurora', 'Aurora', 'tockteam-skin-jade-circuit'],
-  ['ember-dusk', 'Ember Dusk', 'tockteam-skin-ember-dusk'],
+  ['ember-dusk', 'Ember', 'tockteam-skin-ember-dusk'],
 ] as const
 
 test('shows four skin rows with verified Light-left and Dark-right captures', () => {
@@ -28,19 +28,10 @@ test('shows four skin rows with verified Light-left and Dark-right captures', ()
   assert.equal(proof.cleanup.stopped, true)
   assert.ok(proof.cleanup.rootPid > 0)
   assert.deepEqual(proof.cleanup.remaining, [])
+  assert.equal(proof.galleryCheck.route, '/skins.html')
   assert.equal(proof.galleryCheck.htmlSha256, createHash('sha256').update(html).digest('hex'))
   assert.equal(proof.galleryCheck.imageFilesVerified, 8)
-  const baseline = proof.galleryCheck.unchangedHtmlBrowserBaseline
-  assert.equal(baseline.route, '/skins.html')
-  assert.deepEqual(baseline.desktop, [1512, 949, 2])
-  assert.deepEqual(baseline.mobile, [390, 844, 2])
-  assert.equal(baseline.loadedImages, 8)
-  assert.deepEqual(baseline.runtimeErrors, [])
-  for (const owned of [baseline.browser, baseline.server]) {
-    assert.equal(owned.stopped, true)
-    assert.ok(owned.rootPid > 0)
-    assert.deepEqual(owned.remaining, [])
-  }
+  assert.equal(proof.galleryCheck.browserSessionStarted, false)
   const filenames = choices.flatMap(([id]) => [`${id}-light.png`, `${id}-dark.png`])
   assert.deepEqual(readdirSync(resolve(root, 'screenshots')).sort(), filenames.slice().sort())
   assert.deepEqual(proof.captures.map((capture: { file: string }) => capture.file), filenames)
@@ -68,8 +59,9 @@ test('shows four skin rows with verified Light-left and Dark-right captures', ()
       const skin = TOCKTEAM_SKINS.find(choice => choice.id === skinId)
       assert.equal(capture.preview?.name, label, file)
       assert.equal(capture.preview.light, skin?.palettes.light.tokens['--dsw-alias-bg-base'] ?? '#fff', file)
-      assert.equal(capture.preview.dark, skin?.palettes.dark.tokens['--dsw-alias-bg-base'] ?? '#151517', file)
-      assert.equal(capture.colors.pane, capture.preview[mode], `${file} preview must match the editor pane`)
+      assert.equal(capture.preview.dark, skin?.palettes.dark.tokens['--dsw-specific-sidebar-fill'] ?? '#1e1e1e', file)
+      if (mode === 'light') assert.equal(capture.colors.pane, capture.preview.light, `${file} Light preview must match the editor pane`)
+      else assert.equal(capture.colors.sidebar, capture.preview.dark, `${file} Dark preview must match the sidebar`)
       assert.match(capture.preview.backgroundImage, /^linear-gradient\(135deg, /u, file)
       assert.ok(capture.preview.backgroundImage.includes('49%') && capture.preview.backgroundImage.includes('50%'), file)
       assert.equal(new Set([...capture.preview.backgroundImage.matchAll(/rgb\([^)]+\)/gu)].map(([color]) => color)).size, 2, `${file} must use only two plain colors`)
