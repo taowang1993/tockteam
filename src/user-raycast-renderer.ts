@@ -38,6 +38,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
   let reviewed = false
   let removing = false
   let active: { extensionId: string; sessionId: string; revision: number } | undefined
+  let searchText = ''
   let disposed = false
   const button = (text: string, action: string, run: () => Promise<unknown> | void, disabled = false): HTMLButtonElement => {
     const result = document.createElement('button')
@@ -70,7 +71,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     if (state.hasPrevious) controls.append(button('Restore Previous Version', 'recover', async () => { await bridge.userRaycastClose(); active = undefined; rendered.replaceChildren(); state = await bridge.userRaycastMutate('recover') }))
     if (!state.installed) return
     if (state.enabled) {
-      controls.append(button('Open Command', 'open', async () => { active = undefined; await bridge.userRaycastOpen() }))
+      controls.append(button('Open Command', 'open', async () => { active = undefined; searchText = ''; rendered.replaceChildren(); await bridge.userRaycastOpen() }))
       controls.append(button('Disable', 'disable', async () => { await bridge.userRaycastClose(); active = undefined; rendered.replaceChildren(); state = await bridge.userRaycastMutate('disable') }))
     } else controls.append(button('Enable', 'enable', async () => { state = await bridge.userRaycastMutate('enable') }))
     controls.append(button(removing ? 'Confirm Remove' : 'Remove Extension', 'remove', async () => {
@@ -95,12 +96,15 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     const root = message.root as Node
     const items: Node[] = []
     collect(root, 'raycast-list-item', items)
+    const searchFocused = document.activeElement === rendered.querySelector('input[aria-label="Search Extension"]')
     rendered.replaceChildren()
     if (root.props.searchable === true) {
       const search = document.createElement('input')
       search.type = 'search'; search.setAttribute('aria-label', 'Search Extension'); search.className = 'mb-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-ring'
-      search.addEventListener('input', () => { if (active) void bridge.userRaycastEvent({ revision: active.revision, eventId: 'search', kind: 'searchChanged', value: search.value }).catch(error => { feedback.textContent = String(error).slice(0, 512) }) })
+      search.value = searchText
+      search.addEventListener('input', () => { searchText = search.value; if (active) void bridge.userRaycastEvent({ revision: active.revision, eventId: 'search', kind: 'searchChanged', value: searchText }).catch(error => { feedback.textContent = String(error).slice(0, 512) }) })
       rendered.append(search)
+      if (searchFocused) search.focus()
     }
     const list = document.createElement('ul')
     list.className = 'm-0 flex list-none flex-col gap-1 p-0'
@@ -126,8 +130,15 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
       list.append(row)
     }
     rendered.append(list)
+    if (!items.length) {
+      const empty: Node[] = []
+      collect(root, 'raycast-empty', empty)
+      const hint = document.createElement('p')
+      hint.className = 'm-0 text-sm text-muted-foreground'
+      hint.textContent = String(empty[0]?.props.title ?? 'No items yet.')
+      rendered.append(hint)
+    }
     if (items.length > 64) feedback.textContent = `Showing the first 64 of ${items.length} items.`
-    else if (!items.length) feedback.textContent = 'No items yet.'
   }
   const unsubscribe = bridge.onUserRaycastView(update)
   element.addEventListener('keydown', event => { if (event.key !== 'Escape') return; event.preventDefault(); event.stopPropagation(); void bridge.userRaycastClose().finally(onClose) })

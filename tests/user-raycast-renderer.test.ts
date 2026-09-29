@@ -32,6 +32,32 @@ test('an interrupted update exposes recovery even when current bytes are invalid
   view.dispose(); dom.window.close()
 })
 
+test('a real List empty view and search input survive a projected patch', async () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>')
+  const document = dom.window.document as Document
+  let listener: ((message: UserRaycastMessage) => void) | undefined
+  const events: unknown[] = []
+  const bridge = {
+    userRaycastState: async () => ({ ...empty, installed: true, enabled: true, digest: candidate.digest }),
+    userRaycastOpen: async () => listener?.({ type: 'ready', extensionId: candidate.extensionId, sessionId: 'session', revision: 0, root: { type: 'root', props: { searchable: true }, children: [{ type: 'raycast-list', props: {}, children: [{ type: 'raycast-empty', props: { title: 'Search for a color to see' }, children: [] }] }] } }),
+    userRaycastEvent: async (event: unknown) => { events.push(event) },
+    onUserRaycastView: (callback: (message: UserRaycastMessage) => void) => { listener = callback; return () => { listener = undefined } },
+  } as unknown as LauncherPreloadBridge
+  const view = createUserRaycastView(document, bridge, () => {})
+  document.body.append(view.element)
+  await flush()
+  document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="open"]')!.click(); await flush()
+  assert.match(view.element.textContent ?? '', /Search for a color to see/)
+  const search = document.querySelector<HTMLInputElement>('input[aria-label="Search Extension"]')!
+  search.focus(); search.value = '#00ff00'; search.dispatchEvent(new dom.window.Event('input', { bubbles: true }))
+  listener?.({ type: 'patch', extensionId: candidate.extensionId, sessionId: 'session', revision: 1, root: { type: 'root', props: { searchable: true }, children: [{ type: 'raycast-list', props: {}, children: [{ type: 'raycast-list-item', props: { title: 'lime' }, children: [] }] }] } })
+  assert.equal(document.querySelector<HTMLInputElement>('input[aria-label="Search Extension"]')?.value, '#00ff00')
+  assert.equal(document.activeElement?.getAttribute('aria-label'), 'Search Extension')
+  assert.match(view.element.textContent ?? '', /lime/)
+  assert.deepEqual(events, [{ revision: 0, eventId: 'search', kind: 'searchChanged', value: '#00ff00' }])
+  view.dispose(); dom.window.close()
+})
+
 test('local extension approval shows account authority and does not run before separate enablement', async () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>')
   const document = dom.window.document as Document
