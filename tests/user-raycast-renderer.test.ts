@@ -131,13 +131,14 @@ test('public source needs a separate build review, built review, and enablement 
   const dom = new JSDOM('<!doctype html><html><body></body></html>')
   const document = dom.window.document as Document
   const source = { command: 'generate', digest: 'c'.repeat(64), extensionId: 'uuid-generator', title: 'UUID Generator', license: 'MIT', revision: 'a'.repeat(40), tree: 'b'.repeat(40), files: 3, bytes: 321, mode: 'no-view' as const, source: `https://github.com/raycast/extensions/tree/${'a'.repeat(40)}/extensions/uuid-generator` }
-  let state: any = { ...empty }
+  const oldDigest = 'e'.repeat(64)
+  let state: any = { ...empty, installed: true, enabled: true, digest: oldDigest }
   let builds = 0; let approvals = 0; let runs = 0
   const bridge = {
     userRaycastState: async () => state,
     userRaycastSourcePrepare: async (selection: unknown) => { assert.deepEqual(selection, { extensionId: 'uuid-generator', command: 'generate' }); state = { ...state, sourceCandidate: source }; return source },
     userRaycastSourceBuild: async (digest: string) => { assert.equal(digest, source.digest); builds++; state = { ...state, candidate: { ...candidate, command: 'generate', extensionId: source.extensionId, digest: 'd'.repeat(64) } }; return state },
-    userRaycastApprove: async (digest: string) => { assert.equal(digest, state.candidate.digest); approvals++; state = { ...state, digest, installed: true }; return state },
+    userRaycastApprove: async (digest: string) => { assert.equal(digest, state.candidate.digest); approvals++; state = { ...state, digest, installed: true, enabled: false }; return state },
     userRaycastMutate: async () => { state = { ...state, enabled: true }; return state },
     userRaycastOpen: async () => { runs++ }, userRaycastClose: async () => {}, onUserRaycastView: () => () => {},
   } as unknown as LauncherPreloadBridge
@@ -153,6 +154,7 @@ test('public source needs a separate build review, built review, and enablement 
   assert.equal(build().disabled, false)
   build().click(); await flush()
   assert.equal(builds, 1); assert.equal(approvals, 0); assert.equal(runs, 0)
+  assert.match(view.element.textContent ?? '', new RegExp(oldDigest), 'the installed version stays visible during an unapproved update')
   const approve = document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="approve"]')!
   assert.equal(approve.disabled, true)
   document.querySelector<HTMLInputElement>('input[data-user-raycast-built-review]')!.click()

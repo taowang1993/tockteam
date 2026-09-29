@@ -45,9 +45,9 @@ export async function buildUserRaycastSource(options: Readonly<{ source: string;
   await tool(npmPath, ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], sourceCopy, env, 180_000, signal)
   const esbuild = join(sourceCopy, 'node_modules/esbuild/bin/esbuild')
   if (!existsSync(esbuild) || !lstatSync(esbuild).isFile()) throw new Error('The selected extension did not install its build tool')
-  const entry = ['.tsx', '.ts', '.jsx', '.js'].map(ext => join(sourceCopy, 'src', `${candidate.command}${ext}`)).find(existsSync)
+  const entry = ['.tsx', '.ts', '.jsx', '.js'].map(ext => `src/${candidate.command}${ext}`).find(path => existsSync(join(sourceCopy, path)))
   if (!entry) throw new Error('The selected command source is unavailable')
-  await tool(nodePath, [esbuild, entry, '--bundle', '--platform=node', '--format=cjs', '--jsx=automatic', '--external:@raycast/api', '--external:react', '--external:react/*', '--log-level=error', `--outfile=${join(built, `${candidate.command}.js`)}`], sourceCopy, env, 30_000, signal)
+  await tool(nodePath, [esbuild, entry, '--bundle', '--platform=node', '--format=cjs', '--jsx=automatic', '--external:@raycast/api', '--external:react', '--external:react/*', '--log-level=error', `--outfile=../built/${candidate.command}.js`], sourceCopy, env, 30_000, signal)
   writeFileSync(join(built, 'package.json'), JSON.stringify({ ...manifest, repository: candidate.source }), { flag: 'wx', mode: 0o600 })
   readFiles(built) // Reject links and oversized output before it reaches the installer.
   return built

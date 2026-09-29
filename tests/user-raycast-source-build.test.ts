@@ -20,7 +20,7 @@ test('approved source build uses no lifecycle scripts, pins metadata and stages 
 const fs = require('node:fs'); const path = require('node:path');
 fs.writeFileSync(path.join(process.cwd(), 'npm-proof.json'), JSON.stringify({args: process.argv.slice(2), home: process.env.HOME, token: process.env.NPM_TOKEN, userconfig: process.env.npm_config_userconfig, globalconfig: process.env.npm_config_globalconfig}));
 fs.mkdirSync(path.join(process.cwd(), 'node_modules/esbuild/bin'), {recursive:true});
-fs.writeFileSync(path.join(process.cwd(), 'node_modules/esbuild/bin/esbuild'), "require('node:fs').writeFileSync(process.argv.find(a=>a.startsWith('--outfile=')).slice(10), 'module.exports={default:()=>42}')");
+fs.writeFileSync(path.join(process.cwd(), 'node_modules/esbuild/bin/esbuild'), "const fs=require('node:fs');fs.writeFileSync('esbuild-args.json',JSON.stringify(process.argv.slice(2)));fs.writeFileSync(process.argv.find(a=>a.startsWith('--outfile=')).slice(10), 'module.exports={default:()=>42}')");
 `)
   chmodSync(npm, 0o700)
   const workspace = join(root, 'workspace'); mkdirSync(workspace)
@@ -43,6 +43,9 @@ fs.writeFileSync(path.join(process.cwd(), 'node_modules/esbuild/bin/esbuild'), "
     assert.equal(readFileSync(proof.userconfig, 'utf8'), '')
     assert.equal(readFileSync(proof.globalconfig, 'utf8'), '')
     assert.equal(readFileSync(join(built, 'generate.js'), 'utf8'), 'module.exports={default:()=>42}')
+    const buildArgs = JSON.parse(readFileSync(join(workspace, 'source', 'esbuild-args.json'), 'utf8')) as string[]
+    assert.equal(buildArgs[0], 'src/generate.tsx')
+    assert.ok(buildArgs.includes('--outfile=../built/generate.js'))
     assert.equal(existsSync(join(built, 'package-lock.json')), false)
     const manifest = JSON.parse(readFileSync(join(built, 'package.json'), 'utf8')) as { repository: string }
     assert.equal(manifest.repository, candidate.source)
