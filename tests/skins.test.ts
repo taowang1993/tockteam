@@ -318,6 +318,38 @@ test('TUI renames only untouched generated themes, preserving custom files and c
   }
 })
 
+test('TUI upgrades only untouched Ember Dusk themes while preserving customized themes and saved IDs', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tockteam-ember-upgrade-'))
+  const dataRoot = join(directory, 'data')
+  const configRoot = join(directory, 'config')
+  const paths = tuiSkinPaths(dataRoot, configRoot)
+  const old = JSON.parse(await readFile(new URL('./fixtures/ember-dusk-native-themes.json', import.meta.url), 'utf8'))
+  const themePath = (mode: 'dark' | 'light') => join(paths.themes, `${SKIN_ID.emberDusk}${mode === 'light' ? '-light' : ''}.json`)
+  try {
+    await mkdir(paths.themes, { recursive: true })
+    await mkdir(dataRoot, { recursive: true })
+    await writeFile(paths.preferences, JSON.stringify({ activeId: SKIN_ID.emberDusk, fallbackTheme: 'dark', version: 2 }))
+    await writeFile(paths.themePreference, JSON.stringify({ theme: SKIN_ID.emberDusk }))
+    for (const mode of ['dark', 'light'] as const) await writeFile(themePath(mode), `${JSON.stringify(old[mode], null, 2)}\n`)
+
+    assert.deepEqual(mountTuiSkins(dataRoot, configRoot), { activeId: SKIN_ID.emberDusk, theme: SKIN_ID.emberDusk })
+    const ember = TOCKTEAM_SKINS.find(skin => skin.id === SKIN_ID.emberDusk)!
+    for (const mode of ['dark', 'light'] as const) {
+      const native = JSON.parse(await readFile(themePath(mode), 'utf8'))
+      assert.equal(native.displayName, `TockTeam · Ember · ${mode === 'dark' ? 'Dark' : 'Light'}`)
+      assert.deepEqual(native.colors, ember.palettes[mode].tui)
+    }
+    assert.deepEqual(JSON.parse(await readFile(paths.preferences, 'utf8')), { activeId: SKIN_ID.emberDusk, fallbackTheme: 'dark', version: 2 })
+
+    const custom = `${JSON.stringify({ ...old.light, colors: { ...old.light.colors, text: '#111111' } }, null, 2)}\n`
+    await writeFile(themePath('light'), custom)
+    mountTuiSkins(dataRoot, configRoot)
+    assert.equal(await readFile(themePath('light'), 'utf8'), custom)
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
 test('TUI launch does not erase an older Desktop dark skin and remembered Default Light', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'tockteam-skins-cross-surface-'))
   const paths = tuiSkinPaths(join(directory, 'data'), join(directory, 'config'))
