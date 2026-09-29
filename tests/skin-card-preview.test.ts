@@ -38,11 +38,11 @@ module.exports.apply!({
   effect: () => undefined,
 })
 
-test('every skin card shows its Light palette on the left and Dark palette on the right in either Appearance mode', () => {
+test('every skin card divides plain Light and Dark colors diagonally in either Appearance mode', () => {
   assert.ok(row)
   const choices = [
     ['Default', '#fafafa', '#30343b'],
-    ...TOCKTEAM_SKINS.map(skin => [skin.displayName, skin.palettes.light.preview, skin.palettes.dark.preview]),
+    ...TOCKTEAM_SKINS.map(skin => [skin.displayName, skin.palettes.light.tokens['--dsw-alias-bg-base'], skin.palettes.dark.tokens['--dsw-alias-bg-base']]),
   ]
   for (const mode of ['light', 'dark']) {
     const markup = render(react.createElement(row, {
@@ -53,8 +53,10 @@ test('every skin card shows its Light palette on the left and Dark palette on th
     for (const [label, light, dark] of choices) {
       const card = markup.split(`aria-label="${label}"`)[1]?.split('</button>')[0]
       assert.ok(card, `${label}: ${mode} card is visible`)
-      const halves = [...card.matchAll(/data-tockteam-skin-preview="(light|dark)"[^>]*style="background:([^"]+)"/gu)]
-      assert.deepEqual(halves.map(([, side, background]) => [side, background]), [['light', light], ['dark', dark]], `${label}: ${mode} preview`)
+      const preview = card.match(/data-tockteam-skin-preview="diagonal"[^>]+>/u)?.[0]
+      assert.ok(preview, `${label}: ${mode} diagonal preview`)
+      assert.ok(preview.includes('bg-[linear-gradient(135deg,var(--tockteam-skin-preview-light)_0_49%,var(--tockteam-skin-preview-dark)_50%_100%)]'), `${label}: ${mode} original diagonal boundary`)
+      assert.ok(preview.includes(`style="--tockteam-skin-preview-light:${light};--tockteam-skin-preview-dark:${dark}"`), `${label}: ${mode} solid palette colors`)
     }
   }
 })

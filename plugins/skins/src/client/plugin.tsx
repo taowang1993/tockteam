@@ -1,6 +1,7 @@
 import { ToggleGroup, ToggleGroupItem } from '@tockteam/ui/toggle-group'
 import { defineStore } from '@deepseek-ai/dsh-client-store'
 import { Check } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import type { LocaleService, Translate } from '../../../shared/i18n.ts'
 import {
   DESKTOP_SKINS_MESSAGES,
@@ -84,7 +85,7 @@ function optionFor(skin: DesktopSkin, mode: 'light' | 'dark'): SkinOption {
     id: skin.id,
     label: skin.label,
     mode: 'skins.mode.system',
-    preview: { light: skin.palettes.light.preview, dark: skin.palettes.dark.preview },
+    preview: { light: skin.palettes.light.tokens['--dsw-alias-bg-base']!, dark: skin.palettes.dark.tokens['--dsw-alias-bg-base']! },
     accent: skin.palettes[mode].accent,
   }
 }
@@ -109,10 +110,12 @@ function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
               className="relative flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-[14px] border border-border bg-surface p-0 text-left font-[inherit] text-foreground transition-[border-color,box-shadow,transform] duration-[120ms] ease-in-out hover:-translate-y-px hover:border-border-strong disabled:cursor-wait disabled:opacity-[.58] disabled:transform-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand data-[state=on]:border-brand data-[state=on]:shadow-[0_0_0_1px_var(--dsw-alias-brand-primary)] motion-reduce:transition-none"
               aria-label={t(option.label)}
             >
-              <span className="flex aspect-video w-full border-b border-[var(--dsw-alias-border-l1)]">
-                <span aria-hidden="true" data-tockteam-skin-preview="light" className="w-1/2 bg-cover bg-center" style={{ background: option.preview.light }} />
-                <span aria-hidden="true" data-tockteam-skin-preview="dark" className="w-1/2 bg-cover bg-center" style={{ background: option.preview.dark }} />
-              </span>
+              <span
+                aria-hidden="true"
+                data-tockteam-skin-preview="diagonal"
+                className="block aspect-video w-full border-b border-[var(--dsw-alias-border-l1)] bg-[linear-gradient(135deg,var(--tockteam-skin-preview-light)_0_49%,var(--tockteam-skin-preview-dark)_50%_100%)]"
+                style={{ '--tockteam-skin-preview-light': option.preview.light, '--tockteam-skin-preview-dark': option.preview.dark } as CSSProperties}
+              />
               <span className="grid grid-cols-[9px_minmax(0,1fr)_auto] items-center gap-1.5 px-[9px] pt-2 pb-[9px]">
                 <span className="size-2 rounded-full" style={{ background: option.accent }} />
                 <span className="flex min-w-0 flex-col">
