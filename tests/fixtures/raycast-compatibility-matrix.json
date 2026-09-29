@@ -1,0 +1,23 @@
+{
+  "source": "https://github.com/raycast/extensions",
+  "revision": "1063bfaa34be81528c4e397c91b57c42ec370d79",
+  "commands": [
+    { "extensionId": "google-translate", "command": "translate", "mode": "view", "blob": "c9105aeb52f500097a681c7db4ed54def32197eb", "needs": ["List", "Action", "usePromise", "selection", "network"], "admitted": true },
+    { "extensionId": "google-translate", "command": "instant-translate-copy", "mode": "no-view", "blob": "f0abd1129a0687d7cddada097e6522ddc22aec6f", "needs": ["Clipboard", "showHUD", "selection", "network"], "admitted": false },
+    { "extensionId": "color-picker", "command": "menu-bar", "mode": "menu-bar", "blob": "0795d721b2c2873eb19ae32e91d4323979291dd5", "needs": ["MenuBarExtra", "Clipboard", "launchCommand", "LocalStorage"], "admitted": false },
+    { "extensionId": "color-picker", "command": "pick-color", "mode": "no-view", "blob": "cfa46d3d0cfbf84e829a9f3fd1ade01783cd6eae", "needs": ["native:swift", "Clipboard", "showHUD", "getPreferenceValues"], "admitted": false },
+    { "extensionId": "google-chrome", "command": "new-window", "mode": "no-view", "blob": "12166beecdc40845e602ff171d941787b3faabed", "needs": ["runAppleScript", "showHUD", "closeMainWindow"], "admitted": false },
+    { "extensionId": "google-chrome", "command": "search-tab", "mode": "view", "blob": "4bb24d454049e9fc027561725a38d34c4f7003c6", "needs": ["List", "getPreferenceValues", "browser:tabs", "native:sqlite-wasm"], "admitted": false },
+    { "extensionId": "spotify-player", "command": "nowPlayingMenuBar", "mode": "menu-bar", "blob": "0330533b3eaee321e1607f5e17ad435dcf9c60a0", "needs": ["MenuBarExtra", "useCachedState", "network", "oauth", "interval"], "admitted": false },
+    { "extensionId": "linear", "command": "search-issues", "mode": "view", "blob": "e3936a161e856c07461eb0f70637bd027f13f1bd", "needs": ["List", "network", "oauth", "useCachedPromise"], "admitted": false },
+    { "extensionId": "slack", "command": "search", "mode": "view", "blob": "6b2e09d3bc6bd6a4cf332227123d313ef449f28d", "needs": ["List", "Action", "getPreferenceValues", "network", "oauth"], "admitted": false },
+    { "extensionId": "notion", "command": "search-page", "mode": "view", "blob": "57e151d5e120d885ea536e9bd7ed9bc25f3170a2", "needs": ["List", "withAccessToken", "network", "oauth"], "admitted": false },
+    { "extensionId": "brew", "command": "services-menu", "mode": "menu-bar", "blob": "b4dcd568702b0922721c9c03df5e1a6765b0a73b", "needs": ["MenuBarExtra", "launchCommand", "shell:brew", "interval"], "admitted": false },
+    { "extensionId": "visual-studio-code-recent-projects", "command": "index", "mode": "view", "blob": "7c85fdc673dab8bcda69e354a976bdf09017996a", "needs": ["Grid", "open", "runAppleScript", "filesystem:vscode-history"], "admitted": false },
+    { "extensionId": "kill-process", "command": "index", "mode": "view", "blob": "f54e66f928e22f3d3743cae1436cd2aad2d87bb8", "needs": ["List", "LocalStorage", "confirmAlert", "process:kill"], "admitted": false }
+  ],
+  "bundledOnly": [
+    { "extensionId": "kaomoji-search", "command": "index", "mode": "view", "revision": "b7845053e3f39dadcf984217be5249fb51ab2ce8" },
+    { "extensionId": "can-i-use", "command": "index", "mode": "view", "revision": "186d955eda64f9e956b25a3fdf5566b1d38f57f2" }
+  ]
+}
