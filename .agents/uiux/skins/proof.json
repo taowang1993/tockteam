@@ -1,5 +1,5 @@
 {
-  "sourceCommit": "d587fb6e",
+  "sourceCommit": "618971e6",
   "viewport": [
     1512,
     949,
@@ -25,8 +25,14 @@
         "accent": "#0f1115"
       },
       "contrast": 18.9,
+      "preview": {
+        "name": "Default",
+        "light": "background: rgb(250, 250, 250);",
+        "dark": "background: rgb(48, 52, 59);"
+      },
+      "allCardsVerified": true,
       "errors": [],
-      "sha256": "557395593f2aa8eeb7cb1320df1f54cd18d3ff46e6bba448b7944808d39528a0"
+      "sha256": "f23e8022b2190cc592c6660f0e8f54194961479302213cbaf2eac83664d4c6d2"
     },
     {
       "file": "default-dark.png",
@@ -42,8 +48,14 @@
         "accent": "#f9fafb"
       },
       "contrast": 17.45,
+      "preview": {
+        "name": "Default",
+        "light": "background: rgb(250, 250, 250);",
+        "dark": "background: rgb(48, 52, 59);"
+      },
+      "allCardsVerified": true,
       "errors": [],
-      "sha256": "e9fb1b1818fd2ae028b7efc8cfa9fef33c3d8138a7799e1e592c61e664f5c4f6"
+      "sha256": "66fac9d5a5003456beebb1146096a7211e5637de038d7f4e8a72c651d1276c3d"
     },
     {
       "file": "cyan-light.png",
@@ -59,8 +71,14 @@
         "accent": "#17667d"
       },
       "contrast": 12.22,
+      "preview": {
+        "name": "Cyan",
+        "light": "background: linear-gradient(135deg, rgb(234, 244, 247) 0%, rgb(206, 228, 235) 64%, rgb(23, 102, 125) 160%);",
+        "dark": "background: linear-gradient(135deg, rgb(7, 25, 35) 0%, rgb(20, 52, 69) 64%, rgb(73, 200, 235) 145%);"
+      },
+      "allCardsVerified": true,
       "errors": [],
-      "sha256": "6fb6086a23606f1f12536c3fe78d2c29281214a3245ddd28aab0449bc2f6996b"
+      "sha256": "4a7ca62df61e4e6238c5891396fe89b72d14220396130f67928d2bf4866d1399"
     },
     {
       "file": "cyan-dark.png",
@@ -76,8 +94,14 @@
         "accent": "#49c8eb"
       },
       "contrast": 16.45,
+      "preview": {
+        "name": "Cyan",
+        "light": "background: linear-gradient(135deg, rgb(234, 244, 247) 0%, rgb(206, 228, 235) 64%, rgb(23, 102, 125) 160%);",
+        "dark": "background: linear-gradient(135deg, rgb(7, 25, 35) 0%, rgb(20, 52, 69) 64%, rgb(73, 200, 235) 145%);"
+      },
+      "allCardsVerified": true,
       "errors": [],
-      "sha256": "3fc59ee829f05cfdb4f021047d0f3ae51745e223b83913bde9160eb0632b39d1"
+      "sha256": "e8299f2a7a24d1bd6a4256975634f5eb4960af40a682178d0ad3110dfff78a11"
     },
     {
       "file": "aurora-light.png",
@@ -93,8 +117,14 @@
         "accent": "#246c4a"
       },
       "contrast": 11.74,
+      "preview": {
+        "name": "Aurora",
+        "light": "background: linear-gradient(145deg, rgb(234, 244, 235) 0px, rgb(234, 244, 235) 42%, rgb(204, 227, 210) 43%, rgb(204, 227, 210) 62%, rgb(36, 108, 74) 160%);",
+        "dark": "background: linear-gradient(145deg, rgb(7, 26, 22) 0px, rgb(7, 26, 22) 42%, rgb(21, 68, 53) 43%, rgb(21, 68, 53) 62%, rgb(82, 214, 160) 150%);"
+      },
+      "allCardsVerified": true,
       "errors": [],
-      "sha256": "ce6f935e715a05a0404c8894d7d35d97870fe21911049f5176c141cd15d024bf"
+      "sha256": "2d2227e5ed2e890313962c6c533699e94d44f7e624a13dad48e1db625b274712"
     },
     {
       "file": "aurora-dark.png",
@@ -110,8 +140,14 @@
         "accent": "#52d6a0"
       },
       "contrast": 16.74,
+      "preview": {
+        "name": "Aurora",
+        "light": "background: linear-gradient(145deg, rgb(234, 244, 235) 0px, rgb(234, 244, 235) 42%, rgb(204, 227, 210) 43%, rgb(204, 227, 210) 62%, rgb(36, 108, 74) 160%);",
+        "dark": "background: linear-gradient(145deg, rgb(7, 26, 22) 0px, rgb(7, 26, 22) 42%, rgb(21, 68, 53) 43%, rgb(21, 68, 53) 62%, rgb(82, 214, 160) 150%);"
+      },
+      "allCardsVerified": true,
       "errors": [],
-      "sha256": "718e8a8f270be6eb0570a192241ffb879821df15f61392c2bcd8a9d2c92f965b"
+      "sha256": "760bcd2b804712a7967adf1567f16517c10e4b5acf6aaa53bf25e7bbdfd9cd58"
     },
     {
       "file": "ember-dusk-light.png",
@@ -127,8 +163,14 @@
         "accent": "#944b42"
       },
       "contrast": 11.81,
+      "preview": {
+        "name": "Ember Dusk",
+        "light": "background: radial-gradient(circle at 78% 24%, rgb(240, 185, 168) 0%, transparent 38%), linear-gradient(145deg, rgb(252, 247, 243) 0%, rgb(234, 214, 208) 100%);",
+        "dark": "background: radial-gradient(circle at 78% 24%, rgb(255, 146, 117) 0%, transparent 38%), linear-gradient(145deg, rgb(33, 22, 31) 0%, rgb(75, 48, 66) 100%);"
+      },
+      "allCardsVerified": true,
       "errors": [],
-      "sha256": "73e79cd05c7c5178a822d5982a104123ccb57cd461ae22b19a61a5c5c70e12ad"
+      "sha256": "3bd0667999ddf7e872b69c92a77d61d5439fd6bc23f011d08255428f20306079"
     },
     {
       "file": "ember-dusk-dark.png",
@@ -144,57 +186,71 @@
         "accent": "#ff9275"
       },
       "contrast": 15.76,
+      "preview": {
+        "name": "Ember Dusk",
+        "light": "background: radial-gradient(circle at 78% 24%, rgb(240, 185, 168) 0%, transparent 38%), linear-gradient(145deg, rgb(252, 247, 243) 0%, rgb(234, 214, 208) 100%);",
+        "dark": "background: radial-gradient(circle at 78% 24%, rgb(255, 146, 117) 0%, transparent 38%), linear-gradient(145deg, rgb(33, 22, 31) 0%, rgb(75, 48, 66) 100%);"
+      },
+      "allCardsVerified": true,
       "errors": [],
-      "sha256": "e97aa714e4f86dac30a9d3d86bb553419f73df2af84f35b21b63bf180356f436"
+      "sha256": "17335ae5e3bcee0a0a88a7847c87d86c390d5407fd29fdc46bb398de016ec5c9"
     }
   ],
   "cleanup": {
     "stopped": true,
-    "rootPid": 74304,
+    "rootPid": 90058,
     "recordedPids": [
-      74304,
-      74306,
-      74307,
-      74308,
-      74311,
-      74337,
-      74363,
-      74364,
-      74365,
-      74366,
-      74367,
-      74368,
-      74369,
-      74539,
-      74621,
-      74622,
-      74624,
-      74868,
-      74869,
-      74870,
-      74871,
-      74872,
-      74873,
-      74874,
-      74875
+      90058,
+      90060,
+      90061,
+      90063,
+      90064,
+      90082,
+      90127,
+      90284,
+      90384,
+      90385,
+      90386,
+      90387,
+      90637,
+      90638,
+      90639,
+      90641,
+      90642,
+      90643,
+      90644,
+      90645
     ],
     "remaining": []
   },
   "galleryCheck": {
     "route": "/skins.html",
-    "desktop": [1512, 949, 2],
-    "mobile": [390, 844, 2],
+    "desktop": [
+      1512,
+      949,
+      2
+    ],
+    "mobile": [
+      390,
+      844,
+      2
+    ],
     "loadedImages": 8,
     "runtimeErrors": [],
     "browser": {
       "stopped": true,
-      "rootPid": 79104,
-      "recordedPids": [79104, 79106, 79107, 79109],
+      "rootPid": 91132,
+      "recordedPids": [
+        91132,
+        91134,
+        91135,
+        91136
+      ],
       "remaining": []
     },
     "server": {
       "stopped": true,
-      "rootPid": 78832,
+      "rootPid": 91075,
       "remaining": []
     }
   }
