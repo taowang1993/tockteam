@@ -34,6 +34,13 @@ test('Windows ownership inspection excludes its own PowerShell query process', (
   assert.doesNotMatch(cleanupSource, /tasklist\.exe'[\s\S]{0,200}catch\(\(\) => \(\{ stdout: '' \}\)\)/u)
 })
 
+test('Web smoke owns a detached runtime group for verified process-tree cleanup', () => {
+  const smoke = readFileSync(join(import.meta.dirname, '..', 'scripts', 'smoke-web.mjs'), 'utf8')
+  const options = smoke.match(/const child = spawn\(nodeBinary,[\s\S]*?\], \{([\s\S]*?)\}\)/u)?.[1]
+  assert.match(options ?? '', /detached: true/u)
+  assert.match(smoke, /await stopChildProcess\(child\)/u)
+})
+
 test('child cleanup handles prior signals and escalates ignored termination', async () => {
   const signalled = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'])
   await new Promise<void>(resolve => { signalled.once('spawn', resolve) })

@@ -118,6 +118,7 @@ const child = spawn(nodeBinary, [
   '--port', String(port),
 ], {
   cwd: smokeRoot,
+  detached: true,
   env: runtimeEnvironment,
   stdio: ['ignore', 'pipe', 'pipe'],
 })
@@ -157,6 +158,7 @@ const timeout = new Promise((_, reject) => {
 })
 
 try {
+  console.log(`Web smoke DSH root PID=${String(child.pid)}`)
   const launchUrl = await Promise.race([ready, timeout])
   const base = new URL('/', launchUrl)
   assert.equal((await fetch(base)).status, 401)
