@@ -3,6 +3,7 @@ import { redo, undo } from '@milkdown/prose/history'
 import { afterEach, expect, it, vi } from 'vitest'
 import { LivePreviewEditor } from '../src/live-preview-editor.tsx'
 import { renderMarkdownHtml } from '../src/rich-markdown.ts'
+import { collectEmbedTargets } from '../src/embeds.ts'
 
 const imageBytes = 'iVBORw0KGgo='
 const resolved = (source: string, display: string | null) => ({
@@ -21,6 +22,9 @@ it('resizes only one Host-resolved wikilink with a keyboard width control, retai
   await waitFor(() => expect(container.querySelectorAll('img[src="data:image/png;base64,iVBORw0KGgo="]').length).toBe(2), { timeout: 10_000 })
   const controls = await screen.findAllByRole('spinbutton', { name: 'Image Width' })
   expect(controls).toHaveLength(2)
+  const actions = controls[0]!.closest('[aria-label="Image Actions"]')
+  expect(actions?.className).toContain('flex')
+  expect(actions?.previousElementSibling?.tagName).toBe('IMG')
   controls[0]!.focus()
   fireEvent.mouseDown(controls[0]!)
   expect(document.activeElement).toBe(controls[0])
@@ -64,6 +68,7 @@ it('preserves Markdown image alt text and caption; unavailable or unsafe images 
   const onChange = vi.fn()
   const { rerender, container } = render(<LivePreviewEditor content={token} resolvedEmbeds={[resolved(token, 'Meaningful Alt|320x200')]} onMarkdownChange={onChange} />)
   const width = await screen.findByRole('spinbutton', { name: 'Image Width' }, { timeout: 10_000 })
+  expect(width.closest('[aria-label="Image Actions"]')?.previousElementSibling?.classList.contains('image-wrapper')).toBe(true)
   fireEvent.input(width, { target: { value: '500' } })
   fireEvent.keyDown(width, { key: 'Escape' })
   expect(onChange).not.toHaveBeenCalled()
@@ -79,13 +84,19 @@ it('preserves Markdown image alt text and caption; unavailable or unsafe images 
   expect(screen.queryByRole('spinbutton', { name: 'Image Width' })).toBeNull()
 }, 20_000)
 
-it('does not resize an Obsidian image alias that cannot also carry a width', async () => {
+it('preserves a wikilink image caption when assigning a size', async () => {
   const token = '![[photo.png|A caption]]', onChange = vi.fn()
   const { container } = render(<LivePreviewEditor content={token} resolvedEmbeds={[resolved(token, 'A caption')]} onMarkdownChange={onChange} />)
   await waitFor(() => expect(container.querySelector('img[src="data:image/png;base64,iVBORw0KGgo="]')).toBeTruthy(), { timeout: 10_000 })
-  expect(await screen.findByRole('button', { name: 'View Image' })).toBeTruthy()
-  expect(screen.queryByRole('spinbutton', { name: 'Image Width' })).toBeNull()
-  expect(onChange).not.toHaveBeenCalled()
+  const width = await screen.findByRole('spinbutton', { name: 'Image Width' })
+  fireEvent.input(width, { target: { value: '400' } })
+  fireEvent.keyDown(width, { key: 'Enter' })
+  await waitFor(() => expect(onChange.mock.lastCall?.[0]).toContain('![[photo.png|A caption|400]]'))
+  const persisted = '![[photo.png|A caption|400]]'
+  expect(collectEmbedTargets(persisted)[0]?.display).toBe('A caption|400')
+  const html = renderMarkdownHtml(persisted, { resolvedEmbeds: [resolved(persisted, 'A caption|400')] })
+  expect(html).toContain('alt="A caption"')
+  expect(html).toContain('width="400"')
 })
 
 it('reads width-only and authored WxH sizes in Reading without changing the Markdown', () => {

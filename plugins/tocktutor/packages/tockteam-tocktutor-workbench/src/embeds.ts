@@ -125,7 +125,10 @@ export function collectEmbedTargets(source: string, sourcePath?: string): EmbedT
     const code = codeSpans(line)
     for (const match of line.matchAll(/!\[\[([^\]\r\n]{1,4096})\]\]|!\[([^\]\r\n]{0,1000})\]\((<[^>\r\n]{1,4096}>|[^)\s]{1,4096})(?:\s+["'][^"'\r\n]*["'])?\)/gu)) {
       if (match.index === undefined || code.some(([start, end]) => match.index! >= start && match.index! < end) || escapedAt(line, match.index)) continue
-      const [rawTarget, displayPart] = match[1] === undefined ? [match[3]?.replace(/^<|>$/gu, ''), match[2]] : match[1].split('|', 2)
+      const inner = match[1], divider = inner?.indexOf('|') ?? -1
+      const [rawTarget, displayPart] = inner === undefined
+        ? [match[3]?.replace(/^<|>$/gu, ''), match[2]]
+        : divider < 0 ? [inner, undefined] : [inner.slice(0, divider), inner.slice(divider + 1)]
       let targetPart = rawTarget ?? ''
       if (match[1] === undefined) {
         try { targetPart = decodeURIComponent(targetPart) } catch { continue }

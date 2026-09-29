@@ -13,9 +13,11 @@ export function resizeWikilinkToken(token, width) {
     const marker = body.lastIndexOf('|');
     if (marker < 0)
         return `![[${body}|${String(width)}]]`;
-    if (marker === 0 || !imageWidthHint(body.slice(marker)))
-        return null; // An alias or caption is not a size.
-    return `![[${body.slice(0, marker)}|${String(width)}]]`;
+    if (marker === 0)
+        return null;
+    return imageWidthHint(body.slice(marker))
+        ? `![[${body.slice(0, marker)}|${String(width)}]]`
+        : `![[${body}|${String(width)}]]`; // Keep a caption before the new size.
 }
 export function resizedImageAlt(alt, width) {
     if (!Number.isSafeInteger(width) || width < MIN_IMAGE_WIDTH || width > MAX_IMAGE_WIDTH)
@@ -38,13 +40,17 @@ export function mountImageResizeControl(host, image, authored, onCommit) {
     handle.textContent = 'Resize';
     const input = document.createElement('input');
     input.type = 'number';
-    input.className = 'w-16 rounded border border-border bg-surface px-1 py-1 text-foreground focus-visible:outline-2 focus-visible:outline-ring [-webkit-app-region:no-drag]';
+    input.className = 'w-16 rounded !border !border-border !bg-surface px-1 py-1 text-foreground focus-visible:!outline-2 focus-visible:!outline-ring [-webkit-app-region:no-drag]';
     input.setAttribute('aria-label', 'Image Width');
     input.min = String(MIN_IMAGE_WIDTH);
     input.max = String(max);
     input.step = '1';
     input.value = String(initial);
-    host.append(handle, input);
+    const unit = document.createElement('span');
+    unit.className = 'text-xs text-muted-foreground';
+    unit.setAttribute('aria-hidden', 'true');
+    unit.textContent = 'px';
+    host.append(handle, input, unit);
     const originalWidth = image.style.width, originalHeight = image.style.height;
     const paint = (width, height) => {
         image.style.width = `${String(width)}px`;

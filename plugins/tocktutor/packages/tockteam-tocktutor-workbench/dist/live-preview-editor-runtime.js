@@ -416,17 +416,19 @@ export function LivePreviewEditorRuntime(props) {
                 if (existing?.image.src === src && existing.image.alt === alt && existing.authored === (current?.authored ?? null))
                     continue;
                 removeImageAction(image);
-                const host = document.createElement('span');
-                host.className = 'inline-flex items-center gap-1 align-middle';
-                host.contentEditable = 'false';
+                const row = document.createElement('span');
+                row.className = 'tocktutor-image-actions flex w-fit max-w-full flex-wrap items-center gap-2 rounded-md bg-surface-muted px-1 py-1 text-foreground';
+                row.contentEditable = 'false';
+                row.setAttribute('role', 'group');
+                row.setAttribute('aria-label', 'Image Actions');
                 const anchor = image.closest('a');
-                (anchor ?? image).insertAdjacentElement('afterend', host);
+                (image.closest('.milkdown-image-block .image-wrapper') ?? anchor ?? image).insertAdjacentElement('afterend', row);
+                const host = document.createElement('span');
+                const resizeHost = document.createElement('span');
+                resizeHost.className = 'inline-flex items-center gap-2';
+                row.append(host, resizeHost);
                 const action = { alt, src };
                 const disposeViewer = mountImageViewerAction(host, action, (value, trigger) => { viewerTriggerRef.current = trigger; setViewerImage(value); });
-                const resizeHost = document.createElement('span');
-                resizeHost.className = 'inline-flex items-center gap-1 align-middle';
-                host.insertAdjacentElement('afterend', resizeHost);
-                resizeHost.contentEditable = 'false';
                 const resizeHint = current?.kind === 'wiki' && current.authored.includes('|')
                     ? current.authored.slice(current.authored.lastIndexOf('|'), -2) : current?.authored ?? '';
                 const disposeResize = current && !anchor ? mountImageResizeControl(resizeHost, image, resizeHint, width => {
@@ -444,7 +446,7 @@ export function LivePreviewEditorRuntime(props) {
                     view.dispatch(tr);
                     return true;
                 }) : () => { };
-                imageActions.set(image, { dispose: () => { disposeResize(); resizeHost.remove(); disposeViewer(); }, host, image: action, authored: current?.authored ?? null });
+                imageActions.set(image, { dispose: () => { disposeResize(); disposeViewer(); }, host: row, image: action, authored: current?.authored ?? null });
             }
             for (const image of imageActions.keys())
                 if (!image.isConnected)
