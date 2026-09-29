@@ -1,0 +1,201 @@
+{
+  "sourceCommit": "d587fb6e",
+  "viewport": [
+    1512,
+    949,
+    2
+  ],
+  "pixels": [
+    3024,
+    1898
+  ],
+  "route": "/settings",
+  "captures": [
+    {
+      "file": "default-light.png",
+      "family": "Default",
+      "skinId": null,
+      "mode": "light",
+      "system": "dark",
+      "route": "/settings",
+      "selected": true,
+      "colors": {
+        "background": "#fff",
+        "text": "#0f1115",
+        "accent": "#0f1115"
+      },
+      "contrast": 18.9,
+      "errors": [],
+      "sha256": "557395593f2aa8eeb7cb1320df1f54cd18d3ff46e6bba448b7944808d39528a0"
+    },
+    {
+      "file": "default-dark.png",
+      "family": "Default",
+      "skinId": null,
+      "mode": "dark",
+      "system": "light",
+      "route": "/settings",
+      "selected": true,
+      "colors": {
+        "background": "#151517",
+        "text": "#f9fafb",
+        "accent": "#f9fafb"
+      },
+      "contrast": 17.45,
+      "errors": [],
+      "sha256": "e9fb1b1818fd2ae028b7efc8cfa9fef33c3d8138a7799e1e592c61e664f5c4f6"
+    },
+    {
+      "file": "cyan-light.png",
+      "family": "Cyan",
+      "skinId": "tockteam-skin-deep-current",
+      "mode": "light",
+      "system": "dark",
+      "route": "/settings",
+      "selected": true,
+      "colors": {
+        "background": "#eaf4f7",
+        "text": "#17313a",
+        "accent": "#17667d"
+      },
+      "contrast": 12.22,
+      "errors": [],
+      "sha256": "6fb6086a23606f1f12536c3fe78d2c29281214a3245ddd28aab0449bc2f6996b"
+    },
+    {
+      "file": "cyan-dark.png",
+      "family": "Cyan",
+      "skinId": "tockteam-skin-deep-current",
+      "mode": "dark",
+      "system": "light",
+      "route": "/settings",
+      "selected": true,
+      "colors": {
+        "background": "#071923",
+        "text": "#e9f8fb",
+        "accent": "#49c8eb"
+      },
+      "contrast": 16.45,
+      "errors": [],
+      "sha256": "3fc59ee829f05cfdb4f021047d0f3ae51745e223b83913bde9160eb0632b39d1"
+    },
+    {
+      "file": "aurora-light.png",
+      "family": "Aurora",
+      "skinId": "tockteam-skin-jade-circuit",
+      "mode": "light",
+      "system": "dark",
+      "route": "/settings",
+      "selected": true,
+      "colors": {
+        "background": "#eaf4eb",
+        "text": "#1b3529",
+        "accent": "#246c4a"
+      },
+      "contrast": 11.74,
+      "errors": [],
+      "sha256": "ce6f935e715a05a0404c8894d7d35d97870fe21911049f5176c141cd15d024bf"
+    },
+    {
+      "file": "aurora-dark.png",
+      "family": "Aurora",
+      "skinId": "tockteam-skin-jade-circuit",
+      "mode": "dark",
+      "system": "light",
+      "route": "/settings",
+      "selected": true,
+      "colors": {
+        "background": "#071a16",
+        "text": "#e9fbf3",
+        "accent": "#52d6a0"
+      },
+      "contrast": 16.74,
+      "errors": [],
+      "sha256": "718e8a8f270be6eb0570a192241ffb879821df15f61392c2bcd8a9d2c92f965b"
+    },
+    {
+      "file": "ember-dusk-light.png",
+      "family": "Ember Dusk",
+      "skinId": "tockteam-skin-ember-dusk",
+      "mode": "light",
+      "system": "dark",
+      "route": "/settings",
+      "selected": true,
+      "colors": {
+        "background": "#f6ede9",
+        "text": "#3a2931",
+        "accent": "#944b42"
+      },
+      "contrast": 11.81,
+      "errors": [],
+      "sha256": "73e79cd05c7c5178a822d5982a104123ccb57cd461ae22b19a61a5c5c70e12ad"
+    },
+    {
+      "file": "ember-dusk-dark.png",
+      "family": "Ember Dusk",
+      "skinId": "tockteam-skin-ember-dusk",
+      "mode": "dark",
+      "system": "light",
+      "route": "/settings",
+      "selected": true,
+      "colors": {
+        "background": "#21161f",
+        "text": "#fff0ea",
+        "accent": "#ff9275"
+      },
+      "contrast": 15.76,
+      "errors": [],
+      "sha256": "e97aa714e4f86dac30a9d3d86bb553419f73df2af84f35b21b63bf180356f436"
+    }
+  ],
+  "cleanup": {
+    "stopped": true,
+    "rootPid": 74304,
+    "recordedPids": [
+      74304,
+      74306,
+      74307,
+      74308,
+      74311,
+      74337,
+      74363,
+      74364,
+      74365,
+      74366,
+      74367,
+      74368,
+      74369,
+      74539,
+      74621,
+      74622,
+      74624,
+      74868,
+      74869,
+      74870,
+      74871,
+      74872,
+      74873,
+      74874,
+      74875
+    ],
+    "remaining": []
+  },
+  "galleryCheck": {
+    "route": "/skins.html",
+    "desktop": [1512, 949, 2],
+    "mobile": [390, 844, 2],
+    "loadedImages": 8,
+    "runtimeErrors": [],
+    "browser": {
+      "stopped": true,
+      "rootPid": 79104,
+      "recordedPids": [79104, 79106, 79107, 79109],
+      "remaining": []
+    },
+    "server": {
+      "stopped": true,
+      "rootPid": 78832,
+      "remaining": []
+    }
+  }
+}

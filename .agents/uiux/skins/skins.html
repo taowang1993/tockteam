@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TockTeam Skin Comparison</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #111214;
+      --panel: #181a1d;
+      --border: #30333a;
+      --text: #f0f1f3;
+      --muted: #a6aab2;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--page); color: var(--text); }
+    a { color: inherit; }
+    header { border-bottom: 1px solid var(--border); background: linear-gradient(180deg, #1d1f23, var(--page)); }
+    .inner, main { width: min(1880px, calc(100% - 40px)); margin-inline: auto; }
+    .inner { padding: 52px 0 32px; }
+    .eyebrow { margin: 0 0 10px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(32px, 5vw, 56px); letter-spacing: -.04em; line-height: 1.05; }
+    .intro { max-width: 900px; margin: 18px 0 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+    .standard { display: inline-block; margin-top: 18px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--muted); font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    nav a { padding: 7px 11px; border: 1px solid var(--border); border-radius: 999px; background: var(--panel); color: var(--muted); font-size: 13px; text-decoration: none; }
+    nav a:hover, nav a:focus-visible { border-color: #737982; color: var(--text); }
+    main { padding: 12px 0 64px; }
+    .surface { padding: 38px 0 44px; border-bottom: 1px solid var(--border); scroll-margin-top: 10px; }
+    .surface:last-of-type { border-bottom: 0; }
+    .number { margin: 0 0 8px; color: var(--muted); font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    h2 { margin: 0 0 18px; font-size: clamp(24px, 3vw, 36px); letter-spacing: -.025em; }
+    .comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    figure { min-width: 0; margin: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--panel); }
+    figcaption { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 700; }
+    .screenshot-link { display: block; aspect-ratio: 1512 / 949; background: #0b0c0e; }
+    img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .screenshot-link:focus-visible { outline: 3px solid #a6c8ff; outline-offset: -3px; }
+    .footer { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .footer a { text-underline-offset: 3px; }
+    @media (max-width: 900px) {
+      .inner, main { width: min(100% - 24px, 1880px); }
+      .inner { padding-top: 36px; }
+      .comparison { grid-template-columns: 1fr; }
+      .surface { padding-block: 32px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="inner">
+      <p class="eyebrow">Visual Design Audit · Eight Captures</p>
+      <h1>TockTeam Skins</h1>
+      <p class="intro">Four choices, each shown in Light and Dark on the same Desktop Settings screen. Click a screenshot to see it at full resolution. Captures use an isolated profile; no personal settings are shown.</p>
+      <div class="standard">1512 × 949 CSS pixels · 2× scale · 3024 × 1898 PNG pixels · Settings → General</div>
+      <nav aria-label="Skin index"><a href="#default">Default</a><a href="#cyan">Cyan</a><a href="#aurora">Aurora</a><a href="#ember-dusk">Ember Dusk</a></nav>
+    </div>
+  </header>
+  <main>
+    <section class="surface" id="default">
+      <p class="number">Skin 01</p><h2>Default</h2>
+      <div class="comparison">
+        <figure><figcaption>Default · Light</figcaption><a class="screenshot-link" href="screenshots/default-light.png"><img src="screenshots/default-light.png" width="3024" height="1898" alt="Default skin selected in Light appearance on the General Settings screen"></a></figure>
+        <figure><figcaption>Default · Dark</figcaption><a class="screenshot-link" href="screenshots/default-dark.png"><img src="screenshots/default-dark.png" width="3024" height="1898" alt="Default skin selected in Dark appearance on the General Settings screen"></a></figure>
+      </div>
+    </section>
+    <section class="surface" id="cyan">
+      <p class="number">Skin 02</p><h2>Cyan</h2>
+      <div class="comparison">
+        <figure><figcaption>Cyan · Light</figcaption><a class="screenshot-link" href="screenshots/cyan-light.png"><img src="screenshots/cyan-light.png" width="3024" height="1898" loading="lazy" alt="Cyan skin selected in Light appearance on the General Settings screen"></a></figure>
+        <figure><figcaption>Cyan · Dark</figcaption><a class="screenshot-link" href="screenshots/cyan-dark.png"><img src="screenshots/cyan-dark.png" width="3024" height="1898" loading="lazy" alt="Cyan skin selected in Dark appearance on the General Settings screen"></a></figure>
+      </div>
+    </section>
+    <section class="surface" id="aurora">
+      <p class="number">Skin 03</p><h2>Aurora</h2>
+      <div class="comparison">
+        <figure><figcaption>Aurora · Light</figcaption><a class="screenshot-link" href="screenshots/aurora-light.png"><img src="screenshots/aurora-light.png" width="3024" height="1898" loading="lazy" alt="Aurora skin selected in Light appearance on the General Settings screen"></a></figure>
+        <figure><figcaption>Aurora · Dark</figcaption><a class="screenshot-link" href="screenshots/aurora-dark.png"><img src="screenshots/aurora-dark.png" width="3024" height="1898" loading="lazy" alt="Aurora skin selected in Dark appearance on the General Settings screen"></a></figure>
+      </div>
+    </section>
+    <section class="surface" id="ember-dusk">
+      <p class="number">Skin 04</p><h2>Ember Dusk</h2>
+      <div class="comparison">
+        <figure><figcaption>Ember Dusk · Light</figcaption><a class="screenshot-link" href="screenshots/ember-dusk-light.png"><img src="screenshots/ember-dusk-light.png" width="3024" height="1898" loading="lazy" alt="Ember Dusk skin selected in Light appearance on the General Settings screen"></a></figure>
+        <figure><figcaption>Ember Dusk · Dark</figcaption><a class="screenshot-link" href="screenshots/ember-dusk-dark.png"><img src="screenshots/ember-dusk-dark.png" width="3024" height="1898" loading="lazy" alt="Ember Dusk skin selected in Dark appearance on the General Settings screen"></a></figure>
+      </div>
+    </section>
+    <p class="footer">The app’s Light or Dark choice controls every pair, even when the computer uses the opposite appearance. Default uses the built-in colors; named skins keep their selected family. See the <a href="proof.json">capture proof</a>.</p>
+  </main>
+</body>
+</html>
