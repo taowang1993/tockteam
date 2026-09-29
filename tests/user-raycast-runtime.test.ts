@@ -42,6 +42,41 @@ test('an extension cannot request a native effect before a user-owned action', a
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
+test('an approved no-view command gets private storage, defaults, feedback and one fixture copy', async t => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-user-raycast-no-view-'))
+  const runtime = join(root, 'host')
+  const install = new UserRaycastInstall(join(root, 'installed'))
+  const messages: any[] = []
+  const copied: string[] = []
+  const manager = new UserRaycastManager({ install, runtime, nodePath: process.execPath, artifact, onMessage: (_owner, message) => messages.push(message), copyText: (_owner, text) => { copied.push(text) } })
+  t.after(async () => manager.close())
+  try {
+    await buildUserRaycast(runtime)
+    for (const extensionId of ['first-uuid', 'second-uuid']) {
+      const folder = join(root, extensionId)
+      mkdirSync(folder)
+      writeFileSync(join(folder, 'package.json'), JSON.stringify({ name: extensionId, title: extensionId, preferences: [{ name: 'defaultAction', default: 'copy' }, { name: 'prefix', default: `${extensionId}-pref` }], commands: [{ name: 'generate', title: 'Generate UUIDs', mode: 'no-view' }] }))
+      writeFileSync(join(folder, 'generate.js'), `const {Clipboard,LocalStorage,getPreferenceValues,showHUD}=require('@raycast/api'); exports.default=async ({arguments:args})=>{if(getPreferenceValues().defaultAction!=='copy'||getPreferenceValues().prefix!=='${extensionId}-pref'||Object.keys(args).length)throw Error('Invalid preferences or arguments');const prior=await LocalStorage.getItem('history');const count=Number(prior??'0')+1;await LocalStorage.setItem('history',String(count));await Clipboard.copy('${extensionId}-'+count);await showHUD('Copied UUID')}`)
+      const selected = install.prepare(folder, 'generate')
+      assert.equal((selected as { mode?: string }).mode, 'no-view')
+      install.approve(selected.digest); install.enable()
+      for (let index = 0; index < (extensionId === 'first-uuid' ? 2 : 1); index++) {
+        const before = messages.length
+        await manager.start(owner)
+        const deadline = Date.now() + 5000
+        while ((!messages.slice(before).some(message => message.type === 'outcome') || manager.childPid) && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
+        const outcome = messages.slice(before).find(message => message.type === 'outcome')
+        assert.equal(outcome?.succeeded, true)
+        assert.equal(outcome?.eventId, 'run')
+        await manager.close()
+        assert.equal(manager.childPid, undefined)
+        assert.ok(messages.slice(before).some(message => message.type === 'toast' && message.title === 'Copied UUID'))
+      }
+    }
+    assert.deepEqual(copied, ['first-uuid-1', 'first-uuid-2', 'second-uuid-1'])
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
 test('a selected local List stays inert until approved and enabled, then runs in an owned child', async t => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-user-raycast-test-'))
   const folder = join(root, 'source')

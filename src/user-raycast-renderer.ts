@@ -71,7 +71,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     if (state.hasPrevious) controls.append(button('Restore Previous Version', 'recover', async () => { await bridge.userRaycastClose(); active = undefined; rendered.replaceChildren(); state = await bridge.userRaycastMutate('recover') }))
     if (!state.installed) return
     if (state.enabled) {
-      controls.append(button('Open Command', 'open', async () => { active = undefined; searchText = ''; rendered.replaceChildren(); await bridge.userRaycastOpen() }))
+      controls.append(button(state.mode === 'no-view' ? 'Run Command' : 'Open Command', 'open', async () => { active = undefined; searchText = ''; rendered.replaceChildren(); await bridge.userRaycastOpen() }))
       controls.append(button('Disable', 'disable', async () => { await bridge.userRaycastClose(); active = undefined; rendered.replaceChildren(); state = await bridge.userRaycastMutate('disable') }))
     } else controls.append(button('Enable', 'enable', async () => { state = await bridge.userRaycastMutate('enable') }))
     controls.append(button(removing ? 'Confirm Remove' : 'Remove Extension', 'remove', async () => {
@@ -87,7 +87,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
   const update = (message: UserRaycastMessage): void => {
     if (disposed) return
     if (message.type === 'error') { feedback.textContent = message.message ?? 'Extension failed'; feedback.setAttribute('role', 'alert'); return }
-    if (message.type === 'outcome') { feedback.textContent = message.succeeded ? 'Action Complete' : message.message ?? 'Action failed'; feedback.setAttribute('role', message.succeeded ? 'status' : 'alert'); return }
+    if (message.type === 'outcome') { feedback.textContent = message.succeeded ? message.eventId === 'run' ? 'Command Complete' : 'Action Complete' : message.message ?? 'Action failed'; feedback.setAttribute('role', message.succeeded ? 'status' : 'alert'); return }
     if (message.type === 'toast') { feedback.textContent = message.title ?? ''; return }
     if (!message.root || typeof message.root !== 'object') return
     if (message.type === 'ready') active = { extensionId: message.extensionId, sessionId: message.sessionId, revision: message.revision }

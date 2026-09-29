@@ -41,7 +41,7 @@ export const Grid = Object.assign(searchableCollection('raycast-grid'), {
   EmptyView: component('raycast-empty'),
 })
 type NativeEffectRequest = { kind: 'copy' | 'openGoogleTranslate' | 'paste' | 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>>; text?: string; url?: string }
-type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void }
+type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void; hud?: (message: string) => void; storage?: { getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void>; clear: () => Promise<void> } }
 let compatibility: Compatibility
 export let queryEpoch = 0
 export let queryText = ''
@@ -120,7 +120,13 @@ export const ActionPanel = Object.assign(component('raycast-action-panel'), { Se
 
 const unsupported = (name: string): never => { throw new Error(`Raycast API ${name} is not admitted by this capability`) }
 export async function clearSearchBar(): Promise<void> { return unsupported('clearSearchBar') }
-export async function showHUD(_message: string): Promise<void> { return unsupported('showHUD') }
+export async function showHUD(message: string): Promise<void> { if (!compatibility.hud) return unsupported('showHUD'); compatibility.hud(message) }
+export const LocalStorage = {
+  getItem: async (key: string): Promise<string | undefined> => compatibility.storage ? compatibility.storage.getItem(key) : unsupported('LocalStorage.getItem'),
+  setItem: async (key: string, value: string): Promise<void> => compatibility.storage ? compatibility.storage.setItem(key, value) : unsupported('LocalStorage.setItem'),
+  removeItem: async (key: string): Promise<void> => compatibility.storage ? compatibility.storage.removeItem(key) : unsupported('LocalStorage.removeItem'),
+  clear: async (): Promise<void> => compatibility.storage ? compatibility.storage.clear() : unsupported('LocalStorage.clear'),
+}
 export const Clipboard = { copy: async (text: string) => compatibility.native({ kind: 'copy', text }), paste: async (_value: string) => unsupported('Clipboard.paste') }
 export function openExtensionPreferences(): void { compatibility.openPreferences?.() }
 let preferences: Record<string, unknown> | undefined

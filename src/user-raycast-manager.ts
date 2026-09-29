@@ -2,7 +2,7 @@
 import { stopOwnedChild } from '../scripts/trusted-raycast-process.mjs'
 import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { copyFileSync, existsSync, mkdtempSync, mkdirSync, rmSync, symlinkSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { admitTrustedRaycastArtifact } from './trusted-raycast-artifact-admission.ts'
@@ -45,6 +45,16 @@ export class UserRaycastManager {
     const workspace = mkdtempSync(join(tmpdir(), 'tockteam-user-raycast-'))
     try {
       const chosen = this.options.install.snapshotTo(join(workspace, 'source'))
+      const manifest = JSON.parse(readFileSync(join(workspace, 'source', 'package.json'), 'utf8')) as { preferences?: unknown; commands?: Array<{ name: string; preferences?: unknown }> }
+      const defaults: Record<string, string | boolean> = {}
+      const commandPreferences = manifest.commands?.find(item => item.name === chosen.command)?.preferences
+      for (const entry of [...(Array.isArray(manifest.preferences) ? manifest.preferences : []), ...(Array.isArray(commandPreferences) ? commandPreferences : [])]) {
+        if (!entry || typeof entry !== 'object') continue
+        const pref = entry as { name?: unknown; default?: unknown }
+        if (typeof pref.name === 'string' && /^[a-zA-Z][a-zA-Z0-9_]{0,63}$/.test(pref.name) && (typeof pref.default === 'boolean' || typeof pref.default === 'string' && pref.default.length <= 512)) defaults[pref.name] = pref.default
+      }
+      const preferences = JSON.stringify(defaults)
+      if (Buffer.byteLength(preferences) > 16384) throw new Error('Extension preferences exceed their bound')
       const descriptor = getTrustedRaycastRuntimeDescriptor('google-translate')!
       const bytes = admitTrustedRaycastArtifact(descriptor, this.options.artifact)
       execFileSync('/usr/bin/tar', ['xf', '-', '-C', workspace], { input: bytes, timeout: 15000 })
@@ -52,10 +62,10 @@ export class UserRaycastManager {
       for (const file of ['api.mjs', 'child.mjs']) copyFileSync(join(this.options.runtime, file), join(workspace, file))
       mkdirSync(join(workspace, 'tmp'))
       const id = randomUUID()
-      const child = spawn(this.options.nodePath, [join(workspace, 'child.mjs')], { cwd: workspace, detached: true, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TOCKTEAM_USER_RAYCAST_ID: chosen.extensionId, TOCKTEAM_USER_RAYCAST_SESSION: id, TOCKTEAM_USER_RAYCAST_COMMAND: chosen.command, TRUSTED_RAYCAST_EXTENSION_ID: chosen.extensionId, TRUSTED_RAYCAST_PREFERENCES: '{}' } })
+      const child = spawn(this.options.nodePath, [join(workspace, 'child.mjs')], { cwd: workspace, detached: true, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TOCKTEAM_USER_RAYCAST_ID: chosen.extensionId, TOCKTEAM_USER_RAYCAST_SESSION: id, TOCKTEAM_USER_RAYCAST_COMMAND: chosen.command, TOCKTEAM_USER_RAYCAST_MODE: chosen.mode ?? 'view', ...(chosen.mode === 'no-view' ? { TOCKTEAM_USER_RAYCAST_STATE: this.options.install.statePath(chosen.extensionId) } : {}), TRUSTED_RAYCAST_EXTENSION_ID: chosen.extensionId, TRUSTED_RAYCAST_PREFERENCES: preferences } })
       let resolve!: () => void; let reject!: (error: Error) => void
       const ready = new Promise<void>((yes, no) => { resolve = yes; reject = no })
-      const session: Session = { child, workspace, owner, candidate: chosen, id, revision: -1, actions: new Set(), resolve, reject, settled: false }
+      const session: Session = { child, workspace, owner, candidate: chosen, id, revision: -1, actions: new Set(), ...(chosen.mode === 'no-view' ? { action: { eventId: 'run', revision: 0, nativeUsed: false } } : {}), resolve, reject, settled: false }
       this.session = session
       const fail = (error: Error): void => {
         if (this.session !== session) return
@@ -96,6 +106,7 @@ export class UserRaycastManager {
             } else if (message.type === 'outcome' && message.revision === session.action?.revision && message.eventId === session.action.eventId && typeof message.succeeded === 'boolean' && typeof message.message === 'string' && message.message.length <= 512) {
               delete session.action
               this.options.onMessage(owner, message)
+              if (message.eventId === 'run') void this.close().catch(closeError => this.options.onError?.(owner, closeError))
             }
             else if (message.type === 'toast' && message.revision === session.revision && typeof message.title === 'string' && message.title.length <= 512 && typeof message.message === 'string' && message.message.length <= 4096 && ['failure', 'success', 'animated'].includes(message.style ?? '')) this.options.onMessage(owner, message)
             else if (message.type === 'error' && typeof message.message === 'string') throw new Error(message.message.slice(0, 512))

@@ -6,7 +6,7 @@ import { readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
 const ID = /^[a-z0-9][a-z0-9_-]{0,63}$/
 const MAX_FILES = 128
 const MAX_BYTES = 16 * 1024 * 1024
-export type UserRaycastCandidate = Readonly<{ command: string; digest: string; extensionId: string; title: string; version?: string; license?: string; source?: string }>
+export type UserRaycastCandidate = Readonly<{ command: string; digest: string; extensionId: string; title: string; mode?: 'no-view'; version?: string; license?: string; source?: string }>
 type Decision = { digest: string; enabled: boolean }
 
 function readFiles(directory: string): Map<string, Buffer> {
@@ -53,7 +53,7 @@ function candidate(files: Map<string, Buffer>, selectedCommand?: string): UserRa
   if (names.some(name => typeof name !== 'string' || !ID.test(name)) || new Set(names).size !== names.length) throw new Error('Invalid or duplicate extension commands')
   const chosen = commands.find(value => value !== null && typeof value === 'object' && (value as Record<string, unknown>).name === selectedCommand)
     ?? (selectedCommand === undefined ? commands.find(value => value !== null && typeof value === 'object' && (value as Record<string, unknown>).mode === 'view') : undefined)
-  if (!chosen || typeof chosen !== 'object' || (chosen as Record<string, unknown>).mode !== 'view' || typeof (chosen as Record<string, unknown>).name !== 'string' || !ID.test((chosen as Record<string, unknown>).name as string)) throw new Error('Selected view command is unavailable')
+  if (!chosen || typeof chosen !== 'object' || !['view', 'no-view'].includes((chosen as Record<string, unknown>).mode as string) || typeof (chosen as Record<string, unknown>).name !== 'string' || !ID.test((chosen as Record<string, unknown>).name as string)) throw new Error('Selected command is unavailable')
   const command = (chosen as { name: string }).name
   if (!files.has(`${command}.js`)) throw new Error('Selected view command has no built JavaScript')
   if (files.has('selection.json')) throw new Error('Extension bundle contains a reserved file')
@@ -66,6 +66,7 @@ function candidate(files: Map<string, Buffer>, selectedCommand?: string): UserRa
     }
   } catch { /* Unverifiable repository metadata remains unspecified. */ }
   return Object.freeze({ extensionId: record.name, title: record.title, command, digest: digestFiles(files),
+    ...((chosen as Record<string, unknown>).mode === 'no-view' ? { mode: 'no-view' as const } : {}),
     ...(typeof record.version === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9.+_-]{0,63}$/.test(record.version) ? { version: record.version } : {}),
     ...(typeof record.license === 'string' && /^[\w+(). -]{1,128}$/.test(record.license) ? { license: record.license } : {}),
     ...(source ? { source } : {}),
@@ -107,11 +108,11 @@ export class UserRaycastInstall {
       return JSON.stringify(actual) === JSON.stringify(declared) ? actual : undefined
     } catch { return undefined }
   }
-  status(): Readonly<{ candidate?: UserRaycastCandidate; digest: string; enabled: boolean; hasPrevious: boolean; installed: boolean }> {
+  status(): Readonly<{ candidate?: UserRaycastCandidate; digest: string; enabled: boolean; hasPrevious: boolean; installed: boolean; mode?: 'no-view' }> {
     const trust = this.readDecision()
     const current = this.inspect('current')
     const candidate = this.inspect('stage')
-    return Object.freeze({ ...(candidate ? { candidate } : {}), digest: current?.digest ?? '', enabled: trust.enabled, hasPrevious: this.inspect('previous') !== undefined, installed: current !== undefined && current.digest === trust.digest })
+    return Object.freeze({ ...(candidate ? { candidate } : {}), ...(current?.mode === 'no-view' ? { mode: 'no-view' as const } : {}), digest: current?.digest ?? '', enabled: trust.enabled, hasPrevious: this.inspect('previous') !== undefined, installed: current !== undefined && current.digest === trust.digest })
   }
   prepare(folder: string, command?: string): UserRaycastCandidate {
     this.ensureRoot()
@@ -161,6 +162,14 @@ export class UserRaycastInstall {
   }
   disable(): void { this.ensureRoot(); save(this.path('trust.json'), { ...this.readDecision(), enabled: false }) }
   runtimeDir(): string | undefined { const status = this.status(); return status.installed && status.enabled ? this.path('current') : undefined }
+  statePath(extensionId: string): string {
+    if (!ID.test(extensionId)) throw new Error('Invalid extension storage identity')
+    this.ensureRoot()
+    const state = this.path('state')
+    if (existsSync(state) && !lstatSync(state).isDirectory()) throw new Error('Extension state must be a real directory')
+    mkdirSync(state, { recursive: true, mode: 0o700 })
+    return join(state, `${extensionId}.json`)
+  }
   snapshotTo(directory: string): UserRaycastCandidate {
     const status = this.status()
     if (!status.installed || !status.enabled) throw new Error('Approved extension is not enabled')
@@ -190,7 +199,7 @@ export class UserRaycastInstall {
   remove(): void {
     this.ensureRoot()
     this.disable()
-    for (const name of ['stage', 'current', 'previous']) rmSync(this.path(name), { recursive: true, force: true })
+    for (const name of ['stage', 'current', 'previous', 'state']) rmSync(this.path(name), { recursive: true, force: true })
     save(this.path('trust.json'), { digest: '', enabled: false })
   }
 }

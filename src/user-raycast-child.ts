@@ -7,12 +7,14 @@ import Reconciler from 'react-reconciler'
 // @ts-expect-error Built beside this child and loaded as a single instance by command imports.
 import * as api from './api.mjs'
 import { createTrustedRaycastLineReader, TRUSTED_RAYCAST_INPUT_FRAME_BYTES } from './trusted-raycast-contract.ts'
+import { createUserRaycastStorage } from './user-raycast-storage.ts'
 
 type Node = { type: string; props: Record<string, unknown>; children: Array<Node | string> }
 const root: Node = { type: 'root', props: {}, children: [] }
 const extensionId = process.env.TOCKTEAM_USER_RAYCAST_ID!
 const sessionId = process.env.TOCKTEAM_USER_RAYCAST_SESSION!
 const command = process.env.TOCKTEAM_USER_RAYCAST_COMMAND!
+const mode = process.env.TOCKTEAM_USER_RAYCAST_MODE
 let revision = -1
 let ready = false
 let handles = new Map<string, () => unknown>()
@@ -53,6 +55,10 @@ api.configureCompatibility({
   }),
   selection: async () => { throw new Error('Selected text is unsupported for user extensions') },
   toast: (toast: object) => send({ type: 'toast', extensionId, sessionId, revision, ...toast }),
+  ...(mode === 'no-view' ? {
+    hud: (message: string) => send({ type: 'toast', extensionId, sessionId, revision, title: message.slice(0, 512), message: '', style: 'success' }),
+    storage: createUserRaycastStorage(process.env.TOCKTEAM_USER_RAYCAST_STATE!),
+  } : {}),
 })
 const hostConfig: any = {
   supportsMutation: true, supportsPersistence: false, supportsHydration: false, isPrimaryRenderer: false, now: Date.now,
@@ -85,13 +91,20 @@ registerHooks({ resolve(specifier, context, nextResolve) {
 // Every imported byte is from an approved digest snapshot. No build or source probe runs before approval.
 const imported = await import(pathToFileURL(join(process.cwd(), 'source', `${command}.js`)).href)
 const Command = typeof imported.default === 'function' ? imported.default : imported.default?.default
-if (typeof Command !== 'function') throw new Error('Selected command has no renderable default export')
+if (typeof Command !== 'function') throw new Error('Selected command has no callable default export')
+if (mode !== 'view' && mode !== 'no-view') throw new Error('Unsupported command mode')
 let searchHandler: ((value: string) => void) | undefined
-const mount = (view?: unknown): void => renderer.updateContainer(view ?? React.createElement(Command), container, null, () => {
-  searchHandler = (globalThis as { __trustedRaycastSearch?: (value: string) => void }).__trustedRaycastSearch
-})
-api.registerNavigationRenderer(mount)
-mount()
+if (mode === 'view') {
+  const mount = (view?: unknown): void => renderer.updateContainer(view ?? React.createElement(Command), container, null, () => {
+    searchHandler = (globalThis as { __trustedRaycastSearch?: (value: string) => void }).__trustedRaycastSearch
+  })
+  api.registerNavigationRenderer(mount)
+  mount()
+} else {
+  activeAction = { eventId: 'run', revision: 0 }
+  emit()
+  Promise.resolve().then(() => Command({ arguments: {} })).then(() => send({ type: 'outcome', extensionId, sessionId, revision: 0, eventId: 'run', succeeded: true, message: '' }), error => send({ type: 'outcome', extensionId, sessionId, revision: 0, eventId: 'run', succeeded: false, message: String(error).slice(0, 512) })).finally(() => { activeAction = undefined })
+}
 process.stdin.setEncoding('utf8')
 const readLines = createTrustedRaycastLineReader(TRUSTED_RAYCAST_INPUT_FRAME_BYTES)
 process.stdin.on('data', (chunk: string) => {
