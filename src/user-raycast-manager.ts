@@ -60,6 +60,7 @@ export class UserRaycastManager {
         if (this.session !== session) return
         if (!session.settled) { session.settled = true; session.reject(error) }
         this.options.onError?.(owner, error)
+        this.options.onMessage(owner, { type: 'error', extensionId: chosen.extensionId, sessionId: id, revision: Math.max(0, session.revision), message: error.message.slice(0, 512) })
         void this.close().catch(closeError => this.options.onError?.(owner, closeError))
       }
       const readLines = createTrustedRaycastLineReader(frameBytes)

@@ -17,6 +17,10 @@ import { trustedRaycastDescriptors } from './trusted-raycast-descriptors.ts'
 import { loadKaomojiPreferenceState, saveKaomojiPreferences } from './trusted-raycast-kaomoji-preferences.ts'
 import { loadTrustedRaycastCanIUsePreferences, saveTrustedRaycastCanIUsePreferences } from './trusted-raycast-can-i-use-preference-store.ts'
 import { trustedRaycastCandidateRoot, trustedRaycastDataPaths } from './trusted-raycast-paths.ts'
+import { UserRaycastInstall } from './user-raycast-install.ts'
+import { UserRaycastManager } from './user-raycast-manager.ts'
+import { registerUserRaycastIpcHandlers } from './user-raycast-ipc.ts'
+import { USER_RAYCAST_IPC } from './user-raycast-contract.ts'
 import { randomBytes } from 'node:crypto'
 import { Buffer } from 'node:buffer'
 import { execFile } from 'node:child_process'
@@ -586,6 +590,8 @@ let queuedPaths: string[] = []
 let queuedProtocolUrls: string[] = []
 let tockTutorPreviousThemeSource: 'system' | 'light' | 'dark' | undefined
 let trustedRaycast: TrustedRaycastManager | undefined
+let userRaycast: UserRaycastManager | undefined
+let userRaycastInstall: UserRaycastInstall | undefined
 let trustedRaycastTrust: TrustedRaycastTrustStore | undefined
 let trustedRaycastKaomojiTrust: TrustedRaycastTrustStore | undefined
 let trustedRaycastCanIUseTrust: TrustedRaycastTrustStore | undefined
@@ -2305,6 +2311,20 @@ function initializeLauncher(): void {
   const googleTrustedPaths = trustedRaycastDataPaths(app.getPath('userData'), 'google-translate')
   const kaomojiTrustedPaths = trustedRaycastDataPaths(app.getPath('userData'), 'kaomoji-search')
   const canIUseTrustedPaths = trustedRaycastDataPaths(app.getPath('userData'), 'can-i-use')
+  if (process.platform === 'darwin') {
+    userRaycastInstall = new UserRaycastInstall(join(app.getPath('userData'), 'launcher', 'user-raycast-install'))
+    userRaycast = new UserRaycastManager({
+      install: userRaycastInstall,
+      runtime: join(trustedCandidateRoot, 'user-raycast'),
+      artifact: join(trustedCandidateRoot, 'trusted-raycast', 'artifact.tar'),
+      nodePath: runtimePaths().nodeBinary,
+      onMessage: (owner, message) => {
+        const window = BrowserWindow.getAllWindows().find(window => window.webContents.id === owner.webContentsId)
+        if (window !== undefined && !window.isDestroyed()) window.webContents.send(USER_RAYCAST_IPC.view, message)
+      },
+      onError: (_owner, error) => appendLog('desktop', `User extension failed: ${error.message.slice(0, 512)}`),
+    })
+  }
   const translatePreferencesPath = googleTrustedPaths.preferencesFile
   const selectionFixture = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_SELECTION_FIXTURE === '1'
   const pasteFixture = !app.isPackaged && process.env.TOCKTEAM_TRUSTED_RAYCAST_PASTE_FIXTURE === '1'
@@ -2573,6 +2593,7 @@ function initializeLauncher(): void {
     trustedRaycastFirstUse?.cancel(owner.webContentsId)
     // Revocation cannot be dropped by the bounded mutation queue; the manager coalesces cleanup.
     void trustedRaycast?.closeOwner(owner).catch(error => appendLog('desktop', String(error).slice(0, 512)))
+    void userRaycast?.closeOwner(owner).catch(error => appendLog('desktop', String(error).slice(0, 512)))
     // Revoke every provider before clearing this renderer's public action owner.
     invalidateAllLauncherProviders('launcher-owner-clear', owner)
     const ownerGeneration = ++launcherOwnerGeneration
@@ -2630,6 +2651,7 @@ function initializeLauncher(): void {
   controller = nextController
   launcherController = nextController
   launcherCoreFlush = async () => {
+    await userRaycast?.close()
     await trustedRaycast?.close()
     await launcherCustomBrowser?.close()
     const discoveryClose = discovery.close()
@@ -2716,6 +2738,47 @@ function initializeLauncher(): void {
       }
     },
   })
+  const disposeUserRaycast = registerUserRaycastIpcHandlers({
+    guard: launcherGuard, ipcMain,
+    getState: () => userRaycastInstall?.status() ?? { digest: '', enabled: false, hasPrevious: false, installed: false },
+    choose: async owner => {
+      if (!userRaycastInstall || userRaycast?.childPid) throw new Error('Local extensions are unavailable or busy')
+      const window = BrowserWindow.getAllWindows().find(window => window.webContents.id === owner.webContentsId)
+      if (!window || window.isDestroyed()) throw new Error('Extension owner is unavailable')
+      const result = await dialog.showOpenDialog(window, { title: 'Choose a Built Raycast Extension', properties: ['openDirectory', 'dontAddToRecent'] })
+      if (result.canceled || result.filePaths.length !== 1 || window.isDestroyed()) return undefined
+      return userRaycastInstall.prepare(result.filePaths[0]!)
+    },
+    approve: async (owner, digest) => {
+      if (!userRaycastInstall || userRaycast?.childPid) throw new Error('Local extensions are unavailable or busy')
+      const candidate = userRaycastInstall.status().candidate
+      const window = BrowserWindow.getAllWindows().find(window => window.webContents.id === owner.webContentsId)
+      if (!candidate || candidate.digest !== digest || !window || window.isDestroyed()) throw new Error('Review the selected extension again')
+      const decision = await dialog.showMessageBox(window, {
+        title: 'Approve a Local Extension', type: 'warning', buttons: ['Approve and Install', 'Cancel'], defaultId: 1, cancelId: 1,
+        message: `Run ${candidate.title} as a local program?`,
+        detail: `This extension can access files, the network, and processes using your account. A separate child process is not a security sandbox. Review its source before approving.\n\nCommand: ${candidate.command}\nSHA-256: ${candidate.digest}`,
+      })
+      if (decision.response !== 0 || window.isDestroyed() || userRaycastInstall.status().candidate?.digest !== digest) throw new Error('Extension approval was canceled or changed')
+      userRaycastInstall.approve(digest)
+      return userRaycastInstall.status()
+    },
+    mutate: async action => {
+      if (!userRaycastInstall || !userRaycast) throw new Error('Local extensions are unavailable')
+      if (action !== 'enable') await userRaycast.close()
+      if (action === 'enable') userRaycastInstall.enable()
+      else if (action === 'disable') userRaycastInstall.disable()
+      else if (action === 'remove') userRaycastInstall.remove()
+      else userRaycastInstall.recoverPrevious()
+      return userRaycastInstall.status()
+    },
+    open: async owner => {
+      if (!userRaycast) throw new Error('Local extensions are unavailable')
+      await userRaycast.start(owner)
+    },
+    send: (owner, event) => { if (!userRaycast) throw new Error('Local extension is unavailable'); userRaycast.send(owner, event) },
+    close: async owner => { await userRaycast?.closeOwner(owner) },
+  })
   const disposeWindowIpc = registerLauncherWindowIpcHandlers({
     controller: nextController,
     getTheme: () => launcherThemeProjector.get(),
@@ -2746,10 +2809,12 @@ function initializeLauncher(): void {
     launcherIpcDisposer = () => {
       disposeSearchIpc()
       disposeTrustedRaycast()
+      disposeUserRaycast()
       disposeWindowIpc()
     }
   } catch (error) {
     disposeTrustedRaycast()
+    disposeUserRaycast()
     disposeWindowIpc()
     throw error
   }

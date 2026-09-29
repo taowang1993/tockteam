@@ -23,6 +23,9 @@ import type { LauncherSearchOptions } from './launcher-core-search.ts'
 import { parseLauncherLocalExtensionSettings, type LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { TRUSTED_RAYCAST_IPC_CHANNELS, TRUSTED_RAYCAST_TRUST_IPC_CHANNELS, isTrustedRaycastFirstUseRequest, type TrustedRaycastFirstUseRequest, isTrustedRaycastTrustAction, isTrustedRaycastTrustResult, isTrustedRaycastTrustStateEnvelope, isTrustedRaycastViewEvent, isTrustedRaycastViewMessage, type TrustedRaycastTrustAction, type TrustedRaycastTrustResult, type TrustedRaycastTrustState, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage } from './trusted-raycast-contract.ts'
 import { getTrustedRaycastDescriptor, type TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
+import { USER_RAYCAST_IPC, isUserRaycastCandidate, isUserRaycastStatus, isUserRaycastApproval, isUserRaycastMutation, isUserRaycastEvent, isUserRaycastViewMessage, type UserRaycastEvent, type UserRaycastMutation, type UserRaycastStatus } from './user-raycast-contract.ts'
+import type { UserRaycastCandidate } from './user-raycast-install.ts'
+import type { UserRaycastMessage } from './user-raycast-manager.ts'
 
 type IpcInvoker = Readonly<{
   invoke: (channel: string, args?: unknown) => Promise<unknown>
@@ -48,6 +51,14 @@ export type LauncherPreloadBridge = Readonly<{
   trustedRaycastTrustAction: (extensionId: TrustedRaycastExtensionId, action: TrustedRaycastTrustAction) => Promise<TrustedRaycastTrustResult>
   trustedRaycastEvent: (event: TrustedRaycastViewEvent) => Promise<Readonly<{ ok: true }>>
   trustedRaycastClose: () => Promise<Readonly<{ ok: true }>>
+  userRaycastState: () => Promise<UserRaycastStatus>
+  userRaycastChoose: () => Promise<UserRaycastCandidate | undefined>
+  userRaycastApprove: (digest: string) => Promise<UserRaycastStatus>
+  userRaycastMutate: (action: UserRaycastMutation) => Promise<UserRaycastStatus>
+  userRaycastOpen: () => Promise<void>
+  userRaycastEvent: (event: UserRaycastEvent) => Promise<void>
+  userRaycastClose: () => Promise<void>
+  onUserRaycastView: (listener: (message: UserRaycastMessage) => void) => () => void
 }>
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -62,6 +73,7 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
   const localeListeners = new Set<(locale: import('./launcher-contract.ts').LauncherLocale) => void>()
   const themeListeners = new Set<(projection: LauncherThemeProjection) => void>()
   const trustedRaycastListeners = new Set<(message: TrustedRaycastViewMessage) => void>()
+  const userRaycastListeners = new Set<(message: UserRaycastMessage) => void>()
   let latestLocale: import('./launcher-contract.ts').LauncherLocale | undefined
   let latestTheme: LauncherThemeProjection | undefined
   const receiveLocale = (_event: unknown, raw: unknown): void => {
@@ -90,6 +102,14 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
   ipcRenderer.on?.(TRUSTED_RAYCAST_IPC_CHANNELS.open, receiveTrustedRaycast)
   ipcRenderer.on?.(TRUSTED_RAYCAST_IPC_CHANNELS.patch, receiveTrustedRaycast)
   ipcRenderer.on?.(TRUSTED_RAYCAST_IPC_CHANNELS.error, receiveTrustedRaycast)
+  ipcRenderer.on?.(USER_RAYCAST_IPC.view, (_event: unknown, raw: unknown) => {
+    if (!isUserRaycastViewMessage(raw)) return
+    for (const listener of userRaycastListeners) listener(raw)
+  })
+  const acknowledge = async (channel: string, args?: unknown): Promise<void> => {
+    const result = await ipcRenderer.invoke(channel, args)
+    if (!isRecord(result) || Object.keys(result).length !== 1 || result.ok !== true) throw new Error('Invalid extension acknowledgement')
+  }
   return Object.freeze({
     dismiss: async (...args: unknown[]): Promise<void> => {
       assertArity('dismiss', args, 0)
@@ -176,6 +196,44 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
       const result = await ipcRenderer.invoke(TRUSTED_RAYCAST_IPC_CHANNELS.close)
       if (!isRecord(result) || Object.keys(result).length !== 1 || result.ok !== true) throw new Error('Invalid Trusted Translate close acknowledgement')
       return Object.freeze({ ok: true })
+    },
+    userRaycastState: async (...args: unknown[]): Promise<UserRaycastStatus> => {
+      assertArity('userRaycastState', args, 0)
+      const result = await ipcRenderer.invoke(USER_RAYCAST_IPC.state)
+      if (!isUserRaycastStatus(result)) throw new Error('Invalid extension state')
+      return result
+    },
+    userRaycastChoose: async (...args: unknown[]): Promise<UserRaycastCandidate | undefined> => {
+      assertArity('userRaycastChoose', args, 0)
+      const result = await ipcRenderer.invoke(USER_RAYCAST_IPC.choose)
+      if (result !== undefined && !isUserRaycastCandidate(result)) throw new Error('Invalid selected extension')
+      return result
+    },
+    userRaycastApprove: async (digest: string, ...extra: unknown[]): Promise<UserRaycastStatus> => {
+      assertArity('userRaycastApprove', [digest, ...extra], 1)
+      if (!isUserRaycastApproval({ digest })) throw new Error('Invalid extension digest')
+      const result = await ipcRenderer.invoke(USER_RAYCAST_IPC.approve, { digest })
+      if (!isUserRaycastStatus(result)) throw new Error('Invalid extension approval')
+      return result
+    },
+    userRaycastMutate: async (action: UserRaycastMutation, ...extra: unknown[]): Promise<UserRaycastStatus> => {
+      assertArity('userRaycastMutate', [action, ...extra], 1)
+      if (!isUserRaycastMutation(action)) throw new Error('Invalid extension action')
+      const result = await ipcRenderer.invoke(USER_RAYCAST_IPC.mutate, action)
+      if (!isUserRaycastStatus(result)) throw new Error('Invalid extension result')
+      return result
+    },
+    userRaycastOpen: async (...args: unknown[]): Promise<void> => { assertArity('userRaycastOpen', args, 0); await acknowledge(USER_RAYCAST_IPC.open) },
+    userRaycastEvent: async (event: UserRaycastEvent, ...extra: unknown[]): Promise<void> => {
+      assertArity('userRaycastEvent', [event, ...extra], 1)
+      if (!isUserRaycastEvent(event)) throw new Error('Invalid extension event')
+      await acknowledge(USER_RAYCAST_IPC.event, event)
+    },
+    userRaycastClose: async (...args: unknown[]): Promise<void> => { assertArity('userRaycastClose', args, 0); await acknowledge(USER_RAYCAST_IPC.close) },
+    onUserRaycastView: (listener: (message: UserRaycastMessage) => void): (() => void) => {
+      if (typeof listener !== 'function') throw new Error('Invalid extension view listener')
+      userRaycastListeners.add(listener)
+      return () => { userRaycastListeners.delete(listener) }
     },
     search: async (searchTerm: unknown, options: unknown, ...extra: unknown[]): Promise<LauncherSearchResponse> => {
       assertArity('search', [searchTerm, options, ...extra], 2)

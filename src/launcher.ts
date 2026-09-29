@@ -1,6 +1,7 @@
 import { isLauncherExtensionId, launcherProviderAlerts } from './launcher-extension-settings.ts'
 import { launcherCalculatorCaptions, launcherCalculatorDisplayAnswer } from './launcher-calculator-caption.ts'
 import { createTrustedRaycastView } from './trusted-raycast-renderer.ts'
+import { createUserRaycastView } from './user-raycast-renderer.ts'
 import { createTrustedRaycastFirstUseView, createTrustedRaycastTrustView } from './trusted-raycast-trust-view.ts'
 import { trustedRaycastCommands, trustedRaycastSetupId, trustedRaycastAssetUrl, TRUSTED_RAYCAST_TRUST_RESULT_ID } from './trusted-raycast-catalog.ts'
 import {
@@ -221,6 +222,7 @@ async function bootstrap(): Promise<void> {
   const status = document.getElementById('launcher-status') as HTMLElement
   const providerStatuses = document.getElementById('launcher-provider-statuses') as HTMLElement
   const historyToggle = document.getElementById('launcher-history-toggle') as HTMLButtonElement
+  const localExtensions = document.getElementById('launcher-local-extensions') as HTMLButtonElement
   const historyPanel = document.getElementById('launcher-history') as HTMLElement
   const details = document.getElementById('launcher-details') as HTMLElement
   const footer = document.getElementById('launcher-footer') as HTMLElement
@@ -234,6 +236,7 @@ async function bootstrap(): Promise<void> {
     || !(status instanceof HTMLElement)
     || !(providerStatuses instanceof HTMLElement)
     || !(historyToggle instanceof HTMLButtonElement)
+    || !(localExtensions instanceof HTMLButtonElement)
     || !(historyPanel instanceof HTMLElement)
     || !(details instanceof HTMLElement)
     || !(footer instanceof HTMLElement)
@@ -248,6 +251,7 @@ async function bootstrap(): Promise<void> {
   void bridge.getTheme().then(applyLauncherTheme).catch(() => {})
 
   const isMac = navigator.platform.startsWith('Mac')
+  localExtensions.hidden = !isMac
   const modifier = isMac ? 'Meta' : 'Control'
   const hasPrimaryModifier = (event: KeyboardEvent): boolean => (
     (modifier === 'Meta' ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey)
@@ -280,6 +284,7 @@ async function bootstrap(): Promise<void> {
   let trustedInvocation = false
   let toolSequence = 0
   let trustedView: ReturnType<typeof createTrustedRaycastView> | undefined
+  let userView: ReturnType<typeof createUserRaycastView> | undefined
   let activeLocalTool: HTMLElement | undefined
   let activeLocalToolId: LauncherLocalToolId | undefined
   let surfaceSettings: LauncherSurfaceSettings = Object.freeze({
@@ -361,6 +366,7 @@ async function bootstrap(): Promise<void> {
   const restoreSearchFocus = (): void => {
     if (firstUseView !== undefined) { firstUseView.focus(); return }
     if (trustedView !== undefined) { trustedView.focus(); return }
+    if (userView !== undefined) { userView.focus(); return }
     search.focus()
     search.select()
   }
@@ -380,6 +386,7 @@ async function bootstrap(): Promise<void> {
     firstUseView?.dispose(); firstUseView = undefined
     trustedOpening = false; trustedInvocation = false
     if (trustedView) { trustedView.dispose(); trustedView = undefined }
+    if (userView) { userView.dispose(); userView = undefined; void bridge.userRaycastClose().catch(() => undefined) }
     const tool = activeLocalTool
     activeLocalTool = undefined
     activeLocalToolId = undefined
@@ -413,6 +420,16 @@ async function bootstrap(): Promise<void> {
     }
     trustedView?.update(message)
   })
+  const openUserRaycastTool = (): void => {
+    if (!isMac || activeLocalTool !== undefined || workflowInteractionBlocked()) return
+    userView = createUserRaycastView(document, bridge, closeLocalTool)
+    activeLocalTool = userView.element
+    activeLocalToolId = undefined
+    hideLauncherControls()
+    root.append(userView.element)
+    userView.focus()
+  }
+  localExtensions.addEventListener('click', openUserRaycastTool)
   const openLocalTool = async (extensionId: LauncherLocalToolId): Promise<void> => {
     let localSettings: LauncherLocalExtensionSettings
     try { localSettings = await bridge.getLocalExtensionSettings() } catch { setStatus(messages().fileSearchUnavailable, 'error'); restoreSearchFocus(); return }
@@ -550,7 +567,7 @@ async function bootstrap(): Promise<void> {
 
   focusSearchHandler = (): void => {
     // Hiding revoked the main-owned child; its old view cannot be resumed.
-    if (trustedView || trustedOpening || trustedInvocation || firstUseView) { closeLocalTool(); return }
+    if (trustedView || trustedOpening || trustedInvocation || firstUseView || userView) { closeLocalTool(); return }
     actionMenuOpen = false
     historyOpen = false
     historyPanel.hidden = true

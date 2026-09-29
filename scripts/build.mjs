@@ -64,6 +64,11 @@ const launcherTailwindCss = await buildTailwindCss(root, [
   {
     base: root,
     negated: false,
+    pattern: 'src/user-raycast-renderer.ts',
+  },
+  {
+    base: root,
+    negated: false,
     pattern: 'src/launcher-file-search-tool.ts',
   },
   {

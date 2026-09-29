@@ -6,7 +6,7 @@ import { readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
 const ID = /^[a-z0-9][a-z0-9_-]{0,63}$/
 const MAX_FILES = 128
 const MAX_BYTES = 16 * 1024 * 1024
-export type UserRaycastCandidate = Readonly<{ command: string; digest: string; extensionId: string; title: string }>
+export type UserRaycastCandidate = Readonly<{ command: string; digest: string; extensionId: string; title: string; version?: string; license?: string; source?: string }>
 type Decision = { digest: string; enabled: boolean }
 
 function readFiles(directory: string): Map<string, Buffer> {
@@ -57,7 +57,19 @@ function candidate(files: Map<string, Buffer>, selectedCommand?: string): UserRa
   const command = (chosen as { name: string }).name
   if (!files.has(`${command}.js`)) throw new Error('Selected view command has no built JavaScript')
   if (files.has('selection.json')) throw new Error('Extension bundle contains a reserved file')
-  return Object.freeze({ extensionId: record.name, title: record.title, command, digest: digestFiles(files) })
+  const sourceValue = typeof record.repository === 'string' ? record.repository : record.repository && typeof record.repository === 'object' ? (record.repository as Record<string, unknown>).url : undefined
+  let source: string | undefined
+  try {
+    if (typeof sourceValue === 'string' && sourceValue.length <= 512) {
+      const url = new URL(sourceValue)
+      if (url.protocol === 'https:' && !url.username && !url.password) source = url.href
+    }
+  } catch { /* Unverifiable repository metadata remains unspecified. */ }
+  return Object.freeze({ extensionId: record.name, title: record.title, command, digest: digestFiles(files),
+    ...(typeof record.version === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9.+_-]{0,63}$/.test(record.version) ? { version: record.version } : {}),
+    ...(typeof record.license === 'string' && /^[\w+(). -]{1,128}$/.test(record.license) ? { license: record.license } : {}),
+    ...(source ? { source } : {}),
+  })
 }
 
 function save(path: string, value: unknown): void {
@@ -92,7 +104,7 @@ export class UserRaycastInstall {
       if (!chosen || typeof chosen !== 'object' || Array.isArray(chosen)) return undefined
       const declared = chosen as UserRaycastCandidate
       const actual = candidate(new Map([...readFiles(dir)].filter(([path]) => path !== 'selection.json')), declared.command)
-      return actual.extensionId === declared.extensionId && actual.digest === declared.digest && actual.title === declared.title ? actual : undefined
+      return JSON.stringify(actual) === JSON.stringify(declared) ? actual : undefined
     } catch { return undefined }
   }
   status(): Readonly<{ candidate?: UserRaycastCandidate; digest: string; enabled: boolean; hasPrevious: boolean; installed: boolean }> {
@@ -125,7 +137,7 @@ export class UserRaycastInstall {
     try {
       const selected = JSON.parse(readTrustedRaycastFile(join(directory, 'selection.json'), 4096).toString('utf8')) as UserRaycastCandidate
       const actual = candidate(new Map([...readFiles(directory)].filter(([path]) => path !== 'selection.json')), selected.command)
-      return actual.digest === selected.digest && actual.extensionId === selected.extensionId ? actual : undefined
+      return JSON.stringify(actual) === JSON.stringify(selected) ? actual : undefined
     } catch { return undefined }
   }
   approve(expectedDigest: string): void {
@@ -157,7 +169,7 @@ export class UserRaycastInstall {
     const selected = JSON.parse(files.get('selection.json')?.toString('utf8') ?? 'null') as UserRaycastCandidate
     files.delete('selection.json')
     const actual = candidate(files, selected?.command)
-    if (actual.digest !== status.digest || actual.extensionId !== selected.extensionId || actual.title !== selected.title) throw new Error('Approved extension changed before launch')
+    if (actual.digest !== status.digest || JSON.stringify(actual) !== JSON.stringify(selected)) throw new Error('Approved extension changed before launch')
     mkdirSync(directory, { mode: 0o700 })
     try {
       for (const [relative, bytes] of files) {
