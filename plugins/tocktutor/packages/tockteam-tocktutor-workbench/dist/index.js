@@ -1,4 +1,5 @@
 import { TockTutorWorkbenchGateway } from "./host-read.js";
+import { createMermaidFrameHandler, MERMAID_FRAME_PATH } from "./mermaid-asset.js";
 /** Host Loader identity for the native TockTutor workbench. */
 export const name = '@tockteam/tocktutor-workbench';
 /** Required Host capability supplied only by tockbot-note-runtime. */
@@ -6,6 +7,13 @@ export const inject = ['noteVault'];
 /** Register the accepted read/tree gateway under this plugin's Cordis lifecycle. */
 export function apply(ctx) {
     ctx.plugin(TockTutorWorkbenchGateway);
+    ctx.inject(['webServer', 'tockTeamSurface'], browserCtx => {
+        if (browserCtx.get('tockTeamSurface')?.kind !== 'desktop')
+            return;
+        const webServer = browserCtx.get('webServer');
+        if (webServer)
+            browserCtx.effect(() => webServer.register({ kind: 'exact', path: MERMAID_FRAME_PATH, handler: createMermaidFrameHandler() }));
+    });
 }
 export * from "./host-read.js";
 export * from "./vault-events.js";

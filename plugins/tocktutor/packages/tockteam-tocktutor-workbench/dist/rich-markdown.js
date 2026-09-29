@@ -560,7 +560,7 @@ export function renderMarkdownHtml(markdown, options = {}) {
                 index += 1;
             }
             const escaped = escapeMarkdownHtml(code.join('\n'));
-            const mermaid = language === 'mermaid' ? renderBoundedMermaid(code.join('\n')) : null;
+            const mermaid = language === 'mermaid' && options.browserMermaid !== true ? renderBoundedMermaid(code.join('\n')) : null;
             blocks.push(language === 'mermaid'
                 ? mermaid ?? `<figure class="mermaid" data-language="mermaid"><pre>${escaped}</pre></figure>`
                 : `<pre data-language="${escapeMarkdownHtml(language)}"><code>${escaped}</code></pre>`);

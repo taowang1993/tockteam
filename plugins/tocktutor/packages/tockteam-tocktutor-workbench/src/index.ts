@@ -1,5 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import { TockTutorWorkbenchGateway } from './host-read.ts'
+import { createMermaidFrameHandler, MERMAID_FRAME_PATH } from './mermaid-asset.ts'
 
 /** Host Loader identity for the native TockTutor workbench. */
 export const name = '@tockteam/tocktutor-workbench'
@@ -10,6 +12,11 @@ export const inject = ['noteVault']
 /** Register the accepted read/tree gateway under this plugin's Cordis lifecycle. */
 export function apply(ctx: Context): void {
   ctx.plugin(TockTutorWorkbenchGateway)
+  ctx.inject(['webServer', 'tockTeamSurface'], browserCtx => {
+    if ((browserCtx.get('tockTeamSurface') as { kind?: unknown } | undefined)?.kind !== 'desktop') return
+    const webServer = browserCtx.get('webServer') as { register(route: { kind: 'exact'; path: string; handler(req: IncomingMessage, res: ServerResponse): Promise<void> }): () => void } | undefined
+    if (webServer) browserCtx.effect(() => webServer.register({ kind: 'exact', path: MERMAID_FRAME_PATH, handler: createMermaidFrameHandler() }))
+  })
 }
 
 export * from './host-read.ts'

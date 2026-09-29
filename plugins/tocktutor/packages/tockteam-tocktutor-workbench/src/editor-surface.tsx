@@ -14,6 +14,7 @@ import type { PropertyValue } from './properties.ts'
 import type { ObsidianPropertyTypes } from './types.ts'
 import { buildMarkdownSlides, renderMarkdownHtml } from './rich-markdown.ts'
 import { attachInlineImages } from './inline-images.ts'
+import { attachBrowserMermaid } from './mermaid-renderer.ts'
 import { ImageViewerDialog, safeRasterImageDataUrl, type ViewerImage } from './image-viewer.tsx'
 
 function embedLabel(embed: ResolvedEmbedNode): string {
@@ -215,7 +216,7 @@ export function RichReadingView(props: {
   source: string
   title: string
 }): ReactNode {
-  const html = useMemo(() => renderMarkdownHtml(props.source, { externalEmbedMode: 'viewer', ...(props.embeds === undefined ? {} : { resolvedEmbeds: props.embeds }) }), [props.source, props.embeds])
+  const html = useMemo(() => renderMarkdownHtml(props.source, { browserMermaid: true, externalEmbedMode: 'viewer', ...(props.embeds === undefined ? {} : { resolvedEmbeds: props.embeds }) }), [props.source, props.embeds])
   const readingRef = useRef<HTMLElement | null>(null)
   const lastSearchRequestIdRef = useRef<number | null>(null)
   useEffect(() => {
@@ -258,6 +259,7 @@ export function RichReadingView(props: {
   const contentRef = useRef<HTMLDivElement | null>(null)
   const [viewerImage, setViewerImage] = useState<ViewerImage | null>(null)
   const viewerTriggerRef = useRef<HTMLElement | null>(null)
+  useEffect(() => contentRef.current === null ? undefined : attachBrowserMermaid(contentRef.current), [html])
   useEffect(() => {
     const root = contentRef.current
     if (root === null) return

@@ -46,6 +46,14 @@ test('renders bounded rich Markdown without executing raw HTML or unsafe URLs', 
   assert.match(html, /class="mermaid-node-label"[^>]*>A<\/text>/u)
 })
 
+test('browser Mermaid placeholders preserve source without changing the safe static export', () => {
+  const diagram = '```mermaid\ngraph TD\n  A --> B\n```\n'
+  const html = renderMarkdownHtml(diagram, { browserMermaid: true })
+  assert.match(html, /<figure class="mermaid" data-language="mermaid"><pre>graph TD/u)
+  assert.doesNotMatch(html, /<svg/u)
+  assert.match(renderMarkdownHtml(diagram), /<svg/u)
+})
+
 test('suppresses active HTML outside fenced code while preserving surrounding Markdown order', () => {
   const html = renderMarkdownHtml('Before\n\n<script>alert(1)</script><strong>Safe</strong>\n\nAfter\n\n```md\n<script>literal</script>\n```\n')
   assert.match(html, /<p>Before<\/p>\n<p><strong>Safe<\/strong><\/p>\n<p>After<\/p>/u)

@@ -26,6 +26,8 @@ export interface StaticMarkdownEmbed {
 }
 
 export interface RenderMarkdownOptions {
+  /** Browser-only placeholders for an isolated, passive Mermaid renderer; static export stays unchanged. */
+  browserMermaid?: boolean
   /** External HTTP(S) media is inert by default; viewer mode emits a button for the isolated Web Viewer. */
   externalEmbedMode?: 'inert' | 'viewer'
   /** Hide only local embed markers that have already been resolved by the Host. */
@@ -599,7 +601,7 @@ export function renderMarkdownHtml(markdown: string, options: RenderMarkdownOpti
         index += 1
       }
       const escaped = escapeMarkdownHtml(code.join('\n'))
-      const mermaid = language === 'mermaid' ? renderBoundedMermaid(code.join('\n')) : null
+      const mermaid = language === 'mermaid' && options.browserMermaid !== true ? renderBoundedMermaid(code.join('\n')) : null
       blocks.push(language === 'mermaid'
         ? mermaid ?? `<figure class="mermaid" data-language="mermaid"><pre>${escaped}</pre></figure>`
         : `<pre data-language="${escapeMarkdownHtml(language)}"><code>${escaped}</code></pre>`)

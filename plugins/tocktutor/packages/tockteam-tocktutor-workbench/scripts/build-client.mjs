@@ -11,6 +11,18 @@ for (const file of ['FiraCode-VF.woff2', 'LICENSE.txt']) {
   copyFileSync(join(root, 'src/fonts', file), join(fontDirectory, file))
 }
 
+// Load Mermaid only when a diagram is encountered; never include it in the privileged client bundle.
+await build({
+  bundle: true,
+  entryPoints: [join(root, 'scripts/mermaid-frame.mjs')],
+  format: 'iife',
+  logLevel: 'info',
+  minify: true,
+  outfile: join(root, 'dist/mermaid-frame.js'),
+  platform: 'browser',
+  target: 'es2022',
+})
+
 await build({
   banner: {
     js: `window.__ModuleLoader__.load({ id: ${JSON.stringify(packageName)}, factory: (require) => { var module = { exports: {} }; var exports = module.exports;`,

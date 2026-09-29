@@ -15,6 +15,8 @@ export interface StaticMarkdownEmbed {
     };
 }
 export interface RenderMarkdownOptions {
+    /** Browser-only placeholders for an isolated, passive Mermaid renderer; static export stays unchanged. */
+    browserMermaid?: boolean;
     /** External HTTP(S) media is inert by default; viewer mode emits a button for the isolated Web Viewer. */
     externalEmbedMode?: 'inert' | 'viewer';
     /** Hide only local embed markers that have already been resolved by the Host. */

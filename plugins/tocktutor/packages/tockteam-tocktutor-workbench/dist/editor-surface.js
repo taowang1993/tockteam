@@ -5,6 +5,7 @@ import { LivePreviewEditor, MarkdownDocumentHeader } from "./live-preview-editor
 import { clampEditorSearchIndex, MAX_EDITOR_SEARCH_MATCHES, moveEditorSearchIndex, searchEditorMatches } from "./editor-search.js";
 import { buildMarkdownSlides, renderMarkdownHtml } from "./rich-markdown.js";
 import { attachInlineImages } from "./inline-images.js";
+import { attachBrowserMermaid } from "./mermaid-renderer.js";
 import { ImageViewerDialog, safeRasterImageDataUrl } from "./image-viewer.js";
 function embedLabel(embed) {
     return `${embed.target.path}${embed.target.fragment === null ? '' : `#${embed.target.fragment}`}`;
@@ -166,7 +167,7 @@ function applyReadingSearchMarks(root, query, requestedIndex) {
     return { current, marks, total: marks.length, truncated };
 }
 export function RichReadingView(props) {
-    const html = useMemo(() => renderMarkdownHtml(props.source, { externalEmbedMode: 'viewer', ...(props.embeds === undefined ? {} : { resolvedEmbeds: props.embeds }) }), [props.source, props.embeds]);
+    const html = useMemo(() => renderMarkdownHtml(props.source, { browserMermaid: true, externalEmbedMode: 'viewer', ...(props.embeds === undefined ? {} : { resolvedEmbeds: props.embeds }) }), [props.source, props.embeds]);
     const readingRef = useRef(null);
     const lastSearchRequestIdRef = useRef(null);
     useEffect(() => {
@@ -214,6 +215,7 @@ export function RichReadingView(props) {
     const contentRef = useRef(null);
     const [viewerImage, setViewerImage] = useState(null);
     const viewerTriggerRef = useRef(null);
+    useEffect(() => contentRef.current === null ? undefined : attachBrowserMermaid(contentRef.current), [html]);
     useEffect(() => {
         const root = contentRef.current;
         if (root === null)
