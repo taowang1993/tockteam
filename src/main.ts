@@ -18,6 +18,8 @@ import { loadKaomojiPreferenceState, saveKaomojiPreferences } from './trusted-ra
 import { loadTrustedRaycastCanIUsePreferences, saveTrustedRaycastCanIUsePreferences } from './trusted-raycast-can-i-use-preference-store.ts'
 import { trustedRaycastCandidateRoot, trustedRaycastDataPaths } from './trusted-raycast-paths.ts'
 import { UserRaycastInstall } from './user-raycast-install.ts'
+import { UserRaycastRegistry } from './user-raycast-registry.ts'
+import { buildUserRaycastSource } from './user-raycast-source-build.ts'
 import { UserRaycastManager } from './user-raycast-manager.ts'
 import { registerUserRaycastIpcHandlers } from './user-raycast-ipc.ts'
 import { USER_RAYCAST_IPC } from './user-raycast-contract.ts'
@@ -47,9 +49,9 @@ import {
   type Session,
   type WebContents,
 } from 'electron'
-import { createWriteStream, existsSync, lstatSync, mkdirSync, realpathSync, statSync, writeFileSync, type WriteStream } from 'node:fs'
+import { createWriteStream, existsSync, lstatSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync, writeFileSync, type WriteStream } from 'node:fs'
 import { lstat, realpath } from 'node:fs/promises'
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { basename, dirname, extname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { PluginMarketplaceManager } from '../plugins/plugin-marketplace/src/host/transaction-manager.ts'
@@ -592,6 +594,10 @@ let tockTutorPreviousThemeSource: 'system' | 'light' | 'dark' | undefined
 let trustedRaycast: TrustedRaycastManager | undefined
 let userRaycast: UserRaycastManager | undefined
 let userRaycastInstall: UserRaycastInstall | undefined
+let userRaycastRegistry: UserRaycastRegistry | undefined
+let userRaycastSourceBusy = false
+let userRaycastBuildAbort: AbortController | undefined
+let userRaycastBuildDone: Promise<void> | undefined
 let trustedRaycastTrust: TrustedRaycastTrustStore | undefined
 let trustedRaycastKaomojiTrust: TrustedRaycastTrustStore | undefined
 let trustedRaycastCanIUseTrust: TrustedRaycastTrustStore | undefined
@@ -2313,6 +2319,7 @@ function initializeLauncher(): void {
   const canIUseTrustedPaths = trustedRaycastDataPaths(app.getPath('userData'), 'can-i-use')
   if (process.platform === 'darwin') {
     userRaycastInstall = new UserRaycastInstall(join(app.getPath('userData'), 'launcher', 'user-raycast-install'))
+    userRaycastRegistry = new UserRaycastRegistry(join(app.getPath('userData'), 'launcher', 'user-raycast-source'))
     userRaycast = new UserRaycastManager({
       install: userRaycastInstall,
       runtime: join(trustedCandidateRoot, 'user-raycast'),
@@ -2656,6 +2663,8 @@ function initializeLauncher(): void {
   controller = nextController
   launcherController = nextController
   launcherCoreFlush = async () => {
+    userRaycastBuildAbort?.abort()
+    await userRaycastBuildDone
     await userRaycast?.close()
     await trustedRaycast?.close()
     await launcherCustomBrowser?.close()
@@ -2743,19 +2752,55 @@ function initializeLauncher(): void {
       }
     },
   })
+  const userRaycastState = () => {
+    const sourceCandidate = userRaycastRegistry?.inspect()
+    return { ...(userRaycastInstall?.status() ?? { digest: '', enabled: false, hasPrevious: false, installed: false }), ...(sourceCandidate ? { sourceCandidate } : {}) }
+  }
   const disposeUserRaycast = registerUserRaycastIpcHandlers({
     guard: launcherGuard, ipcMain,
-    getState: () => userRaycastInstall?.status() ?? { digest: '', enabled: false, hasPrevious: false, installed: false },
+    getState: userRaycastState,
     choose: async owner => {
-      if (!userRaycastInstall || userRaycast?.childPid) throw new Error('Local extensions are unavailable or busy')
+      if (!userRaycastInstall || userRaycast?.childPid || userRaycastSourceBusy) throw new Error('Local extensions are unavailable or busy')
       const window = BrowserWindow.getAllWindows().find(window => window.webContents.id === owner.webContentsId)
       if (!window || window.isDestroyed()) throw new Error('Extension owner is unavailable')
       const result = await dialog.showOpenDialog(window, { title: 'Choose a Built Raycast Extension', properties: ['openDirectory', 'dontAddToRecent'] })
       if (result.canceled || result.filePaths.length !== 1 || window.isDestroyed()) return undefined
       return userRaycastInstall.prepare(result.filePaths[0]!)
     },
+    sourcePrepare: async (_owner, selection) => {
+      if (!userRaycastRegistry || userRaycast?.childPid || userRaycastSourceBusy) throw new Error('Public extensions are unavailable or busy')
+      userRaycastSourceBusy = true
+      try { return await userRaycastRegistry.prepare(selection.extensionId, selection.command) }
+      finally { userRaycastSourceBusy = false }
+    },
+    sourceBuild: async (owner, digest) => {
+      if (!userRaycastRegistry || !userRaycastInstall || userRaycast?.childPid || userRaycastSourceBusy) throw new Error('Public extensions are unavailable or busy')
+      const candidate = userRaycastRegistry.inspect()
+      const window = BrowserWindow.getAllWindows().find(window => window.webContents.id === owner.webContentsId)
+      if (!candidate || candidate.digest !== digest || !window || window.isDestroyed()) throw new Error('Review the public source again')
+      userRaycastSourceBusy = true
+      try {
+        const decision = await dialog.showMessageBox(window, {
+          title: 'Build a Public Extension', type: 'warning', buttons: ['Build Reviewed Source', 'Cancel'], defaultId: 1, cancelId: 1,
+          message: `Download packages and build ${candidate.title}?`,
+          detail: `This runs npm with install scripts disabled, then the selected extension's build tool. Package downloads and build tools run using your account; a separate process is not a security sandbox. Building does not approve running the command.\n\nSource: ${candidate.source}\nCommand: ${candidate.command}\nRevision: ${candidate.revision}\nSource SHA-256: ${candidate.digest}`,
+        })
+        if (decision.response !== 0 || window.isDestroyed() || userRaycastRegistry.inspect()?.digest !== digest) throw new Error('Public source build was canceled or changed')
+        const workspace = mkdtempSync(join(tmpdir(), 'tockteam-raycast-source-'))
+        try {
+          const controller = new AbortController()
+          userRaycastBuildAbort = controller
+          const building = buildUserRaycastSource({ source: userRaycastRegistry.sourceDirectory(digest), candidate, workspace, nodePath: runtimePaths().nodeBinary, signal: controller.signal })
+          userRaycastBuildDone = building.then(() => undefined, () => undefined)
+          const built = await building
+          if (window.isDestroyed() || userRaycastRegistry.inspect()?.digest !== digest) throw new Error('Public source changed during its build')
+          userRaycastInstall.prepare(built, candidate.command)
+          return userRaycastState()
+        } finally { userRaycastBuildAbort = undefined; userRaycastBuildDone = undefined; rmSync(workspace, { recursive: true, force: true }) }
+      } finally { userRaycastSourceBusy = false }
+    },
     approve: async (owner, digest) => {
-      if (!userRaycastInstall || userRaycast?.childPid) throw new Error('Local extensions are unavailable or busy')
+      if (!userRaycastInstall || userRaycast?.childPid || userRaycastSourceBusy) throw new Error('Local extensions are unavailable or busy')
       const candidate = userRaycastInstall.status().candidate
       const window = BrowserWindow.getAllWindows().find(window => window.webContents.id === owner.webContentsId)
       if (!candidate || candidate.digest !== digest || !window || window.isDestroyed()) throw new Error('Review the selected extension again')
@@ -2769,7 +2814,7 @@ function initializeLauncher(): void {
       return userRaycastInstall.status()
     },
     mutate: async action => {
-      if (!userRaycastInstall || !userRaycast) throw new Error('Local extensions are unavailable')
+      if (!userRaycastInstall || !userRaycast || userRaycastSourceBusy) throw new Error('Local extensions are unavailable or busy')
       if (action !== 'enable') await userRaycast.close()
       if (action === 'enable') userRaycastInstall.enable()
       else if (action === 'disable') userRaycastInstall.disable()
@@ -2778,7 +2823,7 @@ function initializeLauncher(): void {
       return userRaycastInstall.status()
     },
     open: async owner => {
-      if (!userRaycast) throw new Error('Local extensions are unavailable')
+      if (!userRaycast || userRaycastSourceBusy) throw new Error('Local extensions are unavailable or busy')
       await userRaycast.start(owner)
     },
     send: (owner, event) => { if (!userRaycast) throw new Error('Local extension is unavailable'); userRaycast.send(owner, event) },

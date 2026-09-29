@@ -23,8 +23,9 @@ import type { LauncherSearchOptions } from './launcher-core-search.ts'
 import { parseLauncherLocalExtensionSettings, type LauncherLocalExtensionSettings } from './launcher-local-extension-contract.ts'
 import { TRUSTED_RAYCAST_IPC_CHANNELS, TRUSTED_RAYCAST_TRUST_IPC_CHANNELS, isTrustedRaycastFirstUseRequest, type TrustedRaycastFirstUseRequest, isTrustedRaycastTrustAction, isTrustedRaycastTrustResult, isTrustedRaycastTrustStateEnvelope, isTrustedRaycastViewEvent, isTrustedRaycastViewMessage, type TrustedRaycastTrustAction, type TrustedRaycastTrustResult, type TrustedRaycastTrustState, type TrustedRaycastViewEvent, type TrustedRaycastViewMessage } from './trusted-raycast-contract.ts'
 import { getTrustedRaycastDescriptor, type TrustedRaycastExtensionId } from './trusted-raycast-descriptors.ts'
-import { USER_RAYCAST_IPC, isUserRaycastCandidate, isUserRaycastStatus, isUserRaycastApproval, isUserRaycastMutation, isUserRaycastEvent, isUserRaycastViewMessage, type UserRaycastEvent, type UserRaycastMutation, type UserRaycastStatus } from './user-raycast-contract.ts'
+import { USER_RAYCAST_IPC, isUserRaycastCandidate, isUserRaycastStatus, isUserRaycastApproval, isUserRaycastMutation, isUserRaycastEvent, isUserRaycastSourceCandidate, isUserRaycastSourceSelection, isUserRaycastViewMessage, type UserRaycastEvent, type UserRaycastMutation, type UserRaycastStatus } from './user-raycast-contract.ts'
 import type { UserRaycastCandidate } from './user-raycast-install.ts'
+import type { UserRaycastSourceCandidate } from './user-raycast-registry.ts'
 import type { UserRaycastMessage } from './user-raycast-manager.ts'
 
 type IpcInvoker = Readonly<{
@@ -53,6 +54,8 @@ export type LauncherPreloadBridge = Readonly<{
   trustedRaycastClose: () => Promise<Readonly<{ ok: true }>>
   userRaycastState: () => Promise<UserRaycastStatus>
   userRaycastChoose: () => Promise<UserRaycastCandidate | undefined>
+  userRaycastSourcePrepare: (selection: Readonly<{ extensionId: string; command: string }>) => Promise<UserRaycastSourceCandidate>
+  userRaycastSourceBuild: (digest: string) => Promise<UserRaycastStatus>
   userRaycastApprove: (digest: string) => Promise<UserRaycastStatus>
   userRaycastMutate: (action: UserRaycastMutation) => Promise<UserRaycastStatus>
   userRaycastOpen: () => Promise<void>
@@ -207,6 +210,20 @@ export function createLauncherPreloadBridge(ipcRenderer: IpcInvoker): LauncherPr
       assertArity('userRaycastChoose', args, 0)
       const result = await ipcRenderer.invoke(USER_RAYCAST_IPC.choose)
       if (result !== undefined && !isUserRaycastCandidate(result)) throw new Error('Invalid selected extension')
+      return result
+    },
+    userRaycastSourcePrepare: async (selection: Readonly<{ extensionId: string; command: string }>, ...extra: unknown[]): Promise<UserRaycastSourceCandidate> => {
+      assertArity('userRaycastSourcePrepare', [selection, ...extra], 1)
+      if (!isUserRaycastSourceSelection(selection)) throw new Error('Invalid public source selection')
+      const result = await ipcRenderer.invoke(USER_RAYCAST_IPC.sourcePrepare, selection)
+      if (!isUserRaycastSourceCandidate(result)) throw new Error('Invalid public source result')
+      return result
+    },
+    userRaycastSourceBuild: async (digest: string, ...extra: unknown[]): Promise<UserRaycastStatus> => {
+      assertArity('userRaycastSourceBuild', [digest, ...extra], 1)
+      if (!isUserRaycastApproval({ digest })) throw new Error('Invalid public source digest')
+      const result = await ipcRenderer.invoke(USER_RAYCAST_IPC.sourceBuild, { digest })
+      if (!isUserRaycastStatus(result)) throw new Error('Invalid public source build result')
       return result
     },
     userRaycastApprove: async (digest: string, ...extra: unknown[]): Promise<UserRaycastStatus> => {

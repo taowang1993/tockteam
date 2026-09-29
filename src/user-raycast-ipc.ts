@@ -1,5 +1,6 @@
-import { USER_RAYCAST_IPC, isUserRaycastApproval, isUserRaycastCandidate, isUserRaycastEvent, isUserRaycastMutation, isUserRaycastStatus, type UserRaycastEvent, type UserRaycastMutation, type UserRaycastStatus } from './user-raycast-contract.ts'
+import { USER_RAYCAST_IPC, isUserRaycastApproval, isUserRaycastCandidate, isUserRaycastEvent, isUserRaycastMutation, isUserRaycastSourceCandidate, isUserRaycastSourceSelection, isUserRaycastStatus, type UserRaycastEvent, type UserRaycastMutation, type UserRaycastStatus } from './user-raycast-contract.ts'
 import type { UserRaycastCandidate } from './user-raycast-install.ts'
+import type { UserRaycastSourceCandidate } from './user-raycast-registry.ts'
 import type { UserRaycastOwner } from './user-raycast-manager.ts'
 import type { LauncherIpcGuard, LauncherIpcMain } from './launcher-window-ipc.ts'
 import { registerLauncherOwnedIpcHandlers } from './launcher-window-ipc.ts'
@@ -9,6 +10,8 @@ export function registerUserRaycastIpcHandlers(args: Readonly<{
   ipcMain: LauncherIpcMain
   getState: () => UserRaycastStatus
   choose: (owner: UserRaycastOwner) => Promise<UserRaycastCandidate | undefined>
+  sourcePrepare: (owner: UserRaycastOwner, selection: Readonly<{ extensionId: string; command: string }>) => Promise<UserRaycastSourceCandidate>
+  sourceBuild: (owner: UserRaycastOwner, digest: string) => Promise<UserRaycastStatus>
   approve: (owner: UserRaycastOwner, digest: string) => Promise<UserRaycastStatus>
   mutate: (action: UserRaycastMutation) => Promise<UserRaycastStatus> | UserRaycastStatus
   open: (owner: UserRaycastOwner) => Promise<void>
@@ -29,6 +32,20 @@ export function registerUserRaycastIpcHandlers(args: Readonly<{
       const current = args.guard.assert(event, 'launcher')
       if (current.webContentsId !== owner.webContentsId) throw new Error('Extension owner changed')
       if (result !== undefined && !isUserRaycastCandidate(result)) throw new Error('Invalid chosen extension')
+      return result
+    }],
+    [USER_RAYCAST_IPC.sourcePrepare, async (event: unknown, selection: unknown, ...extra: unknown[]) => {
+      const owner = args.guard.assert(event, 'launcher')
+      if (extra.length || !isUserRaycastSourceSelection(selection)) throw new Error('Invalid public source selection')
+      const result = await args.sourcePrepare(owner, selection)
+      if (args.guard.assert(event, 'launcher').webContentsId !== owner.webContentsId || !isUserRaycastSourceCandidate(result)) throw new Error('Invalid public source result or owner')
+      return result
+    }],
+    [USER_RAYCAST_IPC.sourceBuild, async (event: unknown, request: unknown, ...extra: unknown[]) => {
+      const owner = args.guard.assert(event, 'launcher')
+      if (extra.length || !isUserRaycastApproval(request) || args.getState().sourceCandidate?.digest !== request.digest) throw new Error('Public source digest must be reviewed again')
+      const result = await args.sourceBuild(owner, request.digest)
+      if (args.guard.assert(event, 'launcher').webContentsId !== owner.webContentsId || !isUserRaycastStatus(result)) throw new Error('Invalid public source build result or owner')
       return result
     }],
     [USER_RAYCAST_IPC.approve, async (event: unknown, request: unknown, ...extra: unknown[]) => {

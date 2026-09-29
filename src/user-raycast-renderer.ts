@@ -8,17 +8,33 @@ type Node = { type: string; props: Record<string, string | number | boolean | nu
 export function createUserRaycastView(document: Document, bridge: LauncherPreloadBridge, onClose: () => void) {
   const element = document.createElement('section')
   element.className = 'flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-4 text-foreground'
-  element.setAttribute('aria-label', 'Local Raycast Extensions')
+  element.setAttribute('aria-label', 'Raycast-Compatible Extensions')
   element.dataset.userRaycast = 'true'
   const title = document.createElement('h2')
   title.className = 'm-0 text-base font-semibold'
-  title.textContent = 'Local Raycast Extensions'
+  title.textContent = 'Raycast-Compatible Extensions'
   const subtitle = document.createElement('p')
   subtitle.className = 'm-0 text-sm text-muted-foreground'
-  subtitle.textContent = 'Choose an already-built extension folder. Installation does not prove a command works.'
+  subtitle.textContent = 'Choose a built folder or fetch one public source command. Building public source requires npm on your computer; installation does not prove compatibility.'
   const warning = document.createElement('p')
   warning.className = 'm-0 text-sm text-warning'
   warning.textContent = 'Approved extensions run as local programs and can access files, the network, and processes using your account. A separate process is not a security sandbox.'
+  const sourceInputs = document.createElement('div')
+  sourceInputs.className = 'flex flex-wrap gap-2'
+  const sourceInput = (name: string, example: string): HTMLInputElement => {
+    const label = document.createElement('label')
+    label.className = 'flex min-w-0 flex-1 flex-col gap-1 text-sm'
+    label.textContent = name
+    const input = document.createElement('input')
+    input.type = 'text'; input.maxLength = 64; input.placeholder = example; input.setAttribute('aria-label', name)
+    input.className = 'min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-ring'
+    label.append(input); sourceInputs.append(label)
+    return input
+  }
+  const extensionInput = sourceInput('Public Extension', 'uuid-generator')
+  const commandInput = sourceInput('Command Name', 'generate')
+  const sourceSummary = document.createElement('div')
+  sourceSummary.className = 'min-w-0 break-words text-sm text-muted-foreground'
   const summary = document.createElement('div')
   summary.className = 'min-w-0 break-words text-sm text-muted-foreground'
   const controls = document.createElement('div')
@@ -32,10 +48,11 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
   const close = document.createElement('button')
   close.type = 'button'; close.textContent = 'Back to Search'; close.className = 'rounded-md border border-border px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-ring'
   close.addEventListener('click', () => { void bridge.userRaycastClose().finally(onClose) })
-  element.append(close, title, subtitle, warning, summary, controls, feedback, rendered)
+  element.append(close, title, subtitle, warning, sourceInputs, sourceSummary, summary, controls, feedback, rendered)
   let state: UserRaycastStatus = { digest: '', enabled: false, hasPrevious: false, installed: false }
   let busy = false
   let reviewed = false
+  let reviewedSource = false
   let removing = false
   let active: { extensionId: string; sessionId: string; revision: number } | undefined
   let searchText = ''
@@ -57,13 +74,28 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
   const paint = (): void => {
     controls.replaceChildren()
     const candidate = state.candidate
-    summary.textContent = candidate ? `${candidate.title} · ${candidate.extensionId} / ${candidate.command} · Version: ${candidate.version ?? 'not specified'} · License: ${candidate.license ?? 'not specified'} · Declared source: ${candidate.source ?? 'chosen local folder'} · SHA-256: ${candidate.digest}. These declarations and compatibility have not been verified by TockTeam.` : state.installed ? `Installed digest: ${state.digest}` : 'No local extension selected.'
+    const source = state.sourceCandidate
+    sourceSummary.textContent = source ? `Public Source: ${source.title} · ${source.extensionId} / ${source.command} · MIT (declared) · ${source.files} files · Revision: ${source.revision} · Source SHA-256: ${source.digest} · ${source.source}. Review this exact source before building. Compatibility is not guaranteed.` : 'No public source selected.'
+    summary.textContent = candidate ? `${candidate.title} · ${candidate.extensionId} / ${candidate.command} · Version: ${candidate.version ?? 'not specified'} · License: ${candidate.license ?? 'not specified'} · Declared source: ${candidate.source ?? 'chosen local folder'} · SHA-256: ${candidate.digest}. These declarations and compatibility have not been verified by TockTeam.` : state.installed ? `Installed digest: ${state.digest}` : 'No built extension selected.'
+    controls.append(button('Fetch Public Source', 'source-prepare', async () => {
+      await bridge.userRaycastSourcePrepare({ extensionId: extensionInput.value.trim(), command: commandInput.value.trim() })
+      state = await bridge.userRaycastState(); reviewedSource = false
+    }))
+    if (source) {
+      const label = document.createElement('label')
+      label.className = 'flex items-start gap-2 text-sm'
+      const checkbox = document.createElement('input')
+      checkbox.type = 'checkbox'; checkbox.checked = reviewedSource; checkbox.dataset.userRaycastSourceReview = 'true'; checkbox.className = 'mt-1 accent-primary'
+      checkbox.addEventListener('change', () => { reviewedSource = checkbox.checked; paint() })
+      label.append(checkbox, document.createTextNode('I reviewed this exact public source and want to download build packages.'))
+      controls.append(label, button('Build Reviewed Source', 'source-build', async () => { state = await bridge.userRaycastSourceBuild(source.digest); reviewedSource = false; reviewed = false }, !reviewedSource))
+    }
     controls.append(button('Choose Built Folder', 'choose', async () => { const chosen = await bridge.userRaycastChoose(); if (chosen) { state = await bridge.userRaycastState(); reviewed = false; removing = false } }))
     if (candidate && (!state.installed || candidate.digest !== state.digest)) {
       const label = document.createElement('label')
       label.className = 'flex items-start gap-2 text-sm'
       const checkbox = document.createElement('input')
-      checkbox.type = 'checkbox'; checkbox.checked = reviewed; checkbox.className = 'mt-1 accent-primary'
+      checkbox.type = 'checkbox'; checkbox.checked = reviewed; checkbox.dataset.userRaycastBuiltReview = 'true'; checkbox.className = 'mt-1 accent-primary'
       checkbox.addEventListener('change', () => { reviewed = checkbox.checked; paint() })
       label.append(checkbox, document.createTextNode('I reviewed the selected source and accept account-level access.'))
       controls.append(label, button('Review and Install', 'approve', async () => { state = await bridge.userRaycastApprove(candidate.digest); reviewed = false }, !reviewed))

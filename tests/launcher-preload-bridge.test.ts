@@ -42,7 +42,7 @@ test('launcher preload exposes only the finite renderer operations still used by
       return { ok: true }
     },
   })
-  assert.deepEqual(Object.keys(bridge).sort(), ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'onUserRaycastView', 'openSettings', 'recordSearch', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastFirstUse', 'trustedRaycastTrustAction', 'userRaycastApprove', 'userRaycastChoose', 'userRaycastClose', 'userRaycastEvent', 'userRaycastMutate', 'userRaycastOpen', 'userRaycastState'])
+  assert.deepEqual(Object.keys(bridge).sort(), ['cancelAction', 'dismiss', 'getLocalExtensionSettings', 'getSurfaceSettings', 'getTheme', 'getTrustedRaycastTrust', 'invokeAction', 'onLocale', 'onTheme', 'onTrustedRaycastView', 'onUserRaycastView', 'openSettings', 'recordSearch', 'search', 'trustedRaycastClose', 'trustedRaycastEvent', 'trustedRaycastFirstUse', 'trustedRaycastTrustAction', 'userRaycastApprove', 'userRaycastChoose', 'userRaycastClose', 'userRaycastEvent', 'userRaycastMutate', 'userRaycastOpen', 'userRaycastSourceBuild', 'userRaycastSourcePrepare', 'userRaycastState'])
   assert.equal(bridge.getLocalExtensionSettings.length, 0)
   assert.equal(bridge.getSurfaceSettings.length, 0)
   assert.equal(bridge.getTheme.length, 0)
@@ -91,6 +91,8 @@ test('launcher preload exposes only the finite renderer operations still used by
   await assert.rejects(() => callRuntime('userRaycastApprove', '../unsafe'), /digest/u)
   await assert.rejects(() => callRuntime('userRaycastMutate', 'prepare'), /action/u)
   await assert.rejects(() => callRuntime('userRaycastChoose', 'untrusted-path'), /arguments/u)
+  await assert.rejects(() => callRuntime('userRaycastSourcePrepare', { extensionId: '../unsafe', command: 'generate' }), /source selection/u)
+  await assert.rejects(() => callRuntime('userRaycastSourceBuild', 'unreviewed'), /source digest/u)
   await assert.rejects(() => callRuntime('search', 'coder', {
     fuzziness: 0.5,
     maxSearchResultItems: 50,

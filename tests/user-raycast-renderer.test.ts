@@ -126,3 +126,37 @@ test('local extension approval shows account authority and does not run before s
   view.dispose()
   dom.window.close()
 })
+
+test('public source needs a separate build review, built review, and enablement before running', async () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>')
+  const document = dom.window.document as Document
+  const source = { command: 'generate', digest: 'c'.repeat(64), extensionId: 'uuid-generator', title: 'UUID Generator', license: 'MIT', revision: 'a'.repeat(40), tree: 'b'.repeat(40), files: 3, bytes: 321, mode: 'no-view' as const, source: `https://github.com/raycast/extensions/tree/${'a'.repeat(40)}/extensions/uuid-generator` }
+  let state: any = { ...empty }
+  let builds = 0; let approvals = 0; let runs = 0
+  const bridge = {
+    userRaycastState: async () => state,
+    userRaycastSourcePrepare: async (selection: unknown) => { assert.deepEqual(selection, { extensionId: 'uuid-generator', command: 'generate' }); state = { ...state, sourceCandidate: source }; return source },
+    userRaycastSourceBuild: async (digest: string) => { assert.equal(digest, source.digest); builds++; state = { ...state, candidate: { ...candidate, command: 'generate', extensionId: source.extensionId, digest: 'd'.repeat(64) } }; return state },
+    userRaycastApprove: async (digest: string) => { assert.equal(digest, state.candidate.digest); approvals++; state = { ...state, digest, installed: true }; return state },
+    userRaycastMutate: async () => { state = { ...state, enabled: true }; return state },
+    userRaycastOpen: async () => { runs++ }, userRaycastClose: async () => {}, onUserRaycastView: () => () => {},
+  } as unknown as LauncherPreloadBridge
+  const view = createUserRaycastView(document, bridge, () => {})
+  document.body.append(view.element); await flush()
+  document.querySelector<HTMLInputElement>('input[aria-label="Public Extension"]')!.value = 'uuid-generator'
+  document.querySelector<HTMLInputElement>('input[aria-label="Command Name"]')!.value = 'generate'
+  document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="source-prepare"]')!.click(); await flush()
+  assert.match(view.element.textContent ?? '', /a{40}/)
+  const build = () => document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="source-build"]')!
+  assert.equal(build().disabled, true)
+  document.querySelector<HTMLInputElement>('input[data-user-raycast-source-review]')!.click()
+  assert.equal(build().disabled, false)
+  build().click(); await flush()
+  assert.equal(builds, 1); assert.equal(approvals, 0); assert.equal(runs, 0)
+  const approve = document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="approve"]')!
+  assert.equal(approve.disabled, true)
+  document.querySelector<HTMLInputElement>('input[data-user-raycast-built-review]')!.click()
+  document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="approve"]')!.click(); await flush()
+  assert.equal(approvals, 1); assert.equal(state.enabled, false); assert.equal(runs, 0)
+  view.dispose(); dom.window.close()
+})

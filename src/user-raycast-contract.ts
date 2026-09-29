@@ -1,12 +1,14 @@
 import type { UserRaycastCandidate } from './user-raycast-install.ts'
 import type { UserRaycastMessage } from './user-raycast-manager.ts'
+import type { UserRaycastSourceCandidate } from './user-raycast-registry.ts'
 
 export const USER_RAYCAST_IPC = Object.freeze({
   state: 'user-raycast:state', choose: 'user-raycast:choose', approve: 'user-raycast:approve',
+  sourcePrepare: 'user-raycast:source-prepare', sourceBuild: 'user-raycast:source-build',
   mutate: 'user-raycast:mutate', open: 'user-raycast:open', event: 'user-raycast:event',
   close: 'user-raycast:close', view: 'user-raycast:view',
 })
-export type UserRaycastStatus = Readonly<{ candidate?: UserRaycastCandidate; digest: string; enabled: boolean; hasPrevious: boolean; installed: boolean; mode?: 'no-view' }>
+export type UserRaycastStatus = Readonly<{ candidate?: UserRaycastCandidate; sourceCandidate?: UserRaycastSourceCandidate; digest: string; enabled: boolean; hasPrevious: boolean; installed: boolean; mode?: 'no-view' }>
 export type UserRaycastMutation = 'enable' | 'disable' | 'remove' | 'recover'
 export type UserRaycastEvent = Readonly<{ revision: number; eventId: string; kind: 'action' | 'searchChanged'; value?: string }>
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -22,11 +24,26 @@ export function isUserRaycastCandidate(value: unknown): value is UserRaycastCand
     && (value.license === undefined || typeof value.license === 'string' && value.license.length <= 128)
     && (value.source === undefined || typeof value.source === 'string' && value.source.length <= 512 && value.source.startsWith('https://'))
 }
+export function isUserRaycastSourceSelection(value: unknown): value is Readonly<{ extensionId: string; command: string }> {
+  return record(value) && exact(value, ['extensionId', 'command']) && identity(value.extensionId) && commandIdentity(value.command)
+}
+export function isUserRaycastSourceCandidate(value: unknown): value is UserRaycastSourceCandidate {
+  return record(value) && exact(value, ['command', 'digest', 'extensionId', 'title', 'license', 'revision', 'tree', 'files', 'bytes', 'source', 'mode', ...(Object.hasOwn(value, 'version') ? ['version'] : [])])
+    && isUserRaycastSourceSelection({ extensionId: value.extensionId, command: value.command }) && digest(value.digest)
+    && typeof value.title === 'string' && value.title.length > 0 && value.title.length <= 128 && value.license === 'MIT'
+    && typeof value.revision === 'string' && /^[a-f0-9]{40}$/.test(value.revision) && typeof value.tree === 'string' && /^[a-f0-9]{40}$/.test(value.tree)
+    && Number.isSafeInteger(value.files) && (value.files as number) > 0 && (value.files as number) <= 128
+    && Number.isSafeInteger(value.bytes) && (value.bytes as number) > 0 && (value.bytes as number) <= 16 * 1024 * 1024
+    && (value.mode === 'view' || value.mode === 'no-view')
+    && value.source === `https://github.com/raycast/extensions/tree/${value.revision}/extensions/${value.extensionId}`
+    && (value.version === undefined || typeof value.version === 'string' && value.version.length <= 64)
+}
 export function isUserRaycastStatus(value: unknown): value is UserRaycastStatus {
-  return record(value) && exact(value, ['digest', 'enabled', 'hasPrevious', 'installed', ...(Object.hasOwn(value, 'candidate') ? ['candidate'] : []), ...(Object.hasOwn(value, 'mode') ? ['mode'] : [])])
+  return record(value) && exact(value, ['digest', 'enabled', 'hasPrevious', 'installed', ...(Object.hasOwn(value, 'candidate') ? ['candidate'] : []), ...(Object.hasOwn(value, 'sourceCandidate') ? ['sourceCandidate'] : []), ...(Object.hasOwn(value, 'mode') ? ['mode'] : [])])
     && (value.digest === '' || digest(value.digest)) && typeof value.enabled === 'boolean' && typeof value.hasPrevious === 'boolean' && typeof value.installed === 'boolean'
     && (value.mode === undefined || value.mode === 'no-view')
     && (!Object.hasOwn(value, 'candidate') || isUserRaycastCandidate(value.candidate))
+    && (!Object.hasOwn(value, 'sourceCandidate') || isUserRaycastSourceCandidate(value.sourceCandidate))
 }
 export function isUserRaycastApproval(value: unknown): value is Readonly<{ digest: string }> {
   return record(value) && exact(value, ['digest']) && digest(value.digest)
