@@ -785,6 +785,67 @@ describe('Live Preview editor', () => {
     post.mockRestore()
   }, 15_000)
 
+  it('changes only the authored Mermaid fence when editing its code in Live Preview', async () => {
+    const source = '# Diagrams\n\n## Sequence\n```mermaid\nsequenceDiagram\n  Alice->>Bob: Hello\n```\n\n## Pie\n```mermaid\npie\n  "Cats" : 40\n```\n'
+    const onChange = vi.fn()
+    const editorViewRef = { current: null as any }
+    render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 10_000 })
+    const view = editorViewRef.current
+    let end = -1
+    view.state.doc.descendants((node: any, pos: number) => {
+      if (node.type.name === 'code_block' && node.textContent.includes('Alice->>Bob')) end = pos + node.nodeSize - 1
+    })
+    expect(end).toBeGreaterThan(0)
+    act(() => { view.dispatch(view.state.tr.insertText(' Safe', end)) })
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    expect(onChange.mock.lastCall?.[0]).toBe(source.replace('Alice->>Bob: Hello', 'Alice->>Bob: Hello Safe'))
+  }, 15_000)
+
+  it('preserves CRLF line endings when editing a Mermaid fence', async () => {
+    const source = '# Diagram\r\n```mermaid\r\nsequenceDiagram\r\n  A->>B: Hello\r\n```\r\n'
+    const onChange = vi.fn()
+    const editorViewRef = { current: null as any }
+    render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 10_000 })
+    const view = editorViewRef.current
+    let end = -1
+    view.state.doc.descendants((node: any, pos: number) => { if (node.type.name === 'code_block') end = pos + node.nodeSize - 1 })
+    act(() => { view.dispatch(view.state.tr.insertText(' Safe', end)) })
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    expect(onChange.mock.lastCall?.[0]).toBe(source.replace('A->>B: Hello', 'A->>B: Hello Safe'))
+  }, 15_000)
+
+  it('edits the selected Mermaid fence when another fence has identical text', async () => {
+    const one = '```mermaid\nflowchart LR\n  A --> B\n```'
+    const source = `# First\n${one}\n\n# Second\n${one}\n`
+    const onChange = vi.fn()
+    const editorViewRef = { current: null as any }
+    render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 10_000 })
+    const view = editorViewRef.current
+    const positions: number[] = []
+    view.state.doc.descendants((node: any, pos: number) => { if (node.type.name === 'code_block') positions.push(pos) })
+    act(() => { view.dispatch(view.state.tr.insertText(' Safe', positions[1]! + view.state.doc.nodeAt(positions[1]!)!.nodeSize - 1)) })
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    expect(onChange.mock.lastCall?.[0]).toBe(source.replace(`# Second\n${one}`, `# Second\n${one.replace('A --> B', 'A --> B Safe')}`))
+  }, 15_000)
+
+  it('never edits a Mermaid-looking example inside a longer code fence', async () => {
+    const source = '# Example\n````text\n```mermaid\nflowchart LR\n  A --> B\n```\n````\n\n# Diagram\n```mermaid\nflowchart LR\n  A --> B\n```\n'
+    const onChange = vi.fn()
+    const editorViewRef = { current: null as any }
+    render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 10_000 })
+    const view = editorViewRef.current
+    let last = -1
+    view.state.doc.descendants((node: any, pos: number) => { if (node.type.name === 'code_block' && node.attrs.language === 'mermaid') last = pos + node.nodeSize - 1 })
+    expect(last).toBeGreaterThan(0)
+    act(() => { view.dispatch(view.state.tr.insertText(' Safe', last)) })
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    expect(onChange.mock.lastCall?.[0]).toBe(source.replace('# Diagram\n```mermaid\nflowchart LR\n  A --> B', '# Diagram\n```mermaid\nflowchart LR\n  A --> B Safe'))
+  }, 15_000)
+
   it('disposes an in-flight Mermaid frame when Live Preview switches notes', async () => {
     const onChange = vi.fn()
     const { container, rerender } = render(<LivePreviewEditor content={'```mermaid\nsequenceDiagram\n  A->>B: Old\n```\n'} key="old" onMarkdownChange={onChange} />)

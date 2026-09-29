@@ -46,6 +46,53 @@ const codeLanguages = [
     LanguageDescription.of({ name: 'JavaScript', alias: ['js', 'jsx'], load: async () => javascript({ jsx: true }) }),
 ];
 const codeLanguageNames = new Map(codeLanguages.flatMap(language => language.alias.map(alias => [alias, language.name])));
+// A CodeMirror fence edit should not let Milkdown reformat unrelated authored spacing.
+function preserveMermaidFenceEdit(source, before, after) {
+    const crlf = source.includes('\r');
+    if (crlf && /(?:^|[^\r])\n|\r(?!\n)/u.test(source))
+        return null; // Mixed endings need a wider source map.
+    const normalized = crlf ? source.replace(/\r\n/gu, '\n') : source;
+    const codeBlocks = doc => {
+        const blocks = [];
+        doc.descendants((node, pos) => { if (node.type.name === 'code_block')
+            blocks.push({ node, pos }); });
+        return blocks;
+    };
+    const oldBlocks = codeBlocks(before), newBlocks = codeBlocks(after);
+    if (oldBlocks.length !== newBlocks.length)
+        return null;
+    const changed = oldBlocks.flatMap((block, index) => block.node.eq(newBlocks[index].node) ? [] : [{ old: block, next: newBlocks[index], index }]);
+    if (changed.length !== 1)
+        return null;
+    const { old, next, index } = changed[0];
+    if (old.pos !== next.pos || old.node.attrs.language?.toLowerCase() !== 'mermaid' || !old.node.sameMarkup(next.node)
+        || !before.slice(0, old.pos).content.eq(after.slice(0, next.pos).content)
+        || !before.slice(old.pos + old.node.nodeSize).content.eq(after.slice(next.pos + next.node.nodeSize).content))
+        return null;
+    const ordinal = oldBlocks.slice(0, index).filter(block => block.node.attrs.language?.toLowerCase() === 'mermaid').length;
+    const { body, prefix } = splitLivePreviewSource(normalized);
+    const openings = [];
+    let active = null;
+    let offset = prefix.length;
+    for (const line of body.split('\n')) {
+        const fence = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/u);
+        if (active) {
+            if (fence && fence[1][0] === active.mark && fence[1].length >= active.size && fence[2].trim() === '')
+                active = null;
+        }
+        else if (fence) {
+            active = { mark: fence[1][0], size: fence[1].length };
+            if (line === '```mermaid' || line === '~~~mermaid')
+                openings.push({ at: offset + line.length + 1, fence: line.slice(0, 3) });
+        }
+        offset += line.length + 1;
+    }
+    const opening = openings[ordinal];
+    if (!opening || !normalized.slice(opening.at).startsWith(`${old.node.textContent}\n${opening.fence}`))
+        return null;
+    const edited = normalized.slice(0, opening.at) + next.node.textContent + normalized.slice(opening.at + old.node.textContent.length);
+    return crlf ? edited.replace(/\n/gu, '\r\n') : edited;
+}
 // Search rendered text, not Markdown punctuation. Keep offsets in the native document.
 function searchDocument(doc, query) {
     let text = '';
@@ -304,7 +351,7 @@ export function LivePreviewEditorRuntime(props) {
                         if (disposed || !mounted)
                             return;
                         if (!syncing.current && !withoutGeneratedHeadingIds(previous.doc).eq(withoutGeneratedHeadingIds(view.state.doc))) {
-                            const markdown = serialize(view.state.doc);
+                            const markdown = preserveMermaidFenceEdit(source.current, previous.doc, view.state.doc) ?? serialize(view.state.doc);
                             if (markdown !== source.current) {
                                 source.current = markdown;
                                 imageRevision++;
