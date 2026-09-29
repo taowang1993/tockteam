@@ -596,6 +596,8 @@ let userRaycast: UserRaycastManager | undefined
 let userRaycastInstall: UserRaycastInstall | undefined
 let userRaycastRegistry: UserRaycastRegistry | undefined
 let userRaycastSourceBusy = false
+let userRaycastFetchAbort: AbortController | undefined
+let userRaycastFetchDone: Promise<void> | undefined
 let userRaycastBuildAbort: AbortController | undefined
 let userRaycastBuildDone: Promise<void> | undefined
 let trustedRaycastTrust: TrustedRaycastTrustStore | undefined
@@ -2663,8 +2665,9 @@ function initializeLauncher(): void {
   controller = nextController
   launcherController = nextController
   launcherCoreFlush = async () => {
+    userRaycastFetchAbort?.abort()
     userRaycastBuildAbort?.abort()
-    await userRaycastBuildDone
+    await Promise.all([userRaycastFetchDone, userRaycastBuildDone])
     await userRaycast?.close()
     await trustedRaycast?.close()
     await launcherCustomBrowser?.close()
@@ -2770,8 +2773,12 @@ function initializeLauncher(): void {
     sourcePrepare: async (_owner, selection) => {
       if (!userRaycastRegistry || userRaycast?.childPid || userRaycastSourceBusy) throw new Error('Public extensions are unavailable or busy')
       userRaycastSourceBusy = true
-      try { return await userRaycastRegistry.prepare(selection.extensionId, selection.command) }
-      finally { userRaycastSourceBusy = false }
+      const controller = new AbortController()
+      userRaycastFetchAbort = controller
+      const fetching = userRaycastRegistry.prepare(selection.extensionId, selection.command, controller.signal)
+      userRaycastFetchDone = fetching.then(() => undefined, () => undefined)
+      try { return await fetching }
+      finally { userRaycastFetchAbort = undefined; userRaycastFetchDone = undefined; userRaycastSourceBusy = false }
     },
     sourceBuild: async (owner, digest) => {
       if (!userRaycastRegistry || !userRaycastInstall || userRaycast?.childPid || userRaycastSourceBusy) throw new Error('Public extensions are unavailable or busy')
