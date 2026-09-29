@@ -8,15 +8,16 @@ async page => {
   const check = (condition, message) => { if (!condition) failures.push(message); };
   const luminance = color => color.match(/[\d.]+/g).slice(0, 3).map(Number).map(n => n / 255).map(n => n <= .04045 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4).reduce((sum, n, i) => sum + n * [.2126, .7152, .0722][i], 0);
   const contrast = (a, b) => { const x = luminance(a), y = luminance(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
-  const theme = async id => {
-    await page.evaluate(id => {
-      for (const s of window.auditSkins) for (const name of Object.keys(s.tokens)) document.body.style.removeProperty(name);
+  const theme = async (id, mode = 'dark') => {
+    await page.evaluate(({ id, mode }) => {
+      for (const s of window.auditSkins) for (const name of Object.keys(s.palettes.dark.tokens)) document.body.style.removeProperty(name);
       const skin = window.auditSkins.find(s => s.id === id);
-      document.documentElement.style.colorScheme = skin?.colorScheme ?? id;
-      document.body.toggleAttribute('data-ds-dark-theme', (skin?.colorScheme ?? id) === 'dark');
+      const resolved = skin ? mode : id;
+      document.documentElement.style.colorScheme = resolved;
+      document.body.toggleAttribute('data-ds-dark-theme', resolved === 'dark');
       delete document.body.dataset.tockteamSkin;
-      if (skin) { document.body.dataset.tockteamSkin = skin.id; for (const [key, value] of Object.entries(skin.tokens)) document.body.style.setProperty(key, value); }
-    }, id);
+      if (skin) { document.body.dataset.tockteamSkin = skin.id; for (const [key, value] of Object.entries(skin.palettes[mode].tokens)) document.body.style.setProperty(key, value); }
+    }, { id, mode });
     await page.waitForTimeout(250);
   };
   const captures = [];
@@ -31,8 +32,11 @@ async page => {
   await page.getByRole('checkbox', { name: 'Checked Option' }).waitFor();
   check(await page.getByRole('checkbox', { name: 'Checked Option' }).evaluate(e => getComputedStyle(e).padding === '0px' && e.getBoundingClientRect().width === 16), 'checkbox geometry excludes native button padding');
   const palettes = [];
-  for (const id of await page.evaluate(() => ['dark', 'light', ...window.auditSkins.map(s => s.id)])) {
-    await theme(id);
+  for (const { id, mode } of await page.evaluate(() => [
+    { id: 'dark', mode: 'dark' }, { id: 'light', mode: 'light' },
+    ...window.auditSkins.flatMap(s => ['dark', 'light'].map(mode => ({ id: s.id, mode }))),
+  ])) {
+    await theme(id, mode);
     const button = await colors(page.getByRole('button', { name: 'Default Action' }));
     const checkbox = await colors(page.getByRole('checkbox', { name: 'Checked Option' }));
     check(contrast(button.color, button.bg) >= 4.5, id + ': primary button text contrast ' + JSON.stringify(button));
@@ -42,7 +46,7 @@ async page => {
     const slider = await thumb.evaluate(e => { const s = getComputedStyle(e), r = e.getBoundingClientRect(); return { width: r.width, height: r.height, border: s.borderColor, fill: s.backgroundColor, corner: s.cornerShape, ring: s.boxShadow, focused: document.activeElement === e, focusVisible: e.matches(':focus-visible') }; });
     check(slider.width === 12 && slider.height === 12 && ['round', 'superellipse(1)'].includes(slider.corner), id + ': round 12px slider thumb');
     check(contrast(slider.border, slider.fill) >= 3 && slider.ring !== 'none', id + ': slider contrast and keyboard focus: ' + JSON.stringify(slider));
-    palettes.push({ id, button, checkbox, slider });
+    palettes.push({ id, mode, button, checkbox, slider });
   }
   check(await page.getByRole('slider', { name: 'Disabled Range' }).getAttribute('tabindex') === null, 'disabled slider leaves the tab order');
   await theme('dark');
@@ -116,8 +120,8 @@ async page => {
   await page.getByRole('button', { name: 'Add Context', exact: true }).click();
   await page.getByText('Assistant Settings', { exact: true }).click();
   const popup = page.getByRole('dialog', { name: 'Assistant Options' });
-  for (const id of palettes.map(p => p.id)) {
-    await theme(id);
+  for (const { id, mode } of palettes) {
+    await theme(id, mode);
     const assistant = await colors(popup);
     const save = await colors(page.getByRole('button', { name: 'Save Settings', exact: true }));
     check(contrast(assistant.color, assistant.bg) >= 4.5, id + ': assistant portal text contrast');

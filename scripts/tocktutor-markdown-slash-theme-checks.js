@@ -18,8 +18,8 @@ async page => {
       return response.json();
     });
     const skin = preferences.activeId;
-    const theme = skin ? (skin === 'tockteam-skin-porcelain' ? 'light' : 'dark') : preferences.fallbackTheme;
-    await page.waitForFunction(({ skin, theme }) => (document.body.dataset.tockteamSkin ?? null) === skin && document.documentElement.style.colorScheme === theme, { skin, theme });
+    await page.waitForFunction(skin => (document.body.dataset.tockteamSkin ?? null) === skin && ['light', 'dark'].includes(document.documentElement.style.colorScheme), skin);
+    const theme = await page.evaluate(() => document.documentElement.style.colorScheme);
     const name = skin ?? theme;
     await page.emulateMedia({ colorScheme: theme === 'dark' ? 'light' : 'dark', reducedMotion: 'reduce' });
     await page.getByRole('button', { name: 'TockTutor', exact: true }).click();

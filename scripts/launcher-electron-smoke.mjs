@@ -653,9 +653,11 @@ try {
   assert.equal(darkThemeFacts.brand, '#49c8eb')
   const skinCases = [
     ['tockteam-skin-deep-current', 'dark', '#49c8eb'],
+    ['tockteam-skin-deep-current', 'light', '#17667d'],
     ['tockteam-skin-jade-circuit', 'dark', '#52d6a0'],
-    ['tockteam-skin-porcelain', 'light', '#2d7773'],
+    ['tockteam-skin-jade-circuit', 'light', '#246c4a'],
     ['tockteam-skin-ember-dusk', 'dark', '#ff9275'],
+    ['tockteam-skin-ember-dusk', 'light', '#944b42'],
   ]
   for (const [skinId, mode, brand] of skinCases) {
     await workbenchConnection.evaluate(`(async () => await window.dshDesktop?.syncLauncherTheme(${JSON.stringify({ mode, skinId })}))()`)

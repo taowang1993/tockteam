@@ -168,7 +168,7 @@ try {
     check(await page.evaluate(()=>document.documentElement.scrollWidth===innerWidth),'no narrow overflow');
     check(await page.locator('.tockteam-sidebar-settings-list').first().evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length===1),'narrow single column');
     const themes = [];
-    for (const skin of [{id:null,colorScheme:'light',tokens:{}},...${JSON.stringify(TOCKTEAM_SKINS.map(({ id, colorScheme, tokens }) => ({ id, colorScheme, tokens })))}]) {
+    for (const skin of [{id:null,colorScheme:'light',tokens:{}},...${JSON.stringify(TOCKTEAM_SKINS.flatMap(skin => (['dark', 'light'].map(colorScheme => ({ id: skin.id, colorScheme, tokens: skin.palettes[colorScheme].tokens })))))}]) {
       await page.evaluate(skin=>{
         document.documentElement.style.cssText='color-scheme:'+skin.colorScheme;
         document.body.style.cssText='';

@@ -198,6 +198,9 @@ export function apply(ctx: ClientContext): void {
       controller.toggleTheme()
     }
     if (typeof window !== 'undefined') window.addEventListener('keydown', handleKeyDown, true)
+    // DSH resolves required client services before remote preferences finish loading.
+    // Consumers can subscribe now; the controller publishes the saved choice on start().
+    removeService = ctx.reflect.provide('desktopSkins', controller, undefined)
     const boot = async (): Promise<void> => {
       if (storage instanceof DesktopSkinPreferencesStorage) {
         try {
@@ -217,7 +220,6 @@ export function apply(ctx: ClientContext): void {
       stopController = controller.subscribe(() => {
         syncActions(bound, controller.getSnapshot(), true, theme.getTheme().active.colorScheme)
       })
-      removeService = ctx.reflect.provide('desktopSkins', controller, undefined)
       syncActions(bound, controller.getSnapshot(), true, theme.getTheme().active.colorScheme)
     }
     void boot()

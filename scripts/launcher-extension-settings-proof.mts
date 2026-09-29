@@ -75,7 +75,7 @@ function theme(mode, skin = null) {
   document.documentElement.style.setProperty('--tockteam-titlebar-height', '0px');
   document.documentElement.style.setProperty('--tockteam-rail-width', '0px');
   document.documentElement.style.setProperty('--tockteam-primary-sidebar-width', '280px');
-  if (skin) { for (const [key, value] of Object.entries(skin.tokens)) document.body.style.setProperty(key, value); document.documentElement.dataset.tockteamSkin = skin.id; }
+  if (skin) { for (const [key, value] of Object.entries(skin.palettes[mode].tokens)) document.body.style.setProperty(key, value); document.documentElement.dataset.tockteamSkin = skin.id; }
 }
 document.documentElement.classList.add('tockteam-desktop-shell');
 document.documentElement.dataset.tockteamSettingsPage = 'true';
@@ -273,8 +273,13 @@ try {
     await page.evaluate(() => window.proof.theme('dark'));
     const controlAppearance = [];
     await open('google-translate');
-    for (const theme of [{ id: 'dark', colorScheme: 'dark' }, { id: 'light', colorScheme: 'light' }, ...await page.evaluate(() => window.proof.skins)]) {
-      await page.evaluate(theme => window.proof.theme(theme.colorScheme, theme.tokens ? theme : null), theme);
+    for (const theme of [
+      { id: 'dark', mode: 'dark', skin: null }, { id: 'light', mode: 'light', skin: null },
+      ...await page.evaluate(() => window.proof.skins.flatMap(skin => ['dark', 'light'].map(mode => ({ id: skin.id, mode, skin })))),
+    ]) {
+      await page.evaluate(theme => window.proof.theme(theme.mode, theme.skin), theme);
+      const applied = await page.evaluate(() => ({ mode: document.documentElement.style.colorScheme, skin: document.documentElement.dataset.tockteamSkin ?? null }));
+      check(applied.mode === theme.mode && applied.skin === (theme.skin?.id ?? null), 'measuring the requested palette: ' + JSON.stringify({ theme: theme.id, mode: theme.mode, applied }));
       const save = page.getByRole('button', { name: 'Save Preferences', exact: true }); await save.waitFor();
       const colors = await save.evaluate(async node => {
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); node.getAnimations().forEach(animation => animation.finish());
@@ -283,7 +288,7 @@ try {
         const foreground = luminance(style.color); const background = luminance(style.backgroundColor);
         return { foreground: style.color, background: style.backgroundColor, contrast: (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05) };
       });
-      check(colors.contrast >= 4.5, 'Save Preferences text contrast: ' + JSON.stringify({ theme: theme.id, ...colors }));
+      check(colors.contrast >= 4.5, 'Save Preferences text contrast: ' + JSON.stringify({ theme: theme.id, mode: theme.mode, ...colors }));
       const search = page.getByRole('searchbox', { name: 'Search Extensions' });
       const searchStyle = () => search.evaluate(async node => {
         await new Promise(resolve => requestAnimationFrame(resolve)); node.getAnimations().forEach(animation => animation.finish());
@@ -296,7 +301,7 @@ try {
       await search.blur(); await search.click(); const pointer = await searchStyle();
       check(pointer.focused && !/[1-9][\\d.]*px/.test(pointer.shadow) && pointer.outline === 'none', 'pointer focus has no outer ring');
       await search.blur();
-      controlAppearance.push({ theme: theme.id, ...colors, search: { resting, keyboard, pointer } });
+      controlAppearance.push({ theme: theme.id, mode: theme.mode, ...colors, search: { resting, keyboard, pointer } });
     }
     await page.evaluate(() => window.proof.theme('dark')); await back();
     for (const item of pages) { await open(item.id); check(await page.locator('[data-testid="tocklauncher-extension-detail"]').getAttribute('data-extension-id') === item.id, item.id); if (item.editor === 'compatibility') await page.getByRole('button', { name: 'Save Preferences', exact: true }).waitFor(); await back(); }
@@ -359,7 +364,7 @@ try {
     await page.evaluate(() => window.proof.locale.setLocale('en'));
     await sidebar.getByRole('button', { name: 'Google Translate', exact: true }).waitFor();
     const skins = await page.evaluate(() => window.proof.skins.map(skin => skin.id));
-    for (const id of skins) { await page.evaluate(id => { const skin = window.proof.skins.find(skin => skin.id === id); window.proof.theme(skin.colorScheme, skin); }, id); check(await page.getByRole('combobox', { name: 'Primary Language', exact: true }).isVisible(), 'skin ' + id); }
+    for (const id of skins) for (const mode of ['light', 'dark']) { await page.evaluate(({ id, mode }) => { const skin = window.proof.skins.find(skin => skin.id === id); window.proof.theme(mode, skin); }, { id, mode }); check(await page.getByRole('combobox', { name: 'Primary Language', exact: true }).isVisible(), 'skin ' + id + '/' + mode); }
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 480, height: 800, deviceScaleFactor: 2, mobile: false });
     check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'narrow layout has no horizontal overflow');
     await page.evaluate(() => window.proof.theme('light')); check(await page.getByRole('combobox', { name: 'Primary Language', exact: true }).isVisible(), 'light theme');

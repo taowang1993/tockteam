@@ -107,6 +107,20 @@ test('every bundled TockTeam client follows the native locale service', () => {
   }
 })
 
+test('skins publishes its Desktop service before asynchronous preference loading', () => {
+  const source = readFileSync(new URL('../plugins/skins/src/client/plugin.tsx', import.meta.url), 'utf8')
+  const provide = source.indexOf("ctx.reflect.provide('desktopSkins', controller, undefined)")
+  const load = source.indexOf('await storage.load()')
+  assert.ok(provide >= 0 && load >= 0 && provide < load, 'Desktop must not wait for a remote preference fetch to resolve its required skin service')
+})
+
+test('Launcher Settings proof measures both palettes of every named skin', () => {
+  const proof = readFileSync(new URL('../scripts/launcher-extension-settings-proof.mts', import.meta.url), 'utf8')
+  assert.doesNotMatch(proof, /theme\.colorScheme|theme\.tokens/)
+  assert.match(proof, /window\.proof\.theme\(theme\.mode, theme\.skin\)/)
+  assert.match(proof, /skin\.palettes\[mode\]/)
+})
+
 test('desktop sidebar exposes one configurable tool registry in settings', () => {
   const client = readFileSync(
     new URL('../plugins/sidebar/src/client/plugin.tsx', import.meta.url),

@@ -278,13 +278,14 @@ try {
       'content-type': 'application/json',
       origin: base.origin,
     },
-    body: JSON.stringify({ activeId: 'tockteam-skin-porcelain', fallbackTheme: 'dark' }),
+    body: JSON.stringify({ activeId: 'tockteam-skin-deep-current', fallbackTheme: 'light', version: 2 }),
   })
   assert.equal(saveResponse.status, 200, await saveResponse.text())
   const saved = await authenticatedFetch(preferencesUrl)
   const persisted = await saved.json()
-  assert.equal(persisted.activeId, 'tockteam-skin-porcelain')
-  assert.equal(persisted.fallbackTheme, 'dark')
+  assert.equal(persisted.activeId, 'tockteam-skin-deep-current')
+  assert.equal(persisted.fallbackTheme, 'light')
+  assert.equal(persisted.version, 2)
 
   // The sidebar host serves the workspace Git API on the web server.
   const git = (...args) => {
