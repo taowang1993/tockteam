@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import test from 'node:test'
+import { TOCKTEAM_SKINS } from '../plugins/skins/src/skins.ts'
 
 const root = resolve('.agents/uiux/skins')
 const choices = [
@@ -60,10 +61,13 @@ test('shows four skin rows with verified Light-left and Dark-right captures', ()
       assert.equal(capture.selected, true, file)
       assert.ok(capture.contrast >= 4.5, file)
       assert.equal(capture.allCardsVerified, true, file)
+      const skin = TOCKTEAM_SKINS.find(choice => choice.id === skinId)
       assert.equal(capture.preview?.name, label, file)
-      assert.match(capture.preview.light, /^background:/u, file)
-      assert.match(capture.preview.dark, /^background:/u, file)
-      assert.notEqual(capture.preview.light, capture.preview.dark, file)
+      assert.equal(capture.preview.light, skin?.palettes.light.tokens['--dsw-alias-bg-base'] ?? '#fafafa', file)
+      assert.equal(capture.preview.dark, skin?.palettes.dark.tokens['--dsw-alias-bg-base'] ?? '#30343b', file)
+      assert.match(capture.preview.backgroundImage, /^linear-gradient\(135deg, /u, file)
+      assert.ok(capture.preview.backgroundImage.includes('49%') && capture.preview.backgroundImage.includes('50%'), file)
+      assert.equal(new Set([...capture.preview.backgroundImage.matchAll(/rgb\([^)]+\)/gu)].map(([color]) => color)).size, 2, `${file} must use only two plain colors`)
       assert.deepEqual(capture.errors, [], file)
     }
     const pair = proof.captures.filter((capture: { family: string }) => capture.family === label)
