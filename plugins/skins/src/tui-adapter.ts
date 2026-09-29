@@ -19,12 +19,16 @@ import {
   type FallbackTheme,
   type SkinPreferences,
 } from './preferences.ts'
-import { LEGACY_PORCELAIN_ID, type SkinId } from './skin-ids.ts'
+import { LEGACY_PORCELAIN_ID, SKIN_ID, type SkinId } from './skin-ids.ts'
 import { TOCKTEAM_SKINS, type SkinColorScheme } from './skins.ts'
 
 const BUILTIN_TUI_THEMES = new Set(['light', 'dark', 'dark-ansi'])
 // Exact bytes of the old first-party generated file; customized files are never removed.
 const GENERATED_PORCELAIN_SHA256 = '1cf00c8e2acc565d8820187c6ee8f14ac6e28b79862602d7a1319c7c2322972c'
+const FORMER_GENERATED_NAMES: Partial<Record<SkinId, string>> = {
+  [SKIN_ID.deepCurrent]: 'Deep Current',
+  [SKIN_ID.jadeCircuit]: 'Jade Circuit',
+}
 
 export interface TuiSkinPaths {
   preferences: string
@@ -132,14 +136,28 @@ function installThemeFiles(directory: string): void {
     for (const mode of ['dark', 'light'] as const) {
       const id = nativeThemeId(skin.id, mode)
       const path = join(directory, `${id}.json`)
-      // ponytail: existing native themes may be customized; regenerate only if we add versioned files.
-      if (pathExists(path)) continue
-      writeJsonAtomic(path, {
+      const theme = {
         name: id,
         displayName: `TockTeam · ${skin.displayName} · ${mode === 'dark' ? 'Dark' : 'Light'}`,
         base: mode,
         colors: skin.palettes[mode].tui,
-      })
+      }
+      if (pathExists(path)) {
+        const oldName = FORMER_GENERATED_NAMES[skin.id]
+        if (oldName === undefined) continue
+        const before = lstatSync(path)
+        if (!before.isFile()) continue
+        const oldLabels = [`TockTeam · ${oldName} · ${mode === 'dark' ? 'Dark' : 'Light'}`]
+        if (mode === 'dark') oldLabels.push(`TockTeam · ${oldName}`)
+        const existing = readFileSync(path, 'utf8')
+        const after = lstatSync(path)
+        if (after.ino === before.ino && after.mtimeMs === before.mtimeMs && after.size === before.size
+          && oldLabels.some(displayName => existing === `${JSON.stringify({ ...theme, displayName }, undefined, 2)}\n`)) {
+          writeJsonAtomic(path, theme)
+        }
+        continue
+      }
+      writeJsonAtomic(path, theme)
     }
   }
 }

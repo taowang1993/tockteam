@@ -20,7 +20,7 @@ async page => {
     const skin = preferences.activeId;
     await page.waitForFunction(skin => (document.body.dataset.tockteamSkin ?? null) === skin && ['light', 'dark'].includes(document.documentElement.style.colorScheme), skin);
     const theme = await page.evaluate(() => document.documentElement.style.colorScheme);
-    if (skin === null && preferences.fallbackTheme !== 'system') check(theme === preferences.fallbackTheme, 'Original keeps its saved appearance');
+    if (skin === null && preferences.fallbackTheme !== 'system') check(theme === preferences.fallbackTheme, 'Default keeps its saved appearance');
     const name = skin ?? theme;
     await page.emulateMedia({ colorScheme: theme === 'dark' ? 'light' : 'dark', reducedMotion: 'reduce' });
     await page.getByRole('button', { name: 'TockTutor', exact: true }).click();

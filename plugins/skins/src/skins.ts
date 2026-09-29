@@ -308,7 +308,7 @@ function palette(tokens: Readonly<Record<string, string>>, merged: string, previ
 export const TOCKTEAM_SKINS: readonly TockTeamSkin[] = Object.freeze([
   Object.freeze({
     id: SKIN_ID.deepCurrent,
-    displayName: 'Deep Current',
+    displayName: 'Cyan',
     label: 'skins.name.deep-current',
     palettes: Object.freeze({
       dark: palette(DEEP_CURRENT_TOKENS, '#b995f5', 'linear-gradient(135deg, #071923 0%, #143445 64%, #49c8eb 145%)'),
@@ -317,7 +317,7 @@ export const TOCKTEAM_SKINS: readonly TockTeamSkin[] = Object.freeze([
   }),
   Object.freeze({
     id: SKIN_ID.jadeCircuit,
-    displayName: 'Jade Circuit',
+    displayName: 'Aurora',
     label: 'skins.name.jade-circuit',
     palettes: Object.freeze({
       dark: palette(JADE_CIRCUIT_TOKENS, '#a78bfa', 'linear-gradient(145deg, #071a16 0 42%, #154435 43% 62%, #52d6a0 150%)'),

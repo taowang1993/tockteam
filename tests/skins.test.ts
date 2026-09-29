@@ -17,11 +17,13 @@ import {
   type ThemeSnapshot,
 } from '../plugins/skins/src/client/skin-controller.ts'
 import type { SkinDomPort } from '../plugins/skins/src/client/skin-dom.ts'
+import { DESKTOP_SKINS_MESSAGES } from '../plugins/skins/src/client/i18n.ts'
 import {
   DESKTOP_SKINS,
   TOCKTEAM_SKINS,
   type DesktopSkin,
 } from '../plugins/skins/src/client/skins.ts'
+import { SKIN_ID } from '../plugins/skins/src/skin-ids.ts'
 import {
   ORIGINAL_MODE_PENDING_KEY,
   PREFERENCES_VERSION_KEY,
@@ -150,6 +152,25 @@ test('each retained skin has two distinct palettes with an editor darker than it
   assert.equal(new Set(DESKTOP_SKINS.map(skin => skin.palettes.light.tokens['--dsw-alias-bg-base'])).size, 3)
 })
 
+test('renamed choices retain saved IDs, localized names, and Ember Dusk Light', () => {
+  assert.deepEqual(TOCKTEAM_SKINS.map(({ id, displayName }) => [id, displayName]), [
+    [SKIN_ID.deepCurrent, 'Cyan'],
+    [SKIN_ID.jadeCircuit, 'Aurora'],
+    [SKIN_ID.emberDusk, 'Ember Dusk'],
+  ])
+  assert.deepEqual([
+    DESKTOP_SKINS_MESSAGES.en['skins.name.default'],
+    ...TOCKTEAM_SKINS.map(skin => DESKTOP_SKINS_MESSAGES.en[skin.label]),
+  ], ['Default', 'Cyan', 'Aurora', 'Ember Dusk'])
+  assert.deepEqual([
+    DESKTOP_SKINS_MESSAGES.zh['skins.name.default'],
+    ...TOCKTEAM_SKINS.map(skin => DESKTOP_SKINS_MESSAGES.zh[skin.label]),
+  ], ['默认', '青色', '极光', '余烬暮色'])
+  const ember = TOCKTEAM_SKINS.find(skin => skin.id === SKIN_ID.emberDusk)!
+  assert.notEqual(ember.palettes.light.tokens['--dsw-alias-bg-base'], ember.palettes.dark.tokens['--dsw-alias-bg-base'])
+  assert.equal(ember.palettes.light.tui.text, ember.palettes.light.tokens['--dsw-alias-label-primary'])
+})
+
 test('named skin text and selected marks remain legible in both palettes', () => {
   const luminance = (hex: string): number => {
     const [red, green, blue] = [1, 3, 5].map(index => {
@@ -211,6 +232,7 @@ test('TUI offers paired native themes, retains old dark IDs, and safely migrates
         const id = `${skin.id}${mode === 'light' ? '-light' : ''}`
         const native = JSON.parse(await readFile(join(paths.themes, `${id}.json`), 'utf8'))
         assert.equal(native.name, id)
+        assert.equal(native.displayName, `TockTeam · ${skin.displayName} · ${mode === 'dark' ? 'Dark' : 'Light'}`)
         assert.equal(native.base, mode)
         assert.deepEqual(native.colors, skin.palettes[mode].tui)
       }
@@ -243,7 +265,54 @@ test('TUI offers paired native themes, retains old dark IDs, and safely migrates
   }
 })
 
-test('TUI launch does not erase an older Desktop dark skin and remembered Original Light', async () => {
+test('TUI renames only untouched generated themes, preserving custom files and chosen IDs', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tockteam-renamed-tui-skins-'))
+  const dataRoot = join(directory, 'data')
+  const configRoot = join(directory, 'config')
+  const paths = tuiSkinPaths(dataRoot, configRoot)
+  try {
+    await mkdir(paths.themes, { recursive: true })
+    await mkdir(dataRoot, { recursive: true })
+    await writeFile(paths.preferences, JSON.stringify({ activeId: SKIN_ID.jadeCircuit, fallbackTheme: 'dark', version: 2 }))
+    await writeFile(paths.themePreference, JSON.stringify({ theme: SKIN_ID.jadeCircuit }))
+    for (const [skin, oldLabel] of [[TOCKTEAM_SKINS[0]!, 'Deep Current'], [TOCKTEAM_SKINS[1]!, 'Jade Circuit']] as const) {
+      for (const mode of ['dark', 'light'] as const) {
+        const id = `${skin.id}${mode === 'light' ? '-light' : ''}`
+        const oldTheme = { name: id, displayName: `TockTeam · ${oldLabel} · ${mode === 'dark' ? 'Dark' : 'Light'}`, base: mode, colors: skin.palettes[mode].tui }
+        await writeFile(join(paths.themes, `${id}.json`), `${JSON.stringify(oldTheme, null, 2)}\n`)
+      }
+    }
+    const oldDarkPath = join(paths.themes, `${SKIN_ID.jadeCircuit}.json`)
+    const oldDark = { name: SKIN_ID.jadeCircuit, displayName: 'TockTeam · Jade Circuit', base: 'dark', colors: TOCKTEAM_SKINS[1]!.palettes.dark.tui }
+    await writeFile(oldDarkPath, `${JSON.stringify(oldDark, null, 2)}\n`)
+    const customPath = join(paths.themes, `${SKIN_ID.jadeCircuit}-light.json`)
+    const custom = `${JSON.stringify({
+      name: `${SKIN_ID.jadeCircuit}-light`, displayName: 'TockTeam · Jade Circuit · Light', base: 'light',
+      colors: { ...TOCKTEAM_SKINS[1]!.palettes.light.tui, text: '#111111' },
+    }, null, 2)}\n`
+    await writeFile(customPath, custom)
+
+    for (let launch = 0; launch < 2; launch += 1) {
+      assert.deepEqual(mountTuiSkins(dataRoot, configRoot), { activeId: SKIN_ID.jadeCircuit, theme: SKIN_ID.jadeCircuit })
+      for (const skin of TOCKTEAM_SKINS.slice(0, 2)) {
+        for (const mode of ['dark', 'light'] as const) {
+          const id = `${skin.id}${mode === 'light' ? '-light' : ''}`
+          const native = JSON.parse(await readFile(join(paths.themes, `${id}.json`), 'utf8'))
+          assert.equal(native.name, id)
+          if (skin.id === SKIN_ID.jadeCircuit && mode === 'light') continue
+          assert.equal(native.displayName, `TockTeam · ${skin.displayName} · ${mode === 'dark' ? 'Dark' : 'Light'}`)
+          assert.deepEqual(native.colors, skin.palettes[mode].tui)
+        }
+      }
+      assert.equal(await readFile(customPath, 'utf8'), custom)
+      assert.deepEqual(JSON.parse(await readFile(paths.preferences, 'utf8')), { activeId: SKIN_ID.jadeCircuit, fallbackTheme: 'dark', version: 2 })
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test('TUI launch does not erase an older Desktop dark skin and remembered Default Light', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'tockteam-skins-cross-surface-'))
   const paths = tuiSkinPaths(join(directory, 'data'), join(directory, 'config'))
   try {
@@ -284,7 +353,7 @@ test('TUI seeds legacy named skins as Dark before Desktop has migrated them', as
   }
 })
 
-test('TUI startup preserves Desktop pending Original mode across native dark theme and absent theme file', async () => {
+test('TUI startup preserves Desktop pending Default mode across native dark theme and absent theme file', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'tockteam-skins-tui-pending-original-'))
   const paths = tuiSkinPaths(join(directory, 'data'), join(directory, 'config'))
   const pending = { activeId: 'tockteam-skin-jade-circuit', fallbackTheme: 'light', version: 2, originalModePending: true }
@@ -339,7 +408,7 @@ test('TUI retires only byte-identical generated Porcelain, preserving customized
   }
 })
 
-test('Deep Current stays selected as the built-in Appearance setting changes', () => {
+test('Cyan stays selected as the built-in Appearance setting changes', () => {
   const storage = new MemoryStorage()
   const theme = new FakeThemeService('dark')
   const dom = new FakeSkinDom()
@@ -405,7 +474,7 @@ test('desktop skins restore a persisted dark family through DSH Appearance', () 
   assert.equal(dom.active, 'tockteam-skin-deep-current')
 })
 
-test('upgrade keeps the former dark skin yet remembers Original Light until deselection', () => {
+test('upgrade keeps the former dark skin yet remembers Default Light until deselection', () => {
   const storage = new MemoryStorage()
   storage.setItem(ACTIVE_SKIN_KEY, 'tockteam-skin-jade-circuit')
   storage.setItem(FALLBACK_THEME_KEY, 'light')
@@ -424,7 +493,7 @@ test('upgrade keeps the former dark skin yet remembers Original Light until dese
   assert.equal(storage.getItem(ACTIVE_SKIN_KEY), null)
 })
 
-test('a saved Porcelain choice migrates to Original Light rather than disappearing', async () => {
+test('a saved Porcelain choice migrates to Default Light rather than disappearing', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'tockteam-porcelain-migration-'))
   const path = join(directory, 'skins.json')
   try {
@@ -479,7 +548,7 @@ test('appearance hydration keeps a restored skin selected without reasserting Da
   assert.equal(dom.active, 'tockteam-skin-jade-circuit')
 })
 
-test('choosing Original restores the appearance used before a skin', () => {
+test('choosing Default restores the appearance used before a skin', () => {
   const storage = new MemoryStorage()
   const theme = new FakeThemeService('dark')
   const dom = new FakeSkinDom()
