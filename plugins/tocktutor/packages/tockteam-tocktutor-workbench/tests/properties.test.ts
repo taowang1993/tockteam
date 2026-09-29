@@ -50,6 +50,7 @@ test('keeps supported imported property types on empty values without coercing i
     { key: 'rating', type: 'mixed', value: 'not a number' },
     { key: 'structured', type: 'mixed', value: 'structured: {child: value}' },
   ])
+  assert.equal(parseFrontmatterProperties('---\ndue: 2026-02-30\n---\n', { due: 'date' })[0]?.type, 'mixed')
   assert.equal(source, '---\ndue:\nfinished:\nlabels: []\nrating: "not a number"\nstructured: {child: value}\n---\n# Body\n')
 })
 

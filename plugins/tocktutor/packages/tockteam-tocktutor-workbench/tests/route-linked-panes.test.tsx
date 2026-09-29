@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { TockTutorNativeActions, type DesktopActionRemote, type DesktopCallerBridge, type DesktopDispatchDelivery } from '../../tockbot-note-desktop/src/client-actions.tsx'
 import { TOCKTUTOR_NATIVE_ACTIONS_SLOT, type TockTutorNativeActionsOwnerProps } from '../src/native-actions.ts'
-import { parseFrontmatterProperties } from '../src/properties.ts'
+import { parseFrontmatterProperties, setFrontmatterProperty } from '../src/properties.ts'
 import { MarkdownDocumentHeader } from '../src/live-preview-editor.tsx'
 import { NoteOutgoingLinks } from '../src/note-backlinks.tsx'
 import { WorkbenchRouteController, TockTutorRoute, TockTutorRouteView, type WorkbenchRouteRemote } from '../src/route.tsx'
@@ -536,6 +536,28 @@ it('validates typed property input and does not turn an untouched null into an e
   expect(changes).toEqual([['amount', 4], ['done', true]])
 })
 
+it('edits imported empty Date and Checkbox values with native controls only after a user action', () => {
+  const changes: Array<[string, unknown]> = []
+  render(<MarkdownDocumentHeader declaredTypes={{ due: 'date', finished: 'checkbox' }} editableProperties source={'---\ndue:\nfinished:\n---\n# Note\n'} onSetProperty={(key, value) => { changes.push([key, value]); return true }} />)
+  const due = screen.getByLabelText('Property due') as HTMLInputElement
+  expect(due.type).toBe('date')
+  expect(due.value).toBe('')
+  const finished = screen.getByRole('checkbox', { name: 'finished' })
+  expect(finished.getAttribute('data-state')).toBe('unchecked')
+  expect(changes).toEqual([])
+  fireEvent.change(due, { target: { value: '2026-09-29' } })
+  fireEvent.blur(due)
+  fireEvent.click(finished)
+  expect(changes).toEqual([['due', '2026-09-29'], ['finished', true]])
+  expect(setFrontmatterProperty(setFrontmatterProperty('---\ndue:\nfinished:\n---\n# Note\n', 'due', changes[0]![1] as string), 'finished', changes[1]![1] as boolean)).toBe('---\ndue: "2026-09-29"\nfinished: true\n---\n# Note\n')
+})
+
+it('offers Source Mode instead of a misleading control for incompatible imported YAML', () => {
+  render(<MarkdownDocumentHeader declaredTypes={{ rating: 'number' }} editableProperties onSetProperty={() => { throw new Error('Incompatible YAML must not be changed.') }} source={'---\nrating: "unknown"\n---\n'} />)
+  expect(screen.queryByLabelText('Property rating')).toBeNull()
+  expect(screen.getByText('Use Source Mode')).toBeTruthy()
+})
+
 it('saves the represented Properties document explicitly and retains failures for retry without touching the active editor', async () => {
   const { controller, remote, files } = fixture()
   await controller.syncLocation('/tocktutor/One.md')
@@ -716,10 +738,10 @@ it('preserves exact source when linked Properties rejects authored structured li
   }
   const view = render(<Harness />)
   try {
-    fireEvent.blur(await screen.findByLabelText('Property items'), { target: { value: '["child: original", "added"]' } })
+    expect(await screen.findByText('Use Source Mode')).toBeTruthy()
+    expect(screen.queryByLabelText('Property items')).toBeNull()
     expect(controller.getSnapshot().source).toBe(source)
     expect(files.get('One.md')).toBe(source)
-    expect(screen.getByRole('alert').textContent).toContain('Source Mode')
   } finally { view.unmount(); await controller.dispose() }
 })
 

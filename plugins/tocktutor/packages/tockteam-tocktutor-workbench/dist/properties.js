@@ -30,6 +30,12 @@ function decodeQuoted(value) {
         return trimmed.slice(1, -1).replaceAll("''", "'");
     return trimmed;
 }
+function validIsoDate(value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/u.test(value))
+        return false;
+    const date = new Date(`${value}T00:00:00.000Z`);
+    return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
 export function inferPropertyType(value) {
     if (Array.isArray(value))
         return 'list';
@@ -39,7 +45,7 @@ export function inferPropertyType(value) {
         return 'checkbox';
     if (typeof value !== 'string')
         return 'mixed';
-    if (/^\d{4}-\d{2}-\d{2}$/u.test(value))
+    if (validIsoDate(value))
         return 'date';
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})?$/u.test(value))
         return 'datetime';
@@ -157,7 +163,7 @@ export function parseFrontmatterProperties(source, declared = {}) {
             : expected === 'text' ? typeof value === 'string'
                 : expected === 'number' ? typeof value === 'number'
                     : expected === 'checkbox' ? typeof value === 'boolean'
-                        : typeof value === 'string' && type === expected;
+                        : typeof value === 'string' && type === expected && (expected !== 'date' || validIsoDate(value));
         return { key, type: compatible || value === '' || value === null ? expected : 'mixed', value };
     });
 }

@@ -61,12 +61,18 @@ function decodeQuoted(value: string): string {
   return trimmed
 }
 
+function validIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(value)) return false
+  const date = new Date(`${value}T00:00:00.000Z`)
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
+}
+
 export function inferPropertyType(value: unknown): PropertyType {
   if (Array.isArray(value)) return 'list'
   if (typeof value === 'number') return 'number'
   if (typeof value === 'boolean') return 'checkbox'
   if (typeof value !== 'string') return 'mixed'
-  if (/^\d{4}-\d{2}-\d{2}$/u.test(value)) return 'date'
+  if (validIsoDate(value)) return 'date'
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})?$/u.test(value)) return 'datetime'
   return 'text'
 }
@@ -168,7 +174,7 @@ export function parseFrontmatterProperties(source: string, declared: ObsidianPro
       : expected === 'text' ? typeof value === 'string'
         : expected === 'number' ? typeof value === 'number'
           : expected === 'checkbox' ? typeof value === 'boolean'
-            : typeof value === 'string' && type === expected
+            : typeof value === 'string' && type === expected && (expected !== 'date' || validIsoDate(value))
     return { key, type: compatible || value === '' || value === null ? expected : 'mixed', value }
   })
 }

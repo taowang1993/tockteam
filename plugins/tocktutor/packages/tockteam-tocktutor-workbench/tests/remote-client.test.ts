@@ -40,6 +40,7 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
     'currentVault',
     'duplicateDocument',
     'facets',
+    'getObsidianPropertyTypes',
     'graph',
     'inspectAttachment',
     'links',
@@ -76,6 +77,8 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
       descriptor.parameters.map(parameter => parameter.name),
       descriptor.method === 'currentVault'
         ? []
+        : descriptor.method === 'getObsidianPropertyTypes'
+          ? ['expectedVault']
         : descriptor.method === 'openDocument' || descriptor.method === 'inspectAttachment' || descriptor.method === 'previewAttachment'
           ? ['path', 'expectedVault'] : ['request']
     )
@@ -93,6 +96,10 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
     revision: `file:${'b'.repeat(64)}`,
   }), true)
   assert.equal(codecAccepts(open.result, { content: '# Missing identity\n' }), false)
+
+  const types = remote.descriptors.find(descriptor => descriptor.method === 'getObsidianPropertyTypes')!
+  assert.equal(codecAccepts(types.result, { due: 'date', finished: 'checkbox' }), true)
+  assert.equal(codecAccepts(types.result, { due: 'arbitrary' }), false)
 
   const save = remote.descriptors.find(descriptor => descriptor.method === 'saveDocument')!
   const expectedVault = { generation: 7, id: `vault:${'f'.repeat(64)}` }

@@ -133,13 +133,13 @@ export function MarkdownDocumentHeader(props: { editableProperties?: boolean; cl
               <dl aria-label="Document Properties" className="m-0 grid grid-cols-[minmax(96px,140px)_minmax(0,1fr)] gap-x-3 text-sm leading-6">
                 {properties.map(property => {
                   const tags = property.key.toLocaleLowerCase() === 'tags' && Array.isArray(property.value) ? property.value : null
-                  const checkbox = property.type === 'checkbox' && typeof property.value === 'boolean'
+                  const checkbox = property.type === 'checkbox' && (typeof property.value === 'boolean' || property.value === '' || property.value === null)
                   const Icon = tags === null ? propertyIcons[property.type] : Tags
                   return (
                     <div className="contents" key={property.key}>
                       <dt className="flex min-h-8 min-w-0 items-center gap-2 self-start text-[var(--tt-muted)]" title={`${property.key} · ${propertyTypeLabels[property.type]}`}><Icon aria-hidden="true" className="size-4 shrink-0" /><span className="truncate">{property.key}</span></dt>
                       <dd className="m-0 flex min-h-8 min-w-0 flex-wrap items-center gap-1 py-1 text-[var(--tt-text)]">
-                        {props.editableProperties && !checkbox ? <Input aria-label={`Property ${property.key}`} key={JSON.stringify(property.value)} defaultValue={Array.isArray(property.value) ? JSON.stringify(property.value) : String(property.value ?? '')} onBlur={event => {
+                        {props.editableProperties && property.type === 'mixed' && property.value !== null ? <span className="text-muted-foreground">Use Source Mode</span> : props.editableProperties && !checkbox ? <Input aria-label={`Property ${property.key}`} key={JSON.stringify(property.value)} type={property.type === 'date' ? 'date' : undefined} defaultValue={Array.isArray(property.value) ? JSON.stringify(property.value) : String(property.value ?? '')} onBlur={event => {
                           try {
                             const text = event.currentTarget.value
                             const value = editedPropertyValue(property.value, text)
