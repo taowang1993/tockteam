@@ -23,6 +23,7 @@ import { withoutGeneratedHeadingIds } from "./live-preview-authored-history.js";
 import { configureObsidianContent, obsidianInline, obsidianSyntax, referenceDefinition } from "./milkdown-content.js";
 import { InlineImageLoader, attachInlineImages } from "./inline-images.js";
 import { renderMarkdownHtml } from "./rich-markdown.js";
+import { attachBrowserMermaid } from "./mermaid-renderer.js";
 import { classifyExternalEmbed } from "./external-embeds.js";
 import { collectEmbedTargets } from "./embeds.js";
 import { SlashMenu, slashMenuPlugin, slashKey } from "./live-preview-slash-menu.js";
@@ -468,6 +469,115 @@ export function LivePreviewEditorRuntime(props) {
             element.removeEventListener('keydown', activate);
             for (const image of imageActions.keys())
                 removeImageAction(image);
+        };
+    }, [ready]);
+    useEffect(() => {
+        if (!ready || !root.current)
+            return;
+        const element = root.current;
+        let disposeRenderer;
+        let signature = '';
+        let entries = [];
+        const sized = new WeakSet();
+        const syncVisibility = () => {
+            for (const { block, preview } of entries) {
+                const image = preview.querySelector('img');
+                if (image && !sized.has(image)) {
+                    sized.add(image);
+                    image.addEventListener('load', syncVisibility, { once: true });
+                }
+                if (image?.naturalWidth && image.naturalHeight)
+                    image.style.width = `${Math.round(image.naturalWidth * Math.min(2, 600 / image.naturalHeight))}px`;
+                const editing = block.contains(document.activeElement) && !preview.contains(document.activeElement);
+                const shown = !editing && !!image;
+                block.dataset.mermaidPreview = String(shown);
+                preview.hidden = !shown;
+                const code = block.querySelector('.cm-editor');
+                const tools = block.querySelector('.tools');
+                if (code)
+                    code.hidden = shown;
+                if (tools)
+                    tools.hidden = shown;
+            }
+        };
+        const refresh = () => {
+            const authored = [];
+            viewRef.current?.state.doc.descendants(node => { if (node.type.name === 'code_block')
+                authored.push(node.textContent); });
+            const blocks = [...element.querySelectorAll('.milkdown-code-block[data-code-language]')];
+            const candidates = blocks.map((block, index) => ({ block, source: authored[index] ?? '' }))
+                .filter(({ block }) => block.dataset.codeLanguage?.toLowerCase() === 'mermaid');
+            const sources = candidates.map(({ source }) => source);
+            const mermaidBlocks = candidates.map(({ block }) => block);
+            const next = JSON.stringify(mermaidBlocks.map((block, index) => [block.dataset.codeLanguage, sources[index]]));
+            if (next === signature && entries.length === mermaidBlocks.length && entries.every((entry, index) => entry.block === mermaidBlocks[index] && entry.block.contains(entry.preview))) {
+                syncVisibility();
+                return;
+            }
+            signature = next;
+            disposeRenderer?.();
+            for (const { block, preview } of entries) {
+                delete block.dataset.mermaidPreview;
+                const code = block.querySelector('.cm-editor');
+                if (code)
+                    code.hidden = false;
+                const tools = block.querySelector('.tools');
+                if (tools)
+                    tools.hidden = false;
+                preview.remove();
+            }
+            entries = mermaidBlocks.map((block, index) => {
+                const source = sources[index];
+                const preview = document.createElement('div');
+                preview.className = 'tocktutor-live-mermaid block w-full min-w-0 max-w-full cursor-pointer rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tt-accent)]';
+                preview.setAttribute('role', 'button');
+                preview.setAttribute('aria-label', 'Edit Mermaid Diagram');
+                preview.tabIndex = 0;
+                preview.contentEditable = 'false';
+                const figure = document.createElement('figure');
+                figure.className = 'mermaid w-full max-w-full';
+                figure.dataset.language = 'mermaid';
+                figure.dataset.mermaidSource = source;
+                const fallback = document.createElement('pre');
+                const code = document.createElement('code');
+                code.textContent = source;
+                fallback.append(code);
+                figure.append(fallback);
+                preview.append(figure);
+                block.append(preview);
+                const edit = () => { block.dataset.mermaidPreview = 'false'; preview.hidden = true; const code = block.querySelector('.cm-editor'); if (code)
+                    code.hidden = false; const tools = block.querySelector('.tools'); if (tools)
+                    tools.hidden = false; block.querySelector('.cm-content')?.focus(); };
+                preview.addEventListener('click', edit);
+                preview.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    edit();
+                } });
+                return { block, preview };
+            });
+            disposeRenderer = entries.length ? attachBrowserMermaid(element) : undefined;
+            syncVisibility();
+        };
+        const observer = new MutationObserver(refresh);
+        observer.observe(element, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['data-code-language'] });
+        element.addEventListener('focusin', syncVisibility);
+        element.addEventListener('focusout', syncVisibility);
+        refresh();
+        return () => {
+            observer.disconnect();
+            element.removeEventListener('focusin', syncVisibility);
+            element.removeEventListener('focusout', syncVisibility);
+            disposeRenderer?.();
+            for (const { block, preview } of entries) {
+                delete block.dataset.mermaidPreview;
+                const code = block.querySelector('.cm-editor');
+                if (code)
+                    code.hidden = false;
+                const tools = block.querySelector('.tools');
+                if (tools)
+                    tools.hidden = false;
+                preview.remove();
+            }
         };
     }, [ready]);
     useEffect(() => {

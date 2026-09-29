@@ -745,6 +745,71 @@ describe('Live Preview editor', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
+  it('shows Mermaid in Live Preview without changing the authored fence, and exposes source on activation', async () => {
+    const source = '```mermaid\nsequenceDiagram\n  Alice->>Bob: Hello\n```\n\nAfter\n'
+    const onChange = vi.fn()
+    const { container } = render(<LivePreviewEditor content={source} onMarkdownChange={onChange} />)
+    const figure = await waitFor(() => {
+      const value = container.querySelector<HTMLElement>('.milkdown-code-block figure.mermaid')
+      expect(value?.dataset.mermaidSource).toContain('Alice->>Bob')
+      return value!
+    }, { timeout: 10_000 })
+    const block = figure.closest<HTMLElement>('.milkdown-code-block')!
+    await waitFor(() => expect(container.querySelector('iframe[sandbox="allow-scripts"]')).toBeTruthy())
+    figure.parentElement!.remove() // Crepe may replace the Vue-owned code-block children after mounting.
+    const restored = await waitFor(() => {
+      const current = block.querySelector('figure.mermaid')
+      expect(current).toBeTruthy()
+      expect(current).not.toBe(figure)
+      return current!
+    })
+    const root = container.querySelector<HTMLElement>('.tocktutor-crepe-editor')!
+    root.style.setProperty('--tt-panel', '#151517')
+    root.style.setProperty('--tt-text', '#f9fafb')
+    root.style.setProperty('--dsw-specific-markdown-accent', '#a68af9')
+    const frame = container.querySelector<HTMLIFrameElement>('iframe[sandbox="allow-scripts"]')!
+    const post = vi.spyOn(frame.contentWindow!, 'postMessage')
+    const send = (data: object) => window.dispatchEvent(new MessageEvent('message', { data, origin: 'null', source: frame.contentWindow }))
+    act(() => { send({ channel: 'tocktutor-mermaid', ready: true }) })
+    const request = post.mock.calls.filter(([value]) => (value as { source?: string }).source?.includes('Alice->>Bob')).at(-1)?.[0] as { id: number } | undefined
+    expect(request?.id).toBeTypeOf('number')
+    act(() => { send({ channel: 'tocktutor-mermaid', id: request!.id, svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 30"><rect x="0" y="0" width="80" height="30"/><text x="10" y="20">Hello</text></svg>' }) })
+    await waitFor(() => expect(block.dataset.mermaidPreview).toBe('true'))
+    expect(block.querySelector<HTMLElement>('.cm-editor')?.hidden).toBe(true)
+    expect(restored.querySelector('img')?.getAttribute('src')).toMatch(/^data:image\/svg\+xml,/u)
+    fireEvent.keyDown(restored.parentElement!, { key: 'Enter' })
+    expect(block.dataset.mermaidPreview).toBe('false')
+    expect(block.querySelector<HTMLElement>('.cm-editor')?.hidden).toBe(false)
+    expect(block.querySelector('.cm-content')?.textContent).toContain('Alice->>Bob')
+    expect(onChange).not.toHaveBeenCalled()
+    post.mockRestore()
+  }, 15_000)
+
+  it('disposes an in-flight Mermaid frame when Live Preview switches notes', async () => {
+    const onChange = vi.fn()
+    const { container, rerender } = render(<LivePreviewEditor content={'```mermaid\nsequenceDiagram\n  A->>B: Old\n```\n'} key="old" onMarkdownChange={onChange} />)
+    const frame = await waitFor(() => {
+      const value = container.querySelector<HTMLIFrameElement>('iframe[sandbox="allow-scripts"]')
+      expect(value).toBeTruthy()
+      return value!
+    }, { timeout: 10_000 })
+    const oldWindow = frame.contentWindow
+    rerender(<LivePreviewEditor content={'# New Note\n'} key="new" onMarkdownChange={onChange} />)
+    await waitFor(() => expect(container.querySelector('iframe[sandbox="allow-scripts"]')).toBeNull())
+    act(() => { window.dispatchEvent(new MessageEvent('message', { data: { channel: 'tocktutor-mermaid', id: 1, svg: '<svg/>' }, origin: 'null', source: oldWindow })) })
+    expect(container.querySelector('figure.mermaid')).toBeNull()
+    expect(onChange).not.toHaveBeenCalled()
+  }, 15_000)
+
+  it('keeps offscreen Mermaid source available when CodeMirror has not mounted it', async () => {
+    const source = Array.from({ length: 7 }, (_, index) => `\`\`\`mermaid\nsequenceDiagram\n  Alice->>Bob: Diagram ${index}\n\`\`\``).join('\n\n')
+    const { container } = render(<LivePreviewEditor content={source} onMarkdownChange={() => {}} />)
+    await waitFor(() => expect(container.querySelectorAll('.milkdown-code-block figure.mermaid')).toHaveLength(7), { timeout: 10_000 })
+    expect([...container.querySelectorAll<HTMLElement>('.milkdown-code-block figure.mermaid')].map(figure => figure.dataset.mermaidSource)).toEqual(
+      Array.from({ length: 7 }, (_, index) => `sequenceDiagram\n  Alice->>Bob: Diagram ${index}`),
+    )
+  }, 15_000)
+
   it('colors TypeScript tokens in a fenced Live Preview code block', async () => {
     const { container } = render(<LivePreviewEditor content={'```ts\nconst lesson = "markdown"\nconsole.log(lesson)\n```\n'} onMarkdownChange={() => {}} />)
     await waitFor(() => expect(container.querySelector('.milkdown-code-block .cm-line')).toBeTruthy(), { timeout: 10_000 })
