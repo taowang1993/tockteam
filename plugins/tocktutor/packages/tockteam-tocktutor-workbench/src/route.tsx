@@ -176,6 +176,7 @@ import type {
   ListTreeRequest,
   NoteVaultChangeEvent,
   OpenDocumentResult,
+  ObsidianPropertyTypes,
   ReadSnapshotRequest,
   RenameDocumentRequest,
   RenameDocumentResult,
@@ -214,6 +215,7 @@ import type {
 
 const ROUTE_PREFIX = '/tocktutor'
 const TREE_LIMIT = 200
+const EMPTY_OBSIDIAN_TYPES: ObsidianPropertyTypes = Object.freeze({})
 const MAX_TREE_PAGES = 100
 const MAX_TREE_CURSOR_LENGTH = 4_096
 const DEFAULT_SIDEBAR_WIDTH = 280
@@ -238,6 +240,7 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     listMerges?(request: import('./types.ts').MergeListRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').MergeListResult>>
     recoverMerge?(request: import('./types.ts').MergeRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').MergeResult>>
     currentVault(signal?: AbortSignal): Promise<RemoteResult<ActiveVaultResult>>
+    getObsidianPropertyTypes?(expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<ObsidianPropertyTypes>>
     createManagedVault(request: CreateManagedVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>
     openSandboxVault(request: VaultGenerationRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>
     listTree(request: ListTreeRequest, signal?: AbortSignal): Promise<RemoteResult<VaultTreePage>>
@@ -823,6 +826,8 @@ export class WorkbenchRouteController {
   private readonly listeners = new Set<() => void>()
   private disposal: Promise<void> | null = null
   private vaultGeneration = 0
+  private propertyTypes: { vault: VaultReference; values: ObsidianPropertyTypes } | null = null
+  private propertyTypesAbort: AbortController | null = null
   private shellSession: WorkbenchSession = createWorkbenchSession(ROUTE_PREFIX, null, 'pane-1')
   private readonly recentlyClosed: RouteTabSummary[] = []
   private readonly historyBack: string[] = []
@@ -862,6 +867,9 @@ export class WorkbenchRouteController {
   ) {}
 
   getSnapshot = (): WorkbenchRouteSnapshot => this.snapshot
+
+  getObsidianPropertyTypes = (): ObsidianPropertyTypes => this.propertyTypes && sameVault(this.snapshot.vault, this.propertyTypes.vault)
+    ? this.propertyTypes.values : EMPTY_OBSIDIAN_TYPES
 
   async handleDispatch(
     event: TockTutorNativeActionsDispatchEvent,
@@ -2457,6 +2465,9 @@ export class WorkbenchRouteController {
       return
     }
     if (this.disposed) return
+    this.propertyTypes = null
+    this.propertyTypesAbort?.abort()
+    this.propertyTypesAbort = null
     this.cancelTreeRefresh()
     for (const load of this.linkedLoads.values()) load.abort.abort()
     this.linkedLoads.clear()
@@ -2582,6 +2593,16 @@ export class WorkbenchRouteController {
         workspaces: Object.freeze(this.workspaces.map(workspace => Object.freeze({ ...workspace }))),
       })
       this.syncShell()
+      if (this.remote.tocktutorWorkbench.getObsidianPropertyTypes) {
+        const abort = new AbortController()
+        this.propertyTypesAbort = abort
+        void this.remote.tocktutorWorkbench.getObsidianPropertyTypes(vault, abort.signal).then(result => {
+          const values = remoteValue(result)
+          if (this.disposed || abort.signal.aborted || this.propertyTypesAbort !== abort || !sameVault(this.snapshot.vault, vault)) return
+          this.propertyTypes = { vault, values: Object.freeze({ ...values }) }
+          this.update({})
+        }).catch(() => undefined)
+      }
       const path = pathFromTockTutorLocation(this.pathname) ?? this.pane()?.activePath ?? null
       if (path !== null && !this.pane()?.linkedView) await this.select(path, false, undefined, true, false, true)
       await Promise.all(this.shellSession.groups.map(group => {
@@ -4489,6 +4510,7 @@ export class WorkbenchRouteController {
     this.dispatchRevision += 1
     this.operation += 1
     this.operationAbort?.abort()
+    this.propertyTypesAbort?.abort()
     this.cancelRecoveryOperations()
     this.cancelEmbedOperation()
     for (const load of this.linkedLoads.values()) load.abort.abort()
@@ -6318,6 +6340,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 onOpenInternalLink={(target, kind) => { void props.onOpenInternalLink?.(target, kind) }}
                 localEditRevision={snapshot.localEditRevision}
                 embeds={snapshot.embeds}
+                declaredTypes={props.paneController?.getObsidianPropertyTypes()}
                 onAddProperty={key => props.onSetProperty?.(key, '') ?? false}
                 onEdit={props.onEdit}
                 onEditSource={() => { props.onMode('source') }}
@@ -6358,6 +6381,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               />
             ) : snapshot.documentKind === 'markdown' ? (
               <RichReadingView
+                declaredTypes={props.paneController?.getObsidianPropertyTypes()}
                 embeds={snapshot.embeds}
                 key={snapshot.path}
                 onAddProperty={key => props.onSetProperty?.(key, '') ?? false}

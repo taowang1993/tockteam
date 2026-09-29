@@ -28,7 +28,7 @@ import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type LinkedView, type LinkedViewKind, type PaneLayout } from './session.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
-import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ReadSnapshotRequest, RenameDocumentRequest, RenameDocumentResult, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, SnapshotMutationResult, RestoreTrashResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ObsidianPropertyTypes, ReadSnapshotRequest, RenameDocumentRequest, RenameDocumentResult, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, SnapshotMutationResult, RestoreTrashResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     tocktutorAssistant?: WorkbenchSearchIntelligenceRemote | undefined;
@@ -39,6 +39,7 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
         listMerges?(request: import('./types.ts').MergeListRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').MergeListResult>>;
         recoverMerge?(request: import('./types.ts').MergeRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').MergeResult>>;
         currentVault(signal?: AbortSignal): Promise<RemoteResult<ActiveVaultResult>>;
+        getObsidianPropertyTypes?(expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<ObsidianPropertyTypes>>;
         createManagedVault(request: CreateManagedVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>;
         openSandboxVault(request: VaultGenerationRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>;
         listTree(request: ListTreeRequest, signal?: AbortSignal): Promise<RemoteResult<VaultTreePage>>;
@@ -234,6 +235,8 @@ export declare class WorkbenchRouteController {
     private readonly listeners;
     private disposal;
     private vaultGeneration;
+    private propertyTypes;
+    private propertyTypesAbort;
     private shellSession;
     private readonly recentlyClosed;
     private readonly historyBack;
@@ -266,6 +269,7 @@ export declare class WorkbenchRouteController {
     private disposed;
     constructor(remote: WorkbenchRouteRemote, navigate: TockTutorRouteOwnerProps['navigate'], now?: () => Date, storage?: KeyValueStorage | null);
     getSnapshot: () => WorkbenchRouteSnapshot;
+    getObsidianPropertyTypes: () => ObsidianPropertyTypes;
     handleDispatch(event: TockTutorNativeActionsDispatchEvent): Promise<TockTutorNativeActionsDispatchResult>;
     private prepareDispatchPane;
     private createDispatchedDocument;

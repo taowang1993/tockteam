@@ -265,6 +265,7 @@ test('reads only known Obsidian property assignments through an exact-vault pass
     await rm(config)
     assert.deepEqual(await gateway.getObsidianPropertyTypes(expected, signal), {})
     await assert.rejects(gateway.getObsidianPropertyTypes({ ...expected, generation: -1 }, signal), /vault reference/i)
+    assert.deepEqual(await gateway.getObsidianPropertyTypes({ ...expected, generation: expected.generation + 1 }, signal), {})
     await assert.rejects(gateway.getObsidianPropertyTypes(expected, AbortSignal.abort()), { name: 'AbortError' })
   } finally {
     await context.fiber.dispose()

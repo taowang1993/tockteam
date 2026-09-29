@@ -4,6 +4,7 @@ import type { EditorCommandId } from './editor-commands.ts';
 import type { EditorSearchRequest, EditorSearchState } from './editor-search.ts';
 import type { LivePreviewTableAction } from './milkdown-editor-commands.ts';
 import { type PropertyValue } from './properties.ts';
+import type { ObsidianPropertyTypes } from './types.ts';
 export interface LivePreviewSelection {
     from: number;
     to: number;
@@ -16,6 +17,7 @@ export interface LivePreviewEditorProps {
     ariaLabel?: string;
     className?: string;
     content: string;
+    declaredTypes?: ObsidianPropertyTypes | undefined;
     localEditRevision?: number | undefined;
     commandRef?: MutableRefObject<((command: EditorCommandId) => boolean) | null>;
     insertTextRef?: MutableRefObject<((text: string) => boolean) | null>;
@@ -42,6 +44,7 @@ export interface LivePreviewEditorProps {
 export declare function MarkdownDocumentHeader(props: {
     editableProperties?: boolean;
     className?: string;
+    declaredTypes?: ObsidianPropertyTypes | undefined;
     onAddProperty?: (key: string) => boolean;
     onRenameTitle?: (title: string) => Promise<boolean> | boolean;
     onSetProperty?: (key: string, value: PropertyValue) => boolean;

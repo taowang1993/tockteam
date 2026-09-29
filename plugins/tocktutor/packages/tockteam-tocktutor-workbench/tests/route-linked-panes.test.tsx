@@ -85,6 +85,29 @@ it('keeps linked Properties on the source tab, edits its shared record, and rest
   await restored.dispose()
 })
 
+it('shows an imported empty Date property in both the document header and linked Properties', async () => {
+  const { controller, files, remote } = fixture()
+  files.set('One.md', '---\ndue:\n---\n# One\n')
+  const readTypes = vi.fn(() => ok({ due: 'date' }))
+  Object.assign(remote.tocktutorWorkbench, { getObsidianPropertyTypes: readTypes })
+  await controller.syncLocation('/tocktutor/One.md')
+  await waitFor(() => expect(controller.getObsidianPropertyTypes()).toEqual({ due: 'date' }))
+  controller.setMode('reading')
+  const source = controller.getSnapshot().focusedPaneId
+  await controller.openLinkedView(source, 'properties')
+  function Harness() {
+    const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+    return <TockTutorRouteView snapshot={snapshot} paneController={controller} onEdit={text => controller.edit(text)} onMode={mode => controller.setMode(mode)} onSave={() => { void controller.save() }} onSelect={path => { void controller.select(path) }} onMoveCanvas={() => {}} onToggleTask={index => controller.toggleTask(index)} onClosePane={id => { void controller.closePane(id) }} />
+  }
+  const view = render(<Harness />)
+  try {
+    await waitFor(() => expect([...document.querySelectorAll('dt[title]')].map(item => item.getAttribute('title'))).toEqual(['due · Date', 'due · Date']))
+    expect(readTypes).toHaveBeenCalledTimes(1)
+    expect(readTypes).toHaveBeenCalledWith(vault, expect.any(AbortSignal))
+    expect(controller.getSnapshot().source).toBe('---\ndue:\n---\n# One\n')
+  } finally { view.unmount(); await controller.dispose() }
+})
+
 it('renders five real linked panes, edits represented Properties and navigates only the bound source', async () => {
   const { controller } = fixture()
   await controller.syncLocation('/tocktutor/One.md')

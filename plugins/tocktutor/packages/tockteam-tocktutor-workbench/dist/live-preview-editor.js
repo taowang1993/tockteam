@@ -7,6 +7,7 @@ import { lazy, Suspense, useId, useMemo, useState, } from 'react';
 import { NoteTitleEditor } from "./source-editor.js";
 import { MAX_FRONTMATTER_BYTES, MAX_PROPERTIES, parseFrontmatterProperties } from "./properties.js";
 const propertyIcons = { text: AlignLeft, list: List, number: Hash, checkbox: CheckSquare, date: CalendarDays, datetime: CalendarDays, mixed: List };
+const propertyTypeLabels = { text: 'Text', list: 'List', number: 'Number', checkbox: 'Checkbox', date: 'Date', datetime: 'Date & Time', mixed: 'Source Mode' };
 export function splitLivePreviewSource(source) {
     const normalized = source.replace(/\r\n?/gu, '\n');
     const match = normalized.match(/^---\n[\s\S]*?\n(?:---|\.\.\.)(?:\n|$)/u);
@@ -39,7 +40,7 @@ function fallbackDocumentTitle(source, title) {
     return heading?.replace(/\s/gu, '') === title.replace(/\s/gu, '') ? undefined : title;
 }
 export function MarkdownDocumentHeader(props) {
-    const properties = useMemo(() => parseFrontmatterProperties(props.source), [props.source]);
+    const properties = useMemo(() => parseFrontmatterProperties(props.source, props.declaredTypes), [props.source, props.declaredTypes]);
     const errorId = useId();
     const propertiesId = useId();
     const [propertiesExpanded, setPropertiesExpanded] = useState(true);
@@ -63,7 +64,7 @@ export function MarkdownDocumentHeader(props) {
                                     const tags = property.key.toLocaleLowerCase() === 'tags' && Array.isArray(property.value) ? property.value : null;
                                     const checkbox = property.type === 'checkbox' && typeof property.value === 'boolean';
                                     const Icon = tags === null ? propertyIcons[property.type] : Tags;
-                                    return (_jsxs("div", { className: "contents", children: [_jsxs("dt", { className: "flex min-h-8 min-w-0 items-center gap-2 self-start text-[var(--tt-muted)]", title: `${property.key} · ${property.type}`, children: [_jsx(Icon, { "aria-hidden": "true", className: "size-4 shrink-0" }), _jsx("span", { className: "truncate", children: property.key })] }), _jsx("dd", { className: "m-0 flex min-h-8 min-w-0 flex-wrap items-center gap-1 py-1 text-[var(--tt-text)]", children: props.editableProperties && !checkbox ? _jsx(Input, { "aria-label": `Property ${property.key}`, defaultValue: Array.isArray(property.value) ? JSON.stringify(property.value) : String(property.value ?? ''), onBlur: event => {
+                                    return (_jsxs("div", { className: "contents", children: [_jsxs("dt", { className: "flex min-h-8 min-w-0 items-center gap-2 self-start text-[var(--tt-muted)]", title: `${property.key} · ${propertyTypeLabels[property.type]}`, children: [_jsx(Icon, { "aria-hidden": "true", className: "size-4 shrink-0" }), _jsx("span", { className: "truncate", children: property.key })] }), _jsx("dd", { className: "m-0 flex min-h-8 min-w-0 flex-wrap items-center gap-1 py-1 text-[var(--tt-text)]", children: props.editableProperties && !checkbox ? _jsx(Input, { "aria-label": `Property ${property.key}`, defaultValue: Array.isArray(property.value) ? JSON.stringify(property.value) : String(property.value ?? ''), onBlur: event => {
                                                         try {
                                                             const text = event.currentTarget.value;
                                                             const value = editedPropertyValue(property.value, text);
@@ -107,6 +108,6 @@ export function MarkdownDocumentHeader(props) {
                                 : _jsxs(Button, { className: "mt-2 -ml-2.5 bg-transparent text-[var(--tt-muted)] hover:text-[var(--tt-text)]", onClick: () => { setAdding(true); }, type: "button", variant: "ghost", children: [_jsx(Plus, { "aria-hidden": "true", "data-icon": "inline-start" }), "Add Property"] }))] })] }))] }));
 }
 export function LivePreviewEditor(props) {
-    return (_jsxs("div", { className: "flex min-h-0 min-w-0 flex-1 flex-col", children: [_jsx(MarkdownDocumentHeader, { className: "mx-auto w-[calc(100%-48px)] max-w-[700px] pt-[18px]", source: props.content, ...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty }), ...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle }), ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), ...(props.title === undefined ? {} : { title: props.title }) }), _jsx(Suspense, { fallback: _jsx("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: props.className, children: "Loading Live Preview\u2026" }), children: _jsx(LazyLivePreviewEditor, { ...props }) })] }));
+    return (_jsxs("div", { className: "flex min-h-0 min-w-0 flex-1 flex-col", children: [_jsx(MarkdownDocumentHeader, { className: "mx-auto w-[calc(100%-48px)] max-w-[700px] pt-[18px]", declaredTypes: props.declaredTypes, source: props.content, ...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty }), ...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle }), ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), ...(props.title === undefined ? {} : { title: props.title }) }), _jsx(Suspense, { fallback: _jsx("div", { "aria-label": props.ariaLabel ?? 'Live Preview Editor', className: props.className, children: "Loading Live Preview\u2026" }), children: _jsx(LazyLivePreviewEditor, { ...props }) })] }));
 }
 //# sourceMappingURL=live-preview-editor.js.map

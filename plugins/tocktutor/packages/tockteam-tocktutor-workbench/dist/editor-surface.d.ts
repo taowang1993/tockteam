@@ -3,6 +3,7 @@ import type { ResolvedEmbedNode } from './embeds.ts';
 import { type LivePreviewSelection, type LivePreviewEditorProps } from './live-preview-editor.tsx';
 import { type EditorSearchRequest, type EditorSearchState } from './editor-search.ts';
 import type { PropertyValue } from './properties.ts';
+import type { ObsidianPropertyTypes } from './types.ts';
 export interface ReadingLinkResult {
     fragment: string | null;
 }
@@ -16,6 +17,7 @@ export declare function MarkdownSlidesView(props: {
     source: string;
 }): ReactNode;
 export declare function RichReadingView(props: {
+    declaredTypes?: ObsidianPropertyTypes | undefined;
     embeds?: readonly ResolvedEmbedNode[] | undefined;
     onAddProperty?: ((key: string) => boolean) | undefined;
     onOpenExternalUrl?: ((url: string) => void) | undefined;
@@ -30,6 +32,7 @@ export declare function RichReadingView(props: {
     title: string;
 }): ReactNode;
 export declare function LivePreviewView(props: {
+    declaredTypes?: ObsidianPropertyTypes | undefined;
     commandRef?: LivePreviewEditorProps['commandRef'];
     insertTextRef?: LivePreviewEditorProps['insertTextRef'];
     slashLinks?: LivePreviewEditorProps['slashLinks'];

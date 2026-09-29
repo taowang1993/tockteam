@@ -17,8 +17,10 @@ import type { EditorSearchRequest, EditorSearchState } from './editor-search.ts'
 import type { LivePreviewTableAction } from './milkdown-editor-commands.ts'
 import { NoteTitleEditor } from './source-editor.tsx'
 import { MAX_FRONTMATTER_BYTES, MAX_PROPERTIES, parseFrontmatterProperties, type PropertyType, type PropertyValue } from './properties.ts'
+import type { ObsidianPropertyTypes } from './types.ts'
 
 const propertyIcons = { text: AlignLeft, list: List, number: Hash, checkbox: CheckSquare, date: CalendarDays, datetime: CalendarDays, mixed: List } satisfies Record<PropertyType, typeof AlignLeft>
+const propertyTypeLabels = { text: 'Text', list: 'List', number: 'Number', checkbox: 'Checkbox', date: 'Date', datetime: 'Date & Time', mixed: 'Source Mode' } satisfies Record<PropertyType, string>
 
 export interface LivePreviewSelection {
   from: number
@@ -35,6 +37,7 @@ export interface LivePreviewEditorProps {
   ariaLabel?: string
   className?: string
   content: string
+  declaredTypes?: ObsidianPropertyTypes | undefined
   localEditRevision?: number | undefined
   commandRef?: MutableRefObject<((command: EditorCommandId) => boolean) | null>
   insertTextRef?: MutableRefObject<((text: string) => boolean) | null>
@@ -85,8 +88,8 @@ function fallbackDocumentTitle(source: string, title: string | undefined): strin
   return heading?.replace(/\s/gu, '') === title.replace(/\s/gu, '') ? undefined : title
 }
 
-export function MarkdownDocumentHeader(props: { editableProperties?: boolean; className?: string; onAddProperty?: (key: string) => boolean; onRenameTitle?: (title: string) => Promise<boolean> | boolean; onSetProperty?: (key: string, value: PropertyValue) => boolean; source: string; title?: string }): ReactNode {
-  const properties = useMemo(() => parseFrontmatterProperties(props.source), [props.source])
+export function MarkdownDocumentHeader(props: { editableProperties?: boolean; className?: string; declaredTypes?: ObsidianPropertyTypes | undefined; onAddProperty?: (key: string) => boolean; onRenameTitle?: (title: string) => Promise<boolean> | boolean; onSetProperty?: (key: string, value: PropertyValue) => boolean; source: string; title?: string }): ReactNode {
+  const properties = useMemo(() => parseFrontmatterProperties(props.source, props.declaredTypes), [props.source, props.declaredTypes])
   const errorId = useId()
   const propertiesId = useId()
   const [propertiesExpanded, setPropertiesExpanded] = useState(true)
@@ -134,7 +137,7 @@ export function MarkdownDocumentHeader(props: { editableProperties?: boolean; cl
                   const Icon = tags === null ? propertyIcons[property.type] : Tags
                   return (
                     <div className="contents" key={property.key}>
-                      <dt className="flex min-h-8 min-w-0 items-center gap-2 self-start text-[var(--tt-muted)]" title={`${property.key} · ${property.type}`}><Icon aria-hidden="true" className="size-4 shrink-0" /><span className="truncate">{property.key}</span></dt>
+                      <dt className="flex min-h-8 min-w-0 items-center gap-2 self-start text-[var(--tt-muted)]" title={`${property.key} · ${propertyTypeLabels[property.type]}`}><Icon aria-hidden="true" className="size-4 shrink-0" /><span className="truncate">{property.key}</span></dt>
                       <dd className="m-0 flex min-h-8 min-w-0 flex-wrap items-center gap-1 py-1 text-[var(--tt-text)]">
                         {props.editableProperties && !checkbox ? <Input aria-label={`Property ${property.key}`} key={JSON.stringify(property.value)} defaultValue={Array.isArray(property.value) ? JSON.stringify(property.value) : String(property.value ?? '')} onBlur={event => {
                           try {
@@ -205,7 +208,7 @@ export function MarkdownDocumentHeader(props: { editableProperties?: boolean; cl
 export function LivePreviewEditor(props: LivePreviewEditorProps): ReactNode {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <MarkdownDocumentHeader className="mx-auto w-[calc(100%-48px)] max-w-[700px] pt-[18px]" source={props.content} {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })} {...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle })} {...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty })} {...(props.title === undefined ? {} : { title: props.title })} />
+      <MarkdownDocumentHeader className="mx-auto w-[calc(100%-48px)] max-w-[700px] pt-[18px]" declaredTypes={props.declaredTypes} source={props.content} {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })} {...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle })} {...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty })} {...(props.title === undefined ? {} : { title: props.title })} />
       <Suspense fallback={<div aria-label={props.ariaLabel ?? 'Live Preview Editor'} className={props.className}>Loading Live Preview…</div>}>
         <LazyLivePreviewEditor {...props} />
       </Suspense>
