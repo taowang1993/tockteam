@@ -85,9 +85,10 @@ it('keeps linked Properties on the source tab, edits its shared record, and rest
   await restored.dispose()
 })
 
-it('shows an imported empty Date property in both the document header and linked Properties', async () => {
+it.each(['', ' null'])('shows an imported empty Date property (%s) in both the document header and linked Properties', async empty => {
   const { controller, files, remote } = fixture()
-  files.set('One.md', '---\ndue:\n---\n# One\n')
+  const content = `---\ndue:${empty}\n---\n# One\n`
+  files.set('One.md', content)
   const readTypes = vi.fn(() => ok({ due: 'date' }))
   Object.assign(remote.tocktutorWorkbench, { getObsidianPropertyTypes: readTypes })
   await controller.syncLocation('/tocktutor/One.md')
@@ -104,7 +105,8 @@ it('shows an imported empty Date property in both the document header and linked
     await waitFor(() => expect([...document.querySelectorAll('dt[title]')].map(item => item.getAttribute('title'))).toEqual(['due · Date', 'due · Date']))
     expect(readTypes).toHaveBeenCalledTimes(1)
     expect(readTypes).toHaveBeenCalledWith(vault, expect.any(AbortSignal))
-    expect(controller.getSnapshot().source).toBe('---\ndue:\n---\n# One\n')
+    expect(screen.getByLabelText('Property due').getAttribute('type')).toBe('date')
+    expect(controller.getSnapshot().source).toBe(content)
   } finally { view.unmount(); await controller.dispose() }
 })
 

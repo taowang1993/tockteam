@@ -802,6 +802,38 @@ describe('Live Preview editor', () => {
     expect(onChange.mock.lastCall?.[0]).toBe(source.replace('Alice->>Bob: Hello', 'Alice->>Bob: Hello Safe'))
   }, 15_000)
 
+  it('keeps delimiter-looking code inside its Mermaid fence on save and reopen', async () => {
+    const source = '# Diagram\n```mermaid\nflowchart LR\n  A --> B\n```\n\nAfter\n'
+    const onChange = vi.fn(), editorViewRef = { current: null as any }
+    const mounted = render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 10_000 })
+    const view = editorViewRef.current
+    let end = -1
+    view.state.doc.descendants((node: any, pos: number) => { if (node.type.name === 'code_block') end = pos + node.nodeSize - 1 })
+    act(() => { view.dispatch(view.state.tr.insertText('\n```\nStill code', end)) })
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const saved = onChange.mock.lastCall![0]
+    mounted.unmount()
+    render(<LivePreviewEditor content={saved} editorViewRef={editorViewRef} onMarkdownChange={() => {}} />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 10_000 })
+    const blocks: string[] = []
+    editorViewRef.current.state.doc.descendants((node: any) => { if (node.type.name === 'code_block') blocks.push(node.textContent) })
+    expect(blocks).toEqual(['flowchart LR\n  A --> B\n```\nStill code'])
+  }, 20_000)
+
+  it('does not redirect an edit from an uppercase Mermaid fence to an identical lowercase fence', async () => {
+    const source = '# First\n```Mermaid\nflowchart LR\n  A --> B\n```\n\n# Second\n```mermaid\nflowchart LR\n  A --> B\n```\n'
+    const onChange = vi.fn(), editorViewRef = { current: null as any }
+    render(<LivePreviewEditor content={source} editorViewRef={editorViewRef} onMarkdownChange={onChange} />)
+    await waitFor(() => expect(editorViewRef.current).toBeTruthy(), { timeout: 10_000 })
+    const view = editorViewRef.current
+    let end = -1
+    view.state.doc.descendants((node: any, pos: number) => { if (node.type.name === 'code_block' && end < 0) end = pos + node.nodeSize - 1 })
+    act(() => { view.dispatch(view.state.tr.insertText(' Safe', end)) })
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    expect(onChange.mock.lastCall![0]).toBe(source.replace('A --> B', 'A --> B Safe'))
+  }, 15_000)
+
   it('preserves CRLF line endings when editing a Mermaid fence', async () => {
     const source = '# Diagram\r\n```mermaid\r\nsequenceDiagram\r\n  A->>B: Hello\r\n```\r\n'
     const onChange = vi.fn()

@@ -72,6 +72,16 @@ test('edits flat imported numbers, lists and local date-times without coercing z
   }
 })
 
+test('retains imported controls for null values and finite exponent-form numbers', async () => {
+  const { parseFrontmatterProperties, setFrontmatterProperty } = await import('../src/properties.ts')
+  const declared = { due: 'date', done: 'checkbox', rating: 'number', labels: 'multitext' } as const
+  assert.deepEqual(parseFrontmatterProperties('---\ndue: null\ndone: ~\nrating: null\nlabels: null\n---\n', declared).map(({ type }) => type), ['date', 'checkbox', 'number', 'list'])
+  for (const value of [1e21, -1e-7, Number.MAX_VALUE, Number.MIN_VALUE]) {
+    const saved = setFrontmatterProperty('---\nrating: 1\n---\n', 'rating', value)
+    assert.deepEqual(parseFrontmatterProperties(saved, declared), [{ key: 'rating', type: 'number', value }])
+  }
+})
+
 test('inserts properties before the closing delimiter without changing surrounding content', () => {
   for (const eol of ['\n', '\r\n']) {
     for (const marker of ['---', '...']) {

@@ -99,6 +99,22 @@ it('preserves a wikilink image caption when assigning a size', async () => {
   expect(html).toContain('width="400"')
 })
 
+it('undoes each explicit resize separately, even when committed quickly', async () => {
+  const token = '![[photo.png|320]]', onChange = vi.fn(), ref = { current: null as any }
+  const { rerender } = render(<LivePreviewEditor content={token} resolvedEmbeds={[resolved(token, '320')]} editorViewRef={ref} onMarkdownChange={onChange} />)
+  let width = await screen.findByRole('spinbutton', { name: 'Image Width' }, { timeout: 10_000 })
+  fireEvent.input(width, { target: { value: '400' } })
+  fireEvent.keyDown(width, { key: 'Enter' })
+  await waitFor(() => expect(onChange.mock.lastCall?.[0]).toContain('photo.png|400'))
+  rerender(<LivePreviewEditor content={onChange.mock.lastCall![0]} resolvedEmbeds={[resolved('![[photo.png|400]]', '400')]} editorViewRef={ref} onMarkdownChange={onChange} />)
+  width = await screen.findByRole('spinbutton', { name: 'Image Width' })
+  fireEvent.input(width, { target: { value: '480' } })
+  fireEvent.keyDown(width, { key: 'Enter' })
+  await waitFor(() => expect(onChange.mock.lastCall?.[0]).toContain('photo.png|480'))
+  act(() => expect(undo(ref.current.state, ref.current.dispatch)).toBe(true))
+  expect(onChange.mock.lastCall?.[0]).toContain('photo.png|400')
+})
+
 it('reads width-only and authored WxH sizes in Reading without changing the Markdown', () => {
   const one = '![[photo.png|320]]', two = '![Alt|480x240](photo.png)'
   const html = renderMarkdownHtml(`${one}\n\n${two}`, { resolvedEmbeds: [resolved(one, '320'), resolved(two, 'Alt|480x240')] })

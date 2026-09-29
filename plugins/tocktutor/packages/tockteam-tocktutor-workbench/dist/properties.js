@@ -106,7 +106,7 @@ function scalar(value) {
         return false;
     if (trimmed === 'null' || trimmed === '~')
         return null;
-    if (/^-?(?:0|[1-9]\d*)(?:\.\d+)?$/u.test(trimmed)) {
+    if (/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/u.test(trimmed)) {
         const number = Number(trimmed);
         if (Number.isFinite(number))
             return number;
@@ -163,7 +163,7 @@ export function parseFrontmatterProperties(source, declared = {}) {
         const imported = Object.hasOwn(declared, key) ? declared[key] : undefined;
         const expected = imported === 'multitext' || imported === 'tags' || imported === 'aliases'
             ? 'list' : imported;
-        if (!expected || type === 'mixed')
+        if (!expected || (type === 'mixed' && value !== null))
             return { key, type, value };
         const compatible = expected === 'list' ? Array.isArray(value)
             : expected === 'text' ? typeof value === 'string'

@@ -50,7 +50,7 @@ const codeLanguages = [
 const codeLanguageNames = new Map(codeLanguages.flatMap(language => language.alias.map(alias => [alias, language.name])))
 
 // A CodeMirror fence edit should not let Milkdown reformat unrelated authored spacing.
-function preserveMermaidFenceEdit(source: string, before, after): string | null {
+function preserveMermaidFenceEdit(source: string, before, after, parse): string | null {
   const crlf = source.includes('\r')
   if (crlf && /(?:^|[^\r])\n|\r(?!\n)/u.test(source)) return null // Mixed endings need a wider source map.
   const normalized = crlf ? source.replace(/\r\n/gu, '\n') : source
@@ -69,22 +69,42 @@ function preserveMermaidFenceEdit(source: string, before, after): string | null 
     || !before.slice(old.pos + old.node.nodeSize).content.eq(after.slice(next.pos + next.node.nodeSize).content)) return null
   const ordinal = oldBlocks.slice(0, index).filter(block => block.node.attrs.language?.toLowerCase() === 'mermaid').length
   const { body, prefix } = splitLivePreviewSource(normalized)
-  const openings: Array<{ at: number; fence: string }> = []
-  let active: { mark: string; size: number } | null = null
+  const openings: Array<{ start: number; at: number; fence: string; close: number; closeSize: number }> = []
+  let active: { mark: string; size: number; opening?: (typeof openings)[number] } | null = null
   let offset = prefix.length
   for (const line of body.split('\n')) {
-    const fence = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/u)
+    const fence = line.match(/^( {0,3})(`{3,}|~{3,})(.*)$/u)
     if (active) {
-      if (fence && fence[1][0] === active.mark && fence[1].length >= active.size && fence[2].trim() === '') active = null
+      if (fence && fence[2][0] === active.mark && fence[2].length >= active.size && fence[3].trim() === '') {
+        if (active.opening) { active.opening.close = offset + fence[1].length; active.opening.closeSize = fence[2].length }
+        active = null
+      }
     } else if (fence) {
-      active = { mark: fence[1][0], size: fence[1].length }
-      if (line === '```mermaid' || line === '~~~mermaid') openings.push({ at: offset + line.length + 1, fence: line.slice(0, 3) })
+      active = { mark: fence[2][0], size: fence[2].length }
+      if (/^mermaid(?:\s|$)/iu.test(fence[3].trim())) {
+        const opening = { start: offset + fence[1].length, at: offset + line.length + 1, fence: fence[2], close: -1, closeSize: 0 }
+        openings.push(opening)
+        active.opening = opening
+      }
     }
     offset += line.length + 1
   }
   const opening = openings[ordinal]
-  if (!opening || !normalized.slice(opening.at).startsWith(`${old.node.textContent}\n${opening.fence}`)) return null
-  const edited = normalized.slice(0, opening.at) + next.node.textContent + normalized.slice(opening.at + old.node.textContent.length)
+  if (!opening || opening.close < 0 || normalized.slice(opening.at, opening.at + old.node.textContent.length) !== old.node.textContent
+    || !/^\n {0,3}$/u.test(normalized.slice(opening.at + old.node.textContent.length, opening.close))) return null
+  // Grow both delimiters if pasted code would otherwise close the authored fence.
+  const runs = [...next.node.textContent.matchAll(/^ {0,3}(`{3,}|~{3,})[ \t]*$/gmu)]
+    .filter(match => match[1][0] === opening.fence[0]).map(match => match[1].length)
+  const size = runs.reduce((size, length) => Math.max(size, length + 1), opening.fence.length)
+  const fence = opening.fence[0].repeat(size)
+  const edited = normalized.slice(0, opening.start) + fence + normalized.slice(opening.start + opening.fence.length, opening.at)
+    + next.node.textContent + normalized.slice(opening.at + old.node.textContent.length, opening.close)
+    + (size > opening.fence.length ? fence : normalized.slice(opening.close, opening.close + opening.closeSize))
+    + normalized.slice(opening.close + opening.closeSize)
+  // Nested/unsupported fence syntax can change ordinals. Never splice unless every
+  // parsed code block still matches the intended editor document after reopening.
+  const reopened = codeBlocks(parse(splitLivePreviewSource(edited).body))
+  if (reopened.length !== newBlocks.length || reopened.some((block, at) => !block.node.eq(newBlocks[at].node))) return null
   return crlf ? edited.replace(/\n/gu, '\r\n') : edited
 }
 
@@ -302,7 +322,7 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
               if (!previous.doc.eq(view.state.doc)) contentRevision++
               if (disposed || !mounted) return
               if (!syncing.current && !withoutGeneratedHeadingIds(previous.doc).eq(withoutGeneratedHeadingIds(view.state.doc))) {
-                const markdown = preserveMermaidFenceEdit(source.current, previous.doc, view.state.doc) ?? serialize(view.state.doc)
+                const markdown = preserveMermaidFenceEdit(source.current, previous.doc, view.state.doc, text => crepe.editor.action(ctx => ctx.get(parserCtx)(text))) ?? serialize(view.state.doc)
                 if (markdown !== source.current) {
                   source.current = markdown
                   imageRevision++
@@ -420,7 +440,8 @@ export function LivePreviewEditorRuntime(props: LivePreviewEditorProps): ReactNo
           const tr = next.kind === 'wiki'
             ? view.state.tr.insertText(value, next.pos + 1, next.pos + next.node.nodeSize - 1)
             : view.state.tr.setNodeMarkup(next.pos, undefined, { ...next.node.attrs, alt: value })
-          view.dispatch(tr)
+          view.dispatch(closeHistory(tr))
+          view.dispatch(closeHistory(view.state.tr))
           return true
         }) : () => {}
         imageActions.set(image, { dispose: () => { disposeResize(); disposeViewer() }, host: row, image: action, authored: current?.authored ?? null })
