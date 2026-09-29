@@ -643,7 +643,7 @@ describe('Live Preview editor', () => {
     expect(readingSurface.className).toContain('[&_.callout]:bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_10%,var(--tt-panel))]')
     expect(readingSurface.querySelector('figure.mermaid pre')?.textContent).toContain('A[Start]-->B[Finish]')
     expect(readingSurface.querySelector('svg')).toBeNull()
-    expect(readingSurface.querySelector('iframe[sandbox="allow-scripts"]')).toBeTruthy()
+    expect(document.querySelector('iframe[sandbox="allow-scripts"]')?.parentElement).toBe(document.body)
     expect(readingSurface.className).toContain('[&_.mermaid-edge-path]:stroke-[var(--dsw-specific-markdown-accent)]')
     expect(readingSurface.className).toContain('[&_.mermaid-node-shape]:fill-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_12%,var(--tt-panel))]')
   })
@@ -755,7 +755,7 @@ describe('Live Preview editor', () => {
       return value!
     }, { timeout: 10_000 })
     const block = figure.closest<HTMLElement>('.milkdown-code-block')!
-    await waitFor(() => expect(container.querySelector('iframe[sandbox="allow-scripts"]')).toBeTruthy())
+    await waitFor(() => expect(document.querySelector('iframe[sandbox="allow-scripts"]')).toBeTruthy())
     figure.parentElement!.remove() // Crepe may replace the Vue-owned code-block children after mounting.
     const restored = await waitFor(() => {
       const current = block.querySelector('figure.mermaid')
@@ -767,7 +767,7 @@ describe('Live Preview editor', () => {
     root.style.setProperty('--tt-panel', '#151517')
     root.style.setProperty('--tt-text', '#f9fafb')
     root.style.setProperty('--dsw-specific-markdown-accent', '#a68af9')
-    const frame = container.querySelector<HTMLIFrameElement>('iframe[sandbox="allow-scripts"]')!
+    const frame = document.querySelector<HTMLIFrameElement>('iframe[sandbox="allow-scripts"]')!
     const post = vi.spyOn(frame.contentWindow!, 'postMessage')
     const send = (data: object) => window.dispatchEvent(new MessageEvent('message', { data, origin: 'null', source: frame.contentWindow }))
     act(() => { send({ channel: 'tocktutor-mermaid', ready: true }) })
@@ -850,13 +850,13 @@ describe('Live Preview editor', () => {
     const onChange = vi.fn()
     const { container, rerender } = render(<LivePreviewEditor content={'```mermaid\nsequenceDiagram\n  A->>B: Old\n```\n'} key="old" onMarkdownChange={onChange} />)
     const frame = await waitFor(() => {
-      const value = container.querySelector<HTMLIFrameElement>('iframe[sandbox="allow-scripts"]')
+      const value = document.querySelector<HTMLIFrameElement>('iframe[sandbox="allow-scripts"]')
       expect(value).toBeTruthy()
       return value!
     }, { timeout: 10_000 })
     const oldWindow = frame.contentWindow
     rerender(<LivePreviewEditor content={'# New Note\n'} key="new" onMarkdownChange={onChange} />)
-    await waitFor(() => expect(container.querySelector('iframe[sandbox="allow-scripts"]')).toBeNull())
+    await waitFor(() => expect(document.querySelector('iframe[sandbox="allow-scripts"]')).toBeNull())
     act(() => { window.dispatchEvent(new MessageEvent('message', { data: { channel: 'tocktutor-mermaid', id: 1, svg: '<svg/>' }, origin: 'null', source: oldWindow })) })
     expect(container.querySelector('figure.mermaid')).toBeNull()
     expect(onChange).not.toHaveBeenCalled()

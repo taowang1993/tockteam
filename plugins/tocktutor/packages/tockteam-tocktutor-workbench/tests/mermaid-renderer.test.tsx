@@ -28,7 +28,7 @@ describe('Mermaid Reading frame lifecycle', () => {
     const root = rootWithFence('sequenceDiagram\nAlice->>Bob: Hello')
     const dispose = attachBrowserMermaid(root)
     try {
-      const frame = root.querySelector('iframe')!
+      const frame = document.querySelector('iframe')!
       expect(frame.getAttribute('sandbox')).toBe('allow-scripts')
       expect(frame.getAttribute('aria-hidden')).toBe('true')
       const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => {})
@@ -48,13 +48,43 @@ describe('Mermaid Reading frame lifecycle', () => {
       frameMessage(frame, { channel: 'tocktutor-mermaid', id: 2, svg: simpleSvg })
       expect(root.querySelector('img')).toBeTruthy()
     } finally { dispose() }
-    expect(root.querySelector('iframe')).toBeNull()
+    expect(document.querySelector('iframe')).toBeNull()
+  })
+
+  it('keeps the sandbox laid out when its note is hidden by Settings', () => {
+    const root = rootWithFence('flowchart LR\nA --> B')
+    root.style.display = 'none'
+    const dispose = attachBrowserMermaid(root)
+    try {
+      const frame = document.querySelector('iframe[sandbox="allow-scripts"]')
+      expect(frame?.parentElement).toBe(document.body)
+      expect(frame?.className).toContain('w-[1024px]')
+    } finally { dispose() }
+    expect(document.querySelector('iframe')).toBeNull()
+  })
+
+  it('follows the active skin accent while preserving the default Markdown tint', async () => {
+    const root = rootWithFence('flowchart LR\nA --> B')
+    root.style.setProperty('--tt-accent', '#96511c')
+    const dispose = attachBrowserMermaid(root)
+    try {
+      const frame = document.querySelector('iframe')!
+      const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => {})
+      const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><line x1="0" x2="100" y1="0" y2="100"/></svg>'
+      frameMessage(frame, { channel: 'tocktutor-mermaid', ready: true })
+      frameMessage(frame, { channel: 'tocktutor-mermaid', id: 1, svg })
+      expect(decodeURIComponent(root.querySelector('img')!.src)).toContain('#a78bfa')
+      document.body.dataset.tockteamSkin = 'tockteam-skin-ember'
+      await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }), '*'))
+      frameMessage(frame, { channel: 'tocktutor-mermaid', id: 2, svg })
+      expect(decodeURIComponent(root.querySelector('img')!.src)).toContain('#96511c')
+    } finally { dispose() }
   })
 
   it('keeps escaped source when malformed, oversized or unloaded', () => {
     const root = rootWithFence('pie\n"Cats": 40')
     const dispose = attachBrowserMermaid(root)
-    const frame = root.querySelector('iframe')!
+    const frame = document.querySelector('iframe')!
     frameMessage(frame, { channel: 'tocktutor-mermaid', ready: true })
     frameMessage(frame, { channel: 'tocktutor-mermaid', id: 1, svg: '<svg onload="bad()"/>' })
     expect(root.querySelector('pre')?.textContent).toContain('Cats')

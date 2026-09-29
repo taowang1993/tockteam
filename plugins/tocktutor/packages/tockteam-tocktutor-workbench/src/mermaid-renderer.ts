@@ -16,7 +16,7 @@ function colorsFor(root: HTMLElement): MermaidColors {
   const colors = {
     background: resolved('--tt-panel'),
     foreground: resolved('--tt-text'),
-    accent: resolved('--dsw-specific-markdown-accent'),
+    accent: resolved(document.body.dataset.tockteamSkin ? '--tt-accent' : '--dsw-specific-markdown-accent'),
   }
   probe.remove()
   return colors
@@ -83,7 +83,9 @@ export function attachBrowserMermaid(root: HTMLElement): () => void {
   observer.observe(document.body, { attributes: true, attributeFilter: ['class', 'style', 'data-tockteam-skin'] })
   observer.observe(document.head, { childList: true, subtree: true, characterData: true })
   window.addEventListener('message', refreshColors)
-  root.append(frame)
+  // The note panel stays mounted but becomes display:none behind Settings. Keep the
+  // sandbox at its fixed size or Mermaid computes negative SVG geometry while hidden.
+  document.body.append(frame)
   return () => {
     disposed = true
     clearTimeout(timeout)
