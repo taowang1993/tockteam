@@ -172,8 +172,10 @@ export function mountTuiSkins(dataRoot: string, tuiConfigRoot?: string): TuiSkin
             ? true
             : undefined,
         })
-      : theme === skin.id && preferences.version !== 2
-        // Preserve the legacy Original preference until Desktop can migrate its fixed-dark skin.
+      : theme === skin.id && (preferences.version !== 2
+        || (preferences.originalModePending === true && preferences.activeId === skin.id))
+        // A matching native Dark choice is not a new picker action: preserve legacy
+        // migration and Desktop's still-pending Original preference.
         ? Object.freeze({ ...preferences, activeId: skin.id })
         : Object.freeze({
             ...preferences,
@@ -191,7 +193,10 @@ export function mountTuiSkins(dataRoot: string, tuiConfigRoot?: string): TuiSkin
     ? (preferences.fallbackTheme === 'system' ? undefined : preferences.fallbackTheme)
     : preferences.activeId === LEGACY_PORCELAIN_ID
       ? 'light'
-      : nativeThemeId(preferences.activeId, preferences.fallbackTheme === 'light' ? 'light' : 'dark')
+      : nativeThemeId(preferences.activeId,
+          preferences.version !== 2 || preferences.originalModePending === true
+            ? 'dark'
+            : preferences.fallbackTheme === 'light' ? 'light' : 'dark')
   if (seededTheme !== undefined) writeJsonAtomic(paths.themePreference, { theme: seededTheme })
   return Object.freeze({ activeId: preferences.activeId as SkinId | null, theme: seededTheme })
 }

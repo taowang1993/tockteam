@@ -23,6 +23,8 @@ import {
   type DesktopSkin,
 } from '../plugins/skins/src/client/skins.ts'
 import {
+  ORIGINAL_MODE_PENDING_KEY,
+  PREFERENCES_VERSION_KEY,
   parseSkinPreferences,
   type DesktopSkinPreferences,
 } from '../plugins/skins/src/preferences.ts'
@@ -252,6 +254,62 @@ test('TUI launch does not erase an older Desktop dark skin and remembered Origin
     await writeFile(paths.themePreference, JSON.stringify({ theme: 'tockteam-skin-jade-circuit' }))
     assert.equal(mountTuiSkins(join(directory, 'data'), join(directory, 'config')).theme, 'tockteam-skin-jade-circuit')
     assert.deepEqual(JSON.parse(await readFile(paths.preferences, 'utf8')), oldPreferences)
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test('TUI seeds legacy named skins as Dark before Desktop has migrated them', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tockteam-skins-tui-legacy-seed-'))
+  const paths = tuiSkinPaths(join(directory, 'data'), join(directory, 'config'))
+  const legacy = { activeId: 'tockteam-skin-jade-circuit', fallbackTheme: 'light' }
+  try {
+    await mkdir(join(directory, 'data'), { recursive: true })
+    await writeFile(paths.preferences, JSON.stringify(legacy))
+    for (let launch = 0; launch < 2; launch += 1) {
+      assert.equal(mountTuiSkins(join(directory, 'data'), join(directory, 'config')).theme, legacy.activeId)
+      assert.deepEqual(JSON.parse(await readFile(paths.preferences, 'utf8')), legacy)
+    }
+    const storage = new MemoryStorage()
+    storage.setItem(ACTIVE_SKIN_KEY, legacy.activeId)
+    storage.setItem(FALLBACK_THEME_KEY, legacy.fallbackTheme)
+    const theme = new FakeThemeService('light')
+    const controller = new DesktopSkinsController(theme, storage, new FakeSkinDom())
+    controller.start()
+    assert.equal(theme.getTheme().preference, 'dark')
+    controller.setSkin(null)
+    assert.equal(theme.getTheme().preference, 'light')
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test('TUI startup preserves Desktop pending Original mode across native dark theme and absent theme file', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tockteam-skins-tui-pending-original-'))
+  const paths = tuiSkinPaths(join(directory, 'data'), join(directory, 'config'))
+  const pending = { activeId: 'tockteam-skin-jade-circuit', fallbackTheme: 'light', version: 2, originalModePending: true }
+  try {
+    await mkdir(join(directory, 'data'), { recursive: true })
+    await mkdir(join(directory, 'config'), { recursive: true })
+    await writeFile(paths.preferences, JSON.stringify(pending))
+    await writeFile(paths.themePreference, JSON.stringify({ theme: pending.activeId }))
+    for (let launch = 0; launch < 2; launch += 1) {
+      assert.equal(mountTuiSkins(join(directory, 'data'), join(directory, 'config')).theme, pending.activeId)
+      assert.deepEqual(JSON.parse(await readFile(paths.preferences, 'utf8')), pending)
+    }
+    await rm(paths.themePreference)
+    assert.equal(mountTuiSkins(join(directory, 'data'), join(directory, 'config')).theme, pending.activeId)
+    assert.deepEqual(JSON.parse(await readFile(paths.preferences, 'utf8')), pending)
+    const storage = new MemoryStorage()
+    storage.setItem(ACTIVE_SKIN_KEY, pending.activeId)
+    storage.setItem(FALLBACK_THEME_KEY, pending.fallbackTheme)
+    storage.setItem(PREFERENCES_VERSION_KEY, '2')
+    storage.setItem(ORIGINAL_MODE_PENDING_KEY, '1')
+    const theme = new FakeThemeService('dark')
+    const controller = new DesktopSkinsController(theme, storage, new FakeSkinDom())
+    controller.start()
+    controller.setSkin(null)
+    assert.equal(theme.getTheme().preference, 'light')
   } finally {
     await rm(directory, { recursive: true, force: true })
   }
