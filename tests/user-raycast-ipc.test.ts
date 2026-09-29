@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { USER_RAYCAST_IPC, isUserRaycastCandidate } from '../src/user-raycast-contract.ts'
+import { USER_RAYCAST_IPC, isUserRaycastCandidate, isUserRaycastSourceCandidate, isUserRaycastStatus } from '../src/user-raycast-contract.ts'
 import { registerUserRaycastIpcHandlers } from '../src/user-raycast-ipc.ts'
 
 const sender = { id: 42 }
@@ -12,6 +12,13 @@ const state = { candidate, digest: '', enabled: false, hasPrevious: false, insta
 test('a Raycast command name may use camelCase without changing the extension ID rule', () => {
   assert.equal(isUserRaycastCandidate({ ...candidate, command: 'generateV5' }), true)
   assert.equal(isUserRaycastCandidate({ ...candidate, extensionId: 'UuidGenerator' }), false)
+})
+
+test('menu-bar identity crosses only the same finite source, candidate and status checks', () => {
+  assert.equal(isUserRaycastSourceCandidate({ ...sourceCandidate, mode: 'menu-bar' }), true)
+  assert.equal(isUserRaycastCandidate({ ...candidate, mode: 'menu-bar' }), true)
+  assert.equal(isUserRaycastStatus({ ...state, mode: 'menu-bar' }), true)
+  assert.equal(isUserRaycastStatus({ ...state, mode: 'background' }), false)
 })
 
 test('only the owning launcher may choose, approve and open a user extension', async () => {

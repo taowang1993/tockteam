@@ -70,6 +70,35 @@ test('candidate mutation or links fail closed and a previous installation can be
   } finally { f.close() }
 })
 
+test('a selected menu-bar command stays inert until activation and preserves private state across rollback', () => {
+  const f = fixture()
+  try {
+    writeFileSync(join(f.source, 'package.json'), JSON.stringify({ name: 'color-picker', title: 'Color Picker', license: 'MIT', commands: [{ name: 'menu-bar', mode: 'menu-bar' }] }))
+    writeFileSync(join(f.source, 'menu-bar.js'), readFileSync(f.module))
+    const first = f.store.prepare(f.source, 'menu-bar')
+    assert.equal(first.mode, 'menu-bar')
+    f.store.approve(first.digest)
+    assert.equal(f.store.status().enabled, false)
+    assert.equal(f.store.runtimeDir(), undefined)
+    f.store.enable()
+    assert.equal(f.store.status().mode, 'menu-bar')
+    const state = f.store.statePath('color-picker')
+    writeFileSync(state, '{"history":"saved"}')
+    assert.equal(f.store.snapshotTo(join(f.root, 'snapshot')).mode, 'menu-bar')
+    assert.equal(existsSync(f.marker), false)
+    writeFileSync(join(f.source, 'menu-bar.js'), 'updated but not executed')
+    const second = f.store.prepare(f.source, 'menu-bar')
+    f.store.approve(second.digest)
+    assert.equal(f.store.status().hasPrevious, true)
+    assert.equal(f.store.status().enabled, false)
+    f.store.recoverPrevious()
+    assert.equal(f.store.status().mode, 'menu-bar')
+    assert.equal(f.store.status().enabled, false)
+    assert.equal(readFileSync(state, 'utf8'), '{"history":"saved"}')
+    assert.equal(existsSync(f.marker), false)
+  } finally { f.close() }
+})
+
 test('an interrupted or tampered current install is not discarded by a later update', () => {
   const f = fixture()
   try {

@@ -29,7 +29,7 @@ const serialize = (value: Node | string): unknown => {
   for (const [key, entry] of Object.entries(value.props)) {
     if (key !== 'children' && (entry === null || typeof entry === 'string' || typeof entry === 'boolean' || typeof entry === 'number' && Number.isFinite(entry))) props[key] = entry
   }
-  if (value.type === 'raycast-action' && typeof value.props.onAction === 'function') {
+  if ((value.type === 'raycast-action' || value.type === 'raycast-menu-item') && typeof value.props.onAction === 'function') {
     const id = `action-${handles.size}`
     handles.set(id, value.props.onAction as () => unknown)
     props.actionEventId = id
@@ -44,6 +44,7 @@ const emit = (): void => {
   ready = true
 }
 const reportError = (error: unknown): void => send({ type: 'error', extensionId, sessionId, revision: ++revision, message: String(error).slice(0, 512) })
+const storage = mode === 'no-view' || mode === 'menu-bar' ? createUserRaycastStorage(process.env.TOCKTEAM_USER_RAYCAST_STATE!) : undefined
 api.configureCompatibility({
   native: (request: { kind: string; text?: string }) => new Promise<void>((resolve, reject) => {
     if (request.kind !== 'copy') { reject(new Error(`Raycast native effect ${request.kind} is unsupported for user extensions`)); return }
@@ -55,10 +56,7 @@ api.configureCompatibility({
   }),
   selection: async () => { throw new Error('Selected text is unsupported for user extensions') },
   toast: (toast: object) => send({ type: 'toast', extensionId, sessionId, revision, ...toast }),
-  ...(mode === 'no-view' ? {
-    hud: (message: string) => send({ type: 'toast', extensionId, sessionId, revision, title: message.slice(0, 512), message: '', style: 'success' }),
-    storage: createUserRaycastStorage(process.env.TOCKTEAM_USER_RAYCAST_STATE!),
-  } : {}),
+  ...(storage ? { storage, cache: storage, hud: (message: string) => send({ type: 'toast', extensionId, sessionId, revision, title: message.slice(0, 512), message: '', style: 'success' }) } : {}),
 })
 const hostConfig: any = {
   supportsMutation: true, supportsPersistence: false, supportsHydration: false, isPrimaryRenderer: false, now: Date.now,
@@ -92,13 +90,13 @@ registerHooks({ resolve(specifier, context, nextResolve) {
 const imported = await import(pathToFileURL(join(process.cwd(), 'source', `${command}.js`)).href)
 const Command = typeof imported.default === 'function' ? imported.default : imported.default?.default
 if (typeof Command !== 'function') throw new Error('Selected command has no callable default export')
-if (mode !== 'view' && mode !== 'no-view') throw new Error('Unsupported command mode')
+if (mode !== 'view' && mode !== 'no-view' && mode !== 'menu-bar') throw new Error('Unsupported command mode')
 let searchHandler: ((value: string) => void) | undefined
-if (mode === 'view') {
+if (mode === 'view' || mode === 'menu-bar') {
   const mount = (view?: unknown): void => renderer.updateContainer(view ?? React.createElement(Command), container, null, () => {
     searchHandler = (globalThis as { __trustedRaycastSearch?: (value: string) => void }).__trustedRaycastSearch
   })
-  api.registerNavigationRenderer(mount)
+  if (mode === 'view') api.registerNavigationRenderer(mount)
   mount()
 } else {
   activeAction = { eventId: 'run', revision: 0 }

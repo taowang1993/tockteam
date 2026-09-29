@@ -55,6 +55,20 @@ test('a no-view command reports completion without a misleading empty List', asy
   view.dispose(); dom.window.close()
 })
 
+test('a reviewed menu command cannot run before its native menu is available', async () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>')
+  const document = dom.window.document as Document
+  let launched = false
+  const bridge = { userRaycastState: async () => ({ ...empty, installed: true, enabled: true, digest: candidate.digest, mode: 'menu-bar' }), userRaycastOpen: async () => { launched = true }, onUserRaycastView: () => () => {} } as unknown as LauncherPreloadBridge
+  const view = createUserRaycastView(document, bridge, () => {})
+  document.body.append(view.element); await flush()
+  const button = document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="open"]')
+  assert.equal(button?.textContent, 'Menu Bar Support Pending')
+  assert.equal(button?.disabled, true)
+  assert.equal(launched, false)
+  view.dispose(); dom.window.close()
+})
+
 test('a real List empty view and search input survive a projected patch', async () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>')
   const document = dom.window.document as Document

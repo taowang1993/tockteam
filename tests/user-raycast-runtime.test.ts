@@ -7,6 +7,7 @@ import { test } from 'node:test'
 import { buildUserRaycast } from '../scripts/user-raycast-build.mjs'
 import { UserRaycastInstall } from '../src/user-raycast-install.ts'
 import { UserRaycastManager } from '../src/user-raycast-manager.ts'
+import { colorPickerMenu } from '../src/user-raycast-menu.ts'
 
 const artifact = resolve('plugins/trusted-raycast/vendor/google-translate.tar')
 const manifest = { name: 'example-list', title: 'Example List', commands: [{ name: 'browse', title: 'Browse', mode: 'view' }] }
@@ -109,6 +110,47 @@ test('unsupported no-view APIs fail visibly and cancellation stops the owned chi
       assert.throws(() => process.kill(pid, 0), /ESRCH/)
     }
   } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test('an approved menu command projects saved colors, refreshes and copies only after an owned action', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-user-raycast-menu-'))
+  const folder = join(root, 'source'), runtime = join(root, 'host')
+  mkdirSync(folder)
+  writeFileSync(join(folder, 'package.json'), JSON.stringify({ name: 'color-picker', title: 'Color Picker', commands: [{ name: 'menu-bar', mode: 'menu-bar' }] }))
+  writeFileSync(join(folder, 'menu-bar.js'), `const React=require('react');const {MenuBarExtra,Clipboard,Cache}=require('@raycast/api');exports.default=function Command(){const cache=React.useMemo(()=>new Cache(),[]);const saved=React.useSyncExternalStore(cache.subscribe,()=>cache.get('history')??'[]');const changed=JSON.parse(saved).length>0;return React.createElement(MenuBarExtra,{icon:'EyeDropper'},React.createElement(MenuBarExtra.Item,{title:'Pick Color',onAction:()=>{throw Error('unsupported native picker')}}),React.createElement(MenuBarExtra.Section,{title:'Favorites'},React.createElement(MenuBarExtra.Item,{title:'#FF6363',onAction:()=>Clipboard.copy('#FF6363')})),React.createElement(MenuBarExtra.Section,{title:'Recent Colors'},React.createElement(MenuBarExtra.Item,{title:changed?'#334455':'#112233',onAction:()=>cache.set('history',JSON.stringify(['#334455']))})))}`)
+  const install = new UserRaycastInstall(join(root, 'installed'))
+  const copied: string[] = [], messages: any[] = []
+  const manager = new UserRaycastManager({ install, runtime, nodePath: process.execPath, artifact, onMessage: (_owner, message) => messages.push(message), copyText: (_owner, text) => { copied.push(text) } })
+  try {
+    await buildUserRaycast(runtime)
+    const selected = install.prepare(folder, 'menu-bar')
+    await assert.rejects(manager.start(owner), /not enabled|approved/i)
+    install.approve(selected.digest)
+    await assert.rejects(manager.start(owner), /not enabled/i)
+    install.enable()
+    await manager.start(owner)
+    const ready = messages.find(message => message.type === 'ready')
+    assert.ok(ready)
+    assert.match(JSON.stringify(ready.root), /#112233/, `Menu render failed: ${JSON.stringify(messages)}`)
+    const invoke = (message: any, title: string) => {
+      const menu = colorPickerMenu(message.root, eventId => manager.send(owner, { revision: message.revision, eventId, kind: 'action' }))
+      const item = menu.flatMap(entry => entry.submenu ?? []).find(entry => entry.label === title)
+      assert.ok(item?.click, `Missing saved color ${title}`)
+      item.click()
+    }
+    invoke(ready, '#112233')
+    const deadline = Date.now() + 5000
+    while (!messages.some(message => message.type === 'patch') && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
+    const patch = messages.find(message => message.type === 'patch')
+    assert.ok(patch)
+    assert.match(JSON.stringify(patch.root), /#334455/)
+    assert.equal(JSON.parse(readFileSync(install.statePath('color-picker'), 'utf8')).history, '["#334455"]')
+    invoke(patch, '#FF6363')
+    while (copied.length === 0 && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
+    assert.deepEqual(copied, ['#FF6363'])
+    await manager.close()
+    assert.equal(manager.childPid, undefined)
+  } finally { await manager.close(); rmSync(root, { recursive: true, force: true }) }
 })
 
 test('a selected local List stays inert until approved and enabled, then runs in an owned child', async t => {

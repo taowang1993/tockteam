@@ -11,15 +11,15 @@ import { UserRaycastInstall } from '../src/user-raycast-install.ts'
 const sha = (bytes: Buffer): string => createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex')
 const revisionOne = 'a'.repeat(40)
 const revisionTwo = 'e'.repeat(40)
-const manifest = Buffer.from(JSON.stringify({ name: 'uuid-generator', title: 'UUID Generator', license: 'MIT', commands: [{ name: 'generate', title: 'Generate UUIDs', mode: 'no-view' }] }))
 const lock = Buffer.from(JSON.stringify({ name: 'uuid-generator', lockfileVersion: 3, packages: { '': { name: 'uuid-generator' } } }))
 
 // An inert local HTTP fixture mirrors only the GitHub Git endpoints this adapter owns.
 test('one selected public source is pinned; offline, drift and cancellation leave the approved version recoverable', async t => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-raycast-registry-'))
   let revision = revisionOne
+  let selectedMode = 'no-view'
   let failure: 'none' | 'offline' | 'drift' | 'path' | 'link' | 'large' | 'config' = 'none'
-  const source = () => new Map([['package.json', manifest], ['package-lock.json', lock], ['src/generate.tsx', Buffer.from(`export default () => { throw Error('not executed ${revision}') }`) ], ...(failure === 'config' ? [['.npmrc', Buffer.from('registry=https://unreviewed.invalid')] as const] : [])])
+  const source = () => new Map([['package.json', Buffer.from(JSON.stringify({ name: 'uuid-generator', title: 'UUID Generator', license: 'MIT', commands: [{ name: 'generate', title: 'Generate UUIDs', mode: selectedMode }] }))], ['package-lock.json', lock], ['src/generate.tsx', Buffer.from(`export default () => { throw Error('not executed ${revision}') }`) ], ...(failure === 'config' ? [['.npmrc', Buffer.from('registry=https://unreviewed.invalid')] as const] : [])])
   const server = createServer((request, response) => {
     const path = request.url ?? ''
     if (failure === 'offline') { response.writeHead(503).end(); return }
@@ -93,4 +93,8 @@ test('one selected public source is pinned; offline, drift and cancellation leav
   install.recoverPrevious()
   assert.equal(install.status().digest, versionOne.digest)
   assert.equal(install.status().enabled, false)
+  selectedMode = 'menu-bar'
+  const menu = await registry.prepare('uuid-generator', 'generate')
+  assert.equal(menu.mode, 'menu-bar')
+  assert.notEqual(menu.digest, second.digest)
 })

@@ -8,7 +8,7 @@ export const USER_RAYCAST_IPC = Object.freeze({
   mutate: 'user-raycast:mutate', open: 'user-raycast:open', event: 'user-raycast:event',
   close: 'user-raycast:close', view: 'user-raycast:view',
 })
-export type UserRaycastStatus = Readonly<{ candidate?: UserRaycastCandidate; sourceCandidate?: UserRaycastSourceCandidate; digest: string; enabled: boolean; hasPrevious: boolean; installed: boolean; mode?: 'no-view' }>
+export type UserRaycastStatus = Readonly<{ candidate?: UserRaycastCandidate; sourceCandidate?: UserRaycastSourceCandidate; digest: string; enabled: boolean; hasPrevious: boolean; installed: boolean; mode?: 'no-view' | 'menu-bar' }>
 export type UserRaycastMutation = 'enable' | 'disable' | 'remove' | 'recover'
 export type UserRaycastEvent = Readonly<{ revision: number; eventId: string; kind: 'action' | 'searchChanged'; value?: string }>
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -19,7 +19,7 @@ const exact = (value: object, expected: string[]): boolean => JSON.stringify(Obj
 export function isUserRaycastCandidate(value: unknown): value is UserRaycastCandidate {
   return record(value) && exact(value, ['command', 'digest', 'extensionId', 'title', ...(['mode', 'version', 'license', 'source'] as const).filter(key => Object.hasOwn(value, key))])
     && commandIdentity(value.command) && identity(value.extensionId) && digest(value.digest) && typeof value.title === 'string' && value.title.length > 0 && value.title.length <= 128
-    && (value.mode === undefined || value.mode === 'no-view')
+    && (value.mode === undefined || value.mode === 'no-view' || value.mode === 'menu-bar')
     && (value.version === undefined || typeof value.version === 'string' && value.version.length <= 64)
     && (value.license === undefined || typeof value.license === 'string' && value.license.length <= 128)
     && (value.source === undefined || typeof value.source === 'string' && value.source.length <= 512 && value.source.startsWith('https://'))
@@ -34,14 +34,14 @@ export function isUserRaycastSourceCandidate(value: unknown): value is UserRayca
     && typeof value.revision === 'string' && /^[a-f0-9]{40}$/.test(value.revision) && typeof value.tree === 'string' && /^[a-f0-9]{40}$/.test(value.tree)
     && Number.isSafeInteger(value.files) && (value.files as number) > 0 && (value.files as number) <= 128
     && Number.isSafeInteger(value.bytes) && (value.bytes as number) > 0 && (value.bytes as number) <= 16 * 1024 * 1024
-    && (value.mode === 'view' || value.mode === 'no-view')
+    && (value.mode === 'view' || value.mode === 'no-view' || value.mode === 'menu-bar')
     && value.source === `https://github.com/raycast/extensions/tree/${value.revision}/extensions/${value.extensionId}`
     && (value.version === undefined || typeof value.version === 'string' && value.version.length <= 64)
 }
 export function isUserRaycastStatus(value: unknown): value is UserRaycastStatus {
   return record(value) && exact(value, ['digest', 'enabled', 'hasPrevious', 'installed', ...(Object.hasOwn(value, 'candidate') ? ['candidate'] : []), ...(Object.hasOwn(value, 'sourceCandidate') ? ['sourceCandidate'] : []), ...(Object.hasOwn(value, 'mode') ? ['mode'] : [])])
     && (value.digest === '' || digest(value.digest)) && typeof value.enabled === 'boolean' && typeof value.hasPrevious === 'boolean' && typeof value.installed === 'boolean'
-    && (value.mode === undefined || value.mode === 'no-view')
+    && (value.mode === undefined || value.mode === 'no-view' || value.mode === 'menu-bar')
     && (!Object.hasOwn(value, 'candidate') || isUserRaycastCandidate(value.candidate))
     && (!Object.hasOwn(value, 'sourceCandidate') || isUserRaycastSourceCandidate(value.sourceCandidate))
 }

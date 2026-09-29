@@ -5,6 +5,7 @@ import { dirname, isAbsolute } from 'node:path'
 /** First-party managed API storage, not a filesystem sandbox for approved code. */
 export function createUserRaycastStorage(path: string) {
   if (!isAbsolute(path) || !lstatSync(dirname(path)).isDirectory()) throw new Error('Invalid extension storage path')
+  const listeners = new Set<() => void>()
   const load = (): Map<string, string> => {
     if (!existsSync(path)) return new Map()
     const stat = lstatSync(path)
@@ -23,13 +24,19 @@ export function createUserRaycastStorage(path: string) {
       try { writeFileSync(fd, data); fsyncSync(fd) } finally { closeSync(fd) }
       if (existsSync(path) && !lstatSync(path).isFile()) throw new Error('Extension storage changed')
       renameSync(temporary, path)
+      for (const listener of listeners) listener()
     } finally { rmSync(temporary, { force: true }) }
   }
   const checked = (key: string): void => { if (typeof key !== 'string' || !key.length || key.length > 128) throw new Error('Invalid extension storage key') }
+  const get = (key: string): string | undefined => { checked(key); return load().get(key) }
+  const set = (key: string, value: string): void => { checked(key); if (typeof value !== 'string' || Buffer.byteLength(value) > 4096) throw new Error('Invalid extension storage value'); const data = load(); data.set(key, value); save(data) }
+  const remove = (key: string): void => { checked(key); const data = load(); data.delete(key); save(data) }
   return {
-    getItem: async (key: string): Promise<string | undefined> => { checked(key); return load().get(key) },
-    setItem: async (key: string, value: string): Promise<void> => { checked(key); if (typeof value !== 'string' || Buffer.byteLength(value) > 4096) throw new Error('Invalid extension storage value'); const data = load(); data.set(key, value); save(data) },
-    removeItem: async (key: string): Promise<void> => { checked(key); const data = load(); data.delete(key); save(data) },
+    get, set, remove,
+    subscribe: (listener: () => void): (() => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
+    getItem: async (key: string): Promise<string | undefined> => get(key),
+    setItem: async (key: string, value: string): Promise<void> => { set(key, value) },
+    removeItem: async (key: string): Promise<void> => { remove(key) },
     clear: async (): Promise<void> => { save(new Map()) },
   }
 }

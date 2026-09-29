@@ -7,7 +7,7 @@ const ID = /^[a-z0-9][a-z0-9_-]{0,63}$/
 const COMMAND = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/
 const MAX_FILES = 128
 const MAX_BYTES = 16 * 1024 * 1024
-export type UserRaycastCandidate = Readonly<{ command: string; digest: string; extensionId: string; title: string; mode?: 'no-view'; version?: string; license?: string; source?: string }>
+export type UserRaycastCandidate = Readonly<{ command: string; digest: string; extensionId: string; title: string; mode?: 'no-view' | 'menu-bar'; version?: string; license?: string; source?: string }>
 type Decision = { digest: string; enabled: boolean }
 
 export function readFiles(directory: string): Map<string, Buffer> {
@@ -52,11 +52,11 @@ function candidate(files: Map<string, Buffer>, selectedCommand?: string): UserRa
   const commands = record.commands as unknown[]
   const names = commands.map(value => value !== null && typeof value === 'object' ? (value as Record<string, unknown>).name : undefined)
   if (names.some(name => typeof name !== 'string' || !COMMAND.test(name)) || new Set(names).size !== names.length) throw new Error('Invalid or duplicate extension commands')
-  const built = commands.filter(value => value !== null && typeof value === 'object' && files.has(`${String((value as Record<string, unknown>).name)}.js`) && ['view', 'no-view'].includes((value as Record<string, unknown>).mode as string))
+  const built = commands.filter(value => value !== null && typeof value === 'object' && files.has(`${String((value as Record<string, unknown>).name)}.js`) && ['view', 'no-view', 'menu-bar'].includes((value as Record<string, unknown>).mode as string))
   const chosen = selectedCommand === undefined
     ? built.length === 1 ? built[0] : built.find(value => (value as Record<string, unknown>).mode === 'view')
     : commands.find(value => value !== null && typeof value === 'object' && (value as Record<string, unknown>).name === selectedCommand)
-  if (!chosen || typeof chosen !== 'object' || !['view', 'no-view'].includes((chosen as Record<string, unknown>).mode as string) || typeof (chosen as Record<string, unknown>).name !== 'string' || !COMMAND.test((chosen as Record<string, unknown>).name as string)) throw new Error('Selected command is unavailable')
+  if (!chosen || typeof chosen !== 'object' || !['view', 'no-view', 'menu-bar'].includes((chosen as Record<string, unknown>).mode as string) || typeof (chosen as Record<string, unknown>).name !== 'string' || !COMMAND.test((chosen as Record<string, unknown>).name as string)) throw new Error('Selected command is unavailable')
   const command = (chosen as { name: string }).name
   if (!files.has(`${command}.js`)) throw new Error('Selected view command has no built JavaScript')
   if (files.has('selection.json')) throw new Error('Extension bundle contains a reserved file')
@@ -69,7 +69,7 @@ function candidate(files: Map<string, Buffer>, selectedCommand?: string): UserRa
     }
   } catch { /* Unverifiable repository metadata remains unspecified. */ }
   return Object.freeze({ extensionId: record.name, title: record.title, command, digest: digestFiles(files),
-    ...((chosen as Record<string, unknown>).mode === 'no-view' ? { mode: 'no-view' as const } : {}),
+    ...((chosen as Record<string, unknown>).mode === 'view' ? {} : { mode: (chosen as Record<string, unknown>).mode as 'no-view' | 'menu-bar' }),
     ...(typeof record.version === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9.+_-]{0,63}$/.test(record.version) ? { version: record.version } : {}),
     ...(typeof record.license === 'string' && /^[\w+(). -]{1,128}$/.test(record.license) ? { license: record.license } : {}),
     ...(source ? { source } : {}),
@@ -111,11 +111,11 @@ export class UserRaycastInstall {
       return JSON.stringify(actual) === JSON.stringify(declared) ? actual : undefined
     } catch { return undefined }
   }
-  status(): Readonly<{ candidate?: UserRaycastCandidate; digest: string; enabled: boolean; hasPrevious: boolean; installed: boolean; mode?: 'no-view' }> {
+  status(): Readonly<{ candidate?: UserRaycastCandidate; digest: string; enabled: boolean; hasPrevious: boolean; installed: boolean; mode?: 'no-view' | 'menu-bar' }> {
     const trust = this.readDecision()
     const current = this.inspect('current')
     const candidate = this.inspect('stage')
-    return Object.freeze({ ...(candidate ? { candidate } : {}), ...(current?.mode === 'no-view' ? { mode: 'no-view' as const } : {}), digest: current?.digest ?? '', enabled: trust.enabled, hasPrevious: this.inspect('previous') !== undefined, installed: current !== undefined && current.digest === trust.digest })
+    return Object.freeze({ ...(candidate ? { candidate } : {}), ...(current?.mode ? { mode: current.mode } : {}), digest: current?.digest ?? '', enabled: trust.enabled, hasPrevious: this.inspect('previous') !== undefined, installed: current !== undefined && current.digest === trust.digest })
   }
   prepare(folder: string, command?: string): UserRaycastCandidate {
     this.ensureRoot()

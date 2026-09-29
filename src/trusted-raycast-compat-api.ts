@@ -31,6 +31,10 @@ export const List = Object.assign(list, {
   EmptyView: component('raycast-empty'),
   Dropdown: Object.assign((props: Record<string, unknown>) => element('raycast-dropdown', { value: String(props.value ?? ''), fieldEventId: `dropdown-${++handleSequence}`, ...(typeof props.onChange === 'function' ? { onChange: props.onChange as (value: string) => void } : {}) }, React.Children.toArray(props.children as React.ReactNode)), { Item: component('raycast-dropdown-item') }),
 })
+export const MenuBarExtra = Object.assign(component('raycast-menu-bar'), {
+  Section: component('raycast-menu-section'),
+  Item: component('raycast-menu-item'),
+})
 export const Grid = Object.assign(searchableCollection('raycast-grid'), {
   Item: (props: Record<string, unknown>) => {
     if (renderedCollectionItems++ >= MAX_COLLECTION_ITEMS) return null
@@ -41,7 +45,7 @@ export const Grid = Object.assign(searchableCollection('raycast-grid'), {
   EmptyView: component('raycast-empty'),
 })
 type NativeEffectRequest = { kind: 'copy' | 'openGoogleTranslate' | 'paste' | 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>>; text?: string; url?: string }
-type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void; hud?: (message: string) => void; storage?: { getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void>; clear: () => Promise<void> } }
+type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void; hud?: (message: string) => void; storage?: { getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void>; clear: () => Promise<void> }; cache?: { get: (key: string) => string | undefined; set: (key: string, value: string) => void; remove: (key: string) => void; subscribe: (listener: () => void) => () => void } }
 let compatibility: Compatibility
 export let queryEpoch = 0
 export let queryText = ''
@@ -91,6 +95,7 @@ const formDropdown = (props: Record<string, unknown>) => {
 }
 export const Form = Object.assign(form, { TextField: component('raycast-text-field'), Dropdown: Object.assign(formDropdown, { Item: component('raycast-form-dropdown-item') }) })
 
+export const environment = Object.freeze({ isDevelopment: false })
 export const Icon = new Proxy({}, { get: (_target, key) => String(key) }) as Record<string, string>
 export const Color = new Proxy({}, { get: (_target, key) => String(key) }) as Record<string, string>
 export const Keyboard = { Shortcut: { Common: { Copy: { modifiers: ['cmd'], key: 'c' }, MoveUp: { modifiers: ['cmd', 'shift'], key: 'arrowup' }, MoveDown: { modifiers: ['cmd', 'shift'], key: 'arrowdown' }, New: { modifiers: ['cmd'], key: 'n' }, Pin: { modifiers: ['cmd', 'shift'], key: 'p' }, RemoveAll: { modifiers: ['cmd', 'shift'], key: 'backspace' } } } }
@@ -121,6 +126,13 @@ export const ActionPanel = Object.assign(component('raycast-action-panel'), { Se
 const unsupported = (name: string): never => { throw new Error(`Raycast API ${name} is not admitted by this capability`) }
 export async function clearSearchBar(): Promise<void> { return unsupported('clearSearchBar') }
 export async function showHUD(message: string): Promise<void> { if (!compatibility.hud) return unsupported('showHUD'); compatibility.hud(message) }
+export class Cache {
+  constructor(options: { namespace?: string } = {}) { if (options.namespace !== undefined || !compatibility.cache) unsupported('Cache') }
+  get = (key: string): string | undefined => compatibility.cache!.get(key)
+  set = (key: string, value: string): void => compatibility.cache!.set(key, value)
+  remove = (key: string): void => compatibility.cache!.remove(key)
+  subscribe = (listener: () => void): (() => void) => compatibility.cache!.subscribe(listener)
+}
 export const LocalStorage = {
   getItem: async (key: string): Promise<string | undefined> => compatibility.storage ? compatibility.storage.getItem(key) : unsupported('LocalStorage.getItem'),
   setItem: async (key: string, value: string): Promise<void> => compatibility.storage ? compatibility.storage.setItem(key, value) : unsupported('LocalStorage.setItem'),

@@ -103,7 +103,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     if (state.hasPrevious) controls.append(button('Restore Previous Version', 'recover', async () => { await bridge.userRaycastClose(); active = undefined; rendered.replaceChildren(); state = await bridge.userRaycastMutate('recover') }))
     if (!state.installed) return
     if (state.enabled) {
-      controls.append(button(state.mode === 'no-view' ? 'Run Command' : 'Open Command', 'open', async () => { active = undefined; searchText = ''; rendered.replaceChildren(); await bridge.userRaycastOpen() }))
+      controls.append(button(state.mode === 'menu-bar' ? 'Menu Bar Support Pending' : state.mode === 'no-view' ? 'Run Command' : 'Open Command', 'open', async () => { active = undefined; searchText = ''; rendered.replaceChildren(); await bridge.userRaycastOpen() }, state.mode === 'menu-bar'))
       controls.append(button('Disable', 'disable', async () => { await bridge.userRaycastClose(); active = undefined; rendered.replaceChildren(); state = await bridge.userRaycastMutate('disable') }))
     } else controls.append(button('Enable', 'enable', async () => { state = await bridge.userRaycastMutate('enable') }))
     controls.append(button(removing ? 'Confirm Remove' : 'Remove Extension', 'remove', async () => {

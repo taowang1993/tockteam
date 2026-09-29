@@ -9,7 +9,7 @@ const SHA = /^[a-f0-9]{40}$/
 const ID = /^[a-z0-9][a-z0-9_-]{0,63}$/
 const COMMAND = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/
 const MAX_SOURCE_BYTES = 16 * 1024 * 1024
-export type UserRaycastSourceCandidate = Readonly<{ command: string; digest: string; extensionId: string; title: string; license: 'MIT'; revision: string; tree: string; files: number; bytes: number; source: string; mode: 'view' | 'no-view'; version?: string }>
+export type UserRaycastSourceCandidate = Readonly<{ command: string; digest: string; extensionId: string; title: string; license: 'MIT'; revision: string; tree: string; files: number; bytes: number; source: string; mode: 'view' | 'no-view' | 'menu-bar'; version?: string }>
 type TreeEntry = { path: string; type: string; mode?: string; size?: number; sha: string }
 const record = (value: unknown): Record<string, unknown> => { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid public source metadata'); return value as Record<string, unknown> }
 const pinned = (value: unknown): string => { if (typeof value !== 'string' || !SHA.test(value)) throw new Error('Invalid public source revision'); return value }
@@ -94,8 +94,8 @@ export class UserRaycastRegistry {
     const manifest = record(JSON.parse(manifestBytes.toString('utf8')))
     const lock = record(JSON.parse(lockBytes.toString('utf8')))
     const selectedCommand = Array.isArray(manifest.commands) ? manifest.commands.map(record).find(item => item.name === command) : undefined
-    if (manifest.name !== extensionId || manifest.license !== 'MIT' || typeof manifest.title !== 'string' || !manifest.title || manifest.title.length > 128 || !selectedCommand || !['view', 'no-view'].includes(selectedCommand.mode as string) || !['.tsx', '.ts', '.jsx', '.js'].some(ext => files.has(`src/${command}${ext}`)) || lock.name !== extensionId || !Number.isSafeInteger(lock.lockfileVersion) || (lock.lockfileVersion as number) < 2) throw new Error('Public source manifest, license or selected command is unsupported')
-    const candidate: UserRaycastSourceCandidate = Object.freeze({ command, digest: digestFiles(files), extensionId, title: manifest.title, license: 'MIT', revision, tree: selected, files: files.size, bytes: [...files.values()].reduce((sum, bytes) => sum + bytes.length, 0), mode: selectedCommand.mode as 'view' | 'no-view', source: `https://github.com/raycast/extensions/tree/${revision}/extensions/${extensionId}`, ...(typeof manifest.version === 'string' && manifest.version.length <= 64 ? { version: manifest.version } : {}) })
+    if (manifest.name !== extensionId || manifest.license !== 'MIT' || typeof manifest.title !== 'string' || !manifest.title || manifest.title.length > 128 || !selectedCommand || !['view', 'no-view', 'menu-bar'].includes(selectedCommand.mode as string) || !['.tsx', '.ts', '.jsx', '.js'].some(ext => files.has(`src/${command}${ext}`)) || lock.name !== extensionId || !Number.isSafeInteger(lock.lockfileVersion) || (lock.lockfileVersion as number) < 2) throw new Error('Public source manifest, license or selected command is unsupported')
+    const candidate: UserRaycastSourceCandidate = Object.freeze({ command, digest: digestFiles(files), extensionId, title: manifest.title, license: 'MIT', revision, tree: selected, files: files.size, bytes: [...files.values()].reduce((sum, bytes) => sum + bytes.length, 0), mode: selectedCommand.mode as 'view' | 'no-view' | 'menu-bar', source: `https://github.com/raycast/extensions/tree/${revision}/extensions/${extensionId}`, ...(typeof manifest.version === 'string' && manifest.version.length <= 64 ? { version: manifest.version } : {}) })
     const temporary = this.path(`stage.${randomUUID()}`)
     mkdirSync(join(temporary, 'source'), { recursive: true, mode: 0o700 })
     try {

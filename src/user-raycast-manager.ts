@@ -15,7 +15,7 @@ export type UserRaycastMessage = Readonly<{ extensionId: string; sessionId: stri
 type Session = { child: ChildProcessWithoutNullStreams; workspace: string; owner: UserRaycastOwner; candidate: UserRaycastCandidate; id: string; revision: number; actions: Set<string>; action?: { eventId: string; revision: number; nativeUsed: boolean }; resolve: () => void; reject: (error: Error) => void; settled: boolean }
 type NativeRequest = { type: 'native'; extensionId: string; sessionId: string; revision: number; eventId: string; requestId: string; kind: 'copy'; text: string }
 const frameBytes = 1024 * 1024
-const types = new Set(['root', 'raycast-list', 'raycast-list-item', 'raycast-section', 'raycast-detail', 'raycast-empty', 'raycast-dropdown', 'raycast-dropdown-item', 'raycast-grid', 'raycast-grid-item', 'raycast-action-panel', 'raycast-action-section', 'raycast-action', 'raycast-form', 'raycast-text-field', 'raycast-form-dropdown', 'raycast-form-dropdown-item'])
+const types = new Set(['root', 'raycast-list', 'raycast-list-item', 'raycast-section', 'raycast-detail', 'raycast-empty', 'raycast-dropdown', 'raycast-dropdown-item', 'raycast-grid', 'raycast-grid-item', 'raycast-action-panel', 'raycast-action-section', 'raycast-action', 'raycast-menu-bar', 'raycast-menu-section', 'raycast-menu-item', 'raycast-form', 'raycast-text-field', 'raycast-form-dropdown', 'raycast-form-dropdown-item'])
 const validNode = (value: unknown, state = { nodes: 0, text: 0, actions: new Set<string>() }, depth = 0): boolean => {
   if (!value || typeof value !== 'object' || Array.isArray(value) || depth > 32 || ++state.nodes > 8192) return false
   const node = value as { type?: unknown; props?: unknown; children?: unknown }
@@ -24,7 +24,7 @@ const validNode = (value: unknown, state = { nodes: 0, text: 0, actions: new Set
     if (key.length > 128 || typeof entry !== 'string' && typeof entry !== 'boolean' && entry !== null && (typeof entry !== 'number' || !Number.isFinite(entry))) return false
     if (typeof entry === 'string') { state.text += Buffer.byteLength(entry); if (state.text > 256 * 1024) return false }
     if (key === 'actionEventId') {
-      if (node.type !== 'raycast-action' || typeof entry !== 'string' || entry.length > 128 || state.actions.size >= 256 || state.actions.has(entry)) return false
+      if (node.type !== 'raycast-action' && node.type !== 'raycast-menu-item' || typeof entry !== 'string' || entry.length > 128 || state.actions.size >= 256 || state.actions.has(entry)) return false
       state.actions.add(entry)
     }
   }
@@ -62,7 +62,7 @@ export class UserRaycastManager {
       for (const file of ['api.mjs', 'child.mjs']) copyFileSync(join(this.options.runtime, file), join(workspace, file))
       mkdirSync(join(workspace, 'tmp'))
       const id = randomUUID()
-      const child = spawn(this.options.nodePath, [join(workspace, 'child.mjs')], { cwd: workspace, detached: true, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TOCKTEAM_USER_RAYCAST_ID: chosen.extensionId, TOCKTEAM_USER_RAYCAST_SESSION: id, TOCKTEAM_USER_RAYCAST_COMMAND: chosen.command, TOCKTEAM_USER_RAYCAST_MODE: chosen.mode ?? 'view', ...(chosen.mode === 'no-view' ? { TOCKTEAM_USER_RAYCAST_STATE: this.options.install.statePath(chosen.extensionId) } : {}), TRUSTED_RAYCAST_EXTENSION_ID: chosen.extensionId, TRUSTED_RAYCAST_PREFERENCES: preferences } })
+      const child = spawn(this.options.nodePath, [join(workspace, 'child.mjs')], { cwd: workspace, detached: true, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TOCKTEAM_USER_RAYCAST_ID: chosen.extensionId, TOCKTEAM_USER_RAYCAST_SESSION: id, TOCKTEAM_USER_RAYCAST_COMMAND: chosen.command, TOCKTEAM_USER_RAYCAST_MODE: chosen.mode ?? 'view', ...(chosen.mode === 'no-view' || chosen.mode === 'menu-bar' ? { TOCKTEAM_USER_RAYCAST_STATE: this.options.install.statePath(chosen.extensionId) } : {}), TRUSTED_RAYCAST_EXTENSION_ID: chosen.extensionId, TRUSTED_RAYCAST_PREFERENCES: preferences } })
       let resolve!: () => void; let reject!: (error: Error) => void
       const ready = new Promise<void>((yes, no) => { resolve = yes; reject = no })
       const session: Session = { child, workspace, owner, candidate: chosen, id, revision: -1, actions: new Set(), ...(chosen.mode === 'no-view' ? { action: { eventId: 'run', revision: 0, nativeUsed: false } } : {}), resolve, reject, settled: false }
