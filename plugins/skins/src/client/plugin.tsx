@@ -76,7 +76,7 @@ const DEFAULT_OPTION: SkinOption = {
   id: null,
   label: 'skins.name.default',
   mode: 'skins.mode.system',
-  preview: { light: '#fff', dark: '#151517' },
+  preview: { light: '#fff', dark: '#1e1e1e' },
   accent: '#80868f',
 }
 
@@ -85,7 +85,7 @@ function optionFor(skin: DesktopSkin, mode: 'light' | 'dark'): SkinOption {
     id: skin.id,
     label: skin.label,
     mode: 'skins.mode.system',
-    preview: { light: skin.palettes.light.tokens['--dsw-alias-bg-base']!, dark: skin.palettes.dark.tokens['--dsw-alias-bg-base']! },
+    preview: { light: skin.palettes.light.tokens['--dsw-alias-bg-base']!, dark: skin.palettes.dark.tokens['--dsw-specific-sidebar-fill']! },
     accent: skin.palettes[mode].accent,
   }
 }

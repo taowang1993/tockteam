@@ -41,8 +41,8 @@ module.exports.apply!({
 test('every skin card divides plain Light and Dark colors diagonally in either Appearance mode', () => {
   assert.ok(row)
   const choices = [
-    ['Default', '#fff', '#151517'],
-    ...TOCKTEAM_SKINS.map(skin => [skin.displayName, skin.palettes.light.tokens['--dsw-alias-bg-base'], skin.palettes.dark.tokens['--dsw-alias-bg-base']]),
+    ['Default', '#fff', '#1e1e1e'],
+    ...TOCKTEAM_SKINS.map(skin => [skin.displayName, skin.palettes.light.tokens['--dsw-alias-bg-base'], skin.palettes.dark.tokens['--dsw-specific-sidebar-fill']]),
   ]
   for (const mode of ['light', 'dark']) {
     const markup = render(react.createElement(row, {

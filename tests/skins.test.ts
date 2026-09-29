@@ -152,21 +152,27 @@ test('each retained skin has two distinct palettes with an editor darker than it
   assert.equal(new Set(DESKTOP_SKINS.map(skin => skin.palettes.light.tokens['--dsw-alias-bg-base'])).size, 3)
 })
 
-test('renamed choices retain saved IDs, localized names, and Ember Dusk Light', () => {
+test('Ember retains its saved ID, uses the source dark colors, and provides a matching Light mode', () => {
   assert.deepEqual(TOCKTEAM_SKINS.map(({ id, displayName }) => [id, displayName]), [
     [SKIN_ID.deepCurrent, 'Cyan'],
     [SKIN_ID.jadeCircuit, 'Aurora'],
-    [SKIN_ID.emberDusk, 'Ember Dusk'],
+    [SKIN_ID.emberDusk, 'Ember'],
   ])
   assert.deepEqual([
     DESKTOP_SKINS_MESSAGES.en['skins.name.default'],
     ...TOCKTEAM_SKINS.map(skin => DESKTOP_SKINS_MESSAGES.en[skin.label]),
-  ], ['Default', 'Cyan', 'Aurora', 'Ember Dusk'])
+  ], ['Default', 'Cyan', 'Aurora', 'Ember'])
   assert.deepEqual([
     DESKTOP_SKINS_MESSAGES.zh['skins.name.default'],
     ...TOCKTEAM_SKINS.map(skin => DESKTOP_SKINS_MESSAGES.zh[skin.label]),
-  ], ['默认', '青色', '极光', '余烬暮色'])
+  ], ['默认', '青色', '极光', '余烬橙'])
   const ember = TOCKTEAM_SKINS.find(skin => skin.id === SKIN_ID.emberDusk)!
+  assert.equal(ember.palettes.dark.tokens['--dsw-alias-bg-base'], '#16110d')
+  assert.equal(ember.palettes.dark.tokens['--dsw-specific-sidebar-fill'], '#211a15')
+  assert.equal(ember.palettes.dark.tokens['--dsw-alias-label-primary'], '#fdf0e6')
+  assert.equal(ember.palettes.dark.tokens['--dsw-alias-brand-primary'], '#f59e5b')
+  assert.equal(ember.palettes.light.tokens['--dsw-alias-bg-base'], '#f8f2e9')
+  assert.equal(ember.palettes.light.tokens['--dsw-alias-brand-primary'], '#96511c')
   assert.notEqual(ember.palettes.light.tokens['--dsw-alias-bg-base'], ember.palettes.dark.tokens['--dsw-alias-bg-base'])
   assert.equal(ember.palettes.light.tui.text, ember.palettes.light.tokens['--dsw-alias-label-primary'])
 })
@@ -606,7 +612,7 @@ test('appearance changes update the fallback without clearing an active skin', (
   controller.adopt(theme.getTheme())
 
   assert.equal(theme.getTheme().active.id, 'light')
-  assert.equal(theme.getTheme().active.tokens['--dsw-alias-bg-base'], '#f6ede9')
+  assert.equal(theme.getTheme().active.tokens['--dsw-alias-bg-base'], '#f8f2e9')
   assert.equal(storage.getItem(ACTIVE_SKIN_KEY), 'tockteam-skin-ember-dusk')
   assert.equal(storage.getItem(FALLBACK_THEME_KEY), 'light')
   assert.equal(controller.getSnapshot().activeId, 'tockteam-skin-ember-dusk')
