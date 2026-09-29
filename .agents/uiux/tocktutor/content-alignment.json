@@ -19,9 +19,9 @@
     "skinId": null
   },
   "gallery": {
-    "uniqueImageSources": 56,
-    "captureCountLabel": "Visual Design Audit · 56 Captures",
-    "screenshotDirectoryTotal": 63,
+    "uniqueImageSources": 62,
+    "captureCountLabel": "Visual Design Audit · 62 Captures",
+    "screenshotDirectoryTotal": 69,
     "supplementalCaptures": [
       "obsidian-outline.png",
       "obsidian-quick-switcher.png",
@@ -76,9 +76,15 @@
       "tocktutor-file-recovery.png",
       "tocktutor-graph-global.png",
       "tocktutor-graph.png",
+      "tocktutor-image-resizing.png",
+      "tocktutor-image-viewer.png",
+      "tocktutor-imported-properties.png",
       "tocktutor-live-preview-lower.png",
       "tocktutor-main-workspace.png",
       "tocktutor-marketplace.png",
+      "tocktutor-mermaid-editing.png",
+      "tocktutor-mermaid-live-preview.png",
+      "tocktutor-mermaid-reading.png",
       "tocktutor-new-note-dialog.png",
       "tocktutor-new-note.png",
       "tocktutor-note-actions-menu.png",
@@ -801,7 +807,71 @@
       }
     }
   ],
+  "migrationReview": {
+    "sourceCommit": "23e2cbcb",
+    "report": "../../../.beads/reports/2026-09-29-tocktutor-migration-review.md",
+    "fixtures": "migration-fixtures",
+    "referenceStatus": "TockTutor-only feature captures; no matching new Obsidian reference was captured.",
+    "allowlist": ["tocktutor-image-resizing.png", "tocktutor-image-viewer.png", "tocktutor-imported-properties.png", "tocktutor-mermaid-editing.png", "tocktutor-mermaid-live-preview.png", "tocktutor-mermaid-reading.png"],
+    "registryUnchanged": true,
+    "exactSavedBytesVerified": ["Images.md", "Properties.md", "Diagrams.md"],
+    "cleanup": {"verified": true, "rootPid": 15846, "recordedPids": [15846,15848,15849,15851,15854,15857,15866,16068,16232,16233,16234,17745], "remaining": []}
+  },
   "captures": {
+    "tocktutor-image-viewer.png": {
+      "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
+      "route":"/tocktutor/Images.md", "path":"Images.md", "mode":"live-preview",
+      "contentSha256":"6c951a754e523ecff4a0a191f72c6982af4830929959804e6c777bfd60825670",
+      "bytes":221893, "sha256":"76ef23b38d473aa3ef1d4bacfab820582a101f44c15ad0b7b6b07065f86aed56",
+      "sourceCommit":"23e2cbcb", "capturedAt":"2026-09-29T13:09:19.215Z",
+      "visibleState":{"dialog":"Original artwork caption","fit":true,"zoomAndPanVerified":true},
+      "runtimeErrors":[], "runtimeErrorMonitoring":"Owned guarded Desktop/CDP; console/pageerror monitoring and final session console error check: zero errors.", "captureScope":"real-desktop"
+    },
+    "tocktutor-image-resizing.png": {
+      "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
+      "route":"/tocktutor/Images.md", "path":"Images.md", "mode":"live-preview",
+      "contentSha256":"9810be9c1645e3a77fc73324a74473d62fd8d153a8a6a1395552e35df288eb61",
+      "bytes":210485, "sha256":"3a9e96ac882ca1a000221f15da8d64d6f7d160cc12670e1fc2d2320034b65e78",
+      "sourceCommit":"23e2cbcb", "capturedAt":"2026-09-29T13:09:19.591Z",
+      "visibleState":{"width":240,"neighborWidth":120,"undoOneStep":true,"reopened":true},
+      "runtimeErrors":[], "runtimeErrorMonitoring":"Owned guarded Desktop/CDP; console/pageerror monitoring and final session console error check: zero errors.", "captureScope":"real-desktop"
+    },
+    "tocktutor-imported-properties.png": {
+      "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
+      "route":"/tocktutor/Properties.md", "path":"Properties.md", "mode":"live-preview",
+      "contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478",
+      "bytes":220626, "sha256":"2ac250ee65a5ff260e38487869fd7453c149329e161c62aa605f52d7be6bf842",
+      "sourceCommit":"23e2cbcb", "capturedAt":"2026-09-29T13:14:36.712Z",
+      "visibleState":{"linkedProperties":true,"nullDateAndCheckbox":true,"exponentNumber":true,"reopened":true,"unsupportedSourceFallback":true},
+      "runtimeErrors":[], "runtimeErrorMonitoring":"Owned guarded Desktop/CDP; console/pageerror monitoring and final session console error check: zero errors.", "captureScope":"real-desktop"
+    },
+    "tocktutor-mermaid-live-preview.png": {
+      "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
+      "route":"/tocktutor/Diagrams.md", "path":"Diagrams.md", "mode":"live-preview",
+      "contentSha256":"597b0233cbdc406a87b75eac3595107a7102177ce895ef64cb8bb2ad96af8a27",
+      "bytes":118168, "sha256":"38137c0fc437b89ec7b499170525bc74038b5be73d2e39bed9aa8b74f066e67b",
+      "sourceCommit":"23e2cbcb", "capturedAt":"2026-09-29T13:13:02.951Z",
+      "visibleState":{"diagrams":7,"unsafeSourceFallback":1},
+      "runtimeErrors":[], "runtimeErrorMonitoring":"Owned guarded Desktop/CDP; console/pageerror monitoring and final session console error check: zero errors.", "captureScope":"real-desktop"
+    },
+    "tocktutor-mermaid-reading.png": {
+      "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
+      "route":"/tocktutor/Diagrams.md", "path":"Diagrams.md", "mode":"reading",
+      "contentSha256":"597b0233cbdc406a87b75eac3595107a7102177ce895ef64cb8bb2ad96af8a27",
+      "bytes":120013, "sha256":"5d1f43225176eaf3c5036d473f834bf646116b713242f6df258828ff84135c7e",
+      "sourceCommit":"23e2cbcb", "capturedAt":"2026-09-29T13:13:03.167Z",
+      "visibleState":{"diagrams":7,"unsafeSourceFallback":1},
+      "runtimeErrors":[], "runtimeErrorMonitoring":"Owned guarded Desktop/CDP; console/pageerror monitoring and final session console error check: zero errors.", "captureScope":"real-desktop"
+    },
+    "tocktutor-mermaid-editing.png": {
+      "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
+      "route":"/tocktutor/Diagrams.md", "path":"Diagrams.md", "mode":"live-preview",
+      "contentSha256":"c407aff19710d3cb8a8dd75f312caba27af7c11ec617e6d49e80db3efe09b007",
+      "bytes":135191, "sha256":"6c3706b20ecc907559a8ac89866402dd851b392bd433216e06f34893781f2d1d",
+      "sourceCommit":"23e2cbcb", "capturedAt":"2026-09-29T13:14:07.186Z",
+      "visibleState":{"editing":true,"uppercaseFence":true,"visibleCode":"flowchart LR\n  A[Start] --> B[Finish]\n    B --> C[Reviewed]"},
+      "runtimeErrors":[], "runtimeErrorMonitoring":"Owned guarded Desktop/CDP; console/pageerror monitoring and final session console error check: zero errors.", "captureScope":"real-desktop"
+    },
     "tocktutor-main-workspace.png": {
       "geometry": {
         "width": 1512,

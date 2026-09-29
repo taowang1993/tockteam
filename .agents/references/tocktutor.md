@@ -133,6 +133,22 @@ Assistant and Web Viewer slots are single contributions; native-action, vault-ac
 
 Native dispatches are invalidated by newer navigation. TockTeam Desktop resolves current, named, recent, and absolute-path protocol selectors against main-owned canonical vault records, then sends only an opaque vault ID to the Host/client adapter. The Workbench accepts that request only after the selected runtime publishes the matching opaque identity. Tab, split, and window requests retain dirty-save gating and exact completion callbacks. Protocol note creation accepts a name without requiring a separate file selector. Delayed document loads, renames, and selection extraction preserve later navigation and edits; source-offset formatting, date/time insertion, and extraction require Source mode because Live Preview positions are not Markdown offsets.
 
+#### Images, Mermaid, and Imported Properties
+
+**Image Viewer** uses only validated raster data URLs from existing Host-resolved attachments or the hardened public-image proxy. Click an image in Reading, or use **View Image** in Source and Live Preview. The shared dialog supports fit, bounded zoom, drag pan, keyboard-accessible pan buttons, Escape/backdrop dismissal, focus return, and unavailable-image feedback. Authored URLs and SVG are never passed to the viewer. Note/pane teardown closes it.
+
+**Image Resizing** in Live Preview exposes **Resize** and **Image Width** for supported Host-resolved images. Dragging previews a width; release or a committed numeric change creates a separate Undo step. Widths are bounded to 80–2,000 pixels and the current pane. Cancellation does not write. Wikilink and Markdown images retain paths, meaningful alt text/captions, and authored `WxH` dimensions until an explicit resize writes width-only syntax. Repeated embeds target their own editor node; proxied external images are viewable but not resized through this control. These edits use the existing document save/recovery path, not a second writer.
+
+**Mermaid** renders flowchart, sequence, class, state, ER, pie, and Gantt examples in Reading and Live Preview. `mermaid@11.13.0` is loaded only for diagrams, inside an opaque-origin, script-only iframe with a restrictive CSP. The browser receives an allowlisted passive SVG image, never active diagram markup. Limits are 12 diagrams per renderer, 4,096 source characters/100 lines per diagram, 64 edges, 200,000 output characters, and a five-second render-response deadline. Unsafe links/directives, malformed input, exceeded budgets, and rendering failures retain source. The offscreen frame stays under `document.body` so hidden note panels cannot collapse layout during Appearance changes, and its owning pane disposes it. Colors follow the current theme/skin.
+
+In Live Preview, activate **Edit Mermaid Diagram** to expose the code; leaving the block restores the preview. Single supported fence edits splice the authored Markdown instead of reformatting unrelated spacing, preserve LF or consistent CRLF, distinguish duplicate fences, and lengthen delimiters when pasted code could close the fence. The proposed splice is reparsed to confirm all code blocks match the intended editor document. Unsupported mappings and other Live Preview edits use Milkdown serialization and can normalize formatting; this is not a general lossless Markdown editor. Source mode and the existing bounded static HTML/PDF renderer remain separate; broad browser Mermaid support does not imply static-export parity.
+
+**Imported Properties** reads only `.obsidian/types.json` through `getObsidianPropertyTypes(expectedVault)`, using the Runtime's passive list plus exact-revision/no-follow read. The Host caps it at 64 KiB and 1,000 known name/type assignments; malformed, missing, stale, or unsafe configuration falls back to inference. The route caches by vault generation, discards late responses, and reloads on vault activation. No operation writes the Obsidian registry.
+
+The note header displays the effective types; **Open Linked View → Properties** edits them through the bound document record. Supported types are text, finite numbers (including exponent-form values), checkboxes, dates, local minute-resolution date-times, and flat string lists/tags/aliases. Empty and null values retain imported controls. Native inputs and list add/remove controls write only on explicit edits. Nested or incompatible YAML, mixed lists, invalid dates, and zoned/second-resolution date-times require **Source Mode**, rather than being coerced. Tag suggestions and changing the registry's type assignments are not implemented.
+
+The dark/no-skin migration gallery surfaces are in `.agents/uiux/tocktutor/tocktutor.html`; review, regression, screenshot, and runtime evidence is recorded in `.beads/reports/2026-09-29-tocktutor-migration-review.md`.
+
 #### Sidebar Note Actions
 
 Right-click a note in **Files**, or press Shift+F10 / the context-menu key on its row, to open the 13-action note menu. Opening or dismissing it does not navigate or save. **Open in New Tab** retains the current tab; **Open to the Right** creates a permanent editable split using the existing pane layout, not a temporary Side Peek.
@@ -245,6 +261,7 @@ Existing vault files are never overwritten. Document creation preserves the revi
 
 - `POST /web-clip/api/viewer`
 - `POST /web-clip/api/reader`
+- `POST /web-clip/api/image` (bounded public raster-image bytes for inline previews and the viewer)
 - `POST /web-clip/api/clip/review`
 - `POST /web-clip/api/clip/apply`
 - `POST /web-clip/api/clip/cancel`

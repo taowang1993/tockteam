@@ -12,16 +12,16 @@ const links = [...html.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].
 const sha256 = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex')
 
 test('accounts for every gallery and supplemental capture without stale links', () => {
-  assert.match(html, /Visual Design Audit · 56 Captures/u)
+  assert.match(html, /Visual Design Audit · 62 Captures/u)
   assert.match(html, /Built-in Dark Theme · No Active Skin/u)
   assert.doesNotMatch(html, /UIUX Comparison/u)
   assert.doesNotMatch(html, /Tag and Tab Polish|id="polish"/u)
-  assert.equal(new Set(images).size, 56)
+  assert.equal(new Set(images).size, 62)
   assert.deepEqual(images, links)
   const actual = readdirSync(resolve(root, 'screenshots')).sort()
   assert.deepEqual(actual, proof.gallery.allowlist)
   assert.deepEqual(actual, Object.keys(proof.captures).sort())
-  assert.equal(actual.length, 63)
+  assert.equal(actual.length, 69)
   assert.deepEqual(actual.filter(name => !images.includes(`screenshots/${name}`)), proof.gallery.supplementalCaptures)
   assert.ok(proof.gallery.supplementalCaptures.includes('tocktutor-tag-tab-polish.png'))
   assert.ok(proof.comparisons.every((comparison: { surface: string }) => comparison.surface !== 'polish'))
@@ -33,6 +33,37 @@ test('accounts for every gallery and supplemental capture without stale links', 
   assert.equal([...html.matchAll(/<span class="badge">Not Applicable<\/span>/gu)].length, 1)
   assert.match(html, /id="assistant"[\s\S]*?Obsidian · Claudian[\s\S]*?obsidian-assistant\.png/u)
   assert.match(html, /id="reviews"[\s\S]*?Not Applicable/u)
+})
+
+test('adds verified migration surfaces without claiming new Obsidian comparisons', () => {
+  const additions = proof.migrationReview
+  assert.equal(additions.allowlist.length, 6)
+  assert.equal(additions.registryUnchanged, true)
+  assert.equal(additions.cleanup.verified, true)
+  assert.deepEqual(additions.cleanup.remaining, [])
+  for (const id of ['image-viewer', 'image-resizing', 'mermaid', 'mermaid-editing', 'imported-properties']) {
+    assert.ok(html.includes(`id="${id}"`), id)
+    assert.ok(html.includes(`href="#${id}"`), id)
+  }
+  assert.match(html, /TockTutor feature evidence, not new matched Obsidian comparisons/u)
+  for (const name of additions.allowlist) {
+    assert.ok(images.includes(`screenshots/${name}`), name)
+    assert.equal(proof.captures[name].captureScope, 'real-desktop')
+    assert.equal(proof.captures[name].sourceCommit, additions.sourceCommit)
+  }
+  const fixtures = resolve(root, additions.fixtures)
+  const source = (name: string) => readFileSync(resolve(fixtures, name), 'utf8')
+  const afterImages = source('Images.md').replace('tockteam.png|200', 'tockteam.png|240')
+  const afterProperties = source('Properties.md').replace('due: null', 'due: "2026-10-01"').replace('finished: null', 'finished: true').replace('rating: 1e-7', 'rating: 1e+21')
+  const afterDiagrams = source('Diagrams.md').replace('  A[Start] --> B[Finish]', '  A[Start] --> B[Finish]\n    B --> C[Reviewed]')
+  for (const [name, content] of Object.entries({
+    'tocktutor-image-viewer.png': source('Images.md'),
+    'tocktutor-image-resizing.png': afterImages,
+    'tocktutor-imported-properties.png': afterProperties,
+    'tocktutor-mermaid-reading.png': source('Diagrams.md'),
+    'tocktutor-mermaid-live-preview.png': source('Diagrams.md'),
+    'tocktutor-mermaid-editing.png': afterDiagrams,
+  })) assert.equal(proof.captures[name].contentSha256, sha256(content), name)
 })
 
 test('orders the numbered surfaces with Source Mode at Surface 04', () => {
