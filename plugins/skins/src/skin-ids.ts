@@ -1,7 +1,7 @@
 export const SKIN_ID = Object.freeze({
-  deepCurrent: 'tockteam-skin-deep-current',
-  jadeCircuit: 'tockteam-skin-jade-circuit',
-  emberDusk: 'tockteam-skin-ember-dusk',
+  navy: 'tockteam-skin-navy',
+  jade: 'tockteam-skin-jade',
+  ember: 'tockteam-skin-ember',
 } as const)
 
 export const LEGACY_PORCELAIN_ID = 'tockteam-skin-porcelain' as const

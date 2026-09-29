@@ -203,7 +203,7 @@ try {
   }
   const geometry = await run(`
     await workbench.evaluate(() => window.dshDesktop.launcher.settings.updateSetting('window.hideWindowOn', []));
-    await workbench.evaluate(() => window.dshDesktop.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' }));
+    await workbench.evaluate(() => window.dshDesktop.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-navy' }));
     await launcher.waitForFunction(() => document.documentElement.dataset.launcherReady === 'true' && document.documentElement.style.colorScheme === 'dark');
     const input = launcher.locator('#launcher-search'); await input.fill('Kaomoji Search');
     await launcher.locator('[data-result-id="trusted-raycast:kaomoji-search:index"]').waitFor();

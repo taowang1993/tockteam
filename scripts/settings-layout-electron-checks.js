@@ -26,7 +26,7 @@ async page => {
         const next = dialog.getByRole('radio', { name: 'Navy', exact: true });
         check(await next.evaluate(e => document.activeElement === e), 'skin chooser supports arrow-key focus');
         await next.press('Space');
-        await page.waitForFunction(() => document.body.dataset.tockteamSkin === 'tockteam-skin-deep-current');
+        await page.waitForFunction(() => document.body.dataset.tockteamSkin === 'tockteam-skin-navy');
         await original.click();
         await page.waitForFunction(() => !document.body.dataset.tockteamSkin && document.documentElement.style.colorScheme === 'dark');
         await original.click();

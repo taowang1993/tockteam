@@ -86,7 +86,7 @@ function tuiColors(
   })
 }
 
-const DEEP_CURRENT_TOKENS = {
+const NAVY_TOKENS = {
   '--dsw-alias-bg-base': '#071923',
   '--dsw-alias-bg-layer-1': '#0b2230',
   '--dsw-alias-bg-layer-2': '#0f2a39',
@@ -121,7 +121,7 @@ const DEEP_CURRENT_TOKENS = {
   '--dsw-specific-sidebar-nav-item-hover': '#0d2938',
 } as const
 
-const DEEP_CURRENT_LIGHT_TOKENS = {
+const NAVY_LIGHT_TOKENS = {
   '--dsw-alias-bg-base': '#eaf4f7',
   '--dsw-alias-bg-layer-1': '#f5fafb',
   '--dsw-alias-bg-layer-2': '#dcebf0',
@@ -156,7 +156,7 @@ const DEEP_CURRENT_LIGHT_TOKENS = {
   '--dsw-specific-sidebar-nav-item-hover': '#e2eff3',
 } as const
 
-const JADE_CIRCUIT_TOKENS = {
+const JADE_TOKENS = {
   '--dsw-alias-bg-base': '#071a16',
   '--dsw-alias-bg-layer-1': '#0b241e',
   '--dsw-alias-bg-layer-2': '#102e26',
@@ -191,7 +191,7 @@ const JADE_CIRCUIT_TOKENS = {
   '--dsw-specific-sidebar-nav-item-hover': '#0e2b23',
 } as const
 
-const JADE_CIRCUIT_LIGHT_TOKENS = {
+const JADE_LIGHT_TOKENS = {
   '--dsw-alias-bg-base': '#eaf4eb',
   '--dsw-alias-bg-layer-1': '#f6faf5',
   '--dsw-alias-bg-layer-2': '#dbecde',
@@ -309,27 +309,27 @@ function palette(tokens: Readonly<Record<string, string>>, merged: string, previ
 
 export const TOCKTEAM_SKINS: readonly TockTeamSkin[] = Object.freeze([
   Object.freeze({
-    id: SKIN_ID.deepCurrent,
+    id: SKIN_ID.navy,
     displayName: 'Navy',
-    label: 'skins.name.deep-current',
+    label: 'skins.name.navy',
     palettes: Object.freeze({
-      dark: palette(DEEP_CURRENT_TOKENS, '#b995f5', 'linear-gradient(135deg, #071923 0%, #143445 64%, #49c8eb 145%)'),
-      light: palette(DEEP_CURRENT_LIGHT_TOKENS, '#765fa4', 'linear-gradient(135deg, #eaf4f7 0%, #cee4eb 64%, #17667d 160%)'),
+      dark: palette(NAVY_TOKENS, '#b995f5', 'linear-gradient(135deg, #071923 0%, #143445 64%, #49c8eb 145%)'),
+      light: palette(NAVY_LIGHT_TOKENS, '#765fa4', 'linear-gradient(135deg, #eaf4f7 0%, #cee4eb 64%, #17667d 160%)'),
     }),
   }),
   Object.freeze({
-    id: SKIN_ID.jadeCircuit,
+    id: SKIN_ID.jade,
     displayName: 'Jade',
-    label: 'skins.name.jade-circuit',
+    label: 'skins.name.jade',
     palettes: Object.freeze({
-      dark: palette(JADE_CIRCUIT_TOKENS, '#a78bfa', 'linear-gradient(145deg, #071a16 0 42%, #154435 43% 62%, #52d6a0 150%)'),
-      light: palette(JADE_CIRCUIT_LIGHT_TOKENS, '#765fa4', 'linear-gradient(145deg, #eaf4eb 0 42%, #cce3d2 43% 62%, #246c4a 160%)'),
+      dark: palette(JADE_TOKENS, '#a78bfa', 'linear-gradient(145deg, #071a16 0 42%, #154435 43% 62%, #52d6a0 150%)'),
+      light: palette(JADE_LIGHT_TOKENS, '#765fa4', 'linear-gradient(145deg, #eaf4eb 0 42%, #cce3d2 43% 62%, #246c4a 160%)'),
     }),
   }),
   Object.freeze({
-    id: SKIN_ID.emberDusk,
+    id: SKIN_ID.ember,
     displayName: 'Ember',
-    label: 'skins.name.ember-dusk',
+    label: 'skins.name.ember',
     palettes: Object.freeze({
       dark: palette(EMBER_TOKENS, '#f3a866', 'radial-gradient(circle at 78% 24%, #f59e5b 0%, transparent 38%), linear-gradient(145deg, #16110d 0%, #211a15 100%)'),
       light: palette(EMBER_LIGHT_TOKENS, '#9b6236', 'radial-gradient(circle at 78% 24%, #e6b078 0%, transparent 38%), linear-gradient(145deg, #f8f2e9 0%, #e7d4bf 100%)'),

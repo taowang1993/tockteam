@@ -634,14 +634,14 @@ try {
     marker: 'tockteam-os-fixture-v1',
   })
   await workbenchConnection.evaluate(`(async () => {
-    await window.dshDesktop?.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' })
+    await window.dshDesktop?.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-navy' })
   })()`)
   await waitFor(
     () => launcherConnection.evaluate(`({
       colorScheme: document.documentElement.style.colorScheme,
       skin: document.documentElement.dataset.tockteamSkin,
     })`),
-    theme => theme.colorScheme === 'dark' && theme.skin === 'tockteam-skin-deep-current',
+    theme => theme.colorScheme === 'dark' && theme.skin === 'tockteam-skin-navy',
   )
   const darkThemeFacts = await launcherConnection.evaluate(`({
     colorScheme: document.documentElement.style.colorScheme,
@@ -649,15 +649,15 @@ try {
     brand: getComputedStyle(document.documentElement).getPropertyValue('--dsw-alias-brand-primary').trim(),
   })`)
   assert.equal(darkThemeFacts.colorScheme, 'dark')
-  assert.equal(darkThemeFacts.skin, 'tockteam-skin-deep-current')
+  assert.equal(darkThemeFacts.skin, 'tockteam-skin-navy')
   assert.equal(darkThemeFacts.brand, '#49c8eb')
   const skinCases = [
-    ['tockteam-skin-deep-current', 'dark', '#49c8eb'],
-    ['tockteam-skin-deep-current', 'light', '#17667d'],
-    ['tockteam-skin-jade-circuit', 'dark', '#52d6a0'],
-    ['tockteam-skin-jade-circuit', 'light', '#246c4a'],
-    ['tockteam-skin-ember-dusk', 'dark', '#f59e5b'],
-    ['tockteam-skin-ember-dusk', 'light', '#96511c'],
+    ['tockteam-skin-navy', 'dark', '#49c8eb'],
+    ['tockteam-skin-navy', 'light', '#17667d'],
+    ['tockteam-skin-jade', 'dark', '#52d6a0'],
+    ['tockteam-skin-jade', 'light', '#246c4a'],
+    ['tockteam-skin-ember', 'dark', '#f59e5b'],
+    ['tockteam-skin-ember', 'light', '#96511c'],
   ]
   for (const [skinId, mode, brand] of skinCases) {
     await workbenchConnection.evaluate(`(async () => await window.dshDesktop?.syncLauncherTheme(${JSON.stringify({ mode, skinId })}))()`)
@@ -673,10 +673,10 @@ try {
       theme => theme.mode === mode && theme.skin === null,
     )
   }
-  await workbenchConnection.evaluate(`(async () => await window.dshDesktop?.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' }))()`)
+  await workbenchConnection.evaluate(`(async () => await window.dshDesktop?.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-navy' }))()`)
   await waitFor(
     () => launcherConnection.evaluate(`({ mode: document.documentElement.style.colorScheme, skin: document.documentElement.dataset.tockteamSkin })`),
-    theme => theme.mode === 'dark' && theme.skin === 'tockteam-skin-deep-current',
+    theme => theme.mode === 'dark' && theme.skin === 'tockteam-skin-navy',
   )
   await workbenchConnection.evaluate(`(async () => {
     await window.dshDesktop?.launcher?.settings?.updateSetting('appearance.searchBarPlaceholderText', 'Search TockTeam')

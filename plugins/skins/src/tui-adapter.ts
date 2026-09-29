@@ -19,23 +19,12 @@ import {
   type FallbackTheme,
   type SkinPreferences,
 } from './preferences.ts'
-import { LEGACY_PORCELAIN_ID, SKIN_ID, type SkinId } from './skin-ids.ts'
+import { LEGACY_PORCELAIN_ID, type SkinId } from './skin-ids.ts'
 import { TOCKTEAM_SKINS, type SkinColorScheme } from './skins.ts'
 
 const BUILTIN_TUI_THEMES = new Set(['light', 'dark', 'dark-ansi'])
 // Exact bytes of the old first-party generated file; customized files are never removed.
 const GENERATED_PORCELAIN_SHA256 = '1cf00c8e2acc565d8820187c6ee8f14ac6e28b79862602d7a1319c7c2322972c'
-const FORMER_GENERATED_NAMES: Partial<Record<SkinId, readonly string[]>> = {
-  [SKIN_ID.deepCurrent]: ['Deep Current', 'Cyan'],
-  [SKIN_ID.jadeCircuit]: ['Jade Circuit', 'Aurora'],
-  [SKIN_ID.emberDusk]: ['Ember Dusk'],
-}
-// Exact prior generated TUI files; never replace a modified Ember Dusk theme.
-const GENERATED_EMBER_SHA256 = {
-  dark: new Set(['5b6d9b92fe3f1a02bf8b9d75ddc4aeac1b2870e72c65fde71c67e946d9be6e8d', 'b1b2287ff83db66bf5f36fd95daf9930fca39041429f97efb50d33d56210d365']),
-  light: new Set(['da47b88ab97f086e34672735c78387ab768855c871fa4a235ee3bb33db43587e']),
-} as const
-
 export interface TuiSkinPaths {
   preferences: string
   themePreference: string
@@ -148,23 +137,7 @@ function installThemeFiles(directory: string): void {
         base: mode,
         colors: skin.palettes[mode].tui,
       }
-      if (pathExists(path)) {
-        const oldNames = FORMER_GENERATED_NAMES[skin.id]
-        if (oldNames === undefined) continue
-        const before = lstatSync(path)
-        if (!before.isFile()) continue
-        const oldLabels = oldNames.map(name => `TockTeam · ${name} · ${mode === 'dark' ? 'Dark' : 'Light'}`)
-        if (mode === 'dark') oldLabels.push(...oldNames.map(name => `TockTeam · ${name}`))
-        const existing = readFileSync(path, 'utf8')
-        const after = lstatSync(path)
-        if (after.ino === before.ino && after.mtimeMs === before.mtimeMs && after.size === before.size
-          && (oldLabels.some(displayName => existing === `${JSON.stringify({ ...theme, displayName }, undefined, 2)}\n`)
-            || (skin.id === SKIN_ID.emberDusk && GENERATED_EMBER_SHA256[mode].has(createHash('sha256').update(existing).digest('hex'))))) {
-          writeJsonAtomic(path, theme)
-        }
-        continue
-      }
-      writeJsonAtomic(path, theme)
+      if (!pathExists(path)) writeJsonAtomic(path, theme)
     }
   }
 }

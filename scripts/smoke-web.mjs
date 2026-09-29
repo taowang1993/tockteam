@@ -280,12 +280,12 @@ try {
       'content-type': 'application/json',
       origin: base.origin,
     },
-    body: JSON.stringify({ activeId: 'tockteam-skin-deep-current', fallbackTheme: 'light', version: 2 }),
+    body: JSON.stringify({ activeId: 'tockteam-skin-navy', fallbackTheme: 'light', version: 2 }),
   })
   assert.equal(saveResponse.status, 200, await saveResponse.text())
   const saved = await authenticatedFetch(preferencesUrl)
   const persisted = await saved.json()
-  assert.equal(persisted.activeId, 'tockteam-skin-deep-current')
+  assert.equal(persisted.activeId, 'tockteam-skin-navy')
   assert.equal(persisted.fallbackTheme, 'light')
   assert.equal(persisted.version, 2)
 

@@ -70,7 +70,7 @@ Web must not emulate Electron authority. The current `web/cordis.patch.yml` comp
 
 ### Sources of Truth
 
-- `plugins/skins/src/skins.ts` defines the official Deep Current, Jade Circuit, Porcelain, and Ember Dusk skins.
+- `plugins/skins/src/skins.ts` defines the official Navy, Jade, and Ember skins.
 - The injected DSH ThemeService applies the active theme.
 - `plugins/skins/src/client/skin-dom.ts` owns `data-tockteam-skin` on `body` and optional skin atmosphere CSS; the document's `color-scheme` is owned by ThemeService.
 - `plugins/skins/src/tui-adapter.ts` projects the same catalog into TUI semantic colors; it is not a second palette.
@@ -101,7 +101,7 @@ Combine them with utilities such as `bg-surface`, `bg-popover`, `text-foreground
 
 Raw colors are allowed only when they are intrinsic data or a documented boundary: skin catalog values and previews, terminal ANSI fallbacks, product marks, syntax/diff data, or a pinned upstream compatibility seam. Existing raw values are not automatically reusable tokens.
 
-Every change must remain legible in the built-in light and dark themes and all four TockTeam skins. Do not assume a white background or a purple accent.
+Every change must remain legible in the built-in light and dark themes and all three TockTeam skins. Do not assume a white background or a purple accent.
 
 - Verify foreground/fill pairs, not token names. Currently `primary-foreground` maps to `--dsw-alias-label-primary-foreground`, while `brand-foreground` maps to `--dsw-alias-brand-primary-invert`. In the pinned built-in light and dark themes, `brand-primary-invert` is the **same color** as `brand-primary`: do not rely on `text-brand-foreground` over `bg-brand` for essential marks until that mapping is corrected. Measure at least 4.5:1 for ordinary text and 3:1 for essential control marks, including selected/checked states.
 - Application appearance can differ from system appearance. Bare Tailwind `dark:` follows the system media query in this integration; use semantic colors for application UI instead. Verify dark-app/light-system and light-app/dark-system cases.

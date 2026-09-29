@@ -12,7 +12,7 @@ test('launcher preload forwards validated theme events and ignores stale revisio
   })
   const received: number[] = []
   const remove = bridge.onTheme(theme => { received.push(theme.revision) })
-  receive?.({}, { mode: 'dark', revision: 2, skinId: 'tockteam-skin-deep-current' })
+  receive?.({}, { mode: 'dark', revision: 2, skinId: 'tockteam-skin-navy' })
   receive?.({}, { mode: 'light', revision: 1, skinId: null })
   assert.deepEqual(received, [2])
   remove()

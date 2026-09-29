@@ -13,7 +13,7 @@ test('launcher follows both built-in modes with a separately selected valid skin
   const snapshot = (mode: 'light' | 'dark', id: string = mode) => ({
     active: { id, colorScheme: mode, tokens: { secret: 'no' } },
   })
-  const skinId = 'tockteam-skin-deep-current'
+  const skinId = 'tockteam-skin-navy'
   const light = projectLauncherThemeSource(snapshot('light'), skinId)
   const dark = projectLauncherThemeSource(snapshot('dark'), skinId)
   assert.deepEqual(light, { mode: 'light', skinId })
@@ -48,7 +48,7 @@ test('original launcher theme supplies the Tockbot surface colors in both modes'
 test('main theme projector assigns monotonic revisions and parser rejects stale shape', () => {
   const projector = createLauncherThemeProjector()
   const first = projector.update({ mode: 'light', skinId: null })
-  const second = projector.update({ mode: 'dark', skinId: 'tockteam-skin-ember-dusk' })
+  const second = projector.update({ mode: 'dark', skinId: 'tockteam-skin-ember' })
   assert.equal(second.revision > first.revision, true)
   assert.deepEqual(parseLauncherThemeProjection(second), second)
   assert.throws(() => parseLauncherThemeProjection({ mode: 'dark', skinId: null, revision: 0, themes: [] }), /projection/u)

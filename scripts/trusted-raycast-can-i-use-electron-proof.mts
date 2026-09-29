@@ -131,7 +131,7 @@ try {
   await run(`
     await launcher.evaluate(() => { window.__canProofViolations = []; document.addEventListener('securitypolicyviolation', event => window.__canProofViolations.push(event.effectiveDirective)); });
     await workbench.evaluate(() => window.dshDesktop.launcher.settings.updateSetting('window.hideWindowOn', []));
-    await workbench.evaluate(() => window.dshDesktop.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-deep-current' }));
+    await workbench.evaluate(() => window.dshDesktop.syncLauncherTheme({ mode: 'dark', skinId: 'tockteam-skin-navy' }));
     await launcher.locator('#launcher-search').fill('Can I Use');
     await launcher.locator('[data-result-id="trusted-raycast:can-i-use:index"]').waitFor();
     const trust = await launcher.evaluate(() => window.tockteamLauncher.getTrustedRaycastTrust('can-i-use'));

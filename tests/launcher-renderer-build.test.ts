@@ -212,11 +212,11 @@ test('TockTutor titlebar and all shared skins use valid TockTeam token contracts
       }
     }
   }
-  assert.match(skinIds, /deepCurrent/u)
-  assert.match(skinIds, /jadeCircuit/u)
+  assert.match(skinIds, /navy: 'tockteam-skin-navy'/u)
+  assert.match(skinIds, /jade: 'tockteam-skin-jade'/u)
   assert.match(skinIds, /LEGACY_PORCELAIN_ID/u)
   assert.doesNotMatch(skinIds, /porcelain: /u)
-  assert.match(skinIds, /emberDusk/u)
+  assert.match(skinIds, /ember: 'tockteam-skin-ember'/u)
 })
 
 test('launcher renderer uses shared types, Lucide icons, visible selection, and layered Escape semantics', () => {
