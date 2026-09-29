@@ -10,7 +10,7 @@ const MAX_BYTES = 16 * 1024 * 1024
 export type UserRaycastCandidate = Readonly<{ command: string; digest: string; extensionId: string; title: string; mode?: 'no-view'; version?: string; license?: string; source?: string }>
 type Decision = { digest: string; enabled: boolean }
 
-function readFiles(directory: string): Map<string, Buffer> {
+export function readFiles(directory: string): Map<string, Buffer> {
   if (!isAbsolute(directory) || !lstatSync(directory).isDirectory()) throw new Error('Extension folder must be a real directory')
   const files = new Map<string, Buffer>()
   let total = 0
@@ -33,7 +33,7 @@ function readFiles(directory: string): Map<string, Buffer> {
   return files
 }
 
-function digestFiles(files: Map<string, Buffer>): string {
+export function digestFiles(files: Map<string, Buffer>): string {
   const hash = createHash('sha256')
   for (const [path, bytes] of [...files].sort(([left], [right]) => left.localeCompare(right, 'en'))) {
     hash.update(`${Buffer.byteLength(path)}:${path}:${bytes.length}:`)
