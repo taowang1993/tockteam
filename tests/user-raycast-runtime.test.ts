@@ -55,7 +55,7 @@ test('an approved no-view command gets private storage, defaults, feedback and o
     for (const extensionId of ['first-uuid', 'second-uuid']) {
       const folder = join(root, extensionId)
       mkdirSync(folder)
-      writeFileSync(join(folder, 'package.json'), JSON.stringify({ name: extensionId, title: extensionId, preferences: [{ name: 'defaultAction', default: 'copy' }, { name: 'prefix', default: `${extensionId}-pref` }], commands: [{ name: 'generate', title: 'Generate UUIDs', mode: 'no-view' }] }))
+      writeFileSync(join(folder, 'package.json'), JSON.stringify({ name: extensionId, title: extensionId, preferences: [{ name: 'defaultAction', default: 'copy' }, { name: 'prefix', default: `${extensionId}-pref` }], commands: [{ name: 'generate', title: 'Generate UUIDs', mode: 'no-view' }, { name: 'generateV5', title: 'Generate V5', mode: 'no-view' }] }))
       writeFileSync(join(folder, 'generate.js'), `const {Clipboard,LocalStorage,getPreferenceValues,showHUD}=require('@raycast/api'); exports.default=async ({arguments:args})=>{if(getPreferenceValues().defaultAction!=='copy'||getPreferenceValues().prefix!=='${extensionId}-pref'||Object.keys(args).length)throw Error('Invalid preferences or arguments');const prior=await LocalStorage.getItem('history');const count=Number(prior??'0')+1;await LocalStorage.setItem('history',String(count));await Clipboard.copy('${extensionId}-'+count);await showHUD('Copied UUID')}`)
       const selected = install.prepare(folder)
       assert.equal((selected as { mode?: string }).mode, 'no-view')
@@ -74,6 +74,40 @@ test('an approved no-view command gets private storage, defaults, feedback and o
       }
     }
     assert.deepEqual(copied, ['first-uuid-1', 'first-uuid-2', 'second-uuid-1'])
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test('unsupported no-view APIs fail visibly and cancellation stops the owned child', async t => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-user-raycast-cancel-'))
+  const runtime = join(root, 'host')
+  const install = new UserRaycastInstall(join(root, 'installed'))
+  const messages: any[] = []
+  const manager = new UserRaycastManager({ install, runtime, nodePath: process.execPath, artifact, onMessage: (_owner, message) => messages.push(message) })
+  t.after(async () => manager.close())
+  try {
+    await buildUserRaycast(runtime)
+    for (const [extensionId, script] of [
+      ['unsupported-api', `const {Clipboard}=require('@raycast/api');exports.default=async()=>Clipboard.paste('not admitted')`],
+      ['pending-command', `exports.default=async()=>new Promise(()=>{})`],
+    ]) {
+      const folder = join(root, extensionId)
+      mkdirSync(folder)
+      writeFileSync(join(folder, 'package.json'), JSON.stringify({ name: extensionId, title: extensionId, commands: [{ name: 'run', title: 'Run', mode: 'no-view' }] }))
+      writeFileSync(join(folder, 'run.js'), script)
+      const selected = install.prepare(folder)
+      install.approve(selected.digest); install.enable()
+      await manager.start(owner)
+      const pid = manager.childPid
+      assert.ok(pid)
+      if (extensionId === 'unsupported-api') {
+        const deadline = Date.now() + 5000
+        while (!messages.some(message => message.type === 'outcome') && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
+        assert.match(messages.find(message => message.type === 'outcome')?.message ?? '', /Clipboard\.paste.*not admitted/i)
+      }
+      await manager.closeOwner(owner)
+      assert.equal(manager.childPid, undefined)
+      assert.throws(() => process.kill(pid, 0), /ESRCH/)
+    }
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 

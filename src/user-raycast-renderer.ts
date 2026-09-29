@@ -50,7 +50,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
   }
   const execute = async (action: () => Promise<unknown> | void): Promise<void> => {
     busy = true; paint()
-    try { await action(); if (!disposed) feedback.textContent = '' }
+    try { await action(); if (!disposed && !(state.mode === 'no-view' && active)) feedback.textContent = '' }
     catch (error) { if (!disposed) { feedback.textContent = error instanceof Error ? error.message.slice(0, 512) : 'Extension operation failed'; feedback.setAttribute('role', 'alert') } }
     finally { busy = false; if (!disposed) paint() }
   }
@@ -93,6 +93,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     if (message.type === 'ready') active = { extensionId: message.extensionId, sessionId: message.sessionId, revision: message.revision }
     else if (!active || active.extensionId !== message.extensionId || active.sessionId !== message.sessionId || message.revision <= active.revision) return
     else active.revision = message.revision
+    if (state.mode === 'no-view') { rendered.replaceChildren(); feedback.textContent = 'Running Command'; return }
     const root = message.root as Node
     const items: Node[] = []
     collect(root, 'raycast-list-item', items)

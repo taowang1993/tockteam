@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { USER_RAYCAST_IPC } from '../src/user-raycast-contract.ts'
+import { USER_RAYCAST_IPC, isUserRaycastCandidate } from '../src/user-raycast-contract.ts'
 import { registerUserRaycastIpcHandlers } from '../src/user-raycast-ipc.ts'
 
 const sender = { id: 42 }
 const event = { sender }
 const candidate = { command: 'browse', digest: 'a'.repeat(64), extensionId: 'local-example', title: 'Local Example' }
 const state = { candidate, digest: '', enabled: false, hasPrevious: false, installed: false }
+
+test('a Raycast command name may use camelCase without changing the extension ID rule', () => {
+  assert.equal(isUserRaycastCandidate({ ...candidate, command: 'generateV5' }), true)
+  assert.equal(isUserRaycastCandidate({ ...candidate, extensionId: 'UuidGenerator' }), false)
+})
 
 test('only the owning launcher may choose, approve and open a user extension', async () => {
   const handlers = new Map<string, (...args: any[]) => unknown>()

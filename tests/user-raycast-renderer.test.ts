@@ -32,6 +32,29 @@ test('an interrupted update exposes recovery even when current bytes are invalid
   view.dispose(); dom.window.close()
 })
 
+test('a no-view command reports completion without a misleading empty List', async () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>')
+  const document = dom.window.document as Document
+  let listener: ((message: UserRaycastMessage) => void) | undefined
+  const bridge = {
+    userRaycastState: async () => ({ ...empty, installed: true, enabled: true, digest: candidate.digest, mode: 'no-view' }),
+    userRaycastOpen: async () => {
+      listener?.({ type: 'ready', extensionId: candidate.extensionId, sessionId: 'session', revision: 0, root: { type: 'root', props: {}, children: [] } })
+      listener?.({ type: 'toast', extensionId: candidate.extensionId, sessionId: 'session', revision: 0, title: 'Copied UUID', message: '', style: 'success' })
+      listener?.({ type: 'outcome', extensionId: candidate.extensionId, sessionId: 'session', revision: 0, eventId: 'run', succeeded: true, message: '' })
+    },
+    onUserRaycastView: (callback: (message: UserRaycastMessage) => void) => { listener = callback; return () => { listener = undefined } },
+  } as unknown as LauncherPreloadBridge
+  const view = createUserRaycastView(document, bridge, () => {})
+  document.body.append(view.element)
+  await flush()
+  document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="open"]')!.click(); await flush()
+  assert.equal(document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="open"]')?.textContent, 'Run Command')
+  assert.match(view.element.textContent ?? '', /Command Complete/)
+  assert.doesNotMatch(view.element.textContent ?? '', /No items yet/)
+  view.dispose(); dom.window.close()
+})
+
 test('a real List empty view and search input survive a projected patch', async () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>')
   const document = dom.window.document as Document

@@ -4,6 +4,7 @@ import { isAbsolute, join } from 'node:path'
 import { readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
 
 const ID = /^[a-z0-9][a-z0-9_-]{0,63}$/
+const COMMAND = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/
 const MAX_FILES = 128
 const MAX_BYTES = 16 * 1024 * 1024
 export type UserRaycastCandidate = Readonly<{ command: string; digest: string; extensionId: string; title: string; mode?: 'no-view'; version?: string; license?: string; source?: string }>
@@ -50,12 +51,12 @@ function candidate(files: Map<string, Buffer>, selectedCommand?: string): UserRa
   if (typeof record.name !== 'string' || !ID.test(record.name) || typeof record.title !== 'string' || record.title.length < 1 || record.title.length > 128 || !Array.isArray(record.commands) || record.commands.length > 128) throw new Error('Invalid extension identity or commands')
   const commands = record.commands as unknown[]
   const names = commands.map(value => value !== null && typeof value === 'object' ? (value as Record<string, unknown>).name : undefined)
-  if (names.some(name => typeof name !== 'string' || !ID.test(name)) || new Set(names).size !== names.length) throw new Error('Invalid or duplicate extension commands')
+  if (names.some(name => typeof name !== 'string' || !COMMAND.test(name)) || new Set(names).size !== names.length) throw new Error('Invalid or duplicate extension commands')
   const built = commands.filter(value => value !== null && typeof value === 'object' && files.has(`${String((value as Record<string, unknown>).name)}.js`) && ['view', 'no-view'].includes((value as Record<string, unknown>).mode as string))
   const chosen = selectedCommand === undefined
     ? built.length === 1 ? built[0] : built.find(value => (value as Record<string, unknown>).mode === 'view')
     : commands.find(value => value !== null && typeof value === 'object' && (value as Record<string, unknown>).name === selectedCommand)
-  if (!chosen || typeof chosen !== 'object' || !['view', 'no-view'].includes((chosen as Record<string, unknown>).mode as string) || typeof (chosen as Record<string, unknown>).name !== 'string' || !ID.test((chosen as Record<string, unknown>).name as string)) throw new Error('Selected command is unavailable')
+  if (!chosen || typeof chosen !== 'object' || !['view', 'no-view'].includes((chosen as Record<string, unknown>).mode as string) || typeof (chosen as Record<string, unknown>).name !== 'string' || !COMMAND.test((chosen as Record<string, unknown>).name as string)) throw new Error('Selected command is unavailable')
   const command = (chosen as { name: string }).name
   if (!files.has(`${command}.js`)) throw new Error('Selected view command has no built JavaScript')
   if (files.has('selection.json')) throw new Error('Extension bundle contains a reserved file')
