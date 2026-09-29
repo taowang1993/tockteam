@@ -342,8 +342,11 @@ test('TUI upgrades only untouched Ember Dusk themes while preserving customized 
     assert.deepEqual(JSON.parse(await readFile(paths.preferences, 'utf8')), { activeId: SKIN_ID.emberDusk, fallbackTheme: 'dark', version: 2 })
 
     const custom = `${JSON.stringify({ ...old.light, colors: { ...old.light.colors, text: '#111111' } }, null, 2)}\n`
+    const olderDark = `${JSON.stringify({ ...old.dark, displayName: 'TockTeam · Ember Dusk' }, null, 2)}\n`
     await writeFile(themePath('light'), custom)
+    await writeFile(themePath('dark'), olderDark)
     mountTuiSkins(dataRoot, configRoot)
+    assert.equal(JSON.parse(await readFile(themePath('dark'), 'utf8')).displayName, 'TockTeam · Ember · Dark')
     assert.equal(await readFile(themePath('light'), 'utf8'), custom)
   } finally {
     await rm(directory, { recursive: true, force: true })
