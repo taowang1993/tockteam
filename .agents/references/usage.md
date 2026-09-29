@@ -143,8 +143,8 @@ Common TUI options:
 Settings covers language, models, permissions, Agent presets, plugin config,
 and TockTeam skins. Its modal covers and blurs every workspace and sidebar.
 
-Choose Default, Cyan, Aurora, or Ember from Settings on Web or Desktop.
-In TUI, run `/theme` to select a Light or Dark variant of Cyan, Aurora, or
+Choose Default, Navy, Jade, or Ember from Settings on Web or Desktop.
+In TUI, run `/theme` to select a Light or Dark variant of Navy, Jade, or
 Ember. The choice applies immediately and survives restarts.
 
 ## Plugin marketplace

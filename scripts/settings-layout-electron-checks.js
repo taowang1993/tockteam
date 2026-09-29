@@ -23,7 +23,7 @@ async page => {
       if (await original.count()) {
         await original.focus(); await original.press('ArrowRight');
         await page.waitForTimeout(100);
-        const next = dialog.getByRole('radio', { name: 'Cyan', exact: true });
+        const next = dialog.getByRole('radio', { name: 'Navy', exact: true });
         check(await next.evaluate(e => document.activeElement === e), 'skin chooser supports arrow-key focus');
         await next.press('Space');
         await page.waitForFunction(() => document.body.dataset.tockteamSkin === 'tockteam-skin-deep-current');

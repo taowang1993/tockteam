@@ -25,10 +25,10 @@ import { TOCKTEAM_SKINS, type SkinColorScheme } from './skins.ts'
 const BUILTIN_TUI_THEMES = new Set(['light', 'dark', 'dark-ansi'])
 // Exact bytes of the old first-party generated file; customized files are never removed.
 const GENERATED_PORCELAIN_SHA256 = '1cf00c8e2acc565d8820187c6ee8f14ac6e28b79862602d7a1319c7c2322972c'
-const FORMER_GENERATED_NAMES: Partial<Record<SkinId, string>> = {
-  [SKIN_ID.deepCurrent]: 'Deep Current',
-  [SKIN_ID.jadeCircuit]: 'Jade Circuit',
-  [SKIN_ID.emberDusk]: 'Ember Dusk',
+const FORMER_GENERATED_NAMES: Partial<Record<SkinId, readonly string[]>> = {
+  [SKIN_ID.deepCurrent]: ['Deep Current', 'Cyan'],
+  [SKIN_ID.jadeCircuit]: ['Jade Circuit', 'Aurora'],
+  [SKIN_ID.emberDusk]: ['Ember Dusk'],
 }
 // Exact prior generated TUI files; never replace a modified Ember Dusk theme.
 const GENERATED_EMBER_SHA256 = {
@@ -149,12 +149,12 @@ function installThemeFiles(directory: string): void {
         colors: skin.palettes[mode].tui,
       }
       if (pathExists(path)) {
-        const oldName = FORMER_GENERATED_NAMES[skin.id]
-        if (oldName === undefined) continue
+        const oldNames = FORMER_GENERATED_NAMES[skin.id]
+        if (oldNames === undefined) continue
         const before = lstatSync(path)
         if (!before.isFile()) continue
-        const oldLabels = [`TockTeam · ${oldName} · ${mode === 'dark' ? 'Dark' : 'Light'}`]
-        if (mode === 'dark') oldLabels.push(`TockTeam · ${oldName}`)
+        const oldLabels = oldNames.map(name => `TockTeam · ${name} · ${mode === 'dark' ? 'Dark' : 'Light'}`)
+        if (mode === 'dark') oldLabels.push(...oldNames.map(name => `TockTeam · ${name}`))
         const existing = readFileSync(path, 'utf8')
         const after = lstatSync(path)
         if (after.ino === before.ino && after.mtimeMs === before.mtimeMs && after.size === before.size

@@ -154,18 +154,18 @@ test('each retained skin has two distinct palettes with an editor darker than it
 
 test('Ember retains its saved ID, uses the source dark colors, and provides a matching Light mode', () => {
   assert.deepEqual(TOCKTEAM_SKINS.map(({ id, displayName }) => [id, displayName]), [
-    [SKIN_ID.deepCurrent, 'Cyan'],
-    [SKIN_ID.jadeCircuit, 'Aurora'],
+    [SKIN_ID.deepCurrent, 'Navy'],
+    [SKIN_ID.jadeCircuit, 'Jade'],
     [SKIN_ID.emberDusk, 'Ember'],
   ])
   assert.deepEqual([
     DESKTOP_SKINS_MESSAGES.en['skins.name.default'],
     ...TOCKTEAM_SKINS.map(skin => DESKTOP_SKINS_MESSAGES.en[skin.label]),
-  ], ['Default', 'Cyan', 'Aurora', 'Ember'])
+  ], ['Default', 'Navy', 'Jade', 'Ember'])
   assert.deepEqual([
     DESKTOP_SKINS_MESSAGES.zh['skins.name.default'],
     ...TOCKTEAM_SKINS.map(skin => DESKTOP_SKINS_MESSAGES.zh[skin.label]),
-  ], ['默认', '青色', '极光', '余烬橙'])
+  ], ['默认', '海军蓝', '翡翠绿', '余烬橙'])
   const ember = TOCKTEAM_SKINS.find(skin => skin.id === SKIN_ID.emberDusk)!
   assert.equal(ember.palettes.dark.tokens['--dsw-alias-bg-base'], '#16110d')
   assert.equal(ember.palettes.dark.tokens['--dsw-specific-sidebar-fill'], '#211a15')
@@ -313,6 +313,28 @@ test('TUI renames only untouched generated themes, preserving custom files and c
       assert.equal(await readFile(customPath, 'utf8'), custom)
       assert.deepEqual(JSON.parse(await readFile(paths.preferences, 'utf8')), { activeId: SKIN_ID.jadeCircuit, fallbackTheme: 'dark', version: 2 })
     }
+
+    // Current generated labels are also previous versions after this rename.
+    for (const [skin, oldLabel] of [[TOCKTEAM_SKINS[0]!, 'Cyan'], [TOCKTEAM_SKINS[1]!, 'Aurora']] as const) {
+      for (const mode of ['dark', 'light'] as const) {
+        const id = `${skin.id}${mode === 'light' ? '-light' : ''}`
+        const oldTheme = { name: id, displayName: `TockTeam · ${oldLabel} · ${mode === 'dark' ? 'Dark' : 'Light'}`, base: mode, colors: skin.palettes[mode].tui }
+        await writeFile(join(paths.themes, `${id}.json`), `${JSON.stringify(oldTheme, null, 2)}\n`)
+      }
+    }
+    mountTuiSkins(dataRoot, configRoot)
+    for (const skin of TOCKTEAM_SKINS.slice(0, 2)) {
+      for (const mode of ['dark', 'light'] as const) {
+        const id = `${skin.id}${mode === 'light' ? '-light' : ''}`
+        const native = JSON.parse(await readFile(join(paths.themes, `${id}.json`), 'utf8'))
+        assert.equal(native.displayName, `TockTeam · ${skin.displayName} · ${mode === 'dark' ? 'Dark' : 'Light'}`)
+      }
+    }
+    const customized = `${JSON.stringify({ name: SKIN_ID.deepCurrent, displayName: 'TockTeam · Cyan · Dark', base: 'dark', colors: { ...TOCKTEAM_SKINS[0]!.palettes.dark.tui, text: '#111111' } }, null, 2)}\n`
+    await writeFile(join(paths.themes, `${SKIN_ID.deepCurrent}.json`), customized)
+    mountTuiSkins(dataRoot, configRoot)
+    assert.equal(await readFile(join(paths.themes, `${SKIN_ID.deepCurrent}.json`), 'utf8'), customized)
+    assert.deepEqual(JSON.parse(await readFile(paths.preferences, 'utf8')), { activeId: SKIN_ID.jadeCircuit, fallbackTheme: 'dark', version: 2 })
   } finally {
     await rm(directory, { recursive: true, force: true })
   }
@@ -449,7 +471,7 @@ test('TUI retires only byte-identical generated Porcelain, preserving customized
   }
 })
 
-test('Cyan stays selected as the built-in Appearance setting changes', () => {
+test('Navy stays selected as the built-in Appearance setting changes', () => {
   const storage = new MemoryStorage()
   const theme = new FakeThemeService('dark')
   const dom = new FakeSkinDom()
