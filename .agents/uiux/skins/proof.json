@@ -1,5 +1,5 @@
 {
-  "sourceCommit": "2bea4775",
+  "sourceCommit": "7a289a91",
   "viewport": [
     1512,
     949,
@@ -35,7 +35,7 @@
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "2c77017008437709febb4e2b2ed5db2425710226956b6dc9ae82f0c478d61f7d"
+      "sha256": "12c8bf37022f10cff84c673d064558fadb765ea0d87305e4284eb161a4c83b5c"
     },
     {
       "file": "default-dark.png",
@@ -61,11 +61,11 @@
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "f400ab74f1535399f81f3966fa78dcb6d37ba0b8e0fc52119708815674b2247f"
+      "sha256": "075103b15f1167f8343fd23fdac43f21da5fa302958c57c5b705adaf211a29ef"
     },
     {
-      "file": "cyan-light.png",
-      "family": "Cyan",
+      "file": "navy-light.png",
+      "family": "Navy",
       "skinId": "tockteam-skin-deep-current",
       "mode": "light",
       "system": "dark",
@@ -80,18 +80,18 @@
       },
       "contrast": 12.22,
       "preview": {
-        "name": "Cyan",
+        "name": "Navy",
         "light": "#eaf4f7",
         "dark": "#0b2230",
         "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 247) 0px, rgb(234, 244, 247) 49%, rgb(11, 34, 48) 50%, rgb(11, 34, 48) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "d2c3c93eb9f814f0c748881ad8aa3571dc8a5b7f5973d0c15ebd5ef4da9ec7ad"
+      "sha256": "e26aa1405d02328a374dbad6105b01131300af5d99b431e192c404c811935621"
     },
     {
-      "file": "cyan-dark.png",
-      "family": "Cyan",
+      "file": "navy-dark.png",
+      "family": "Navy",
       "skinId": "tockteam-skin-deep-current",
       "mode": "dark",
       "system": "light",
@@ -106,18 +106,18 @@
       },
       "contrast": 16.45,
       "preview": {
-        "name": "Cyan",
+        "name": "Navy",
         "light": "#eaf4f7",
         "dark": "#0b2230",
         "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 247) 0px, rgb(234, 244, 247) 49%, rgb(11, 34, 48) 50%, rgb(11, 34, 48) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "f37ef3122a67eb073a20d5385406c6c3fa42c616261dcf2d30d1f4231dd9468c"
+      "sha256": "c28e52cd0a7b5e94eefd88c28b9c54eeec47063e9d43e14654bcb029851ef225"
     },
     {
-      "file": "aurora-light.png",
-      "family": "Aurora",
+      "file": "jade-light.png",
+      "family": "Jade",
       "skinId": "tockteam-skin-jade-circuit",
       "mode": "light",
       "system": "dark",
@@ -132,18 +132,18 @@
       },
       "contrast": 11.74,
       "preview": {
-        "name": "Aurora",
+        "name": "Jade",
         "light": "#eaf4eb",
         "dark": "#0b241e",
         "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 235) 0px, rgb(234, 244, 235) 49%, rgb(11, 36, 30) 50%, rgb(11, 36, 30) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "6eda9981a9586f301a4234e3f9bff8c46718003973c26f6afa78b21aad421cf3"
+      "sha256": "0eba8119d3b971dda32ceae8bf66b34ee2da329951be7f68f8e9f6a4c02d8899"
     },
     {
-      "file": "aurora-dark.png",
-      "family": "Aurora",
+      "file": "jade-dark.png",
+      "family": "Jade",
       "skinId": "tockteam-skin-jade-circuit",
       "mode": "dark",
       "system": "light",
@@ -158,17 +158,17 @@
       },
       "contrast": 16.74,
       "preview": {
-        "name": "Aurora",
+        "name": "Jade",
         "light": "#eaf4eb",
         "dark": "#0b241e",
         "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 235) 0px, rgb(234, 244, 235) 49%, rgb(11, 36, 30) 50%, rgb(11, 36, 30) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "03935fb7814940b6bf8007297e234b5804a5212df8caaa6e6eaa9425957616fb"
+      "sha256": "c19c2e66e6443568a602e9e7ea68949049b1a945f39dd685d961f7b2c6beff30"
     },
     {
-      "file": "ember-dusk-light.png",
+      "file": "ember-light.png",
       "family": "Ember",
       "skinId": "tockteam-skin-ember-dusk",
       "mode": "light",
@@ -191,10 +191,10 @@
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "f11f4cbd5da8d8ea714d8d6178448ad2e59cbed55e2494e08a2ee7aaa950f346"
+      "sha256": "adba4adc2269a88cdc69a9dd92dbe9ecfd8568104c41ec6ce42ea5a7f693b2b8"
     },
     {
-      "file": "ember-dusk-dark.png",
+      "file": "ember-dark.png",
       "family": "Ember",
       "skinId": "tockteam-skin-ember-dusk",
       "mode": "dark",
@@ -217,44 +217,46 @@
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "01dc26e792f2ec073aa175c26a47a60e085e804bce1f36601b9dc4cdf2334d1c"
+      "sha256": "adc564011452fdb9c325a1fbe883231b6ce2172f40a560b06edaae417e80557b"
     }
   ],
   "cleanup": {
     "stopped": true,
-    "rootPid": 60455,
+    "rootPid": 93542,
     "recordedPids": [
-      60455,
-      60459,
-      60460,
-      60462,
-      60463,
-      60483,
-      60485,
-      60686,
-      60688,
-      60689,
-      60690,
-      60691,
-      60692,
-      60693,
-      60694,
-      60695,
-      60696,
-      60944,
-      60945,
-      60946,
-      60947,
-      60948,
-      60949,
-      60950,
-      60951
+      93542,
+      93547,
+      93548,
+      93552,
+      93553,
+      93562,
+      93571,
+      93729,
+      93730,
+      93731,
+      93732,
+      93733,
+      93734,
+      93735,
+      93752,
+      93973,
+      93974,
+      93975,
+      93976,
+      93977,
+      93978,
+      93979,
+      93980,
+      94147,
+      94148,
+      94149,
+      94150
     ],
     "remaining": []
   },
   "galleryCheck": {
     "route": "/skins.html",
-    "htmlSha256": "516e56149b01ea226a7226182d18e4381aac956de45b58a1b90056152ee36bf3",
+    "htmlSha256": "1e3c36d8025c5a5c4932370b62953e916f9f9afe8b7f0aae4d726c1ba7b9bf18",
     "imageFilesVerified": 8,
     "browserSessionStarted": false
   }

@@ -8,9 +8,9 @@ import { TOCKTEAM_SKINS } from '../plugins/skins/src/skins.ts'
 const root = resolve('.agents/uiux/skins')
 const choices = [
   ['default', 'Default', null],
-  ['cyan', 'Cyan', 'tockteam-skin-deep-current'],
-  ['aurora', 'Aurora', 'tockteam-skin-jade-circuit'],
-  ['ember-dusk', 'Ember', 'tockteam-skin-ember-dusk'],
+  ['navy', 'Navy', 'tockteam-skin-deep-current'],
+  ['jade', 'Jade', 'tockteam-skin-jade-circuit'],
+  ['ember', 'Ember', 'tockteam-skin-ember-dusk'],
 ] as const
 
 test('shows four skin rows with verified Light-left and Dark-right captures', () => {
