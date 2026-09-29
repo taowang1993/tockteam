@@ -67,7 +67,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
   }
   const execute = async (action: () => Promise<unknown> | void): Promise<void> => {
     busy = true; paint()
-    try { await action(); if (!disposed && !(state.mode === 'no-view' && active)) feedback.textContent = '' }
+    try { await action(); if (!disposed && (!state.enabled || state.mode !== 'menu-bar') && !(state.mode === 'no-view' && active)) feedback.textContent = '' }
     catch (error) { if (!disposed) { feedback.textContent = error instanceof Error ? error.message.slice(0, 512) : 'Extension operation failed'; feedback.setAttribute('role', 'alert') } }
     finally { busy = false; if (!disposed) paint() }
   }
@@ -103,7 +103,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     if (state.hasPrevious) controls.append(button('Restore Previous Version', 'recover', async () => { await bridge.userRaycastClose(); active = undefined; rendered.replaceChildren(); state = await bridge.userRaycastMutate('recover') }))
     if (!state.installed) return
     if (state.enabled) {
-      controls.append(button(state.mode === 'menu-bar' ? 'Menu Bar Support Pending' : state.mode === 'no-view' ? 'Run Command' : 'Open Command', 'open', async () => { active = undefined; searchText = ''; rendered.replaceChildren(); await bridge.userRaycastOpen() }, state.mode === 'menu-bar'))
+      controls.append(button(state.mode === 'menu-bar' ? 'Activate Menu Bar' : state.mode === 'no-view' ? 'Run Command' : 'Open Command', 'open', async () => { active = undefined; searchText = ''; rendered.replaceChildren(); await bridge.userRaycastOpen(); if (state.mode === 'menu-bar') feedback.textContent = 'Menu Bar Active' }))
       controls.append(button('Disable', 'disable', async () => { await bridge.userRaycastClose(); active = undefined; rendered.replaceChildren(); state = await bridge.userRaycastMutate('disable') }))
     } else controls.append(button('Enable', 'enable', async () => { state = await bridge.userRaycastMutate('enable') }))
     controls.append(button(removing ? 'Confirm Remove' : 'Remove Extension', 'remove', async () => {
@@ -125,6 +125,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     if (message.type === 'ready') active = { extensionId: message.extensionId, sessionId: message.sessionId, revision: message.revision }
     else if (!active || active.extensionId !== message.extensionId || active.sessionId !== message.sessionId || message.revision <= active.revision) return
     else active.revision = message.revision
+    if (state.mode === 'menu-bar') { rendered.replaceChildren(); feedback.textContent = 'Menu Bar Active'; return }
     if (state.mode === 'no-view') { rendered.replaceChildren(); feedback.textContent = 'Running Command'; return }
     const root = message.root as Node
     const items: Node[] = []

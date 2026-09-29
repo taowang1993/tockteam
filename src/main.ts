@@ -21,6 +21,7 @@ import { UserRaycastInstall } from './user-raycast-install.ts'
 import { UserRaycastRegistry } from './user-raycast-registry.ts'
 import { buildUserRaycastSource } from './user-raycast-source-build.ts'
 import { UserRaycastManager } from './user-raycast-manager.ts'
+import { colorPickerMenu } from './user-raycast-menu.ts'
 import { registerUserRaycastIpcHandlers } from './user-raycast-ipc.ts'
 import { USER_RAYCAST_IPC } from './user-raycast-contract.ts'
 import { randomBytes } from 'node:crypto'
@@ -593,6 +594,7 @@ let queuedProtocolUrls: string[] = []
 let tockTutorPreviousThemeSource: 'system' | 'light' | 'dark' | undefined
 let trustedRaycast: TrustedRaycastManager | undefined
 let userRaycast: UserRaycastManager | undefined
+let userRaycastMenuTray: Tray | undefined
 let userRaycastInstall: UserRaycastInstall | undefined
 let userRaycastRegistry: UserRaycastRegistry | undefined
 let userRaycastSourceBusy = false
@@ -2328,12 +2330,25 @@ function initializeLauncher(): void {
       artifact: join(trustedCandidateRoot, 'trusted-raycast', 'artifact.tar'),
       nodePath: runtimePaths().nodeBinary,
       onMessage: (owner, message) => {
+        if (userRaycast?.menuActive && (message.type === 'ready' || message.type === 'patch')) {
+          if (message.extensionId !== 'color-picker') throw new Error('This menu-bar command is unsupported')
+          if (!userRaycastMenuTray) {
+            const icon = nativeImage.createFromBuffer(userRaycast.menuIcon()).resize({ width: 18, height: 18 })
+            if (icon.isEmpty()) throw new Error('Approved menu icon is invalid')
+            userRaycastMenuTray = new Tray(icon)
+            userRaycastMenuTray.setToolTip('Color Picker')
+          }
+          userRaycastMenuTray.setContextMenu(Menu.buildFromTemplate(colorPickerMenu(message.root, eventId => {
+            try { userRaycast?.send(owner, { revision: message.revision, eventId, kind: 'action' }) }
+            catch (error) { appendLog('desktop', `Color Picker menu action failed: ${String(error).slice(0, 512)}`) }
+          })))
+        }
         const window = BrowserWindow.getAllWindows().find(window => window.webContents.id === owner.webContentsId)
         if (window !== undefined && !window.isDestroyed()) window.webContents.send(USER_RAYCAST_IPC.view, message)
       },
-      onError: (_owner, error) => appendLog('desktop', `User extension failed: ${error.message.slice(0, 512)}`),
+      onError: (_owner, error) => { destroyUserRaycastMenu(); appendLog('desktop', `User extension failed: ${error.message.slice(0, 512)}`) },
       copyText: (owner, text) => {
-        if (trustedRaycastDenyEffectsProofEnabled || !BrowserWindow.getAllWindows().some(window => !window.isDestroyed() && window.webContents.id === owner.webContentsId)) throw new Error('Copy is unavailable for this owner')
+        if (trustedRaycastDenyEffectsProofEnabled || !userRaycast?.menuActive && !BrowserWindow.getAllWindows().some(window => !window.isDestroyed() && window.webContents.id === owner.webContentsId)) throw new Error('Copy is unavailable for this owner')
         clipboard.writeText(text)
         if (clipboard.readText() !== text) throw new Error('Copy was not accepted')
       },
@@ -2669,6 +2684,7 @@ function initializeLauncher(): void {
     userRaycastBuildAbort?.abort()
     await Promise.all([userRaycastFetchDone, userRaycastBuildDone])
     await userRaycast?.close()
+    destroyUserRaycastMenu()
     await trustedRaycast?.close()
     await launcherCustomBrowser?.close()
     const discoveryClose = discovery.close()
@@ -2822,7 +2838,7 @@ function initializeLauncher(): void {
     },
     mutate: async action => {
       if (!userRaycastInstall || !userRaycast || userRaycastSourceBusy) throw new Error('Local extensions are unavailable or busy')
-      if (action !== 'enable') await userRaycast.close()
+      if (action !== 'enable') { await userRaycast.close(); destroyUserRaycastMenu() }
       if (action === 'enable') userRaycastInstall.enable()
       else if (action === 'disable') userRaycastInstall.disable()
       else if (action === 'remove') userRaycastInstall.remove()
@@ -2831,6 +2847,7 @@ function initializeLauncher(): void {
     },
     open: async owner => {
       if (!userRaycast || userRaycastSourceBusy) throw new Error('Local extensions are unavailable or busy')
+      if (userRaycast.menuActive) return
       await userRaycast.start(owner)
     },
     send: (owner, event) => { if (!userRaycast) throw new Error('Local extension is unavailable'); userRaycast.send(owner, event) },
@@ -3907,6 +3924,11 @@ function setLauncherTrayVisible(visible: boolean): void {
   } catch (error) {
     appendLog('desktop', `tray visibility update failed: ${error instanceof Error ? error.message : String(error)}`)
   }
+}
+
+function destroyUserRaycastMenu(): void {
+  userRaycastMenuTray?.destroy()
+  userRaycastMenuTray = undefined
 }
 
 function initializeLauncherTray(): void {

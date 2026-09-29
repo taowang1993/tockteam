@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process'
 import { existsSync, lstatSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join } from 'node:path'
 import { digestFiles, readFiles } from './user-raycast-install.ts'
+import { validMenuIcon } from './user-raycast-menu.ts'
 import type { UserRaycastSourceCandidate } from './user-raycast-registry.ts'
 
 async function tool(file: string, args: string[], cwd: string, env: NodeJS.ProcessEnv, timeout: number, signal?: AbortSignal): Promise<void> {
@@ -36,6 +37,9 @@ export async function buildUserRaycastSource(options: Readonly<{ source: string;
   if (digestFiles(files) !== candidate.digest || candidate.license !== 'MIT' || candidate.source !== `https://github.com/raycast/extensions/tree/${candidate.revision}/extensions/${candidate.extensionId}`) throw new Error('Public source changed before building')
   const manifest = JSON.parse(files.get('package.json')?.toString('utf8') ?? 'null') as Record<string, unknown> | null
   if (!manifest || manifest.name !== candidate.extensionId || manifest.license !== 'MIT' || manifest.title !== candidate.title || !Array.isArray(manifest.commands) || !manifest.commands.some(item => item?.name === candidate.command && item.mode === candidate.mode)) throw new Error('Public source manifest changed before building')
+  const name = manifest.icon
+  const icon = candidate.mode === 'menu-bar' && typeof name === 'string' && /^[a-zA-Z0-9_.-]{1,128}\.png$/.test(name) ? files.get(`assets/${name}`) : undefined
+  if (candidate.mode === 'menu-bar' && !validMenuIcon(icon)) throw new Error('Menu icon is missing or unsupported')
   const sourceCopy = join(workspace, 'source'), built = join(workspace, 'built'), home = join(workspace, 'home')
   mkdirSync(sourceCopy, { mode: 0o700 }); mkdirSync(built, { mode: 0o700 }); mkdirSync(home, { mode: 0o700 })
   for (const [relative, bytes] of files) { const path = join(sourceCopy, relative); mkdirSync(dirname(path), { recursive: true, mode: 0o700 }); writeFileSync(path, bytes, { flag: 'wx', mode: 0o600 }) }
@@ -49,6 +53,7 @@ export async function buildUserRaycastSource(options: Readonly<{ source: string;
   if (!entry) throw new Error('The selected command source is unavailable')
   await tool(nodePath, [esbuild, entry, '--bundle', '--platform=node', '--format=cjs', '--jsx=automatic', '--external:@raycast/api', '--external:react', '--external:react/*', '--log-level=error', `--outfile=../built/${candidate.command}.js`], sourceCopy, env, 30_000, signal)
   writeFileSync(join(built, 'package.json'), JSON.stringify({ ...manifest, repository: candidate.source }), { flag: 'wx', mode: 0o600 })
+  if (icon) writeFileSync(join(built, 'icon.png'), icon, { flag: 'wx', mode: 0o600 })
   readFiles(built) // Reject links and oversized output before it reaches the installer.
   return built
 }

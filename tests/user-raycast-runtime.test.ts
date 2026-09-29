@@ -117,7 +117,8 @@ test('an approved menu command projects saved colors, refreshes and copies only 
   const folder = join(root, 'source'), runtime = join(root, 'host')
   mkdirSync(folder)
   writeFileSync(join(folder, 'package.json'), JSON.stringify({ name: 'color-picker', title: 'Color Picker', commands: [{ name: 'menu-bar', mode: 'menu-bar' }] }))
-  writeFileSync(join(folder, 'menu-bar.js'), `const React=require('react');const {MenuBarExtra,Clipboard,Cache}=require('@raycast/api');exports.default=function Command(){const cache=React.useMemo(()=>new Cache(),[]);const saved=React.useSyncExternalStore(cache.subscribe,()=>cache.get('history')??'[]');const changed=JSON.parse(saved).length>0;return React.createElement(MenuBarExtra,{icon:'EyeDropper'},React.createElement(MenuBarExtra.Item,{title:'Pick Color',onAction:()=>{throw Error('unsupported native picker')}}),React.createElement(MenuBarExtra.Section,{title:'Favorites'},React.createElement(MenuBarExtra.Item,{title:'#FF6363',onAction:()=>Clipboard.copy('#FF6363')})),React.createElement(MenuBarExtra.Section,{title:'Recent Colors'},React.createElement(MenuBarExtra.Item,{title:changed?'#334455':'#112233',onAction:()=>cache.set('history',JSON.stringify(['#334455']))})))}`)
+  writeFileSync(join(folder, 'icon.png'), readFileSync(resolve('assets/icon.png')))
+  writeFileSync(join(folder, 'menu-bar.js'), `const React=require('react');const {MenuBarExtra,Clipboard,Cache}=require('@raycast/api');exports.default=function Command(){const cache=React.useMemo(()=>new Cache(),[]);const saved=React.useSyncExternalStore(cache.subscribe,()=>cache.get('history')??'[]');const changed=JSON.parse(saved).length>0;return React.createElement(MenuBarExtra,{icon:'EyeDropper'},React.createElement(MenuBarExtra.Item,{title:'Pick Color',onAction:()=>{throw Error('unsupported native picker')}}),React.createElement(MenuBarExtra.Section,{title:'Favorites'},React.createElement(MenuBarExtra.Item,{title:'#FF6363',onAction:()=>Clipboard.copy('#FF6363')})),React.createElement(MenuBarExtra.Section,{title:'Recent Colors'},React.createElement(MenuBarExtra.Item,{title:changed?'#334455':'#112233',onAction:event=>{if(event?.type!=='left-click')throw Error('Menu action was not a left click');cache.set('history',JSON.stringify(['#334455']))}})))}`)
   const install = new UserRaycastInstall(join(root, 'installed'))
   const copied: string[] = [], messages: any[] = []
   const manager = new UserRaycastManager({ install, runtime, nodePath: process.execPath, artifact, onMessage: (_owner, message) => messages.push(message), copyText: (_owner, text) => { copied.push(text) } })
@@ -132,6 +133,7 @@ test('an approved menu command projects saved colors, refreshes and copies only 
     const ready = messages.find(message => message.type === 'ready')
     assert.ok(ready)
     assert.match(JSON.stringify(ready.root), /#112233/, `Menu render failed: ${JSON.stringify(messages)}`)
+    assert.deepEqual(manager.menuIcon().subarray(0, 8), readFileSync(resolve('assets/icon.png')).subarray(0, 8))
     const invoke = (message: any, title: string) => {
       const menu = colorPickerMenu(message.root, eventId => manager.send(owner, { revision: message.revision, eventId, kind: 'action' }))
       const item = menu.flatMap(entry => entry.submenu ?? []).find(entry => entry.label === title)
@@ -148,8 +150,11 @@ test('an approved menu command projects saved colors, refreshes and copies only 
     invoke(patch, '#FF6363')
     while (copied.length === 0 && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
     assert.deepEqual(copied, ['#FF6363'])
+    await manager.closeOwner(owner)
+    assert.ok(manager.childPid, 'the explicitly activated menu outlives a dismissed launcher')
     await manager.close()
     assert.equal(manager.childPid, undefined)
+    assert.throws(() => manager.menuIcon(), /menu|active/i)
   } finally { await manager.close(); rmSync(root, { recursive: true, force: true }) }
 })
 

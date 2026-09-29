@@ -55,17 +55,26 @@ test('a no-view command reports completion without a misleading empty List', asy
   view.dispose(); dom.window.close()
 })
 
-test('a reviewed menu command cannot run before its native menu is available', async () => {
+test('a reviewed menu command activates separately and stays out of the List view', async () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>')
   const document = dom.window.document as Document
   let launched = false
-  const bridge = { userRaycastState: async () => ({ ...empty, installed: true, enabled: true, digest: candidate.digest, mode: 'menu-bar' }), userRaycastOpen: async () => { launched = true }, onUserRaycastView: () => () => {} } as unknown as LauncherPreloadBridge
+  let listener: ((message: UserRaycastMessage) => void) | undefined
+  const bridge = {
+    userRaycastState: async () => ({ ...empty, installed: true, enabled: true, digest: candidate.digest, mode: 'menu-bar' }),
+    userRaycastOpen: async () => { launched = true; listener?.({ type: 'ready', extensionId: 'color-picker', sessionId: 'menu', revision: 0, root: { type: 'root', props: {}, children: [{ type: 'raycast-menu-bar', props: {}, children: [] }] } }) },
+    onUserRaycastView: (callback: (message: UserRaycastMessage) => void) => { listener = callback; return () => { listener = undefined } },
+  } as unknown as LauncherPreloadBridge
   const view = createUserRaycastView(document, bridge, () => {})
   document.body.append(view.element); await flush()
   const button = document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="open"]')
-  assert.equal(button?.textContent, 'Menu Bar Support Pending')
-  assert.equal(button?.disabled, true)
+  assert.equal(button?.textContent, 'Activate Menu Bar')
+  assert.equal(button?.disabled, false)
   assert.equal(launched, false)
+  button?.click(); await flush()
+  assert.equal(launched, true)
+  assert.match(view.element.textContent ?? '', /Menu Bar Active/)
+  assert.doesNotMatch(view.element.textContent ?? '', /No items yet/)
   view.dispose(); dom.window.close()
 })
 

@@ -31,7 +31,8 @@ const serialize = (value: Node | string): unknown => {
   }
   if ((value.type === 'raycast-action' || value.type === 'raycast-menu-item') && typeof value.props.onAction === 'function') {
     const id = `action-${handles.size}`
-    handles.set(id, value.props.onAction as () => unknown)
+    const action = value.props.onAction as (event?: { type: 'left-click' }) => unknown
+    handles.set(id, value.type === 'raycast-menu-item' ? () => action({ type: 'left-click' }) : () => action())
     props.actionEventId = id
   }
   return { type: value.type, props, children: value.children.map(serialize) }

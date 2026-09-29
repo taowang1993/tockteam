@@ -5,7 +5,8 @@ import { randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
-import { admitTrustedRaycastArtifact } from './trusted-raycast-artifact-admission.ts'
+import { admitTrustedRaycastArtifact, readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
+import { validMenuIcon } from './user-raycast-menu.ts'
 import { getTrustedRaycastRuntimeDescriptor } from './trusted-raycast-descriptors.ts'
 import { createTrustedRaycastLineReader, inspectTrustedRaycastProjection } from './trusted-raycast-contract.ts'
 import type { UserRaycastCandidate, UserRaycastInstall } from './user-raycast-install.ts'
@@ -38,6 +39,13 @@ export class UserRaycastManager {
   private readonly options: Readonly<{ install: UserRaycastInstall; runtime: string; nodePath: string; artifact: string; onMessage: (owner: UserRaycastOwner, message: UserRaycastMessage) => void; onError?: (owner: UserRaycastOwner, error: Error) => void; copyText?: (owner: UserRaycastOwner, text: string) => void | Promise<void> }>
   constructor(options: Readonly<{ install: UserRaycastInstall; runtime: string; nodePath: string; artifact: string; onMessage: (owner: UserRaycastOwner, message: UserRaycastMessage) => void; onError?: (owner: UserRaycastOwner, error: Error) => void; copyText?: (owner: UserRaycastOwner, text: string) => void | Promise<void> }>) { this.options = options }
   get childPid(): number | undefined { return this.session?.child.pid }
+  get menuActive(): boolean { return this.session?.candidate.mode === 'menu-bar' }
+  menuIcon(): Buffer {
+    if (!this.menuActive) throw new Error('Menu is not active')
+    const icon = readTrustedRaycastFile(join(this.session!.workspace, 'source', 'icon.png'), 1024 * 1024)
+    if (!validMenuIcon(icon)) throw new Error('Menu icon changed')
+    return icon
+  }
   async start(owner: UserRaycastOwner): Promise<void> {
     if (this.session || this.stopping) throw new Error('User extension is busy')
     if (!Number.isSafeInteger(owner.webContentsId) || ![this.options.nodePath, this.options.runtime, this.options.artifact].every(isAbsolute) || !existsSync(this.options.nodePath)) throw new Error('Invalid user extension owner or runtime')
@@ -135,7 +143,7 @@ export class UserRaycastManager {
     if (event.kind === 'action') session.action = { eventId: event.eventId, revision: event.revision, nativeUsed: false }
     session.child.stdin.write(`${JSON.stringify({ type: 'event', ...event })}\n`)
   }
-  async closeOwner(owner: UserRaycastOwner): Promise<void> { if (this.session?.owner.webContentsId === owner.webContentsId) await this.close() }
+  async closeOwner(owner: UserRaycastOwner): Promise<void> { if (this.session?.owner.webContentsId === owner.webContentsId && !this.menuActive) await this.close() }
   async close(): Promise<void> {
     if (this.stopping) return this.stopping
     const session = this.session

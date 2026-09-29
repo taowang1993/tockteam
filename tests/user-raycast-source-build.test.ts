@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { buildUserRaycastSource } from '../src/user-raycast-source-build.ts'
 import { digestFiles, readFiles, UserRaycastInstall } from '../src/user-raycast-install.ts'
@@ -11,10 +11,14 @@ test('approved source build uses no lifecycle scripts, pins metadata and stages 
   const root = mkdtempSync(join(tmpdir(), 'tockteam-raycast-build-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const source = join(root, 'source'); mkdirSync(join(source, 'src'), { recursive: true })
-  writeFileSync(join(source, 'package.json'), JSON.stringify({ name: 'uuid-generator', title: 'UUID Generator', license: 'MIT', commands: [{ name: 'generate', mode: 'no-view' }], scripts: { preinstall: 'exit 80' } }))
+  writeFileSync(join(source, 'package.json'), JSON.stringify({ name: 'uuid-generator', title: 'UUID Generator', license: 'MIT', icon: 'icon.png', commands: [{ name: 'generate', mode: 'no-view' }, { name: 'menu-bar', mode: 'menu-bar' }], scripts: { preinstall: 'exit 80' } }))
   writeFileSync(join(source, 'package-lock.json'), JSON.stringify({ name: 'uuid-generator', lockfileVersion: 3, packages: { '': { name: 'uuid-generator' } } }))
   writeFileSync(join(source, 'src/generate.tsx'), 'export default () => "test"')
-  const candidate: UserRaycastSourceCandidate = { command: 'generate', digest: digestFiles(readFiles(source)), extensionId: 'uuid-generator', title: 'UUID Generator', license: 'MIT', revision: 'a'.repeat(40), tree: 'b'.repeat(40), files: 3, bytes: 0, mode: 'no-view', source: `https://github.com/raycast/extensions/tree/${'a'.repeat(40)}/extensions/uuid-generator` }
+  writeFileSync(join(source, 'src/menu-bar.tsx'), 'export default () => "menu"')
+  mkdirSync(join(source, 'assets'))
+  const icon = readFileSync(resolve('assets/icon.png'))
+  writeFileSync(join(source, 'assets/icon.png'), icon)
+  const candidate: UserRaycastSourceCandidate = { command: 'generate', digest: digestFiles(readFiles(source)), extensionId: 'uuid-generator', title: 'UUID Generator', license: 'MIT', revision: 'a'.repeat(40), tree: 'b'.repeat(40), files: 5, bytes: 0, mode: 'no-view', source: `https://github.com/raycast/extensions/tree/${'a'.repeat(40)}/extensions/uuid-generator` }
   const npm = join(root, 'fake-npm')
   writeFileSync(npm, `#!/usr/bin/env node
 const fs = require('node:fs'); const path = require('node:path');
@@ -54,5 +58,9 @@ fs.writeFileSync(path.join(process.cwd(), 'node_modules/esbuild/bin/esbuild'), "
     assert.equal(selection.source, candidate.source)
     assert.equal(selection.mode, 'no-view')
     assert.equal(install.status().installed, false)
+    const menuWorkspace = join(root, 'menu-workspace'); mkdirSync(menuWorkspace)
+    const menuBuilt = await buildUserRaycastSource({ source, candidate: { ...candidate, command: 'menu-bar', mode: 'menu-bar' }, workspace: menuWorkspace, nodePath: process.execPath, npmPath: npm })
+    assert.deepEqual(readFileSync(join(menuBuilt, 'icon.png')), icon, 'the separate menu icon is copied only from approved source bytes')
+    assert.equal(install.prepare(menuBuilt, 'menu-bar').mode, 'menu-bar')
   } finally { if (previousToken === undefined) delete process.env.NPM_TOKEN; else process.env.NPM_TOKEN = previousToken }
 })

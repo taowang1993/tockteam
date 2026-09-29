@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { UserRaycastInstall } from '../src/user-raycast-install.ts'
 
 function fixture() {
@@ -75,6 +75,7 @@ test('a selected menu-bar command stays inert until activation and preserves pri
   try {
     writeFileSync(join(f.source, 'package.json'), JSON.stringify({ name: 'color-picker', title: 'Color Picker', license: 'MIT', commands: [{ name: 'menu-bar', mode: 'menu-bar' }] }))
     writeFileSync(join(f.source, 'menu-bar.js'), readFileSync(f.module))
+    writeFileSync(join(f.source, 'icon.png'), readFileSync(resolve('assets/icon.png')))
     const first = f.store.prepare(f.source, 'menu-bar')
     assert.equal(first.mode, 'menu-bar')
     f.store.approve(first.digest)
@@ -96,6 +97,9 @@ test('a selected menu-bar command stays inert until activation and preserves pri
     assert.equal(f.store.status().enabled, false)
     assert.equal(readFileSync(state, 'utf8'), '{"history":"saved"}')
     assert.equal(existsSync(f.marker), false)
+    rmSync(join(f.source, 'icon.png'))
+    assert.throws(() => f.store.prepare(f.source, 'menu-bar'), /icon/i)
+    assert.equal(f.store.status().digest, first.digest)
   } finally { f.close() }
 })
 
