@@ -34,7 +34,7 @@ The pin in `LAUNCHER_COMPOSITION`, the package lock, `scripts/ueli/desktop-relea
 
 ### Opening-Screen Ranking Provenance
 
-The bounded opening-screen ranking and section-order behavior were reviewed against SuperCmd at commit `2da7b9e5dec0199a972a59cece402c85f729d5d7` (`/Users/taowang/research/launcher/SuperCmd`). TockTeam reimplements only that small ranking reference locally; it does not ship SuperCmd source or runtime code. Arbitrary Raycast extensions, runtime installation, stores, and manifests remain explicitly unsupported. The only exceptions are the three build-pinned compatibility artifacts described below.
+The bounded opening-screen ranking and section-order behavior were reviewed against SuperCmd at commit `2da7b9e5dec0199a972a59cece402c85f729d5d7` (`/Users/taowang/research/launcher/SuperCmd`). TockTeam reimplements only that small ranking reference locally; it does not ship SuperCmd source or runtime code. Universal Raycast compatibility and Store downloads remain unsupported. The three bundled, build-pinned compatibility artifacts coexist with a separate Desktop-only path for a user-selected, reviewed local bundle or pinned public GitHub source command; installation alone does not establish command compatibility.
 
 ### Tinycast Behavior Review
 
@@ -96,6 +96,7 @@ TockTeam Electron Main
 | `src/trusted-raycast-{descriptors,trust,manager,contract,ipc}.ts` | Pins three artifacts, owns per-artifact installation, and authenticates one active command session. |
 | `src/trusted-raycast-{child,compat-api,renderer,preferences}.ts` | Runs reviewed source, projects inert views, and persists validated preferences through main. |
 | `src/trusted-raycast-{channel,provider,first-use,paths}.ts` | Owns the authenticated Host activation lease, explicit setup fallback, and compatibility-preserving data namespaces. |
+| `src/user-raycast-{registry,git-source,source-build,install,manager,child}.ts` | Pins one selected public source, gates isolated build and approval, rotates current/previous installed bytes, and runs an explicitly enabled command in an owned child. |
 | `src/trusted-raycast-can-i-use-*.ts` | Owns pinned browser-data queries, exact target preferences, root/detail projections, and canonical browser actions. |
 | `src/launcher-theme.ts`, `src/launcher-i18n.ts` | Projects canonical DSH appearance and English/Chinese launcher copy without creating a separate theme or locale authority. |
 | `src/launcher.ts` | Implements the semantic launcher surface and keyboard behavior. |
@@ -115,7 +116,8 @@ TockTeam Electron Main
 9. Provider invalidation, window clearing, navigation, settings changes, and teardown revoke stale actions and abort owned work.
 10. On a fresh supported profile, main admits each bundled compatibility archive, runs an isolated preview, and installs/enables Translate, Kaomoji Search, and Can I Use before discovery. Admission/preview failure leaves the feature unavailable. Explicit disablement or removal remains authoritative; a same-archive refresh of host-derived code preserves enablement.
 11. The selected compatibility command runs in a private child workspace. Translate uses unchanged `translate`; Kaomoji Search and Can I Use use reviewed `index`. The sandboxed launcher renders only bounded inert projections; main mediates the finite selected-text, Clipboard, Paste, browser, preference, lifecycle, and trust APIs.
-12. TockCoder or TockTutor actions focus/reuse the canonical workbench and deliver a validated route after its main-frame readiness handshake.
+12. A user-selected local bundle or pinned public GitHub source command follows separate source review, approved isolated build (with package lifecycle scripts disabled), built-digest approval, installation and enablement. Updates retain a recoverable previous version. An approved child runs only after explicit activation; this is account-level trusted execution, not an OS sandbox. Browser clients and TUI receive no such authority.
+13. TockCoder or TockTutor actions focus/reuse the canonical workbench and deliver a validated route after its main-frame readiness handshake.
 
 ## Window and User Experience
 
@@ -172,7 +174,7 @@ Compatibility extends only to these exact artifacts and their reviewed API subse
 
 Compatibility NDJSON limits apply to each complete frame and the unfinished remainder, not the aggregate pipe chunk. Child input permits 128 KiB per frame so a validated 16 KiB string still fits after JSON escaping; child output remains capped at 1 MiB per frame. Coalesced messages do not consume one another's allowance. Can I Use search additionally accepts at most 256 Unicode scalars, 1,024 UTF-8 bytes and 32 space-separated words, with no control characters. Invalid queries are rejected before revoking command handles, allowing correction without reopening the command.
 
-Production compatibility invocation is currently macOS-only; the runtime depends on POSIX extraction and reviewed native/process cleanup. The catalog can still project installed/enabled commands on another platform, so a displayed row is not proof of runtime availability. Packaging bytes for Windows/Linux is not proof of runtime support. There is no extension store, runtime package installation, generic manifest loader, per-extension Cordis plugin, or Web/TUI mounting.
+Production compatibility invocation is currently macOS-only; the runtime depends on POSIX extraction and reviewed native/process cleanup. The catalog can still project installed/enabled commands on another platform, so a displayed row is not proof of runtime availability. Packaging bytes for Windows/Linux is not proof of runtime support. There is no Raycast Store installer, automatic package/build execution, universal API loader, per-extension Cordis plugin, or Web/TUI mounting. The separately approved public-source build downloads npm dependencies in an isolated workspace with lifecycle scripts disabled.
 
 One Desktop-only `@tockteam/trusted-raycast` Cordis plugin holds a bearer-authenticated loopback activation stream. Its disconnect removes discovery authority and closes the active child. This is a lifecycle lease, not generic RPC or another composition system; generated endpoint/token values stay Host/main-owned.
 
