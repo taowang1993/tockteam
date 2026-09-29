@@ -57,7 +57,7 @@ test('an approved no-view command gets private storage, defaults, feedback and o
       mkdirSync(folder)
       writeFileSync(join(folder, 'package.json'), JSON.stringify({ name: extensionId, title: extensionId, preferences: [{ name: 'defaultAction', default: 'copy' }, { name: 'prefix', default: `${extensionId}-pref` }], commands: [{ name: 'generate', title: 'Generate UUIDs', mode: 'no-view' }] }))
       writeFileSync(join(folder, 'generate.js'), `const {Clipboard,LocalStorage,getPreferenceValues,showHUD}=require('@raycast/api'); exports.default=async ({arguments:args})=>{if(getPreferenceValues().defaultAction!=='copy'||getPreferenceValues().prefix!=='${extensionId}-pref'||Object.keys(args).length)throw Error('Invalid preferences or arguments');const prior=await LocalStorage.getItem('history');const count=Number(prior??'0')+1;await LocalStorage.setItem('history',String(count));await Clipboard.copy('${extensionId}-'+count);await showHUD('Copied UUID')}`)
-      const selected = install.prepare(folder, 'generate')
+      const selected = install.prepare(folder)
       assert.equal((selected as { mode?: string }).mode, 'no-view')
       install.approve(selected.digest); install.enable()
       for (let index = 0; index < (extensionId === 'first-uuid' ? 2 : 1); index++) {

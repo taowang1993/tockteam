@@ -51,8 +51,10 @@ function candidate(files: Map<string, Buffer>, selectedCommand?: string): UserRa
   const commands = record.commands as unknown[]
   const names = commands.map(value => value !== null && typeof value === 'object' ? (value as Record<string, unknown>).name : undefined)
   if (names.some(name => typeof name !== 'string' || !ID.test(name)) || new Set(names).size !== names.length) throw new Error('Invalid or duplicate extension commands')
-  const chosen = commands.find(value => value !== null && typeof value === 'object' && (value as Record<string, unknown>).name === selectedCommand)
-    ?? (selectedCommand === undefined ? commands.find(value => value !== null && typeof value === 'object' && (value as Record<string, unknown>).mode === 'view') : undefined)
+  const built = commands.filter(value => value !== null && typeof value === 'object' && files.has(`${String((value as Record<string, unknown>).name)}.js`) && ['view', 'no-view'].includes((value as Record<string, unknown>).mode as string))
+  const chosen = selectedCommand === undefined
+    ? built.length === 1 ? built[0] : built.find(value => (value as Record<string, unknown>).mode === 'view')
+    : commands.find(value => value !== null && typeof value === 'object' && (value as Record<string, unknown>).name === selectedCommand)
   if (!chosen || typeof chosen !== 'object' || !['view', 'no-view'].includes((chosen as Record<string, unknown>).mode as string) || typeof (chosen as Record<string, unknown>).name !== 'string' || !ID.test((chosen as Record<string, unknown>).name as string)) throw new Error('Selected command is unavailable')
   const command = (chosen as { name: string }).name
   if (!files.has(`${command}.js`)) throw new Error('Selected view command has no built JavaScript')
