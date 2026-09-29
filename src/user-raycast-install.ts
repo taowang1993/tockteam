@@ -149,6 +149,25 @@ export class UserRaycastInstall {
   }
   disable(): void { this.ensureRoot(); save(this.path('trust.json'), { ...this.readDecision(), enabled: false }) }
   runtimeDir(): string | undefined { const status = this.status(); return status.installed && status.enabled ? this.path('current') : undefined }
+  snapshotTo(directory: string): UserRaycastCandidate {
+    const status = this.status()
+    if (!status.installed || !status.enabled) throw new Error('Approved extension is not enabled')
+    if (!isAbsolute(directory) || existsSync(directory)) throw new Error('Snapshot destination must not exist')
+    const files = readFiles(this.path('current'))
+    const selected = JSON.parse(files.get('selection.json')?.toString('utf8') ?? 'null') as UserRaycastCandidate
+    files.delete('selection.json')
+    const actual = candidate(files, selected?.command)
+    if (actual.digest !== status.digest || actual.extensionId !== selected.extensionId || actual.title !== selected.title) throw new Error('Approved extension changed before launch')
+    mkdirSync(directory, { mode: 0o700 })
+    try {
+      for (const [relative, bytes] of files) {
+        const destination = join(directory, relative)
+        mkdirSync(join(directory, relative, '..'), { recursive: true })
+        writeFileSync(destination, bytes, { flag: 'wx', mode: 0o600 })
+      }
+      return actual
+    } catch (error) { rmSync(directory, { recursive: true, force: true }); throw error }
+  }
   recoverPrevious(): void {
     const previous = this.inspect('previous')
     if (!previous) throw new Error('No previous extension to recover')
