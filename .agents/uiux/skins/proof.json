@@ -1,5 +1,5 @@
 {
-  "sourceCommit": "84e4848c",
+  "sourceCommit": "12c97924",
   "viewport": [
     1512,
     949,
@@ -28,12 +28,12 @@
       "preview": {
         "name": "Default",
         "light": "#fafafa",
-        "dark": "#30343b",
-        "backgroundImage": "linear-gradient(135deg, rgb(250, 250, 250) 0px, rgb(250, 250, 250) 49%, rgb(48, 52, 59) 50%, rgb(48, 52, 59) 100%)"
+        "dark": "#151517",
+        "backgroundImage": "linear-gradient(135deg, rgb(250, 250, 250) 0px, rgb(250, 250, 250) 49%, rgb(21, 21, 23) 50%, rgb(21, 21, 23) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "2c90de5f4e708a9423e4fb19dbdb69af3f25a8bc7dad6759e7d922520e82fd85"
+      "sha256": "9079d70c8e7df054140848acfe9cf67284e33dc1daae07b692321bc70ec51bda"
     },
     {
       "file": "default-dark.png",
@@ -52,12 +52,12 @@
       "preview": {
         "name": "Default",
         "light": "#fafafa",
-        "dark": "#30343b",
-        "backgroundImage": "linear-gradient(135deg, rgb(250, 250, 250) 0px, rgb(250, 250, 250) 49%, rgb(48, 52, 59) 50%, rgb(48, 52, 59) 100%)"
+        "dark": "#151517",
+        "backgroundImage": "linear-gradient(135deg, rgb(250, 250, 250) 0px, rgb(250, 250, 250) 49%, rgb(21, 21, 23) 50%, rgb(21, 21, 23) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "fccba4a9184ab905ef6684ea703c695c713b8702f8e065d3f498bf008b47ef45"
+      "sha256": "6ee8c6c582604086c2b3f3b24d2bf98ceebbc3226b565236862802ace5875aab"
     },
     {
       "file": "cyan-light.png",
@@ -76,12 +76,12 @@
       "preview": {
         "name": "Cyan",
         "light": "#eaf4f7",
-        "dark": "#071923",
-        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 247) 0px, rgb(234, 244, 247) 49%, rgb(7, 25, 35) 50%, rgb(7, 25, 35) 100%)"
+        "dark": "#193e50",
+        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 247) 0px, rgb(234, 244, 247) 49%, rgb(25, 62, 80) 50%, rgb(25, 62, 80) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "0f4734db472f9ad36513f976aaca2cb0d62d66fb8a641da916ff1899ac27efb3"
+      "sha256": "a13d31f0f8e0cde0036fac09baf409e18da96cdba6911e648db8cbcf94f294b6"
     },
     {
       "file": "cyan-dark.png",
@@ -100,12 +100,12 @@
       "preview": {
         "name": "Cyan",
         "light": "#eaf4f7",
-        "dark": "#071923",
-        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 247) 0px, rgb(234, 244, 247) 49%, rgb(7, 25, 35) 50%, rgb(7, 25, 35) 100%)"
+        "dark": "#193e50",
+        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 247) 0px, rgb(234, 244, 247) 49%, rgb(25, 62, 80) 50%, rgb(25, 62, 80) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "4e8a2f90cdea8d0e5e974d510a86712f50f1a78d2f934924c5385ae458f2f9fe"
+      "sha256": "bfd4802327be5ed7ab924dba2c7e1ded05f289804edafe87c0971a6e50d995af"
     },
     {
       "file": "aurora-light.png",
@@ -124,12 +124,12 @@
       "preview": {
         "name": "Aurora",
         "light": "#eaf4eb",
-        "dark": "#071a16",
-        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 235) 0px, rgb(234, 244, 235) 49%, rgb(7, 26, 22) 50%, rgb(7, 26, 22) 100%)"
+        "dark": "#1b493b",
+        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 235) 0px, rgb(234, 244, 235) 49%, rgb(27, 73, 59) 50%, rgb(27, 73, 59) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "5ad2f02124a1060b9ef0048ad3af08cf685d489323e3d567d196d6f31366e65a"
+      "sha256": "f4236af972864a6549aae3612a06148d88bc0ad6214466bbcb7b8c6fa1f7c56c"
     },
     {
       "file": "aurora-dark.png",
@@ -148,12 +148,12 @@
       "preview": {
         "name": "Aurora",
         "light": "#eaf4eb",
-        "dark": "#071a16",
-        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 235) 0px, rgb(234, 244, 235) 49%, rgb(7, 26, 22) 50%, rgb(7, 26, 22) 100%)"
+        "dark": "#1b493b",
+        "backgroundImage": "linear-gradient(135deg, rgb(234, 244, 235) 0px, rgb(234, 244, 235) 49%, rgb(27, 73, 59) 50%, rgb(27, 73, 59) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "e0bfb1850d82bfc581756b84473533cfe029d54a9a45c3c2a081575801f5851d"
+      "sha256": "5710a57a1b64bcc67566f45e8e69ed2c016f1b90559edbf718e62962713198c7"
     },
     {
       "file": "ember-dusk-light.png",
@@ -172,12 +172,12 @@
       "preview": {
         "name": "Ember Dusk",
         "light": "#f6ede9",
-        "dark": "#21161f",
-        "backgroundImage": "linear-gradient(135deg, rgb(246, 237, 233) 0px, rgb(246, 237, 233) 49%, rgb(33, 22, 31) 50%, rgb(33, 22, 31) 100%)"
+        "dark": "#4b3042",
+        "backgroundImage": "linear-gradient(135deg, rgb(246, 237, 233) 0px, rgb(246, 237, 233) 49%, rgb(75, 48, 66) 50%, rgb(75, 48, 66) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "1ca01d4bf34021554755cb4e1ddbd318011a37b0798bb7246ed78678bcb3a63c"
+      "sha256": "9e51b9c3e3c6aef0667311855d53222d42228b11f7d297c73d1f4637059b9a12"
     },
     {
       "file": "ember-dusk-dark.png",
@@ -196,63 +196,77 @@
       "preview": {
         "name": "Ember Dusk",
         "light": "#f6ede9",
-        "dark": "#21161f",
-        "backgroundImage": "linear-gradient(135deg, rgb(246, 237, 233) 0px, rgb(246, 237, 233) 49%, rgb(33, 22, 31) 50%, rgb(33, 22, 31) 100%)"
+        "dark": "#4b3042",
+        "backgroundImage": "linear-gradient(135deg, rgb(246, 237, 233) 0px, rgb(246, 237, 233) 49%, rgb(75, 48, 66) 50%, rgb(75, 48, 66) 100%)"
       },
       "allCardsVerified": true,
       "errors": [],
-      "sha256": "b66321d0c043f2be0223663fcbc4290aac5578679528ea7ca6afe29c385f5d7f"
+      "sha256": "f1b3e25949fad2120978e5bc875b86e48328b7e62124778cd86f14a7340a28fe"
     }
   ],
   "cleanup": {
     "stopped": true,
-    "rootPid": 12132,
+    "rootPid": 43032,
     "recordedPids": [
-      12132,
-      12134,
-      12135,
-      12137,
-      12138,
-      12167,
-      12316,
-      12317,
-      12380,
-      12542,
-      12543,
-      12544,
-      12905
+      43032,
+      43034,
+      43036,
+      43039,
+      43040,
+      43064,
+      43258,
+      43363,
+      43364,
+      43365,
+      43366,
+      43367,
+      43368,
+      43369,
+      43370,
+      43594,
+      43595,
+      43596,
+      43597,
+      43598,
+      43599,
+      43600,
+      43601
     ],
     "remaining": []
   },
   "galleryCheck": {
-    "route": "/skins.html",
-    "desktop": [
-      1512,
-      949,
-      2
-    ],
-    "mobile": [
-      390,
-      844,
-      2
-    ],
-    "loadedImages": 8,
-    "runtimeErrors": [],
-    "browser": {
-      "stopped": true,
-      "rootPid": 13367,
-      "recordedPids": [
-        13367,
-        13369,
-        13370,
-        13371
+    "htmlSha256": "62ee21d64a25265a2c23f2441d0db457763cdf9e542872f6582e721484798e55",
+    "imageFilesVerified": 8,
+    "unchangedHtmlBrowserBaseline": {
+      "route": "/skins.html",
+      "desktop": [
+        1512,
+        949,
+        2
       ],
-      "remaining": []
-    },
-    "server": {
-      "stopped": true,
-      "rootPid": 13328,
-      "remaining": []
+      "mobile": [
+        390,
+        844,
+        2
+      ],
+      "loadedImages": 8,
+      "runtimeErrors": [],
+      "browser": {
+        "stopped": true,
+        "rootPid": 13367,
+        "recordedPids": [
+          13367,
+          13369,
+          13370,
+          13371
+        ],
+        "remaining": []
+      },
+      "server": {
+        "stopped": true,
+        "rootPid": 13328,
+        "remaining": []
+      }
     }
   }
 }
