@@ -3,6 +3,7 @@ import { existsSync, lstatSync, mkdirSync, renameSync, rmSync, writeFileSync } f
 import { isAbsolute, join } from 'node:path'
 import { digestFiles, readFiles } from './user-raycast-install.ts'
 import { readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
+import { fetchUserRaycastGitSource } from './user-raycast-git-source.ts'
 
 const SHA = /^[a-f0-9]{40}$/
 const ID = /^[a-z0-9][a-z0-9_-]{0,63}$/
@@ -17,11 +18,15 @@ const pinned = (value: unknown): string => { if (typeof value !== 'string' || !S
 export class UserRaycastRegistry {
   private readonly root: string
   private readonly base: string
-  constructor(root: string, options: Readonly<{ baseUrl?: string }> = {}) {
+  private readonly gitOptions: Readonly<{ repositoryUrl?: string; gitPath?: string; allowLocalTest?: boolean }>
+  constructor(root: string, options: Readonly<{ baseUrl?: string; repositoryUrl?: string; gitPath?: string }> = {}) {
     if (!isAbsolute(root)) throw new Error('Registry root must be absolute')
     const url = new URL(options.baseUrl ?? 'https://api.github.com')
-    if (url.origin !== 'https://api.github.com' && !(url.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(url.hostname))) throw new Error('Unsupported public source origin')
+    const local = url.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(url.hostname)
+    if (url.origin !== 'https://api.github.com' && !local) throw new Error('Unsupported public source origin')
+    if (!local && (options.repositoryUrl || options.gitPath)) throw new Error('Public source overrides are test-only')
     this.root = root; this.base = url.origin
+    this.gitOptions = local ? { ...(options.repositoryUrl ? { repositoryUrl: options.repositoryUrl } : {}), ...(options.gitPath ? { gitPath: options.gitPath } : {}), allowLocalTest: true } : {}
   }
   private path(name: string): string { return join(this.root, name) }
   private async json(path: string, maximum: number, signal?: AbortSignal): Promise<unknown> {
@@ -39,22 +44,7 @@ export class UserRaycastRegistry {
     if (body.sha !== sha || body.truncated === true || !Array.isArray(body.tree)) throw new Error('Public source tree changed or was truncated')
     return body.tree as TreeEntry[]
   }
-  inspect(): UserRaycastSourceCandidate | undefined {
-    try {
-      const candidate = record(JSON.parse(readTrustedRaycastFile(this.path('stage/candidate.json'), 4096).toString('utf8')))
-      const files = readFiles(this.path('stage/source'))
-      if (candidate.digest !== digestFiles(files) || !ID.test(candidate.extensionId as string) || !COMMAND.test(candidate.command as string) || !SHA.test(candidate.revision as string) || !SHA.test(candidate.tree as string) || candidate.license !== 'MIT' || candidate.files !== files.size || candidate.bytes !== [...files.values()].reduce((sum, bytes) => sum + bytes.length, 0)) return undefined
-      return candidate as UserRaycastSourceCandidate
-    } catch { return undefined }
-  }
-  sourceDirectory(expectedDigest: string): string {
-    if (!/^[a-f0-9]{64}$/.test(expectedDigest) || this.inspect()?.digest !== expectedDigest) throw new Error('Public source changed; review it again')
-    return this.path('stage/source')
-  }
-  async prepare(extensionId: string, command: string, signal?: AbortSignal): Promise<UserRaycastSourceCandidate> {
-    if (!ID.test(extensionId) || !COMMAND.test(command)) throw new Error('Invalid public source selection')
-    if (existsSync(this.root) && !lstatSync(this.root).isDirectory()) throw new Error('Registry root must be a real directory')
-    mkdirSync(this.root, { recursive: true, mode: 0o700 })
+  private async fromApi(extensionId: string, signal?: AbortSignal): Promise<{ revision: string; tree: string; files: Map<string, Buffer> }> {
     const revision = pinned(record(record(await this.json('git/ref/heads/main', 16384, signal)).object).sha)
     const rootTree = pinned(record(record(await this.json(`git/commits/${revision}`, 16384, signal)).tree).sha)
     const extensions = this.findTree(await this.tree(rootTree, signal), 'extensions')
@@ -77,6 +67,28 @@ export class UserRaycastRegistry {
       if (bytes.length !== entry.size || actual !== entry.sha || bytes.toString('base64') !== encoded) throw new Error('Public source blob digest mismatch')
       files.set(entry.path, bytes)
     }
+    return { revision, tree: selected, files }
+  }
+  inspect(): UserRaycastSourceCandidate | undefined {
+    try {
+      const candidate = record(JSON.parse(readTrustedRaycastFile(this.path('stage/candidate.json'), 4096).toString('utf8')))
+      const files = readFiles(this.path('stage/source'))
+      if (candidate.digest !== digestFiles(files) || !ID.test(candidate.extensionId as string) || !COMMAND.test(candidate.command as string) || !SHA.test(candidate.revision as string) || !SHA.test(candidate.tree as string) || candidate.license !== 'MIT' || candidate.files !== files.size || candidate.bytes !== [...files.values()].reduce((sum, bytes) => sum + bytes.length, 0)) return undefined
+      return candidate as UserRaycastSourceCandidate
+    } catch { return undefined }
+  }
+  sourceDirectory(expectedDigest: string): string {
+    if (!/^[a-f0-9]{64}$/.test(expectedDigest) || this.inspect()?.digest !== expectedDigest) throw new Error('Public source changed; review it again')
+    return this.path('stage/source')
+  }
+  async prepare(extensionId: string, command: string, signal?: AbortSignal): Promise<UserRaycastSourceCandidate> {
+    if (!ID.test(extensionId) || !COMMAND.test(command)) throw new Error('Invalid public source selection')
+    if (existsSync(this.root) && !lstatSync(this.root).isDirectory()) throw new Error('Registry root must be a real directory')
+    mkdirSync(this.root, { recursive: true, mode: 0o700 })
+    const { revision, tree: selected, files } = await this.fromApi(extensionId, signal).catch(async error => {
+      if (error instanceof Error && error.message.startsWith('GitHub public source limit reached')) return await fetchUserRaycastGitSource(extensionId, this.gitOptions, signal)
+      throw error
+    })
     const manifestBytes = files.get('package.json'); const lockBytes = files.get('package-lock.json')
     if (!manifestBytes || manifestBytes.length > 128 * 1024 || !lockBytes || lockBytes.length > 4 * 1024 * 1024) throw new Error('Public source lacks a bounded manifest or lock')
     const manifest = record(JSON.parse(manifestBytes.toString('utf8')))

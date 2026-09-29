@@ -18,12 +18,11 @@ const lock = Buffer.from(JSON.stringify({ name: 'uuid-generator', lockfileVersio
 test('one selected public source is pinned; offline, drift and cancellation leave the approved version recoverable', async t => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-raycast-registry-'))
   let revision = revisionOne
-  let failure: 'none' | 'offline' | 'drift' | 'path' | 'link' | 'large' | 'limit' | 'config' = 'none'
+  let failure: 'none' | 'offline' | 'drift' | 'path' | 'link' | 'large' | 'config' = 'none'
   const source = () => new Map([['package.json', manifest], ['package-lock.json', lock], ['src/generate.tsx', Buffer.from(`export default () => { throw Error('not executed ${revision}') }`) ], ...(failure === 'config' ? [['.npmrc', Buffer.from('registry=https://unreviewed.invalid')] as const] : [])])
   const server = createServer((request, response) => {
     const path = request.url ?? ''
     if (failure === 'offline') { response.writeHead(503).end(); return }
-    if (failure === 'limit') { response.writeHead(403, { 'x-ratelimit-remaining': '0' }).end(); return }
     const rootTree = revision === revisionOne ? 'b'.repeat(40) : 'f'.repeat(40)
     const extensionsTree = revision === revisionOne ? 'c'.repeat(40) : '0'.repeat(40)
     const selectedTree = revision === revisionOne ? 'd'.repeat(40) : '1'.repeat(40)
@@ -75,7 +74,7 @@ test('one selected public source is pinned; offline, drift and cancellation leav
   failure = 'drift'; revision = revisionTwo
   await assert.rejects(registry.prepare('uuid-generator', 'generate'), /digest|blob|size/i)
   assert.equal(registry.inspect()?.digest, first.digest)
-  for (const [kind, reason] of [['path', /path/i], ['link', /unsupported file/i], ['large', /bound/i], ['limit', /limit/i], ['config', /config|unsupported/i]] as const) {
+  for (const [kind, reason] of [['path', /path/i], ['link', /unsupported file/i], ['large', /bound/i], ['config', /config|unsupported/i]] as const) {
     failure = kind
     await assert.rejects(registry.prepare('uuid-generator', 'generate'), reason)
     assert.equal(registry.inspect()?.digest, first.digest)
