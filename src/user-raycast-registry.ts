@@ -26,7 +26,7 @@ export class UserRaycastRegistry {
   private path(name: string): string { return join(this.root, name) }
   private async json(path: string, maximum: number, signal?: AbortSignal): Promise<unknown> {
     const response = await fetch(`${this.base}/repos/raycast/extensions/${path}`, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'TockTeam-Desktop' }, redirect: 'error', signal: AbortSignal.any([signal ?? new AbortController().signal, AbortSignal.timeout(15000)]) })
-    if (!response.ok) throw new Error(`Public source request failed (${response.status})`)
+    if (!response.ok) throw new Error(response.headers.get('x-ratelimit-remaining') === '0' ? 'GitHub public source limit reached; try again later' : `Public source request failed (${response.status})`)
     const declared = Number(response.headers.get('content-length'))
     if (declared > maximum) throw new Error('Public source response exceeded its bound')
     if (!response.body) throw new Error('Public source response is empty')
@@ -61,6 +61,7 @@ export class UserRaycastRegistry {
     const selected = this.findTree(await this.tree(extensions, signal), extensionId)
     const entries = await this.tree(selected, signal, true)
     const regular = entries.filter(entry => entry.type === 'blob')
+    if (entries.some(entry => entry.path === '.npmrc' || entry.path === 'npm-shrinkwrap.json')) throw new Error('Public source includes an unsupported package configuration')
     if (regular.length === 0 || regular.length > 128 || entries.length > 256 || regular.reduce((sum, entry) => sum + (entry.size ?? MAX_SOURCE_BYTES + 1), 0) > MAX_SOURCE_BYTES) throw new Error('Public source exceeds its file or byte bound')
     const files = new Map<string, Buffer>()
     for (const entry of entries) {

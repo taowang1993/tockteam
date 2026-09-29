@@ -29,6 +29,10 @@ fs.writeFileSync(path.join(process.cwd(), 'node_modules/esbuild/bin/esbuild'), "
   try {
     await assert.rejects(buildUserRaycastSource({ source, candidate: { ...candidate, digest: '0'.repeat(64) }, workspace, nodePath: process.execPath, npmPath: npm }), /changed|digest/i)
     assert.equal(existsSync(join(workspace, 'source')), false)
+    const canceled = join(root, 'canceled'); mkdirSync(canceled)
+    const controller = new AbortController(); controller.abort()
+    await assert.rejects(buildUserRaycastSource({ source, candidate, workspace: canceled, nodePath: process.execPath, npmPath: npm, signal: controller.signal }), /cancel/i)
+    assert.equal(existsSync(join(canceled, 'source')), false)
     const built = await buildUserRaycastSource({ source, candidate, workspace, nodePath: process.execPath, npmPath: npm })
     const proof = JSON.parse(readFileSync(join(workspace, 'source', 'npm-proof.json'), 'utf8')) as { args: string[]; home: string; token?: string }
     assert.ok(proof.args.includes('--ignore-scripts'))

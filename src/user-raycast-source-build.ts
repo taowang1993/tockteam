@@ -7,6 +7,7 @@ import { digestFiles, readFiles } from './user-raycast-install.ts'
 import type { UserRaycastSourceCandidate } from './user-raycast-registry.ts'
 
 async function tool(file: string, args: string[], cwd: string, env: NodeJS.ProcessEnv, timeout: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) throw new Error('Extension build was canceled')
   const child = spawn(file, args, { cwd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
   const limit = AbortSignal.any([signal ?? new AbortController().signal, AbortSignal.timeout(timeout)])
   let bytes = 0
@@ -16,13 +17,20 @@ async function tool(file: string, args: string[], cwd: string, env: NodeJS.Proce
     child.once('error', error => reject(error))
     child.once('close', code => code === 0 ? resolve() : reject(new Error(`Build tool failed (${code ?? 'signal'})`)))
   })
-  const cancel = new Promise<never>((_resolve, reject) => limit.addEventListener('abort', () => reject(new Error('Extension build was canceled or timed out')), { once: true }))
-  try { await Promise.race([result, cancel]) } finally { await stopOwnedChild(child, 250, true) }
+  let detach = () => {}
+  const cancel = new Promise<never>((_resolve, reject) => {
+    const aborted = () => reject(new Error('Extension build was canceled or timed out'))
+    if (limit.aborted) { aborted(); return }
+    limit.addEventListener('abort', aborted, { once: true })
+    detach = () => limit.removeEventListener('abort', aborted)
+  })
+  try { await Promise.race([result, cancel]) } finally { detach(); await stopOwnedChild(child, 250, true) }
 }
 
 /** Call only after explicit native approval. npm lifecycle scripts remain disabled. */
 export async function buildUserRaycastSource(options: Readonly<{ source: string; candidate: UserRaycastSourceCandidate; workspace: string; nodePath: string; npmPath?: string; signal?: AbortSignal }>): Promise<string> {
   const { source, candidate, workspace, nodePath, npmPath = 'npm', signal } = options
+  if (signal?.aborted) throw new Error('Extension build was canceled')
   if (!isAbsolute(workspace) || !lstatSync(workspace).isDirectory() || !isAbsolute(nodePath) || !lstatSync(nodePath).isFile() || existsSync(join(workspace, 'source')) || existsSync(join(workspace, 'built'))) throw new Error('Build workspace or Node runtime is unavailable')
   const files = readFiles(source)
   if (digestFiles(files) !== candidate.digest || candidate.license !== 'MIT' || candidate.source !== `https://github.com/raycast/extensions/tree/${candidate.revision}/extensions/${candidate.extensionId}`) throw new Error('Public source changed before building')
