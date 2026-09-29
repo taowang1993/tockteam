@@ -23,6 +23,10 @@ describe('TockTutor image viewer', () => {
     fireEvent.click(image)
 
     const dialog = await screen.findByRole('dialog', { name: 'Photo' })
+    // The Workbench is a fixed layer (z-1001); the portal must sit above it.
+    expect(dialog.className).toContain('z-[2147483647]')
+    expect(document.querySelector('[data-slot="dialog-overlay"]')?.className).toContain('z-[2147483646]')
+    expect(within(dialog).getByText(/Use the controls or plus and minus keys/u).className).toContain('text-foreground')
     const viewerImage = within(dialog).getByRole('img', { name: 'Photo' })
     expect(viewerImage.getAttribute('src')).toBe(dataUrl)
     expect(screen.getByRole('button', { name: 'Fit Image' })).toBeTruthy()

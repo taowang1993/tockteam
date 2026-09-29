@@ -86,7 +86,8 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
   return (
     <Dialog open={image !== null} onOpenChange={open => { if (!open) props.onClose() }}>
       <DialogContent
-        className="!max-w-[min(92vw,90rem)] w-[min(92vw,90rem)] max-h-[calc(100dvh-2rem)] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-3 border border-border bg-popover p-4 text-popover-foreground shadow-xl"
+        className="!max-w-[min(92vw,90rem)] z-[2147483647] w-[min(92vw,90rem)] max-h-[calc(100dvh-2rem)] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-3 border border-border bg-popover p-4 text-popover-foreground shadow-xl"
+        overlayClassName="z-[2147483646]"
         onCloseAutoFocus={event => {
           const trigger = props.returnFocusRef?.current
           if (trigger?.isConnected) { event.preventDefault(); trigger.focus() }
@@ -102,7 +103,7 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
       >
         <DialogHeader className="min-w-0 pr-10">
           <DialogTitle className="truncate text-foreground">{label}</DialogTitle>
-          <DialogDescription className="text-muted-foreground">Use the controls or plus and minus keys to zoom. Drag the image to pan.</DialogDescription>
+          <DialogDescription className="text-foreground">Use the controls or plus and minus keys to zoom. Drag the image to pan.</DialogDescription>
         </DialogHeader>
         <div
           aria-label="Image Viewport"
