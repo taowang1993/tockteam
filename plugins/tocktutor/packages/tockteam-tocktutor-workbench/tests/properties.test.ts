@@ -29,7 +29,7 @@ test('round-trips supported property types without corrupting the Markdown body'
     ['points', 'number'],
     ['done', 'checkbox'],
     ['date', 'date'],
-    ['when', 'datetime'],
+    ['when', 'mixed'],
   ])
   assert.deepEqual(properties.find(property => property.key === 'aliases')?.value, ['one', 'two words'])
   const changed = setFrontmatterProperty(source, 'title', 'Draft #2')
@@ -52,6 +52,24 @@ test('keeps supported imported property types on empty values without coercing i
   ])
   assert.equal(parseFrontmatterProperties('---\ndue: 2026-02-30\n---\n', { due: 'date' })[0]?.type, 'mixed')
   assert.equal(source, '---\ndue:\nfinished:\nlabels: []\nrating: "not a number"\nstructured: {child: value}\n---\n# Body\n')
+})
+
+test('edits flat imported numbers, lists and local date-times without coercing zoned or structured values', async () => {
+  const { parseFrontmatterProperties, setFrontmatterProperty } = await import('../src/properties.ts')
+  const source = '---\nrating:\ntags: []\naliases: [Old]\nmeeting:\nkeep: original\n---\n# Note\n'
+  const declared = { rating: 'number', tags: 'tags', aliases: 'aliases', meeting: 'datetime' } as const
+  assert.deepEqual(parseFrontmatterProperties(source, declared).map(({ key, type }) => [key, type]), [
+    ['rating', 'number'], ['tags', 'list'], ['aliases', 'list'], ['meeting', 'datetime'], ['keep', 'text'],
+  ])
+  const next = setFrontmatterProperty(setFrontmatterProperty(setFrontmatterProperty(setFrontmatterProperty(source,
+    'rating', 4.5), 'tags', ['one', 'two words']), 'aliases', ['Old', 'New']), 'meeting', '2026-09-29T14:45')
+  assert.equal(next, '---\nrating: 4.5\ntags:\n  - one\n  - two words\naliases:\n  - Old\n  - New\nmeeting: "2026-09-29T14:45"\nkeep: original\n---\n# Note\n')
+  assert.deepEqual(parseFrontmatterProperties(next, declared).map(({ key, type }) => [key, type]), [
+    ['rating', 'number'], ['tags', 'list'], ['aliases', 'list'], ['meeting', 'datetime'], ['keep', 'text'],
+  ])
+  for (const authored of ['2026-09-29T14:45Z', '2026-09-29T14:45+08:00', '2026-02-30T14:45', '2026-09-29T25:00']) {
+    assert.equal(parseFrontmatterProperties(`---\nmeeting: ${authored}\n---\n`, declared)[0]?.type, 'mixed', authored)
+  }
 })
 
 test('inserts properties before the closing delimiter without changing surrounding content', () => {

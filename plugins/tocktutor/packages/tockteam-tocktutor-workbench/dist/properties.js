@@ -36,6 +36,10 @@ function validIsoDate(value) {
     const date = new Date(`${value}T00:00:00.000Z`);
     return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
+function validLocalDateTime(value) {
+    const match = /^(\d{4}-\d{2}-\d{2})T(?:[01]\d|2[0-3]):[0-5]\d$/u.exec(value);
+    return match !== null && validIsoDate(match[1]);
+}
 export function inferPropertyType(value) {
     if (Array.isArray(value))
         return 'list';
@@ -154,6 +158,8 @@ function ranges(source) {
 }
 export function parseFrontmatterProperties(source, declared = {}) {
     return ranges(source).map(({ key, type, value }) => {
+        if (type === 'datetime' && typeof value === 'string' && !validLocalDateTime(value))
+            return { key, type: 'mixed', value };
         const imported = Object.hasOwn(declared, key) ? declared[key] : undefined;
         const expected = imported === 'multitext' || imported === 'tags' || imported === 'aliases'
             ? 'list' : imported;
@@ -163,7 +169,8 @@ export function parseFrontmatterProperties(source, declared = {}) {
             : expected === 'text' ? typeof value === 'string'
                 : expected === 'number' ? typeof value === 'number'
                     : expected === 'checkbox' ? typeof value === 'boolean'
-                        : typeof value === 'string' && type === expected && (expected !== 'date' || validIsoDate(value));
+                        : typeof value === 'string' && type === expected
+                            && (expected === 'date' ? validIsoDate(value) : expected !== 'datetime' || validLocalDateTime(value));
         return { key, type: compatible || value === '' || value === null ? expected : 'mixed', value };
     });
 }

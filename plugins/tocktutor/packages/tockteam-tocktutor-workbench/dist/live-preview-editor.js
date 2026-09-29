@@ -17,20 +17,34 @@ const LazyLivePreviewEditor = lazy(async () => {
     const module = await import("./live-preview-editor-runtime.js");
     return { default: module.LivePreviewEditorRuntime };
 });
-function editedPropertyValue(previous, text) {
+function editedPropertyValue(previous, text, type) {
     if (Array.isArray(previous)) {
         const value = JSON.parse(text);
         if (!Array.isArray(value) || !value.every(item => typeof item === 'string'))
             throw new Error('Use a JSON list of strings.');
         return value;
     }
-    if (typeof previous === 'number') {
+    if (type === 'number' || typeof previous === 'number') {
         const value = Number(text);
         if (!Number.isFinite(value) || text.trim() === '')
             throw new Error('Enter a finite number.');
         return value;
     }
     return previous === null && text === '' ? null : text;
+}
+function PropertyListEditor(props) {
+    const [draft, setDraft] = useState('');
+    const [error, setError] = useState('');
+    const update = (values) => {
+        setError(props.onSet(values) ? '' : 'This list could not be changed. Retry against the current note or use Source Mode.');
+    };
+    return _jsxs("div", { className: "flex min-w-0 flex-1 flex-wrap items-center gap-1", children: [props.values.map((value, index) => _jsxs("span", { className: "inline-flex min-h-6 max-w-full items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_10%,transparent)] px-2 text-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_85%,var(--tt-text))]", children: [_jsx("span", { className: "min-w-0 [overflow-wrap:anywhere]", children: value }), _jsx(Button, { unstyled: true, "aria-label": `Remove ${value} from ${props.name}`, className: "inline-flex size-5 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-current focus-visible:outline focus-visible:outline-[var(--tt-accent)]", onClick: () => { update(props.values.filter((_item, at) => at !== index)); }, type: "button", children: _jsx(X, { "aria-hidden": "true", className: "size-3" }) })] }, `${index}:${value}`)), _jsxs("form", { className: "flex min-w-0 flex-1 flex-wrap items-center gap-1", onSubmit: event => { event.preventDefault(); if (draft.trim() === '')
+                    return; if (props.onSet([...props.values, draft.trim()])) {
+                    setDraft('');
+                    setError('');
+                }
+                else
+                    setError('This list could not be changed. Retry against the current note or use Source Mode.'); }, children: [_jsx(Input, { "aria-label": `New ${props.name} Value`, className: "h-7 min-w-28 flex-1 text-xs", onChange: event => { setDraft(event.currentTarget.value); }, value: draft }), _jsx(Button, { "aria-label": `Add ${props.name} Value`, size: "xs", type: "submit", variant: "outline", children: "Add" })] }), error && _jsx("span", { className: "basis-full text-xs text-destructive", role: "alert", children: error })] });
 }
 function fallbackDocumentTitle(source, title) {
     if (title === undefined)
@@ -63,11 +77,16 @@ export function MarkdownDocumentHeader(props) {
                 : _jsx(NoteTitleEditor, { compact: true, onRenameTitle: props.onRenameTitle, title: title })), props.editableProperties && error && !adding && _jsx("p", { role: "alert", children: error }), props.editableProperties && properties.length >= MAX_PROPERTIES && _jsx("p", { role: "status", children: "The property limit was reached; this list may be incomplete. Use Source Mode." }), props.editableProperties && properties.length === 0 && _jsx("p", { className: "text-xs text-[var(--tt-muted)]", children: "No properties." }), showProperties && (_jsxs("section", { children: [_jsx("h2", { className: "m-0 mb-3 text-base font-semibold text-[var(--tt-text)]", children: _jsxs(Button, { unstyled: true, "aria-controls": propertiesId, "aria-expanded": propertiesExpanded, className: "group relative flex min-h-6 w-full cursor-pointer items-center rounded border-0 bg-transparent p-0 text-left text-inherit hover:text-[var(--tt-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tt-accent)]", onClick: () => { setPropertiesExpanded(expanded => !expanded); }, type: "button", children: [_jsx(ChevronRight, { "aria-hidden": "true", className: "absolute -left-5 size-4 text-[var(--tt-muted)] group-aria-expanded:rotate-90", "data-icon": "inline-start" }), "Properties"] }) }), _jsxs("div", { hidden: !propertiesExpanded, id: propertiesId, children: [properties.length > 0 && (_jsx("dl", { "aria-label": "Document Properties", className: "m-0 grid grid-cols-[minmax(96px,140px)_minmax(0,1fr)] gap-x-3 text-sm leading-6", children: properties.map(property => {
                                     const tags = property.key.toLocaleLowerCase() === 'tags' && Array.isArray(property.value) ? property.value : null;
                                     const checkbox = property.type === 'checkbox' && (typeof property.value === 'boolean' || property.value === '' || property.value === null);
+                                    const list = property.type === 'list' && (Array.isArray(property.value) || property.value === '' || property.value === null);
                                     const Icon = tags === null ? propertyIcons[property.type] : Tags;
-                                    return (_jsxs("div", { className: "contents", children: [_jsxs("dt", { className: "flex min-h-8 min-w-0 items-center gap-2 self-start text-[var(--tt-muted)]", title: `${property.key} · ${propertyTypeLabels[property.type]}`, children: [_jsx(Icon, { "aria-hidden": "true", className: "size-4 shrink-0" }), _jsx("span", { className: "truncate", children: property.key })] }), _jsx("dd", { className: "m-0 flex min-h-8 min-w-0 flex-wrap items-center gap-1 py-1 text-[var(--tt-text)]", children: props.editableProperties && property.type === 'mixed' && property.value !== null ? _jsx("span", { className: "text-muted-foreground", children: "Use Source Mode" }) : props.editableProperties && !checkbox ? _jsx(Input, { "aria-label": `Property ${property.key}`, type: property.type === 'date' ? 'date' : undefined, defaultValue: Array.isArray(property.value) ? JSON.stringify(property.value) : String(property.value ?? ''), onBlur: event => {
+                                    return (_jsxs("div", { className: "contents", children: [_jsxs("dt", { className: "flex min-h-8 min-w-0 items-center gap-2 self-start text-[var(--tt-muted)]", title: `${property.key} · ${propertyTypeLabels[property.type]}`, children: [_jsx(Icon, { "aria-hidden": "true", className: "size-4 shrink-0" }), _jsx("span", { className: "truncate", children: property.key })] }), _jsx("dd", { className: "m-0 flex min-h-8 min-w-0 flex-wrap items-center gap-1 py-1 text-[var(--tt-text)]", children: props.editableProperties && property.type === 'mixed' && property.value !== null ? _jsx("span", { className: "text-muted-foreground", children: "Use Source Mode" }) : props.editableProperties && list ? _jsx(PropertyListEditor, { name: property.key, onSet: values => props.onSetProperty?.(property.key, values), values: Array.isArray(property.value) ? property.value : [] }) : props.editableProperties && !checkbox ? _jsx(Input, { "aria-label": `Property ${property.key}`, step: property.type === 'number' ? 'any' : undefined, type: property.type === 'date' ? 'date' : property.type === 'datetime' ? 'datetime-local' : property.type === 'number' ? 'number' : undefined, defaultValue: Array.isArray(property.value) ? JSON.stringify(property.value) : String(property.value ?? ''), onBlur: event => {
                                                         try {
                                                             const text = event.currentTarget.value;
-                                                            const value = editedPropertyValue(property.value, text);
+                                                            if (text === (Array.isArray(property.value) ? JSON.stringify(property.value) : String(property.value ?? ''))) {
+                                                                setError('');
+                                                                return;
+                                                            }
+                                                            const value = editedPropertyValue(property.value, text, property.type);
                                                             if (JSON.stringify(value) !== JSON.stringify(property.value) && !props.onSetProperty?.(property.key, value))
                                                                 throw new Error('This property could not be changed. Use Source Mode for structured values, or retry against the current note.');
                                                             setError('');

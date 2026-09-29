@@ -67,18 +67,34 @@ const LazyLivePreviewEditor = lazy(async () => {
   return { default: module.LivePreviewEditorRuntime }
 })
 
-function editedPropertyValue(previous: PropertyValue, text: string): PropertyValue {
+function editedPropertyValue(previous: PropertyValue, text: string, type?: PropertyType): PropertyValue {
   if (Array.isArray(previous)) {
     const value: unknown = JSON.parse(text)
     if (!Array.isArray(value) || !value.every(item => typeof item === 'string')) throw new Error('Use a JSON list of strings.')
     return value
   }
-  if (typeof previous === 'number') {
+  if (type === 'number' || typeof previous === 'number') {
     const value = Number(text)
     if (!Number.isFinite(value) || text.trim() === '') throw new Error('Enter a finite number.')
     return value
   }
   return previous === null && text === '' ? null : text
+}
+
+function PropertyListEditor(props: { name: string; values: string[]; onSet: (values: string[]) => boolean | undefined }): ReactNode {
+  const [draft, setDraft] = useState('')
+  const [error, setError] = useState('')
+  const update = (values: string[]): void => {
+    setError(props.onSet(values) ? '' : 'This list could not be changed. Retry against the current note or use Source Mode.')
+  }
+  return <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+    {props.values.map((value, index) => <span className="inline-flex min-h-6 max-w-full items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_10%,transparent)] px-2 text-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_85%,var(--tt-text))]" key={`${index}:${value}`}><span className="min-w-0 [overflow-wrap:anywhere]">{value}</span><Button unstyled aria-label={`Remove ${value} from ${props.name}`} className="inline-flex size-5 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-current focus-visible:outline focus-visible:outline-[var(--tt-accent)]" onClick={() => { update(props.values.filter((_item, at) => at !== index)) }} type="button"><X aria-hidden="true" className="size-3" /></Button></span>)}
+    <form className="flex min-w-0 flex-1 flex-wrap items-center gap-1" onSubmit={event => { event.preventDefault(); if (draft.trim() === '') return; if (props.onSet([...props.values, draft.trim()])) { setDraft(''); setError('') } else setError('This list could not be changed. Retry against the current note or use Source Mode.') }}>
+      <Input aria-label={`New ${props.name} Value`} className="h-7 min-w-28 flex-1 text-xs" onChange={event => { setDraft(event.currentTarget.value) }} value={draft} />
+      <Button aria-label={`Add ${props.name} Value`} size="xs" type="submit" variant="outline">Add</Button>
+    </form>
+    {error && <span className="basis-full text-xs text-destructive" role="alert">{error}</span>}
+  </div>
 }
 
 function fallbackDocumentTitle(source: string, title: string | undefined): string | undefined {
@@ -134,15 +150,17 @@ export function MarkdownDocumentHeader(props: { editableProperties?: boolean; cl
                 {properties.map(property => {
                   const tags = property.key.toLocaleLowerCase() === 'tags' && Array.isArray(property.value) ? property.value : null
                   const checkbox = property.type === 'checkbox' && (typeof property.value === 'boolean' || property.value === '' || property.value === null)
+                  const list = property.type === 'list' && (Array.isArray(property.value) || property.value === '' || property.value === null)
                   const Icon = tags === null ? propertyIcons[property.type] : Tags
                   return (
                     <div className="contents" key={property.key}>
                       <dt className="flex min-h-8 min-w-0 items-center gap-2 self-start text-[var(--tt-muted)]" title={`${property.key} · ${propertyTypeLabels[property.type]}`}><Icon aria-hidden="true" className="size-4 shrink-0" /><span className="truncate">{property.key}</span></dt>
                       <dd className="m-0 flex min-h-8 min-w-0 flex-wrap items-center gap-1 py-1 text-[var(--tt-text)]">
-                        {props.editableProperties && property.type === 'mixed' && property.value !== null ? <span className="text-muted-foreground">Use Source Mode</span> : props.editableProperties && !checkbox ? <Input aria-label={`Property ${property.key}`} key={JSON.stringify(property.value)} type={property.type === 'date' ? 'date' : undefined} defaultValue={Array.isArray(property.value) ? JSON.stringify(property.value) : String(property.value ?? '')} onBlur={event => {
+                        {props.editableProperties && property.type === 'mixed' && property.value !== null ? <span className="text-muted-foreground">Use Source Mode</span> : props.editableProperties && list ? <PropertyListEditor name={property.key} onSet={values => props.onSetProperty?.(property.key, values)} values={Array.isArray(property.value) ? property.value : []} /> : props.editableProperties && !checkbox ? <Input aria-label={`Property ${property.key}`} key={JSON.stringify(property.value)} step={property.type === 'number' ? 'any' : undefined} type={property.type === 'date' ? 'date' : property.type === 'datetime' ? 'datetime-local' : property.type === 'number' ? 'number' : undefined} defaultValue={Array.isArray(property.value) ? JSON.stringify(property.value) : String(property.value ?? '')} onBlur={event => {
                           try {
                             const text = event.currentTarget.value
-                            const value = editedPropertyValue(property.value, text)
+                            if (text === (Array.isArray(property.value) ? JSON.stringify(property.value) : String(property.value ?? ''))) { setError(''); return }
+                            const value = editedPropertyValue(property.value, text, property.type)
                             if (JSON.stringify(value) !== JSON.stringify(property.value) && !props.onSetProperty?.(property.key, value)) throw new Error('This property could not be changed. Use Source Mode for structured values, or retry against the current note.')
                             setError('')
                           } catch (error) { setError(error instanceof Error ? error.message : 'Invalid property value.') }

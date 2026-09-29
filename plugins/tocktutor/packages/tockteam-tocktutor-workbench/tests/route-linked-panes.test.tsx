@@ -528,12 +528,11 @@ it('validates typed property input and does not turn an untouched null into an e
   fireEvent.blur(screen.getByLabelText('Property amount'), { target: { value: 'NaN' } })
   expect(screen.getByRole('alert').textContent).toContain('finite number')
   expect(changes).toEqual([])
-  fireEvent.blur(screen.getByLabelText('Property tags'), { target: { value: '[1]' } })
-  expect(screen.getByRole('alert').textContent).toContain('list of strings')
-  expect(changes).toEqual([])
   fireEvent.blur(screen.getByLabelText('Property amount'), { target: { value: '4' } })
+  fireEvent.change(screen.getByLabelText('New tags Value'), { target: { value: 'three' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Add tags Value' }))
   fireEvent.click(screen.getByRole('checkbox', { name: 'done' }))
-  expect(changes).toEqual([['amount', 4], ['done', true]])
+  expect(changes).toEqual([['amount', 4], ['tags', ['one', 'two', 'three']], ['done', true]])
 })
 
 it('edits imported empty Date and Checkbox values with native controls only after a user action', () => {
@@ -550,6 +549,35 @@ it('edits imported empty Date and Checkbox values with native controls only afte
   fireEvent.click(finished)
   expect(changes).toEqual([['due', '2026-09-29'], ['finished', true]])
   expect(setFrontmatterProperty(setFrontmatterProperty('---\ndue:\nfinished:\n---\n# Note\n', 'due', changes[0]![1] as string), 'finished', changes[1]![1] as boolean)).toBe('---\ndue: "2026-09-29"\nfinished: true\n---\n# Note\n')
+})
+
+it('does not reject untouched empty numbers or drop a list draft when saving fails', () => {
+  render(<MarkdownDocumentHeader declaredTypes={{ rating: 'number', aliases: 'aliases' }} editableProperties source={'---\nrating:\naliases: [Old]\n---\n'} onSetProperty={() => false} />)
+  fireEvent.blur(screen.getByLabelText('Property rating'))
+  expect(screen.queryByRole('alert')).toBeNull()
+  const draft = screen.getByLabelText('New aliases Value') as HTMLInputElement
+  fireEvent.change(draft, { target: { value: 'New' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Add aliases Value' }))
+  expect(draft.value).toBe('New')
+  expect(screen.getByRole('alert').textContent).toContain('could not be changed')
+})
+
+it('edits imported numbers, flat lists and local date-times with familiar controls', () => {
+  const changes: Array<[string, unknown]> = []
+  render(<MarkdownDocumentHeader declaredTypes={{ rating: 'number', tags: 'tags', aliases: 'aliases', meeting: 'datetime' }} editableProperties source={'---\nrating:\ntags: []\naliases: [Old]\nmeeting:\n---\n'} onSetProperty={(key, value) => { changes.push([key, value]); return true }} />)
+  const rating = screen.getByLabelText('Property rating') as HTMLInputElement
+  const meeting = screen.getByLabelText('Property meeting') as HTMLInputElement
+  expect(rating.type).toBe('number')
+  expect(meeting.type).toBe('datetime-local')
+  fireEvent.change(rating, { target: { value: '4.5' } })
+  fireEvent.change(meeting, { target: { value: '2026-09-29T14:45' } })
+  expect(changes).toEqual([])
+  fireEvent.blur(rating)
+  fireEvent.blur(meeting)
+  fireEvent.change(screen.getByLabelText('New tags Value'), { target: { value: 'fresh tag' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Add tags Value' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Remove Old from aliases' }))
+  expect(changes).toEqual([['rating', 4.5], ['meeting', '2026-09-29T14:45'], ['tags', ['fresh tag']], ['aliases', []]])
 })
 
 it('offers Source Mode instead of a misleading control for incompatible imported YAML', () => {
@@ -642,10 +670,11 @@ it('round-trips an empty linked string-list input through source and typed parsi
   }
   const view = render(<Harness />)
   try {
-    fireEvent.blur(await screen.findByLabelText('Property aliases'), { target: { value: '[]' } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove one from aliases' }))
     expect(controller.getSnapshot().source).toContain('aliases: []\n')
     expect(parseFrontmatterProperties(controller.getSnapshot().source)).toEqual([{ key: 'aliases', type: 'list', value: [] }])
-    fireEvent.blur(screen.getByLabelText('Property aliases'), { target: { value: '["again"]' } })
+    fireEvent.change(screen.getByLabelText('New aliases Value'), { target: { value: 'again' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add aliases Value' }))
     expect(parseFrontmatterProperties(controller.getSnapshot().source)).toEqual([{ key: 'aliases', type: 'list', value: ['again'] }])
     expect(controller.getSnapshot().source).toContain('---\n# Body\n')
   } finally { view.unmount(); await controller.dispose() }

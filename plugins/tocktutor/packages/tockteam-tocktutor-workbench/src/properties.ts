@@ -67,6 +67,11 @@ function validIsoDate(value: string): boolean {
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
 }
 
+function validLocalDateTime(value: string): boolean {
+  const match = /^(\d{4}-\d{2}-\d{2})T(?:[01]\d|2[0-3]):[0-5]\d$/u.exec(value)
+  return match !== null && validIsoDate(match[1]!)
+}
+
 export function inferPropertyType(value: unknown): PropertyType {
   if (Array.isArray(value)) return 'list'
   if (typeof value === 'number') return 'number'
@@ -166,6 +171,7 @@ function ranges(source: string): PropertyRange[] {
 
 export function parseFrontmatterProperties(source: string, declared: ObsidianPropertyTypes = {}): FrontmatterProperty[] {
   return ranges(source).map(({ key, type, value }) => {
+    if (type === 'datetime' && typeof value === 'string' && !validLocalDateTime(value)) return { key, type: 'mixed', value }
     const imported = Object.hasOwn(declared, key) ? declared[key] : undefined
     const expected: PropertyType | undefined = imported === 'multitext' || imported === 'tags' || imported === 'aliases'
       ? 'list' : imported
@@ -174,7 +180,8 @@ export function parseFrontmatterProperties(source: string, declared: ObsidianPro
       : expected === 'text' ? typeof value === 'string'
         : expected === 'number' ? typeof value === 'number'
           : expected === 'checkbox' ? typeof value === 'boolean'
-            : typeof value === 'string' && type === expected && (expected !== 'date' || validIsoDate(value))
+            : typeof value === 'string' && type === expected
+              && (expected === 'date' ? validIsoDate(value) : expected !== 'datetime' || validLocalDateTime(value))
     return { key, type: compatible || value === '' || value === null ? expected : 'mixed', value }
   })
 }
