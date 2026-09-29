@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import NoteVaultRuntime, { Config as RuntimeConfig } from 'tockbot-note-runtime'
@@ -231,6 +231,65 @@ test('real runtime missing-file classification survives the Host read transport'
   }
 })
 
+test('reads only known Obsidian property assignments through an exact-vault passive Host read', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tocktutor-property-types-'))
+  const context = new Context()
+  const config = join(root, '.obsidian', 'types.json')
+  try {
+    await mkdir(join(root, '.obsidian'))
+    const bytes = Buffer.from(JSON.stringify({ types: {
+      due: 'date', finished: 'checkbox', labels: 'multitext', tags: 'tags', aliases: 'aliases',
+      rating: 'number', meeting: 'datetime', description: 'text', unsupported: 'object',
+    }, plugins: { secret: 'Never send hidden settings to the browser.' } }))
+    await writeFile(config, bytes)
+    await context.plugin(NoteVaultRuntime, RuntimeConfig({ vaultRoot: root, stateRoot: null } as never))
+    await context.plugin(workbench)
+    const runtime = context.get('noteVault'), gateway = context.get('tocktutorWorkbench')
+    assert.ok(runtime instanceof NoteVaultRuntime)
+    assert.ok(gateway instanceof TockTutorWorkbenchGateway)
+    const state = runtime.state
+    if (!state.active) assert.fail('Expected active vault')
+    const expected = { id: state.id, generation: state.generation }, signal = new AbortController().signal
+    assert.deepEqual(await gateway.getObsidianPropertyTypes(expected, signal), {
+      aliases: 'aliases', description: 'text', due: 'date', finished: 'checkbox', labels: 'multitext',
+      meeting: 'datetime', rating: 'number', tags: 'tags',
+    })
+    assert.deepEqual(await readFile(config), bytes)
+    await writeFile(config, '{')
+    assert.deepEqual(await gateway.getObsidianPropertyTypes(expected, signal), {})
+    await writeFile(config, JSON.stringify({ types: { due: 'date' }, padding: 'x'.repeat(65_536) }))
+    assert.deepEqual(await gateway.getObsidianPropertyTypes(expected, signal), {})
+    await rm(config)
+    await symlink(join(root, 'elsewhere.json'), config)
+    assert.deepEqual(await gateway.getObsidianPropertyTypes(expected, signal), {})
+    await rm(config)
+    assert.deepEqual(await gateway.getObsidianPropertyTypes(expected, signal), {})
+    await assert.rejects(gateway.getObsidianPropertyTypes({ ...expected, generation: -1 }, signal), /vault reference/i)
+    await assert.rejects(gateway.getObsidianPropertyTypes(expected, AbortSignal.abort()), { name: 'AbortError' })
+  } finally {
+    await context.fiber.dispose()
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('refuses changed Obsidian settings without exposing a stale registry or raw bytes', async () => {
+  const state = await loaded(), signal = new AbortController().signal
+  const revision = `file:${'a'.repeat(64)}`
+  try {
+    Object.assign(state.runtime, {
+      listPassiveBackupEntries: async (request: unknown) => {
+        assert.deepEqual(request, { expectedVault: vault })
+        return { entries: [{ path: '.obsidian/types.json', revision, size: 24 }], generation: vault.generation }
+      },
+      readPassiveBackupEntry: async (request: unknown) => {
+        assert.deepEqual(request, { expectedVault: vault, expectedRevision: revision, path: '.obsidian/types.json' })
+        throw Object.assign(new Error('Changed before read'), { code: 'changed' })
+      },
+    })
+    assert.deepEqual(await state.gateway.getObsidianPropertyTypes(vault, signal), {})
+  } finally { await state.context.fiber.dispose() }
+})
+
 test('duplicate transport preserves bytes and rejects collisions and unsafe requests', async () => {
   const root = await mkdtemp(join(tmpdir(), 'tocktutor-duplicate-'))
   const context = new Context()
@@ -318,6 +377,7 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
   try {
     assert.deepEqual(remoteMethods(state.gateway), [
       { invocation: { kind: 'direct' }, method: 'currentVault' },
+      { invocation: { kind: 'direct' }, method: 'getObsidianPropertyTypes' },
       { invocation: { kind: 'direct' }, method: 'createManagedVault' },
       { invocation: { kind: 'direct' }, method: 'openSandboxVault' },
       { invocation: { kind: 'direct' }, method: 'inspectAttachment' },

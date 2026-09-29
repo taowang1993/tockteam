@@ -19,6 +19,8 @@ import type {
   MergeLinkPreviewRequest,
   MergeLinkPreviewResult,
   OpenDocumentResult,
+  ObsidianPropertyTypes,
+  ObsidianPropertyType,
   DuplicateDocumentResult,
   RenameDocumentRequest,
   RenameDocumentResult,
@@ -75,6 +77,8 @@ export type NoteVaultCapability = Pick<
   | 'listTrash'
   | 'links'
   | 'listTree'
+  | 'listPassiveBackupEntries'
+  | 'readPassiveBackupEntry'
   | 'openDocument'
   | 'moveFileWithLinkRewrite'
   | 'duplicateFile'
@@ -391,6 +395,38 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
     const displayPath = this.ctx.noteVault.activeVaultDisplayPath()
     await synchronizeDesktopVault(this.ctx.noteVault, signal)
     return { displayPath, generation: vault.generation, name, vault }
+  }
+
+  @Remote
+  async getObsidianPropertyTypes(expectedVault: VaultReference, signal: AbortSignal): Promise<ObsidianPropertyTypes> {
+    assertVaultReference(expectedVault)
+    signal.throwIfAborted()
+    try {
+      const listed = await this.ctx.noteVault.listPassiveBackupEntries({ expectedVault }, signal)
+      const entry = listed.entries.find(item => item.path === '.obsidian/types.json')
+      if (listed.generation !== expectedVault.generation || !entry || entry.size > 64 * 1024) return {}
+      const read = await this.ctx.noteVault.readPassiveBackupEntry({
+        expectedVault, expectedRevision: entry.revision, path: entry.path,
+      }, signal)
+      if (read.generation !== expectedVault.generation || read.path !== entry.path
+        || read.revision !== entry.revision || read.data.byteLength !== entry.size) return {}
+      const data: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(read.data))
+      if (data === null || typeof data !== 'object' || Array.isArray(data)
+        || !('types' in data) || data.types === null || typeof data.types !== 'object' || Array.isArray(data.types)) return {}
+      const assignments = Object.entries(data.types)
+      if (assignments.length > 1_000) return {}
+      const result: Record<string, ObsidianPropertyType> = {}
+      for (const [key, value] of assignments) {
+        if (!/^(?!__proto__$|constructor$|prototype$)[A-Za-z_][A-Za-z0-9_-]{0,127}$/u.test(key)) continue
+        if (value === 'text' || value === 'multitext' || value === 'number' || value === 'checkbox'
+          || value === 'date' || value === 'datetime' || value === 'tags' || value === 'aliases') result[key] = value
+      }
+      return result
+    } catch (error) {
+      signal.throwIfAborted()
+      if (error instanceof Error && error.name === 'AbortError') throw error
+      return {}
+    }
   }
 
   @Remote

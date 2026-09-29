@@ -295,6 +295,7 @@ let TockTutorWorkbenchGateway = (() => {
     let _classSuper = TypertRemoteService;
     let _instanceExtraInitializers = [];
     let _currentVault_decorators;
+    let _getObsidianPropertyTypes_decorators;
     let _createManagedVault_decorators;
     let _openSandboxVault_decorators;
     let _inspectAttachment_decorators;
@@ -332,6 +333,7 @@ let TockTutorWorkbenchGateway = (() => {
         static {
             const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
             _currentVault_decorators = [Remote];
+            _getObsidianPropertyTypes_decorators = [Remote];
             _createManagedVault_decorators = [Remote];
             _openSandboxVault_decorators = [Remote];
             _inspectAttachment_decorators = [Remote];
@@ -366,6 +368,7 @@ let TockTutorWorkbenchGateway = (() => {
             _listTrash_decorators = [Remote];
             _restoreTrash_decorators = [Remote];
             __esDecorate(this, null, _currentVault_decorators, { kind: "method", name: "currentVault", static: false, private: false, access: { has: obj => "currentVault" in obj, get: obj => obj.currentVault }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _getObsidianPropertyTypes_decorators, { kind: "method", name: "getObsidianPropertyTypes", static: false, private: false, access: { has: obj => "getObsidianPropertyTypes" in obj, get: obj => obj.getObsidianPropertyTypes }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _createManagedVault_decorators, { kind: "method", name: "createManagedVault", static: false, private: false, access: { has: obj => "createManagedVault" in obj, get: obj => obj.createManagedVault }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _openSandboxVault_decorators, { kind: "method", name: "openSandboxVault", static: false, private: false, access: { has: obj => "openSandboxVault" in obj, get: obj => obj.openSandboxVault }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _inspectAttachment_decorators, { kind: "method", name: "inspectAttachment", static: false, private: false, access: { has: obj => "inspectAttachment" in obj, get: obj => obj.inspectAttachment }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -416,6 +419,44 @@ let TockTutorWorkbenchGateway = (() => {
             const displayPath = this.ctx.noteVault.activeVaultDisplayPath();
             await synchronizeDesktopVault(this.ctx.noteVault, signal);
             return { displayPath, generation: vault.generation, name, vault };
+        }
+        async getObsidianPropertyTypes(expectedVault, signal) {
+            assertVaultReference(expectedVault);
+            signal.throwIfAborted();
+            try {
+                const listed = await this.ctx.noteVault.listPassiveBackupEntries({ expectedVault }, signal);
+                const entry = listed.entries.find(item => item.path === '.obsidian/types.json');
+                if (listed.generation !== expectedVault.generation || !entry || entry.size > 64 * 1024)
+                    return {};
+                const read = await this.ctx.noteVault.readPassiveBackupEntry({
+                    expectedVault, expectedRevision: entry.revision, path: entry.path,
+                }, signal);
+                if (read.generation !== expectedVault.generation || read.path !== entry.path
+                    || read.revision !== entry.revision || read.data.byteLength !== entry.size)
+                    return {};
+                const data = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(read.data));
+                if (data === null || typeof data !== 'object' || Array.isArray(data)
+                    || !('types' in data) || data.types === null || typeof data.types !== 'object' || Array.isArray(data.types))
+                    return {};
+                const assignments = Object.entries(data.types);
+                if (assignments.length > 1_000)
+                    return {};
+                const result = {};
+                for (const [key, value] of assignments) {
+                    if (!/^(?!__proto__$|constructor$|prototype$)[A-Za-z_][A-Za-z0-9_-]{0,127}$/u.test(key))
+                        continue;
+                    if (value === 'text' || value === 'multitext' || value === 'number' || value === 'checkbox'
+                        || value === 'date' || value === 'datetime' || value === 'tags' || value === 'aliases')
+                        result[key] = value;
+                }
+                return result;
+            }
+            catch (error) {
+                signal.throwIfAborted();
+                if (error instanceof Error && error.name === 'AbortError')
+                    throw error;
+                return {};
+            }
         }
         async createManagedVault(request, signal) {
             assertCreateManagedVaultRequest(request);
