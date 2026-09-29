@@ -21,13 +21,14 @@ import {
 import { DESKTOP_SKINS, type DesktopSkin } from './skins.ts'
 
 interface BoundSkinActions {
-  sync(activeId: string, ready: boolean, revision: number): void
+  sync(activeId: string, ready: boolean, revision: number, mode: 'light' | 'dark'): void
 }
 
 interface SkinRowState {
   activeId: string
   ready: boolean
   revision: number
+  mode: 'light' | 'dark'
 }
 
 interface SkinRowProps {
@@ -78,21 +79,20 @@ const DEFAULT_OPTION: SkinOption = {
   accent: '#80868f',
 }
 
-function optionFor(skin: DesktopSkin): SkinOption {
+function optionFor(skin: DesktopSkin, mode: 'light' | 'dark'): SkinOption {
   return {
     id: skin.id,
     label: skin.label,
-    mode: skin.colorScheme === 'light' ? 'skins.mode.light' : 'skins.mode.dark',
-    preview: skin.preview,
-    accent: skin.accent,
+    mode: 'skins.mode.system',
+    preview: skin.palettes[mode].preview,
+    accent: skin.palettes[mode].accent,
   }
 }
-
-const OPTIONS = [DEFAULT_OPTION, ...DESKTOP_SKINS.map(optionFor)]
 
 function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
   const activeId = useStore(state => state.activeId)
   const ready = useStore(state => state.ready)
+  const mode = useStore(state => state.mode)
   return (
     <div className="flex flex-col gap-2.5 border-b border-border py-4">
       <div className="flex flex-col gap-0.5">
@@ -100,7 +100,7 @@ function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
         <div className="text-xs leading-[18px] text-subtle-foreground">{t('skins.description')}</div>
       </div>
       <ToggleGroup unstyled type="single" aria-label={t('skins.title')} value={activeId || 'original'} disabled={!ready} onValueChange={value => { if (value) setSkin(value === 'original' ? null : value) }} className="grid grid-cols-[repeat(auto-fit,minmax(126px,1fr))] gap-[9px] max-[720px]:grid-cols-2">
-        {OPTIONS.map(option => {
+        {[DEFAULT_OPTION, ...DESKTOP_SKINS.map(skin => optionFor(skin, mode))].map(option => {
           const selected = activeId === (option.id ?? '')
           return (
             <ToggleGroupItem unstyled
@@ -120,7 +120,7 @@ function SkinSettingsRow({ setSkin, t, useStore }: SkinRowProps): JSX.Element {
                   <span className="truncate text-[10px] leading-[14px] text-subtle-foreground">{t(option.mode)}</span>
                 </span>
                 {selected && (
-                  <span className="grid size-[18px] place-items-center rounded-full bg-brand text-brand-foreground [&_svg]:size-3 [&_svg]:stroke-[2.5]" title={t('skins.selected')}><Check aria-hidden="true" /></span>
+                  <span className="grid size-[18px] place-items-center rounded-full bg-brand text-[var(--dsw-alias-bg-base)] [&_svg]:size-3 [&_svg]:stroke-[2.5]" title={t('skins.selected')}><Check aria-hidden="true" /></span>
                 )}
               </span>
             </ToggleGroupItem>
@@ -143,8 +143,9 @@ function syncActions(
   actions: BoundSkinActions | undefined,
   snapshot: DesktopSkinsSnapshot,
   ready: boolean,
+  mode: 'light' | 'dark',
 ): void {
-  actions?.sync(snapshot.activeId ?? '', ready, snapshot.revision)
+  actions?.sync(snapshot.activeId ?? '', ready, snapshot.revision, mode)
 }
 
 export function apply(ctx: ClientContext): void {
@@ -170,13 +171,14 @@ export function apply(ctx: ClientContext): void {
     new SkinDomPresenter(typeof document === 'undefined' ? undefined : document),
   )
   const store = defineStore({
-    init: () => ({ activeId: '', ready: false, revision: -1 }),
+    init: () => ({ activeId: '', ready: false, revision: -1, mode: theme.getTheme().active.colorScheme }),
     actions: {
-      sync: (draft, activeId: string, ready: boolean, revision: number) => {
+      sync: (draft, activeId: string, ready: boolean, revision: number, mode: 'light' | 'dark') => {
         if (revision < draft.revision) return
         draft.activeId = activeId
         draft.ready = ready
         draft.revision = revision
+        draft.mode = mode
       },
     },
   })
@@ -208,12 +210,15 @@ export function apply(ctx: ClientContext): void {
       controller.start()
       started = true
       ready = true
-      stopTheme = ctx.on('theme/change', snapshot => { controller.adopt(snapshot) })
+      stopTheme = ctx.on('theme/change', snapshot => {
+        controller.adopt(snapshot)
+        syncActions(bound, controller.getSnapshot(), true, snapshot.active.colorScheme)
+      })
       stopController = controller.subscribe(() => {
-        syncActions(bound, controller.getSnapshot(), true)
+        syncActions(bound, controller.getSnapshot(), true, theme.getTheme().active.colorScheme)
       })
       removeService = ctx.reflect.provide('desktopSkins', controller, undefined)
-      syncActions(bound, controller.getSnapshot(), true)
+      syncActions(bound, controller.getSnapshot(), true, theme.getTheme().active.colorScheme)
     }
     void boot()
     return () => {
@@ -245,7 +250,7 @@ export function apply(ctx: ClientContext): void {
     locale: SETTINGS_NAMESPACE,
     inject: actions => {
       bound = actions
-      syncActions(bound, controller.getSnapshot(), ready)
+      syncActions(bound, controller.getSnapshot(), ready, theme.getTheme().active.colorScheme)
       return { setSkin: id => { if (ready) controller.setSkin(id) } }
     },
   }, SkinSettingsRow))

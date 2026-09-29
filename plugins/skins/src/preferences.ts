@@ -6,6 +6,7 @@ export type FallbackTheme = 'light' | 'dark' | 'system'
 export interface SkinPreferences {
   activeId: SkinId | null
   fallbackTheme: FallbackTheme
+  version?: 2
 }
 
 /** Browser compatibility aliases retained for the existing public API. */
@@ -16,6 +17,7 @@ export type DesktopSkinPreferences = SkinPreferences
 
 export const ACTIVE_SKIN_KEY = 'tockteam.skins.active'
 export const FALLBACK_THEME_KEY = 'tockteam.skins.fallback'
+export const PREFERENCES_VERSION_KEY = 'tockteam.skins.version'
 export const PREFERENCES_API_PATH = '/tockteam/skins/preferences'
 export const DEFAULT_SKIN_PREFERENCES: SkinPreferences = Object.freeze({
   activeId: null,
@@ -38,8 +40,10 @@ export function parseSkinPreferences(value: unknown): SkinPreferences | undefine
   const input = value as Record<string, unknown>
   if (input.activeId !== null && !isSkinId(input.activeId)) return undefined
   if (!isFallbackTheme(input.fallbackTheme)) return undefined
+  if (input.version !== undefined && input.version !== 2) return undefined
   return Object.freeze({
     activeId: input.activeId,
     fallbackTheme: input.fallbackTheme,
+    ...(input.version === 2 ? { version: 2 as const } : {}),
   }) as SkinPreferences
 }

@@ -3,6 +3,7 @@ import {
   DEFAULT_SKIN_PREFERENCES,
   FALLBACK_THEME_KEY,
   PREFERENCES_API_PATH,
+  PREFERENCES_VERSION_KEY,
   isDesktopSkinId,
   isFallbackTheme,
   parseSkinPreferences,
@@ -48,6 +49,7 @@ export class DesktopSkinPreferencesStorage implements StorageLike {
   getItem(key: string): string | null {
     if (key === ACTIVE_SKIN_KEY) return this.preferences.activeId
     if (key === FALLBACK_THEME_KEY) return this.preferences.fallbackTheme
+    if (key === PREFERENCES_VERSION_KEY) return this.preferences.version?.toString() ?? null
     return null
   }
 
@@ -61,6 +63,7 @@ export class DesktopSkinPreferencesStorage implements StorageLike {
     if (key === FALLBACK_THEME_KEY && isFallbackTheme(value)) {
       this.update({ fallbackTheme: value })
     }
+    if (key === PREFERENCES_VERSION_KEY && value === '2') this.update({ version: 2 })
   }
 
   async settle(): Promise<void> {
@@ -70,7 +73,8 @@ export class DesktopSkinPreferencesStorage implements StorageLike {
   private update(patch: Partial<DesktopSkinPreferences>): void {
     const next = Object.freeze({ ...this.preferences, ...patch })
     if (next.activeId === this.preferences.activeId
-      && next.fallbackTheme === this.preferences.fallbackTheme) return
+      && next.fallbackTheme === this.preferences.fallbackTheme
+      && next.version === this.preferences.version) return
     this.preferences = next
     if (!this.loaded) return
     this.dirty = true

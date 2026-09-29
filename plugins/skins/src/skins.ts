@@ -7,16 +7,27 @@ export type SkinColorScheme = 'light' | 'dark'
 export type TuiSkinColors = Readonly<Record<string, string>>
 
 /** One surface-neutral TockTeam skin with browser and terminal adapters. */
-export interface TockTeamSkin {
-  id: SkinId
-  colorScheme: SkinColorScheme
+export interface SkinPalette {
   tokens: Readonly<Record<string, string>>
   tui: TuiSkinColors
-  displayName: string
   preview: string
   accent: string
+}
+
+export interface TockTeamSkin {
+  id: SkinId
+  palettes: Readonly<Record<SkinColorScheme, SkinPalette>>
+  displayName: string
   label: DesktopSkinsMessage
   css?: string
+}
+
+/** Feed paired semantic values to DSH's own Appearance-aware token layer. */
+export function pairedSkinTokens(skin: TockTeamSkin): Record<string, { light: string; dark: string }> {
+  return Object.fromEntries(Object.keys(skin.palettes.dark.tokens).map(token => [token, {
+    light: skin.palettes.light.tokens[token]!,
+    dark: skin.palettes.dark.tokens[token]!,
+  }]))
 }
 
 /** Compatibility name retained for the browser controller API. */
@@ -110,6 +121,41 @@ const DEEP_CURRENT_TOKENS = {
   '--dsw-specific-sidebar-nav-item-hover': '#0d2938',
 } as const
 
+const DEEP_CURRENT_LIGHT_TOKENS = {
+  '--dsw-alias-bg-base': '#eaf4f7',
+  '--dsw-alias-bg-layer-1': '#f5fafb',
+  '--dsw-alias-bg-layer-2': '#dcebf0',
+  '--dsw-alias-bg-layer-3': '#cee4eb',
+  '--dsw-alias-bg-overlay': '#ffffff',
+  '--dsw-alias-bg-module-platform': '#dcebf0',
+  '--dsw-alias-border-l1': 'rgba(21, 80, 99, 0.12)',
+  '--dsw-alias-border-l2': 'rgba(21, 80, 99, 0.20)',
+  '--dsw-alias-border-l3': 'rgba(21, 80, 99, 0.32)',
+  '--dsw-alias-brand-primary': '#17667d',
+  '--dsw-alias-brand-primary-invert': '#ffffff',
+  '--dsw-alias-brand-text': '#145a70',
+  '--dsw-alias-button-primary-fill': '#17667d',
+  '--dsw-alias-button-primary-hover': '#10536b',
+  '--dsw-alias-interactive-bg-active': 'rgba(23, 102, 125, 0.16)',
+  '--dsw-alias-interactive-bg-hover': 'rgba(23, 102, 125, 0.09)',
+  '--dsw-alias-label-primary': '#17313a',
+  '--dsw-alias-label-secondary': '#395c67',
+  '--dsw-alias-label-tertiary': '#4c707b',
+  '--dsw-alias-markdown-code-block': '#dcebf0',
+  '--dsw-alias-markdown-inline-code': '#d3e6ed',
+  '--dsw-alias-scrollbar-bg-l1': '#b5d4df',
+  '--dsw-alias-scrollbar-hover-l1': '#17667d',
+  '--dsw-alias-state-error-primary': '#b34154',
+  '--dsw-alias-state-success-primary': '#22765b',
+  '--dsw-alias-state-warn-primary': '#8e6115',
+  '--dsw-specific-bubble': '#dcebf0',
+  '--dsw-specific-input-major': '#fcfefe',
+  '--dsw-specific-menu': '#f5fafb',
+  '--dsw-specific-sidebar-fill': '#f5fafb',
+  '--dsw-specific-sidebar-nav-item-active': '#d3e6ed',
+  '--dsw-specific-sidebar-nav-item-hover': '#e2eff3',
+} as const
+
 const JADE_CIRCUIT_TOKENS = {
   '--dsw-alias-bg-base': '#071a16',
   '--dsw-alias-bg-layer-1': '#0b241e',
@@ -145,39 +191,39 @@ const JADE_CIRCUIT_TOKENS = {
   '--dsw-specific-sidebar-nav-item-hover': '#0e2b23',
 } as const
 
-const PORCELAIN_TOKENS = {
-  '--dsw-alias-bg-base': '#f3f7f6',
-  '--dsw-alias-bg-layer-1': '#f8fbfa',
-  '--dsw-alias-bg-layer-2': '#edf4f2',
-  '--dsw-alias-bg-layer-3': '#e5efec',
-  '--dsw-alias-bg-overlay': '#dce9e6',
-  '--dsw-alias-bg-module-platform': '#edf4f2',
-  '--dsw-alias-border-l1': 'rgba(24, 70, 67, 0.07)',
-  '--dsw-alias-border-l2': 'rgba(24, 70, 67, 0.12)',
-  '--dsw-alias-border-l3': 'rgba(24, 70, 67, 0.18)',
-  '--dsw-alias-brand-primary': '#2d7773',
-  '--dsw-alias-brand-primary-invert': '#f7fbfa',
-  '--dsw-alias-brand-text': '#245f5c',
-  '--dsw-alias-button-primary-fill': '#2d7773',
-  '--dsw-alias-button-primary-hover': '#378b86',
-  '--dsw-alias-interactive-bg-active': 'rgba(45, 119, 115, 0.14)',
-  '--dsw-alias-interactive-bg-hover': 'rgba(45, 119, 115, 0.07)',
-  '--dsw-alias-label-primary': '#18312f',
-  '--dsw-alias-label-secondary': '#405d59',
-  '--dsw-alias-label-tertiary': '#718b87',
-  '--dsw-alias-markdown-code-block': '#e8f0ee',
-  '--dsw-alias-markdown-inline-code': '#dfebe8',
-  '--dsw-alias-scrollbar-bg-l1': '#cddeda',
-  '--dsw-alias-scrollbar-hover-l1': '#8aaca6',
-  '--dsw-alias-state-error-primary': '#c65358',
-  '--dsw-alias-state-success-primary': '#418b68',
-  '--dsw-alias-state-warn-primary': '#b77b25',
-  '--dsw-specific-bubble': '#e8f0ee',
-  '--dsw-specific-input-major': '#fbfdfc',
-  '--dsw-specific-menu': '#edf4f2',
-  '--dsw-specific-sidebar-fill': '#f8fbfa',
-  '--dsw-specific-sidebar-nav-item-active': '#dfeae8',
-  '--dsw-specific-sidebar-nav-item-hover': '#e8f0ee',
+const JADE_CIRCUIT_LIGHT_TOKENS = {
+  '--dsw-alias-bg-base': '#eaf4eb',
+  '--dsw-alias-bg-layer-1': '#f6faf5',
+  '--dsw-alias-bg-layer-2': '#dbecde',
+  '--dsw-alias-bg-layer-3': '#cce3d2',
+  '--dsw-alias-bg-overlay': '#fcfffb',
+  '--dsw-alias-bg-module-platform': '#dbecde',
+  '--dsw-alias-border-l1': 'rgba(28, 89, 57, 0.12)',
+  '--dsw-alias-border-l2': 'rgba(28, 89, 57, 0.20)',
+  '--dsw-alias-border-l3': 'rgba(28, 89, 57, 0.32)',
+  '--dsw-alias-brand-primary': '#246c4a',
+  '--dsw-alias-brand-primary-invert': '#ffffff',
+  '--dsw-alias-brand-text': '#205d41',
+  '--dsw-alias-button-primary-fill': '#246c4a',
+  '--dsw-alias-button-primary-hover': '#1c573b',
+  '--dsw-alias-interactive-bg-active': 'rgba(36, 108, 74, 0.16)',
+  '--dsw-alias-interactive-bg-hover': 'rgba(36, 108, 74, 0.09)',
+  '--dsw-alias-label-primary': '#1b3529',
+  '--dsw-alias-label-secondary': '#395c48',
+  '--dsw-alias-label-tertiary': '#4b7058',
+  '--dsw-alias-markdown-code-block': '#dbecde',
+  '--dsw-alias-markdown-inline-code': '#d0e6d5',
+  '--dsw-alias-scrollbar-bg-l1': '#b5d7be',
+  '--dsw-alias-scrollbar-hover-l1': '#246c4a',
+  '--dsw-alias-state-error-primary': '#b34154',
+  '--dsw-alias-state-success-primary': '#246c4a',
+  '--dsw-alias-state-warn-primary': '#8a6019',
+  '--dsw-specific-bubble': '#dbecde',
+  '--dsw-specific-input-major': '#fcfffb',
+  '--dsw-specific-menu': '#f6faf5',
+  '--dsw-specific-sidebar-fill': '#f6faf5',
+  '--dsw-specific-sidebar-nav-item-active': '#d0e6d5',
+  '--dsw-specific-sidebar-nav-item-hover': '#e1efe3',
 } as const
 
 const EMBER_DUSK_TOKENS = {
@@ -215,46 +261,77 @@ const EMBER_DUSK_TOKENS = {
   '--dsw-specific-sidebar-nav-item-hover': '#301e2b',
 } as const
 
+const EMBER_DUSK_LIGHT_TOKENS = {
+  '--dsw-alias-bg-base': '#f6ede9',
+  '--dsw-alias-bg-layer-1': '#fcf7f3',
+  '--dsw-alias-bg-layer-2': '#f1e1dc',
+  '--dsw-alias-bg-layer-3': '#ead6d0',
+  '--dsw-alias-bg-overlay': '#fffaf7',
+  '--dsw-alias-bg-module-platform': '#f1e1dc',
+  '--dsw-alias-border-l1': 'rgba(106, 55, 63, 0.12)',
+  '--dsw-alias-border-l2': 'rgba(106, 55, 63, 0.20)',
+  '--dsw-alias-border-l3': 'rgba(106, 55, 63, 0.32)',
+  '--dsw-alias-brand-primary': '#944b42',
+  '--dsw-alias-brand-primary-invert': '#fffaf7',
+  '--dsw-alias-brand-text': '#864039',
+  '--dsw-alias-button-primary-fill': '#944b42',
+  '--dsw-alias-button-primary-hover': '#74362f',
+  '--dsw-alias-interactive-bg-active': 'rgba(148, 75, 66, 0.16)',
+  '--dsw-alias-interactive-bg-hover': 'rgba(148, 75, 66, 0.09)',
+  '--dsw-alias-label-primary': '#3a2931',
+  '--dsw-alias-label-secondary': '#634752',
+  '--dsw-alias-label-tertiary': '#765762',
+  '--dsw-alias-markdown-code-block': '#f1e1dc',
+  '--dsw-alias-markdown-inline-code': '#ead6d0',
+  '--dsw-alias-scrollbar-bg-l1': '#dbc0ba',
+  '--dsw-alias-scrollbar-hover-l1': '#944b42',
+  '--dsw-alias-state-error-primary': '#af394e',
+  '--dsw-alias-state-success-primary': '#317051',
+  '--dsw-alias-state-warn-primary': '#865a1d',
+  '--dsw-specific-bubble': '#f1e1dc',
+  '--dsw-specific-input-major': '#fffaf7',
+  '--dsw-specific-menu': '#fcf7f3',
+  '--dsw-specific-sidebar-fill': '#fcf7f3',
+  '--dsw-specific-sidebar-nav-item-active': '#ead6d0',
+  '--dsw-specific-sidebar-nav-item-hover': '#f5e7e1',
+} as const
+
+function palette(tokens: Readonly<Record<string, string>>, merged: string, preview: string): SkinPalette {
+  return Object.freeze({
+    tokens,
+    tui: tuiColors(tokens, merged),
+    preview,
+    accent: tokens['--dsw-alias-brand-primary']!,
+  })
+}
+
 export const TOCKTEAM_SKINS: readonly TockTeamSkin[] = Object.freeze([
   Object.freeze({
     id: SKIN_ID.deepCurrent,
-    colorScheme: 'dark',
-    tokens: DEEP_CURRENT_TOKENS,
-    tui: tuiColors(DEEP_CURRENT_TOKENS, '#b995f5'),
     displayName: 'Deep Current',
-    preview: 'linear-gradient(135deg, #071923 0%, #143445 64%, #49c8eb 145%)',
-    accent: '#49c8eb',
     label: 'skins.name.deep-current',
+    palettes: Object.freeze({
+      dark: palette(DEEP_CURRENT_TOKENS, '#b995f5', 'linear-gradient(135deg, #071923 0%, #143445 64%, #49c8eb 145%)'),
+      light: palette(DEEP_CURRENT_LIGHT_TOKENS, '#765fa4', 'linear-gradient(135deg, #eaf4f7 0%, #cee4eb 64%, #17667d 160%)'),
+    }),
   }),
   Object.freeze({
     id: SKIN_ID.jadeCircuit,
-    colorScheme: 'dark',
-    tokens: JADE_CIRCUIT_TOKENS,
-    tui: tuiColors(JADE_CIRCUIT_TOKENS, '#a78bfa'),
     displayName: 'Jade Circuit',
-    preview: 'linear-gradient(145deg, #071a16 0 42%, #154435 43% 62%, #52d6a0 150%)',
-    accent: '#52d6a0',
     label: 'skins.name.jade-circuit',
-  }),
-  Object.freeze({
-    id: SKIN_ID.porcelain,
-    colorScheme: 'light',
-    tokens: PORCELAIN_TOKENS,
-    tui: tuiColors(PORCELAIN_TOKENS, '#8a6faf'),
-    displayName: 'Porcelain',
-    preview: 'radial-gradient(circle at 78% 22%, #b9dcd7 0%, transparent 38%), linear-gradient(145deg, #f8fbfa 0%, #e5efec 100%)',
-    accent: '#2d7773',
-    label: 'skins.name.porcelain',
+    palettes: Object.freeze({
+      dark: palette(JADE_CIRCUIT_TOKENS, '#a78bfa', 'linear-gradient(145deg, #071a16 0 42%, #154435 43% 62%, #52d6a0 150%)'),
+      light: palette(JADE_CIRCUIT_LIGHT_TOKENS, '#765fa4', 'linear-gradient(145deg, #eaf4eb 0 42%, #cce3d2 43% 62%, #246c4a 160%)'),
+    }),
   }),
   Object.freeze({
     id: SKIN_ID.emberDusk,
-    colorScheme: 'dark',
-    tokens: EMBER_DUSK_TOKENS,
-    tui: tuiColors(EMBER_DUSK_TOKENS, '#c79cff'),
     displayName: 'Ember Dusk',
-    preview: 'radial-gradient(circle at 78% 24%, #ff9275 0%, transparent 38%), linear-gradient(145deg, #21161f 0%, #4b3042 100%)',
-    accent: '#ff9275',
     label: 'skins.name.ember-dusk',
+    palettes: Object.freeze({
+      dark: palette(EMBER_DUSK_TOKENS, '#c79cff', 'radial-gradient(circle at 78% 24%, #ff9275 0%, transparent 38%), linear-gradient(145deg, #21161f 0%, #4b3042 100%)'),
+      light: palette(EMBER_DUSK_LIGHT_TOKENS, '#765fa4', 'radial-gradient(circle at 78% 24%, #f0b9a8 0%, transparent 38%), linear-gradient(145deg, #fcf7f3 0%, #ead6d0 100%)'),
+    }),
   }),
 ])
 

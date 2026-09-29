@@ -52,8 +52,11 @@ class MemoryStorage implements StorageLike {
 }
 
 class FakeThemeService implements ThemeService {
-  readonly custom = new Map<string, Pick<DesktopSkin, 'id' | 'colorScheme' | 'tokens'>>()
+  readonly custom = new Map<string, ThemeSnapshot['active']>()
+  readonly overrides = new Map<string, Record<string, { light: string; dark: string }>>()
   private snapshot: ThemeSnapshot
+  private systemDark = false
+  onChange?: (snapshot: ThemeSnapshot) => void
 
   constructor(preference: 'light' | 'dark' | 'system' = 'system') {
     this.snapshot = this.builtinSnapshot(preference, 0)
@@ -63,42 +66,46 @@ class FakeThemeService implements ThemeService {
     return this.snapshot
   }
 
-  register(skin: Pick<DesktopSkin, 'id' | 'colorScheme' | 'tokens'>): () => void {
-    this.custom.set(skin.id, skin)
-    return () => { this.custom.delete(skin.id) }
+  overrideTokens(source: string, tokens: Record<string, { light: string; dark: string }>): () => void {
+    this.overrides.set(source, tokens)
+    this.recompose()
+    return () => {
+      if (this.overrides.get(source) !== tokens) return
+      this.overrides.delete(source)
+      this.recompose()
+    }
   }
 
   setTheme(id: string): void {
     const custom = this.custom.get(id)
-    const revision = this.snapshot.revision + 1
     if (custom !== undefined) {
-      this.snapshot = {
-        preference: id,
-        active: custom,
-        revision,
-      }
+      this.snapshot = { preference: id, active: custom, revision: this.snapshot.revision + 1 }
+      this.onChange?.(this.snapshot)
       return
     }
-    if (id !== 'light' && id !== 'dark' && id !== 'system') {
-      throw new Error(`unknown theme: ${id}`)
-    }
-    this.snapshot = this.builtinSnapshot(id, revision)
+    if (id !== 'light' && id !== 'dark' && id !== 'system') throw new Error(`unknown theme: ${id}`)
+    this.snapshot = this.builtinSnapshot(id, this.snapshot.revision + 1)
+    this.onChange?.(this.snapshot)
   }
 
-  private builtinSnapshot(
-    preference: 'light' | 'dark' | 'system',
-    revision: number,
-  ): ThemeSnapshot {
-    const id = preference === 'system' ? 'light' : preference
-    return {
-      preference,
-      active: {
-        id,
-        colorScheme: id,
-        tokens: {},
-      },
-      revision,
+  setSystemDark(dark: boolean): void {
+    this.systemDark = dark
+    if (this.snapshot.preference === 'system') this.recompose()
+  }
+
+  private recompose(): void {
+    const preference = this.snapshot.preference
+    if (preference === 'light' || preference === 'dark' || preference === 'system') {
+      this.snapshot = this.builtinSnapshot(preference, this.snapshot.revision + 1)
+      this.onChange?.(this.snapshot)
     }
+  }
+
+  private builtinSnapshot(preference: 'light' | 'dark' | 'system', revision: number): ThemeSnapshot {
+    const id = preference === 'system' ? (this.systemDark ? 'dark' : 'light') : preference
+    const tokens = Object.fromEntries([...this.overrides.values()].flatMap(layer =>
+      Object.entries(layer).map(([key, pair]) => [key, pair[id]])))
+    return { preference, active: { id, colorScheme: id, tokens }, revision }
   }
 }
 
@@ -122,27 +129,34 @@ test('Desktop image lightboxes stay below the owned titlebar without changing Ra
   assert.doesNotMatch(css, /\[role='presentation'\] > \[role='dialog'\][^{]*\{[^}]*max-height:/u)
 })
 
-test('desktop skins keep the editor base darker than their shared shell and sidebar surface', () => {
-  assert.equal(DESKTOP_SKINS.length, 4)
+test('each retained skin has two distinct palettes with an editor darker than its shell', () => {
+  assert.equal(DESKTOP_SKINS.length, 3)
   assert.equal(new Set(DESKTOP_SKINS.map(skin => skin.id)).size, DESKTOP_SKINS.length)
   for (const skin of DESKTOP_SKINS) {
     assert.match(skin.id, /^tockteam-skin-/)
-    assert.ok(Object.keys(skin.tokens).length >= 30)
-    assert.match(skin.tokens['--dsw-alias-bg-base'] ?? '', /^#[0-9a-f]{6}$/i)
-    assert.equal(skin.tokens['--dsw-alias-bg-layer-1'], skin.tokens['--dsw-specific-sidebar-fill'])
-    assert.notEqual(skin.tokens['--dsw-alias-bg-base'], skin.tokens['--dsw-specific-sidebar-fill'])
+    for (const mode of ['light', 'dark'] as const) {
+      const { tokens } = skin.palettes[mode]
+      assert.ok(Object.keys(tokens).length >= 30)
+      assert.match(tokens['--dsw-alias-bg-base'] ?? '', /^#[0-9a-f]{6}$/i)
+      assert.equal(tokens['--dsw-alias-bg-layer-1'], tokens['--dsw-specific-sidebar-fill'])
+      assert.notEqual(tokens['--dsw-alias-bg-base'], tokens['--dsw-specific-sidebar-fill'])
+    }
+    assert.deepEqual(Object.keys(skin.palettes.light.tokens), Object.keys(skin.palettes.dark.tokens))
+    assert.notEqual(skin.palettes.light.tokens['--dsw-alias-bg-base'], skin.palettes.dark.tokens['--dsw-alias-bg-base'])
     assert.equal(skin.css, undefined)
   }
+  assert.equal(new Set(DESKTOP_SKINS.map(skin => skin.palettes.light.tokens['--dsw-alias-bg-base'])).size, 3)
 })
 
-test('one skin catalog supplies browser tokens and TUI semantic palettes', () => {
+test('one skin catalog supplies browser tokens and both TUI semantic palettes', () => {
   assert.equal(DESKTOP_SKINS, TOCKTEAM_SKINS)
   for (const skin of TOCKTEAM_SKINS) {
-    assert.ok(Object.keys(skin.tui).length >= 30)
-    assert.equal(skin.tui.claude, skin.tokens['--dsw-alias-brand-primary'])
-    assert.equal(skin.tui.text, skin.tokens['--dsw-alias-label-primary'])
-    for (const color of Object.values(skin.tui)) {
-      assert.match(color, /^#[0-9a-f]{6}$/i)
+    for (const mode of ['light', 'dark'] as const) {
+      const { tokens, tui } = skin.palettes[mode]
+      assert.ok(Object.keys(tui).length >= 30)
+      assert.equal(tui.claude, tokens['--dsw-alias-brand-primary'])
+      assert.equal(tui.text, tokens['--dsw-alias-label-primary'])
+      for (const color of Object.values(tui)) assert.match(color, /^#[0-9a-f]{6}$/i)
     }
   }
 })
@@ -192,20 +206,70 @@ test('TUI adapter materializes skins and reconciles the native theme picker', as
   }
 })
 
-test('desktop skins restore a persisted choice after theme registration', () => {
+test('Deep Current stays selected as the built-in Appearance setting changes', () => {
   const storage = new MemoryStorage()
-  storage.setItem(ACTIVE_SKIN_KEY, 'tockteam-skin-porcelain')
+  const theme = new FakeThemeService('dark')
+  const dom = new FakeSkinDom()
+  const controller = new DesktopSkinsController(theme, storage, dom)
+  controller.start()
+  controller.setSkin('tockteam-skin-deep-current')
+
+  assert.equal(theme.getTheme().preference, 'dark')
+  assert.equal(theme.getTheme().active.id, 'dark')
+  assert.equal(theme.getTheme().active.tokens['--dsw-alias-bg-base'], '#071923')
+  theme.setTheme('light')
+  controller.adopt(theme.getTheme())
+  assert.equal(theme.getTheme().preference, 'light')
+  assert.equal(theme.getTheme().active.id, 'light')
+  assert.equal(controller.getSnapshot().activeId, 'tockteam-skin-deep-current')
+  assert.notEqual(theme.getTheme().active.tokens['--dsw-alias-bg-base'], '#071923')
+  assert.equal(dom.active, 'tockteam-skin-deep-current')
+
+  controller.setSkin(null)
+  assert.equal(theme.getTheme().preference, 'light')
+  assert.equal(theme.getTheme().active.tokens['--dsw-alias-bg-base'], undefined)
+})
+
+test('synchronous theme events never reapply a removed or third-party skin', () => {
+  const storage = new MemoryStorage()
+  const theme = new FakeThemeService('light')
+  const dom = new FakeSkinDom()
+  const controller = new DesktopSkinsController(theme, storage, dom)
+  controller.start()
+  theme.onChange = snapshot => controller.adopt(snapshot)
+  controller.setSkin('tockteam-skin-deep-current')
+  assert.equal(theme.overrides.size, 1)
+  theme.setTheme('system')
+  theme.setSystemDark(true)
+  assert.equal(theme.getTheme().active.tokens['--dsw-alias-bg-base'], '#071923')
+  assert.equal(controller.getSnapshot().activeId, 'tockteam-skin-deep-current')
+  theme.setSystemDark(false)
+  assert.equal(theme.getTheme().active.tokens['--dsw-alias-bg-base'], '#eaf4f7')
+
+  theme.custom.set('other-theme', { id: 'other-theme', colorScheme: 'dark', tokens: {} })
+  theme.setTheme('other-theme')
+  assert.equal(storage.getItem(ACTIVE_SKIN_KEY), null)
+  assert.equal(theme.overrides.size, 0)
+  assert.equal(dom.active, undefined)
+  assert.equal(controller.getSnapshot().activeId, null)
+})
+
+test('desktop skins restore a persisted dark family through DSH Appearance', () => {
+  const storage = new MemoryStorage()
+  storage.setItem(ACTIVE_SKIN_KEY, 'tockteam-skin-deep-current')
   const theme = new FakeThemeService('dark')
   const dom = new FakeSkinDom()
   const controller = new DesktopSkinsController(theme, storage, dom)
 
   controller.start()
 
-  assert.equal(theme.custom.size, DESKTOP_SKINS.length)
-  assert.equal(theme.getTheme().active.id, 'tockteam-skin-porcelain')
-  assert.equal(controller.getSnapshot().activeId, 'tockteam-skin-porcelain')
+  assert.equal(theme.custom.size, 0)
+  assert.equal(theme.overrides.size, 1)
+  assert.equal(theme.getTheme().active.id, 'dark')
+  assert.equal(theme.getTheme().active.tokens['--dsw-alias-bg-base'], '#071923')
+  assert.equal(controller.getSnapshot().activeId, 'tockteam-skin-deep-current')
   assert.equal(storage.getItem(FALLBACK_THEME_KEY), 'dark')
-  assert.equal(dom.active, 'tockteam-skin-porcelain')
+  assert.equal(dom.active, 'tockteam-skin-deep-current')
 })
 
 test('desktop skins restore a non-system fallback without a selected skin', () => {
@@ -223,7 +287,7 @@ test('desktop skins restore a non-system fallback without a selected skin', () =
   assert.equal(dom.active, undefined)
 })
 
-test('delayed appearance hydration preserves a skin restored from disk', () => {
+test('appearance hydration keeps a restored skin selected without reasserting Dark', () => {
   const storage = new MemoryStorage()
   storage.setItem(ACTIVE_SKIN_KEY, 'tockteam-skin-jade-circuit')
   const theme = new FakeThemeService('system')
@@ -231,12 +295,12 @@ test('delayed appearance hydration preserves a skin restored from disk', () => {
   const controller = new DesktopSkinsController(theme, storage, dom)
   controller.start()
 
-  theme.setTheme('dark')
+  theme.setTheme('light')
   controller.adopt(theme.getTheme())
 
-  assert.equal(theme.getTheme().active.id, 'tockteam-skin-jade-circuit')
+  assert.equal(theme.getTheme().active.id, 'light')
   assert.equal(storage.getItem(ACTIVE_SKIN_KEY), 'tockteam-skin-jade-circuit')
-  assert.equal(storage.getItem(FALLBACK_THEME_KEY), 'dark')
+  assert.equal(storage.getItem(FALLBACK_THEME_KEY), 'light')
   assert.equal(controller.getSnapshot().activeId, 'tockteam-skin-jade-circuit')
   assert.equal(dom.active, 'tockteam-skin-jade-circuit')
 })
@@ -298,14 +362,15 @@ test('appearance changes update the fallback without clearing an active skin', (
   theme.setTheme('light')
   controller.adopt(theme.getTheme())
 
-  assert.equal(theme.getTheme().active.id, 'tockteam-skin-ember-dusk')
+  assert.equal(theme.getTheme().active.id, 'light')
+  assert.equal(theme.getTheme().active.tokens['--dsw-alias-bg-base'], '#f6ede9')
   assert.equal(storage.getItem(ACTIVE_SKIN_KEY), 'tockteam-skin-ember-dusk')
   assert.equal(storage.getItem(FALLBACK_THEME_KEY), 'light')
   assert.equal(controller.getSnapshot().activeId, 'tockteam-skin-ember-dusk')
   assert.equal(dom.active, 'tockteam-skin-ember-dusk')
 })
 
-test('desktop skins reject unknown choices and release theme registrations', () => {
+test('desktop skins reject unknown choices and release their token layer', () => {
   const storage = new MemoryStorage()
   const theme = new FakeThemeService()
   const dom = new FakeSkinDom()
@@ -316,8 +381,10 @@ test('desktop skins reject unknown choices and release theme registrations', () 
     () => { controller.setSkin('tockteam-skin-missing') },
     /unknown desktop skin/,
   )
+  controller.setSkin('tockteam-skin-deep-current')
+  assert.equal(theme.overrides.size, 1)
   controller.dispose()
-  assert.equal(theme.custom.size, 0)
+  assert.equal(theme.overrides.size, 0)
   assert.equal(dom.active, undefined)
 })
 
@@ -327,14 +394,14 @@ test('runtime teardown preserves the selected skin for the next launch', () => {
   const dom = new FakeSkinDom()
   const controller = new DesktopSkinsController(theme, storage, dom)
   controller.start()
-  controller.setSkin('tockteam-skin-porcelain')
+  controller.setSkin('tockteam-skin-deep-current')
 
   controller.dispose()
   controller.adopt(theme.getTheme())
 
-  assert.equal(storage.getItem(ACTIVE_SKIN_KEY), 'tockteam-skin-porcelain')
+  assert.equal(storage.getItem(ACTIVE_SKIN_KEY), 'tockteam-skin-deep-current')
   assert.equal(theme.getTheme().preference, 'dark')
-  assert.equal(theme.custom.size, 0)
+  assert.equal(theme.overrides.size, 0)
 })
 
 test('desktop skin preferences survive outside the changing Web origin', async () => {
