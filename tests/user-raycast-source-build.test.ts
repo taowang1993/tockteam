@@ -18,7 +18,7 @@ test('approved source build uses no lifecycle scripts, pins metadata and stages 
   const npm = join(root, 'fake-npm')
   writeFileSync(npm, `#!/usr/bin/env node
 const fs = require('node:fs'); const path = require('node:path');
-fs.writeFileSync(path.join(process.cwd(), 'npm-proof.json'), JSON.stringify({args: process.argv.slice(2), home: process.env.HOME, token: process.env.NPM_TOKEN}));
+fs.writeFileSync(path.join(process.cwd(), 'npm-proof.json'), JSON.stringify({args: process.argv.slice(2), home: process.env.HOME, token: process.env.NPM_TOKEN, userconfig: process.env.npm_config_userconfig, globalconfig: process.env.npm_config_globalconfig}));
 fs.mkdirSync(path.join(process.cwd(), 'node_modules/esbuild/bin'), {recursive:true});
 fs.writeFileSync(path.join(process.cwd(), 'node_modules/esbuild/bin/esbuild'), "require('node:fs').writeFileSync(process.argv.find(a=>a.startsWith('--outfile=')).slice(10), 'module.exports={default:()=>42}')");
 `)
@@ -34,11 +34,14 @@ fs.writeFileSync(path.join(process.cwd(), 'node_modules/esbuild/bin/esbuild'), "
     await assert.rejects(buildUserRaycastSource({ source, candidate, workspace: canceled, nodePath: process.execPath, npmPath: npm, signal: controller.signal }), /cancel/i)
     assert.equal(existsSync(join(canceled, 'source')), false)
     const built = await buildUserRaycastSource({ source, candidate, workspace, nodePath: process.execPath, npmPath: npm })
-    const proof = JSON.parse(readFileSync(join(workspace, 'source', 'npm-proof.json'), 'utf8')) as { args: string[]; home: string; token?: string }
+    const proof = JSON.parse(readFileSync(join(workspace, 'source', 'npm-proof.json'), 'utf8')) as { args: string[]; home: string; token?: string; userconfig: string; globalconfig: string }
     assert.ok(proof.args.includes('--ignore-scripts'))
     assert.ok(proof.args.includes('--no-audit'))
     assert.equal(proof.token, undefined)
     assert.notEqual(proof.home, process.env.HOME)
+    assert.notEqual(proof.userconfig, proof.globalconfig, 'npm must not load one config file twice')
+    assert.equal(readFileSync(proof.userconfig, 'utf8'), '')
+    assert.equal(readFileSync(proof.globalconfig, 'utf8'), '')
     assert.equal(readFileSync(join(built, 'generate.js'), 'utf8'), 'module.exports={default:()=>42}')
     assert.equal(existsSync(join(built, 'package-lock.json')), false)
     const manifest = JSON.parse(readFileSync(join(built, 'package.json'), 'utf8')) as { repository: string }

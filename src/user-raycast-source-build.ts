@@ -39,7 +39,9 @@ export async function buildUserRaycastSource(options: Readonly<{ source: string;
   const sourceCopy = join(workspace, 'source'), built = join(workspace, 'built'), home = join(workspace, 'home')
   mkdirSync(sourceCopy, { mode: 0o700 }); mkdirSync(built, { mode: 0o700 }); mkdirSync(home, { mode: 0o700 })
   for (const [relative, bytes] of files) { const path = join(sourceCopy, relative); mkdirSync(dirname(path), { recursive: true, mode: 0o700 }); writeFileSync(path, bytes, { flag: 'wx', mode: 0o600 }) }
-  const env: NodeJS.ProcessEnv = { HOME: home, TMPDIR: home, PATH: `${dirname(nodePath)}:${process.env.PATH ?? '/usr/bin:/bin'}`, npm_config_cache: join(home, 'cache'), npm_config_userconfig: '/dev/null', npm_config_globalconfig: '/dev/null', npm_config_ignore_scripts: 'true', npm_config_audit: 'false', npm_config_fund: 'false', GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null' }
+  const userconfig = join(home, 'user.npmrc'), globalconfig = join(home, 'global.npmrc')
+  writeFileSync(userconfig, '', { flag: 'wx', mode: 0o600 }); writeFileSync(globalconfig, '', { flag: 'wx', mode: 0o600 })
+  const env: NodeJS.ProcessEnv = { HOME: home, TMPDIR: home, PATH: `${dirname(nodePath)}:${process.env.PATH ?? '/usr/bin:/bin'}`, npm_config_cache: join(home, 'cache'), npm_config_userconfig: userconfig, npm_config_globalconfig: globalconfig, npm_config_ignore_scripts: 'true', npm_config_audit: 'false', npm_config_fund: 'false', GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null' }
   await tool(npmPath, ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], sourceCopy, env, 180_000, signal)
   const esbuild = join(sourceCopy, 'node_modules/esbuild/bin/esbuild')
   if (!existsSync(esbuild) || !lstatSync(esbuild).isFile()) throw new Error('The selected extension did not install its build tool')
