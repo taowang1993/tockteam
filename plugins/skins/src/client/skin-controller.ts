@@ -1,9 +1,12 @@
 import { desktopSkin, pairedSkinTokens, type DesktopSkin } from './skins.ts'
 import type { SkinDomPort } from './skin-dom.ts'
+import { LEGACY_PORCELAIN_ID } from '../skin-ids.ts'
 import {
   ACTIVE_SKIN_KEY,
   FALLBACK_THEME_KEY,
+  ORIGINAL_MODE_PENDING_KEY,
   PREFERENCES_VERSION_KEY,
+  PORCELAIN_MIGRATION_PENDING_KEY,
 } from '../preferences.ts'
 
 export { ACTIVE_SKIN_KEY, FALLBACK_THEME_KEY } from '../preferences.ts'
@@ -82,16 +85,21 @@ export class DesktopSkinsController implements DesktopSkins {
       const stored = this.read(ACTIVE_SKIN_KEY)
       const skin = stored === null ? undefined : desktopSkin(stored)
       if (skin === undefined && stored !== null) this.remove(ACTIVE_SKIN_KEY)
-      if (this.read(PREFERENCES_VERSION_KEY) !== '2') {
-        if (stored === 'tockteam-skin-porcelain') {
-          this.write(FALLBACK_THEME_KEY, 'light')
-          this.theme.setTheme('light')
-        } else if (skin !== undefined) {
+      if (stored === LEGACY_PORCELAIN_ID || this.read(PORCELAIN_MIGRATION_PENDING_KEY) === '1') {
+        this.remove(ACTIVE_SKIN_KEY)
+        this.remove(ORIGINAL_MODE_PENDING_KEY)
+        this.remove(PORCELAIN_MIGRATION_PENDING_KEY)
+        this.write(FALLBACK_THEME_KEY, 'light')
+        this.write(PREFERENCES_VERSION_KEY, '2')
+        this.theme.setTheme('light')
+      } else if (this.read(PREFERENCES_VERSION_KEY) !== '2') {
+        if (skin !== undefined) {
           // Legacy named skins were always dark, even if Original was remembered as light.
           if (!builtinPreference(this.read(FALLBACK_THEME_KEY))) {
             const preference = this.theme.getTheme().preference
             if (builtinPreference(preference)) this.write(FALLBACK_THEME_KEY, preference)
           }
+          if (this.fallbackPreference() !== 'dark') this.write(ORIGINAL_MODE_PENDING_KEY, '1')
           this.theme.setTheme('dark')
         } else {
           const fallback = this.fallbackPreference()
@@ -123,7 +131,10 @@ export class DesktopSkinsController implements DesktopSkins {
       this.publish(null)
       return
     }
-    if (changed) this.write(FALLBACK_THEME_KEY, snapshot.preference)
+    if (changed) {
+      this.remove(ORIGINAL_MODE_PENDING_KEY)
+      this.write(FALLBACK_THEME_KEY, snapshot.preference)
+    }
     const stored = this.read(ACTIVE_SKIN_KEY)
     const skin = stored === null ? undefined : desktopSkin(stored)
     if (skin === undefined && stored !== null) this.remove(ACTIVE_SKIN_KEY)
@@ -148,12 +159,21 @@ export class DesktopSkinsController implements DesktopSkins {
     const skin = id === null ? undefined : desktopSkin(id)
     if (id !== null && skin === undefined) throw new Error(`unknown desktop skin: ${id}`)
     if (skin === undefined) {
+      const restore = this.read(ORIGINAL_MODE_PENDING_KEY) === '1'
+        ? this.fallbackPreference()
+        : undefined
       this.remove(ACTIVE_SKIN_KEY)
+      this.remove(ORIGINAL_MODE_PENDING_KEY)
+      this.remove(PORCELAIN_MIGRATION_PENDING_KEY)
       this.clearLayer()
+      if (restore !== undefined) this.theme.setTheme(restore)
     } else {
       this.write(ACTIVE_SKIN_KEY, skin.id)
+      this.remove(PORCELAIN_MIGRATION_PENDING_KEY)
       const preference = this.theme.getTheme().preference
-      if (builtinPreference(preference)) this.write(FALLBACK_THEME_KEY, preference)
+      if (builtinPreference(preference) && this.read(ORIGINAL_MODE_PENDING_KEY) !== '1') {
+        this.write(FALLBACK_THEME_KEY, preference)
+      }
       this.write(PREFERENCES_VERSION_KEY, '2')
       this.activate(skin)
     }

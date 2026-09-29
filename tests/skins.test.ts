@@ -148,6 +148,32 @@ test('each retained skin has two distinct palettes with an editor darker than it
   assert.equal(new Set(DESKTOP_SKINS.map(skin => skin.palettes.light.tokens['--dsw-alias-bg-base'])).size, 3)
 })
 
+test('named skin text and selected marks remain legible in both palettes', () => {
+  const luminance = (hex: string): number => {
+    const [red, green, blue] = [1, 3, 5].map(index => {
+      const value = Number.parseInt(hex.slice(index, index + 2), 16) / 255
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+    })
+    return red! * 0.2126 + green! * 0.7152 + blue! * 0.0722
+  }
+  const contrast = (one: string, two: string): number => {
+    const left = luminance(one)
+    const right = luminance(two)
+    return (Math.max(left, right) + 0.05) / (Math.min(left, right) + 0.05)
+  }
+  for (const skin of TOCKTEAM_SKINS) {
+    for (const mode of ['light', 'dark'] as const) {
+      const tokens = skin.palettes[mode].tokens
+      for (const background of ['--dsw-alias-bg-base', '--dsw-alias-bg-layer-1']) {
+        for (const foreground of ['--dsw-alias-label-primary', '--dsw-alias-label-secondary', '--dsw-alias-label-tertiary', '--dsw-alias-brand-text']) {
+          assert.ok(contrast(tokens[foreground]!, tokens[background]!) >= 4.5, `${skin.id}:${mode}:${foreground}/${background}`)
+        }
+      }
+      assert.ok(contrast(tokens['--dsw-alias-bg-base']!, tokens['--dsw-alias-brand-primary']!) >= 3)
+    }
+  }
+})
+
 test('one skin catalog supplies browser tokens and both TUI semantic palettes', () => {
   assert.equal(DESKTOP_SKINS, TOCKTEAM_SKINS)
   for (const skin of TOCKTEAM_SKINS) {
@@ -161,7 +187,7 @@ test('one skin catalog supplies browser tokens and both TUI semantic palettes', 
   }
 })
 
-test('TUI adapter materializes skins and reconciles the native theme picker', async () => {
+test('TUI offers paired native themes, retains old dark IDs, and safely migrates Porcelain', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'tockteam-tui-skins-'))
   const dataRoot = join(directory, 'data')
   const configRoot = join(directory, 'config')
@@ -179,28 +205,77 @@ test('TUI adapter materializes skins and reconciles the native theme picker', as
       theme: 'tockteam-skin-jade-circuit',
     })
     for (const skin of TOCKTEAM_SKINS) {
-      const theme = JSON.parse(await readFile(
-        join(paths.themes, `${skin.id}.json`),
-        'utf8',
-      ))
-      assert.equal(theme.name, skin.id)
-      assert.equal(theme.base, skin.colorScheme)
-      assert.deepEqual(theme.colors, skin.tui)
+      for (const mode of ['dark', 'light'] as const) {
+        const id = `${skin.id}${mode === 'light' ? '-light' : ''}`
+        const native = JSON.parse(await readFile(join(paths.themes, `${id}.json`), 'utf8'))
+        assert.equal(native.name, id)
+        assert.equal(native.base, mode)
+        assert.deepEqual(native.colors, skin.palettes[mode].tui)
+      }
     }
 
-    await writeFile(paths.themePreference, JSON.stringify({ theme: 'tockteam-skin-porcelain' }))
-    mountTuiSkins(dataRoot, configRoot)
-    assert.equal(
-      JSON.parse(await readFile(paths.preferences, 'utf8')).activeId,
-      'tockteam-skin-porcelain',
-    )
+    await writeFile(paths.themePreference, JSON.stringify({ theme: 'tockteam-skin-ember-dusk-light' }))
+    assert.deepEqual(mountTuiSkins(dataRoot, configRoot), {
+      activeId: 'tockteam-skin-ember-dusk',
+      theme: 'tockteam-skin-ember-dusk-light',
+    })
+    assert.deepEqual(JSON.parse(await readFile(paths.preferences, 'utf8')), {
+      activeId: 'tockteam-skin-ember-dusk', fallbackTheme: 'light', version: 2,
+    })
 
-    await writeFile(paths.themePreference, JSON.stringify({ theme: 'light' }))
+    await writeFile(paths.themePreference, JSON.stringify({ theme: 'tockteam-skin-porcelain' }))
+    assert.deepEqual(mountTuiSkins(dataRoot, configRoot), { activeId: null, theme: 'light' })
+    assert.deepEqual(JSON.parse(await readFile(paths.preferences, 'utf8')), {
+      activeId: null, fallbackTheme: 'light', version: 2, porcelainMigrationPending: true,
+    })
+    mountTuiSkins(dataRoot, configRoot)
+    assert.equal(JSON.parse(await readFile(paths.preferences, 'utf8')).porcelainMigrationPending, true)
+
+    await writeFile(paths.themePreference, JSON.stringify({ theme: 'dark' }))
     mountTuiSkins(dataRoot, configRoot)
     assert.deepEqual(JSON.parse(await readFile(paths.preferences, 'utf8')), {
-      activeId: null,
-      fallbackTheme: 'light',
+      activeId: null, fallbackTheme: 'dark', version: 2,
     })
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test('TUI launch does not erase an older Desktop dark skin and remembered Original Light', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tockteam-skins-cross-surface-'))
+  const paths = tuiSkinPaths(join(directory, 'data'), join(directory, 'config'))
+  try {
+    await mkdir(join(directory, 'data'), { recursive: true })
+    await mkdir(join(directory, 'config'), { recursive: true })
+    const oldPreferences = { activeId: 'tockteam-skin-jade-circuit', fallbackTheme: 'light' }
+    await writeFile(paths.preferences, JSON.stringify(oldPreferences))
+    await writeFile(paths.themePreference, JSON.stringify({ theme: 'tockteam-skin-jade-circuit' }))
+    assert.equal(mountTuiSkins(join(directory, 'data'), join(directory, 'config')).theme, 'tockteam-skin-jade-circuit')
+    assert.deepEqual(JSON.parse(await readFile(paths.preferences, 'utf8')), oldPreferences)
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test('TUI retires only byte-identical generated Porcelain, preserving customized themes', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tockteam-retired-skin-'))
+  const paths = tuiSkinPaths(join(directory, 'data'), join(directory, 'config'))
+  const oldPath = join(paths.themes, 'tockteam-skin-porcelain.json')
+  const generated = await readFile(new URL('./fixtures/skins/generated-porcelain.json', import.meta.url), 'utf8')
+  try {
+    await mkdir(paths.themes, { recursive: true })
+    await writeFile(oldPath, generated)
+    mountTuiSkins(join(directory, 'data'), join(directory, 'config'))
+    await assert.rejects(readFile(oldPath), { code: 'ENOENT' })
+
+    const customized = generated.replace('TockTeam · Porcelain', 'My Porcelain')
+    await writeFile(oldPath, customized)
+    const darkPath = join(paths.themes, 'tockteam-skin-deep-current.json')
+    const customizedDark = '{"name":"My Deep Current"}\n'
+    await writeFile(darkPath, customizedDark)
+    mountTuiSkins(join(directory, 'data'), join(directory, 'config'))
+    assert.equal(await readFile(oldPath, 'utf8'), customized)
+    assert.equal(await readFile(darkPath, 'utf8'), customizedDark)
   } finally {
     await rm(directory, { recursive: true, force: true })
   }
@@ -270,6 +345,47 @@ test('desktop skins restore a persisted dark family through DSH Appearance', () 
   assert.equal(controller.getSnapshot().activeId, 'tockteam-skin-deep-current')
   assert.equal(storage.getItem(FALLBACK_THEME_KEY), 'dark')
   assert.equal(dom.active, 'tockteam-skin-deep-current')
+})
+
+test('upgrade keeps the former dark skin yet remembers Original Light until deselection', () => {
+  const storage = new MemoryStorage()
+  storage.setItem(ACTIVE_SKIN_KEY, 'tockteam-skin-jade-circuit')
+  storage.setItem(FALLBACK_THEME_KEY, 'light')
+  const theme = new FakeThemeService('light')
+  const controller = new DesktopSkinsController(theme, storage, new FakeSkinDom())
+  controller.start()
+  assert.equal(theme.getTheme().preference, 'dark')
+  assert.equal(storage.getItem(FALLBACK_THEME_KEY), 'light')
+  controller.dispose()
+
+  const resumed = new DesktopSkinsController(theme, storage, new FakeSkinDom())
+  resumed.start()
+  assert.equal(theme.getTheme().preference, 'dark')
+  resumed.setSkin(null)
+  assert.equal(theme.getTheme().preference, 'light')
+  assert.equal(storage.getItem(ACTIVE_SKIN_KEY), null)
+})
+
+test('a saved Porcelain choice migrates to Original Light rather than disappearing', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tockteam-porcelain-migration-'))
+  const path = join(directory, 'skins.json')
+  try {
+    await writeFile(path, '{"activeId":"tockteam-skin-porcelain","fallbackTheme":"dark"}\n')
+    const stored = await loadSkinPreferences(path)
+    const storage = new MemoryStorage()
+    storage.setItem(ACTIVE_SKIN_KEY, stored.activeId!)
+    storage.setItem(FALLBACK_THEME_KEY, stored.fallbackTheme)
+    const theme = new FakeThemeService('dark')
+    const controller = new DesktopSkinsController(theme, storage, new FakeSkinDom())
+    controller.start()
+    assert.equal(theme.getTheme().preference, 'light')
+    assert.equal(storage.getItem(ACTIVE_SKIN_KEY), null)
+    assert.equal(storage.getItem(FALLBACK_THEME_KEY), 'light')
+    assert.equal(controller.getSnapshot().activeId, null)
+    assert.equal(DESKTOP_SKINS.find(skin => String(skin.id) === 'tockteam-skin-porcelain'), undefined)
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
 })
 
 test('desktop skins restore a non-system fallback without a selected skin', () => {

@@ -2,8 +2,10 @@ import {
   ACTIVE_SKIN_KEY,
   DEFAULT_SKIN_PREFERENCES,
   FALLBACK_THEME_KEY,
+  ORIGINAL_MODE_PENDING_KEY,
   PREFERENCES_API_PATH,
   PREFERENCES_VERSION_KEY,
+  PORCELAIN_MIGRATION_PENDING_KEY,
   isDesktopSkinId,
   isFallbackTheme,
   parseSkinPreferences,
@@ -50,12 +52,16 @@ export class DesktopSkinPreferencesStorage implements StorageLike {
     if (key === ACTIVE_SKIN_KEY) return this.preferences.activeId
     if (key === FALLBACK_THEME_KEY) return this.preferences.fallbackTheme
     if (key === PREFERENCES_VERSION_KEY) return this.preferences.version?.toString() ?? null
+    if (key === ORIGINAL_MODE_PENDING_KEY) return this.preferences.originalModePending === true ? '1' : null
+    if (key === PORCELAIN_MIGRATION_PENDING_KEY) return this.preferences.porcelainMigrationPending === true ? '1' : null
     return null
   }
 
   removeItem(key: string): void {
     if (key === ACTIVE_SKIN_KEY) this.update({ activeId: null })
     if (key === FALLBACK_THEME_KEY) this.update({ fallbackTheme: 'system' })
+    if (key === ORIGINAL_MODE_PENDING_KEY) this.update({ originalModePending: undefined })
+    if (key === PORCELAIN_MIGRATION_PENDING_KEY) this.update({ porcelainMigrationPending: undefined })
   }
 
   setItem(key: string, value: string): void {
@@ -64,6 +70,8 @@ export class DesktopSkinPreferencesStorage implements StorageLike {
       this.update({ fallbackTheme: value })
     }
     if (key === PREFERENCES_VERSION_KEY && value === '2') this.update({ version: 2 })
+    if (key === ORIGINAL_MODE_PENDING_KEY && value === '1') this.update({ originalModePending: true })
+    if (key === PORCELAIN_MIGRATION_PENDING_KEY && value === '1') this.update({ porcelainMigrationPending: true })
   }
 
   async settle(): Promise<void> {
@@ -74,7 +82,9 @@ export class DesktopSkinPreferencesStorage implements StorageLike {
     const next = Object.freeze({ ...this.preferences, ...patch })
     if (next.activeId === this.preferences.activeId
       && next.fallbackTheme === this.preferences.fallbackTheme
-      && next.version === this.preferences.version) return
+      && next.version === this.preferences.version
+      && next.originalModePending === this.preferences.originalModePending
+      && next.porcelainMigrationPending === this.preferences.porcelainMigrationPending) return
     this.preferences = next
     if (!this.loaded) return
     this.dirty = true
