@@ -45,7 +45,7 @@ const emit = (): void => {
   ready = true
 }
 const reportError = (error: unknown): void => send({ type: 'error', extensionId, sessionId, revision: ++revision, message: String(error).slice(0, 512) })
-const storage = mode === 'no-view' || mode === 'menu-bar' ? createUserRaycastStorage(process.env.TOCKTEAM_USER_RAYCAST_STATE!) : undefined
+const storage = createUserRaycastStorage(process.env.TOCKTEAM_USER_RAYCAST_STATE!)
 api.configureCompatibility({
   authUrl: (url: string) => send({ type: 'auth-url', extensionId, sessionId, revision: Math.max(0, revision), url }),
   native: (request: { kind: string; text?: string }) => new Promise<void>((resolve, reject) => {
@@ -58,7 +58,8 @@ api.configureCompatibility({
   }),
   selection: async () => { throw new Error('Selected text is unsupported for user extensions') },
   toast: (toast: object) => send({ type: 'toast', extensionId, sessionId, revision, ...toast }),
-  ...(storage ? { storage, cache: storage, hud: (message: string) => send({ type: 'toast', extensionId, sessionId, revision, title: message.slice(0, 512), message: '', style: 'success' }) } : {}),
+  cache: storage.cache,
+  ...(mode === 'no-view' || mode === 'menu-bar' ? { storage, hud: (message: string) => send({ type: 'toast', extensionId, sessionId, revision, title: message.slice(0, 512), message: '', style: 'success' }) } : {}),
 })
 if (extensionId === 'linear') process.once('SIGTERM', () => {
   void api.revokeUserRaycastOAuthTokens().then(() => process.exit(0), () => { console.error('Linear OAuth token revocation could not be confirmed'); process.exit(1) })

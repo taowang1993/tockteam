@@ -46,7 +46,7 @@ export const Grid = Object.assign(searchableCollection('raycast-grid'), {
   EmptyView: component('raycast-empty'),
 })
 type NativeEffectRequest = { kind: 'copy' | 'openGoogleTranslate' | 'paste' | 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>>; text?: string; url?: string }
-type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; authUrl?: (url: string) => void | Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void; hud?: (message: string) => void; storage?: { getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void>; clear: () => Promise<void> }; cache?: { get: (key: string) => string | undefined; set: (key: string, value: string) => void; remove: (key: string) => void; subscribe: (listener: () => void) => () => void } }
+type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; authUrl?: (url: string) => void | Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void; hud?: (message: string) => void; storage?: { getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void>; clear: () => Promise<void> }; cache?: (namespace?: string) => { get: (key: string) => string | undefined; set: (key: string, value: string) => void; remove: (key: string) => void; clear: () => void; subscribe: (listener: () => void) => () => void } }
 let compatibility: Compatibility
 export let queryEpoch = 0
 export let queryText = ''
@@ -180,11 +180,16 @@ const unsupported = (name: string): never => { throw new Error(`Raycast API ${na
 export async function clearSearchBar(): Promise<void> { return unsupported('clearSearchBar') }
 export async function showHUD(message: string): Promise<void> { if (!compatibility.hud) return unsupported('showHUD'); compatibility.hud(message) }
 export class Cache {
-  constructor(options: { namespace?: string } = {}) { if (options.namespace !== undefined || !compatibility.cache) unsupported('Cache') }
-  get = (key: string): string | undefined => compatibility.cache!.get(key)
-  set = (key: string, value: string): void => compatibility.cache!.set(key, value)
-  remove = (key: string): void => compatibility.cache!.remove(key)
-  subscribe = (listener: () => void): (() => void) => compatibility.cache!.subscribe(listener)
+  private readonly store: ReturnType<NonNullable<Compatibility['cache']>>
+  constructor(options: { namespace?: string } = {}) {
+    const createCache = compatibility.cache ?? unsupported('Cache')
+    this.store = createCache(options.namespace)
+  }
+  get = (key: string): string | undefined => this.store.get(key)
+  set = (key: string, value: string): void => this.store.set(key, value)
+  remove = (key: string): void => this.store.remove(key)
+  clear = (): void => this.store.clear()
+  subscribe = (listener: () => void): (() => void) => this.store.subscribe(listener)
 }
 export const LocalStorage = {
   getItem: async (key: string): Promise<string | undefined> => compatibility.storage ? compatibility.storage.getItem(key) : unsupported('LocalStorage.getItem'),
