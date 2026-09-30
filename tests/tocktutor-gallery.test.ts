@@ -13,16 +13,16 @@ const links = [...html.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].
 const sha256 = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex')
 
 test('accounts for every gallery and supplemental capture without stale links', () => {
-  assert.match(html, /Visual Design Audit · 63 Captures/u)
+  assert.match(html, /Visual Design Audit · 64 Captures/u)
   assert.match(html, /Built-in Dark Theme · No Active Skin/u)
   assert.doesNotMatch(html, /UIUX Comparison/u)
   assert.doesNotMatch(html, /Tag and Tab Polish|id="polish"/u)
-  assert.equal(new Set(images).size, 63)
+  assert.equal(new Set(images).size, 64)
   assert.deepEqual(images, links)
   const actual = readdirSync(resolve(root, 'screenshots')).sort()
   assert.deepEqual(actual, proof.gallery.allowlist)
   assert.deepEqual(actual, Object.keys(proof.captures).sort())
-  assert.equal(actual.length, 70)
+  assert.equal(actual.length, 71)
   assert.deepEqual(actual.filter(name => !images.includes(`screenshots/${name}`)), proof.gallery.supplementalCaptures)
   assert.ok(proof.gallery.supplementalCaptures.includes('tocktutor-tag-tab-polish.png'))
   assert.ok(proof.comparisons.every((comparison: { surface: string }) => comparison.surface !== 'polish'))
@@ -60,7 +60,7 @@ test('pairs the Image Viewer with the verified installed Obsidian reference', ()
   ])
   for (const check of refresh.appearanceChecks) {
     assert.equal(check.documentSkin, null)
-    assert.match(check.backdrop, /^color\(srgb .+ \/ 0\.8\)$/u)
+    assert.match(check.backdrop, /^color\(srgb .+ \/ 0\.95\)$/u)
     assert.ok(check.titleContrast >= 4.5)
     assert.ok(check.closeContrast >= 4.5)
     assert.deepEqual(check.geometry, [1512, 949, 2])
@@ -71,7 +71,12 @@ test('pairs the Image Viewer with the verified installed Obsidian reference', ()
   assert.ok(layout.header.y >= 40)
   assert.ok(layout.viewport.y >= layout.header.y + layout.header.height)
   assert.ok(layout.close.height >= 36)
-  assert.equal(layout.closeText, 'Close')
+  assert.equal(layout.closeText, '')
+  assert.equal(layout.closeAccessibleName, 'Close')
+  assert.equal(layout.close.width, layout.close.height)
+  assert.equal(layout.closeCircular, true)
+  assert.equal(refresh.backdropOpacity, 0.95)
+  assert.equal(refresh.appContribution, 0.05)
   assert.equal(layout.controlsOutsideMedia, true)
   assert.equal(layout.uniformlyDimmed, true)
   assert.equal(layout.appVisibleBehind, true)
@@ -79,12 +84,36 @@ test('pairs the Image Viewer with the verified installed Obsidian reference', ()
   assert.equal(refresh.interactions.underlyingSidebarNotActivated, true)
   assert.deepEqual(refresh.interactions.verifiedModes, ['reading', 'source', 'live-preview'])
   assert.equal(proof.captures['tocktutor-image-viewer.png'].visibleState.toolbar, false)
-  assert.match(section, /dimmed app/u)
-  assert.match(section, /× Close/u)
+  assert.match(section, /almost-hidden app/u)
+  assert.match(section, /circular X/u)
+  assert.doesNotMatch(section, /× Close/u)
   assert.doesNotMatch(section, /backdrop matches Obsidian|Both products.+full-window/u)
 })
 
-test('keeps unmatched migration surfaces distinct from the Image Viewer pair', () => {
+test('pairs Image Resizing with byte-identical palace images and saved widths in installed Obsidian', () => {
+  const section = /<section class="surface" id="image-resizing">([\s\S]*?)<\/section>/u.exec(html)![1]!
+  assert.deepEqual([...section.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => match[1]), [
+    'screenshots/tocktutor-image-resizing.png', 'screenshots/obsidian-image-resizing.png',
+  ])
+  assert.doesNotMatch(section, /missing-reference|Reference Not Captured/u)
+  const current = proof.captures['tocktutor-image-resizing.png']
+  const reference = proof.captures['obsidian-image-resizing.png']
+  assert.equal(reference.product, 'Obsidian 1.13.7')
+  assert.equal(reference.captureScope, 'real-desktop')
+  assert.equal(reference.contentSha256, current.contentSha256)
+  assert.equal(reference.assetSha256, current.assetSha256)
+  assert.deepEqual(reference.visibleState.widths, [240, 120, 96])
+  assert.deepEqual(current.visibleState.widths, [240, 120, 96])
+  assert.equal(current.visibleState.undoOneStep, true)
+  assert.equal(current.visibleState.reopened, true)
+  const pair = proof.pairs.find((p: { surface: string }) => p.surface === 'image-resizing')
+  assert.equal(pair.tocktutor.path, 'Images.md')
+  assert.equal(pair.obsidian.path, 'Images.md')
+  assert.equal(pair.tocktutor.contentSha256, pair.obsidian.contentSha256)
+  assert.match(section, /Potala Palace/u)
+})
+
+test('keeps unmatched migration surfaces distinct from the two palace-photo pairs', () => {
   const additions = proof.migrationReview
   assert.equal(additions.allowlist.length, 6)
   assert.equal(additions.registryUnchanged, true)
@@ -94,11 +123,13 @@ test('keeps unmatched migration surfaces distinct from the Image Viewer pair', (
     assert.ok(html.includes(`id="${id}"`), id)
     assert.ok(html.includes(`href="#${id}"`), id)
   }
-  assert.match(html, /remaining additions are TockTutor feature evidence, not matched Obsidian comparisons/u)
+  assert.match(html, /remaining four additions are TockTutor feature evidence, not matched Obsidian comparisons/u)
   for (const name of additions.allowlist) {
     assert.ok(images.includes(`screenshots/${name}`), name)
     assert.equal(proof.captures[name].captureScope, 'real-desktop')
-    assert.equal(proof.captures[name].sourceCommit, name === 'tocktutor-image-viewer.png' ? additions.imageViewerRefresh.sourceCommit : additions.sourceCommit)
+    const expectedCommit = name === 'tocktutor-image-viewer.png' ? additions.imageViewerRefresh.sourceCommit
+      : name === 'tocktutor-image-resizing.png' ? additions.imageResizingRefresh.sourceCommit : additions.sourceCommit
+    assert.equal(proof.captures[name].sourceCommit, expectedCommit)
   }
   const fixtures = resolve(root, additions.fixtures)
   const source = (name: string) => readFileSync(resolve(fixtures, name), 'utf8')
@@ -107,7 +138,9 @@ test('keeps unmatched migration surfaces distinct from the Image Viewer pair', (
   assert.equal(proof.captures['tocktutor-image-viewer.png'].path, 'Viewer.md')
   assert.equal(additions.imageViewerRefresh.obsidianReference, 'obsidian-image-viewer.png')
   assert.match(html, /id="image-viewer"[\s\S]*?Antoine Taveneaux[\s\S]*?CC BY-SA 3\.0/u)
-  const afterImages = source('Images.md').replace('tockteam.png|200', 'tockteam.png|240')
+  assert.doesNotMatch(source('Images.md'), /tockteam\.png/u)
+  assert.equal((source('Images.md').match(/Potala_palace23\.jpg/gu) ?? []).length, 3)
+  const afterImages = source('Images.md').replace('Potala_palace23.jpg|200', 'Potala_palace23.jpg|240')
   const afterProperties = source('Properties.md').replace('due: null', 'due: "2026-10-01"').replace('finished: null', 'finished: true').replace('rating: 1e-7', 'rating: 1e+21')
   const afterDiagrams = source('Diagrams.md').replace('  A[Start] --> B[Finish]', '  A[Start] --> B[Finish]\n    B --> C[Reviewed]')
   for (const [name, content] of Object.entries({

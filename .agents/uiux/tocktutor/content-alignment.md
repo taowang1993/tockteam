@@ -1,6 +1,14 @@
 # TockTutor and Obsidian Content Alignment
 
-## Floating Image Overlay — 2026-09-30
+## Barely Visible App and Palace Image Resizing — 2026-09-30
+
+Source commit `8f3bed69` increases semantic-canvas dimming from 80% to 95% and replaces the visible Close label with a circular 36 × 36 X button, retaining its accessible name Close. Real Desktop CSS checks confirmed the circle rather than relying on the class name: the ordinary shared rounded utility initially won, so the local full-radius override is explicit. Eight app appearances, opposite system appearance, switches while open, all three editor modes, narrow viewports, maximum zoom eight, dismissal, focus, and restored shell controls passed. The minimum title/control contrast remains 11.74:1. No skin catalog or shared-button behavior changed.
+
+The supplied screenshot was identified as Surface 26, Image Resizing. All three examples in `migration-fixtures/Images.md` now use the same local Potala Palace JPEG. TockTutor committed 200 → 240 → drag-to-280, undid once to 240, saved, reopened, and verified exact bytes, preserving the 120 × 120 neighbor and the 96-pixel Markdown copy with its authored alt/caption. The saved note SHA-256 is `9445bb6e101789418c09e90340175ea6555c80bce0a37eb5437b540b71924572`. Genuine installed Obsidian 1.13.7 rendered identical saved note/JPEG bytes in Live Preview and a freshly captured Image Viewer. Obsidian owns its dark theme on the body (`theme-dark`, explicit `theme: obsidian`, `color-scheme: dark`); its document inline color-scheme is empty and was not fabricated. TockTutor verified inline document dark mode and no root/body skin.
+
+Published only `tocktutor-image-viewer.png`, `tocktutor-image-resizing.png`, `obsidian-image-viewer.png`, and new `obsidian-image-resizing.png`; all 67 unrelated existing captures are unchanged. The fresh Obsidian viewer PNG happens to have the same hash as its earlier capture. Each capture is 1512 × 949 CSS pixels at DPR 2, producing 3024 × 1898 PNGs; the source photo is 3872 × 2592. Runtime errors and external requests are empty. Final Desktop root PID 12891 and Obsidian root PID 20753 stopped with all descendants, as did diagnostic roots 94515, 9366, and 18245. The original Obsidian user registry fingerprint is unchanged. The gallery now displays 64 unique images and retains seven supplemental files (71 total). See `content-alignment.json` and [the refinement report](../../../.beads/reports/2026-09-30-tocktutor-palace-photo-refinement.md).
+
+## Historical Floating Image Overlay — 2026-09-30
 
 At source commit `9f6261ec`, the user requested a photo floating over a dimmed app rather than a separate full-window page. Retook only `tocktutor-image-viewer.png`; all 69 other screenshot files, including the genuine installed Obsidian reference, are unchanged. The products retain identical `Viewer.md` and Potala Palace JPEG bytes, but the current comparison is content alignment, not exact viewer geometry.
 

@@ -19,9 +19,9 @@
     "skinId": null
   },
   "gallery": {
-    "uniqueImageSources": 63,
-    "captureCountLabel": "Visual Design Audit · 63 Captures",
-    "screenshotDirectoryTotal": 70,
+    "uniqueImageSources": 64,
+    "captureCountLabel": "Visual Design Audit · 64 Captures",
+    "screenshotDirectoryTotal": 71,
     "supplementalCaptures": [
       "obsidian-outline.png",
       "obsidian-quick-switcher.png",
@@ -43,6 +43,7 @@
       "obsidian-file-recovery.png",
       "obsidian-graph-global.png",
       "obsidian-graph-local.png",
+      "obsidian-image-resizing.png",
       "obsidian-image-viewer.png",
       "obsidian-live-preview-lower.png",
       "obsidian-main-editor.png",
@@ -462,7 +463,12 @@
     {
       "surface": "image-viewer",
       "screenshots": ["tocktutor-image-viewer.png", "obsidian-image-viewer.png"],
-      "contentComparison": "byte-identical Markdown and local Potala Palace JPEG"
+      "contentComparison": "byte-identical Markdown and local Potala Palace JPEG; different viewer geometry"
+    },
+    {
+      "surface": "image-resizing",
+      "screenshots": ["tocktutor-image-resizing.png", "obsidian-image-resizing.png"],
+      "contentComparison": "byte-identical saved Markdown and local Potala Palace JPEG; same widths, different editing controls"
     }
   ],
   "pairs": [
@@ -822,34 +828,56 @@
         "screenshot": "obsidian-image-viewer.png", "path": "Viewer.md", "mode": "image-viewer",
         "contentSha256": "a0933dfb585d23c141bf5fa1fa151055276c97230577072d9113cfe3aac14463"
       }
+    },
+    {
+      "surface": "image-resizing",
+      "tocktutor": {
+        "screenshot": "tocktutor-image-resizing.png", "path": "Images.md", "mode": "live-preview",
+        "contentSha256": "9445bb6e101789418c09e90340175ea6555c80bce0a37eb5437b540b71924572"
+      },
+      "obsidian": {
+        "screenshot": "obsidian-image-resizing.png", "path": "Images.md", "mode": "live-preview",
+        "contentSha256": "9445bb6e101789418c09e90340175ea6555c80bce0a37eb5437b540b71924572"
+      }
     }
   ],
   "migrationReview": {
     "sourceCommit": "23e2cbcb",
     "report": "../../../.beads/reports/2026-09-29-tocktutor-migration-review.md",
     "fixtures": "migration-fixtures",
-    "referenceStatus": "Image Viewer pairs identical photo/content with guarded installed Obsidian 1.13.7; TockTutor now uses the user-requested floating overlay, not exact lightbox geometry. The other five migration captures remain TockTutor-only feature evidence.",
+    "referenceStatus": "Image Viewer and Image Resizing pair byte-identical palace photo/content with fresh guarded installed Obsidian 1.13.7 captures. TockTutor uses a 95% dimming layer and circular icon-only X, not exact Obsidian lightbox geometry. The remaining four migration captures remain TockTutor-only feature evidence.",
     "imageViewerRefresh": {
-      "sourceCommit":"9f6261ec", "asset":"Attachments/Potala_palace23.jpg",
+      "sourceCommit":"8f3bed69", "asset":"Attachments/Potala_palace23.jpg",
+      "report":"../../../.beads/reports/2026-09-30-tocktutor-palace-photo-refinement.md",
       "photoCredit":"Antoine Taveneaux, CC BY-SA 3.0", "photoPage":"https://commons.wikimedia.org/wiki/File:Potala_palace23.jpg",
       "obsidianReference":"obsidian-image-viewer.png", "changedWhileOpen":true,
-      "cleanup":{"verified":true,"rootPid":64343,"recordedPids":[64343,64347,64348,64349,64351,64356,64363,64537,64538,64539,64540,64541,64542,64543,64544,64549,64779,64780,64781,64782,64783,64784,64785,64786],"remaining":[],"diagnosticRootsStopped":[42919,50674,61260]},
-      "obsidianCleanup":{"verified":true,"rootPid":20159,"recordedPids":[20159,20161,20162,20163,20314,20315],"remaining":[]},
-      "presentation":"User-requested photo overlay over a uniformly dimmed app; semantic theme tokens, no card or toolbar",
-      "layout":{"dialog":{"x":0,"y":0,"width":1512,"height":949},"image":{"x":140.7578125,"y":104,"width":1230.4765625,"height":828.9921875},"header":{"x":16,"y":52,"width":1480,"height":40},"close":{"x":1410.8046875,"y":54,"width":85.1953125,"height":36},"viewport":{"x":16,"y":104,"width":1480,"height":829},"imagePadding":"8px","titleSize":"14px","closeText":"Close","appVisibleBehind":true,"controlsOutsideMedia":true,"uniformlyDimmed":true,"matchesInstalledObsidianGeometry":false},
+      "cleanup":{"verified":true,"rootPid":12891,"recordedPids":[12891,12897,12898,12899,12901,12904,13041,13142,13243,13402,13403,13404,13405],"remaining":[],"diagnosticRootsStopped":[94515,9366]},
+      "obsidianCleanup":{"verified":true,"rootPid":20753,"recordedPids":[20753,20755,20756,20757,21745,21746],"remaining":[],"diagnosticRootsStopped":[18245]},
+      "presentation":"Photo over a barely visible app; 95% semantic-canvas dimming and circular icon-only X",
+      "backdropOpacity":0.95,"appContribution":0.05,
+      "layout":{"dialog":{"x":0,"y":0,"width":1512,"height":949},"image":{"x":140.7578125,"y":104,"width":1230.4765625,"height":828.9921875},"header":{"x":16,"y":52,"width":1480,"height":40},"close":{"x":1460,"y":54,"width":36,"height":36},"viewport":{"x":16,"y":104,"width":1480,"height":829},"imagePadding":"8px","titleSize":"14px","closeText":"","closeAccessibleName":"Close","closeCircular":true,"closeBorderRadius":"1.67772e+07px","appVisibleBehind":true,"controlsOutsideMedia":true,"uniformlyDimmed":true,"matchesInstalledObsidianGeometry":false},
       "interactions":{"keyboardZoomPanFit":true,"wheelZoom":true,"dragPan":true,"escapeAndCloseFocusReturn":true,"gutterDismissal":true,"focusTrapped":true,"chromeRestored":true,"underlyingSidebarNotActivated":true,"verifiedModes":["reading","source","live-preview"]},
-      "edgeChecks":{"cssViewports":[[1478,1106],[640,720],[390,720]],"longTitleTruncated":true,"zoomEightDoesNotCoverClose":true,"viewportClipsPan":true},
+      "edgeChecks":{"cssViewports":[[1478,1106],[640,720],[390,720]],"zoomEightDoesNotCoverClose":true,"viewportClipsPan":true},
       "runtimeErrors":[],"externalRequests":[],
       "appearanceChecks": [
-        {"theme":"dark","skin":null,"documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 0.0823529 0.0823529 0.0901961 / 0.8)","foreground":"rgb(249, 250, 251)","titleContrast":17.14,"closeContrast":17.45},
-        {"theme":"light","skin":null,"documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 1 1 1 / 0.8)","foreground":"rgb(15, 17, 21)","titleContrast":18.58,"closeContrast":18.9},
-        {"theme":"dark","skin":"tockteam-skin-navy","documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 0.027451 0.0980392 0.137255 / 0.8)","foreground":"rgb(233, 248, 251)","titleContrast":16.05,"closeContrast":16.45},
-        {"theme":"light","skin":"tockteam-skin-navy","documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 0.917647 0.956863 0.968627 / 0.8)","foreground":"rgb(23, 49, 58)","titleContrast":12.34,"closeContrast":12.22},
-        {"theme":"dark","skin":"tockteam-skin-jade","documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 0.027451 0.101961 0.0862745 / 0.8)","foreground":"rgb(233, 251, 243)","titleContrast":16.46,"closeContrast":16.74},
-        {"theme":"light","skin":"tockteam-skin-jade","documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 0.917647 0.956863 0.921569 / 0.8)","foreground":"rgb(27, 53, 41)","titleContrast":11.87,"closeContrast":11.74},
-        {"theme":"dark","skin":"tockteam-skin-ember","documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 0.0862745 0.0666667 0.0509804 / 0.8)","foreground":"rgb(253, 240, 230)","titleContrast":16.5,"closeContrast":16.77},
-        {"theme":"light","skin":"tockteam-skin-ember","documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 0.972549 0.94902 0.913725 / 0.8)","foreground":"rgb(59, 42, 27)","titleContrast":12.53,"closeContrast":12.31}
+        {"theme":"dark","skin":null,"documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 0.0823529 0.0823529 0.0901961 / 0.95)","foreground":"rgb(249, 250, 251)","titleContrast":17.29,"closeContrast":17.45},
+        {"theme":"light","skin":null,"documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 1 1 1 / 0.95)","foreground":"rgb(15, 17, 21)","titleContrast":18.9,"closeContrast":18.9},
+        {"theme":"dark","skin":"tockteam-skin-navy","documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 0.027451 0.0980392 0.137255 / 0.95)","foreground":"rgb(233, 248, 251)","titleContrast":16.43,"closeContrast":16.45},
+        {"theme":"light","skin":"tockteam-skin-navy","documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 0.917647 0.956863 0.968627 / 0.95)","foreground":"rgb(23, 49, 58)","titleContrast":12.32,"closeContrast":12.22},
+        {"theme":"dark","skin":"tockteam-skin-jade","documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 0.027451 0.101961 0.0862745 / 0.95)","foreground":"rgb(233, 251, 243)","titleContrast":16.71,"closeContrast":16.74},
+        {"theme":"light","skin":"tockteam-skin-jade","documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 0.917647 0.956863 0.921569 / 0.95)","foreground":"rgb(27, 53, 41)","titleContrast":11.84,"closeContrast":11.74},
+        {"theme":"dark","skin":"tockteam-skin-ember","documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 0.0862745 0.0666667 0.0509804 / 0.95)","foreground":"rgb(253, 240, 230)","titleContrast":16.73,"closeContrast":16.77},
+        {"theme":"light","skin":"tockteam-skin-ember","documentSkin":null,"geometry":[1512,949,2],"backdrop":"color(srgb 0.972549 0.94902 0.913725 / 0.95)","foreground":"rgb(59, 42, 27)","titleContrast":12.41,"closeContrast":12.31}
       ]
+    },
+    "imageResizingRefresh": {
+      "sourceCommit":"8f3bed69","path":"Images.md","asset":"Attachments/Potala_palace23.jpg",
+      "contentSha256":"9445bb6e101789418c09e90340175ea6555c80bce0a37eb5437b540b71924572",
+      "obsidianReference":"obsidian-image-resizing.png","widths":[240,120,96],"neighborHeight":120,
+      "commits":[200,240,280],"undoOneStep":true,"dragResize":true,"reopened":true,"exactSavedBytesVerified":true,
+      "copiedFixtureTypesUnchanged":true,"sameNativeBytes":true,"runtimeErrors":[],"externalRequests":[],
+      "publicationAllowlist":["tocktutor-image-viewer.png","tocktutor-image-resizing.png","obsidian-image-viewer.png","obsidian-image-resizing.png"],
+      "unrelatedExistingCapturesUnchanged":67
     },
     "allowlist": ["tocktutor-image-resizing.png", "tocktutor-image-viewer.png", "tocktutor-imported-properties.png", "tocktutor-mermaid-editing.png", "tocktutor-mermaid-live-preview.png", "tocktutor-mermaid-reading.png"],
     "registryUnchanged": true,
@@ -863,8 +891,8 @@
       "contentSha256":"a0933dfb585d23c141bf5fa1fa151055276c97230577072d9113cfe3aac14463",
       "assetSha256":"03a1438d5f989ccb6b4f79420771a52ab0d7c2a1abc958ed683b564a752e3efc",
       "product":"Obsidian 1.13.7", "entry":"/Applications/Obsidian.app/Contents/Resources/app.asar",
-      "runtime":"Electron 42.3.0", "guardCommit":"f0fb34a", "capturedAt":"2026-09-30T04:28:11.934Z",
-      "visibleState":{"imageViewer":"media-wrapper","imagePixels":[3872,2592],"builtInDark":true},
+      "runtime":"Electron 42.3.0", "guardCommit":"f0fb34a", "capturedAt":"2026-09-30T10:12:35.903Z",
+      "visibleState":{"imageViewer":"media-wrapper","imagePixels":[3872,2592],"builtInDark":true,"configuredTheme":"obsidian","bodyColorScheme":"dark","rootColorScheme":""},
       "userStateUnchanged":true, "runtimeErrors":[],
       "runtimeErrorMonitoring":"Installed Obsidian archive in owned guarded Electron/CDP; capture-time console/pageerror monitoring: zero errors; original user registry/socket fingerprints unchanged.",
       "captureScope":"real-desktop", "bytes":7188759, "sha256":"ff17a09d1b236882acc3b233427e608540821a937cc05390c2e901f59d9bc945"
@@ -874,19 +902,30 @@
       "route":"/tocktutor/Viewer.md", "path":"Viewer.md", "mode":"image-viewer", "underlyingEditorMode":"live-preview",
       "contentSha256":"a0933dfb585d23c141bf5fa1fa151055276c97230577072d9113cfe3aac14463",
       "assetSha256":"03a1438d5f989ccb6b4f79420771a52ab0d7c2a1abc958ed683b564a752e3efc",
-      "bytes":5687197, "sha256":"07ce05f82e0f7c98224864e299b0817c3a8c044bd521aa7dda834bfe6432d869",
-      "sourceCommit":"9f6261ec", "capturedAt":"2026-09-30T08:21:25.771Z",
-      "visibleState":{"dialog":"Potala Palace","imagePixels":[3872,2592],"resolvedJpegDataUrl":true,"fit":true,"zoomAndPanVerified":true,"focusRestored":true,"overlay":true,"appVisibleBehind":true,"uniformlyDimmed":true,"controlsOutsideMedia":true,"closeText":"Close","imagePadding":"8px","toolbar":false,"backdrop":"color(srgb 0.0823529 0.0823529 0.0901961 / 0.8)","foreground":"rgb(249, 250, 251)"},
+      "bytes":5673321, "sha256":"c5827620698d727f63cd2e6b8268524befe7863b428c970effd1b14bed2da0be",
+      "sourceCommit":"8f3bed69", "capturedAt":"2026-09-30T09:59:53.655Z",
+      "visibleState":{"dialog":"Potala Palace","imagePixels":[3872,2592],"resolvedJpegDataUrl":true,"fit":true,"zoomAndPanVerified":true,"focusRestored":true,"overlay":true,"appVisibleBehind":true,"uniformlyDimmed":true,"controlsOutsideMedia":true,"closeText":"","closeAccessibleName":"Close","closeCircular":true,"imagePadding":"8px","toolbar":false,"backdrop":"color(srgb 0.0823529 0.0823529 0.0901961 / 0.95)","foreground":"rgb(249, 250, 251)"},
       "runtimeErrors":[], "runtimeErrorMonitoring":"Owned guarded Desktop/CDP; capture-time console/pageerror monitoring and final session console error check: zero errors.", "captureScope":"real-desktop"
     },
     "tocktutor-image-resizing.png": {
       "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
       "route":"/tocktutor/Images.md", "path":"Images.md", "mode":"live-preview",
-      "contentSha256":"9810be9c1645e3a77fc73324a74473d62fd8d153a8a6a1395552e35df288eb61",
-      "bytes":210485, "sha256":"3a9e96ac882ca1a000221f15da8d64d6f7d160cc12670e1fc2d2320034b65e78",
-      "sourceCommit":"23e2cbcb", "capturedAt":"2026-09-29T13:09:19.591Z",
-      "visibleState":{"width":240,"neighborWidth":120,"undoOneStep":true,"reopened":true},
+      "contentSha256":"9445bb6e101789418c09e90340175ea6555c80bce0a37eb5437b540b71924572",
+      "assetSha256":"03a1438d5f989ccb6b4f79420771a52ab0d7c2a1abc958ed683b564a752e3efc",
+      "bytes":611159, "sha256":"2ca0f30fd3cbafa2a46e47935676144882ae0e050de78b02673f93d8794f5450",
+      "sourceCommit":"8f3bed69", "capturedAt":"2026-09-30T10:03:29.681Z",
+      "visibleState":{"width":240,"neighborWidth":120,"neighborHeight":120,"widths":[240,120,96],"imagePixels":[3872,2592],"undoOneStep":true,"dragResize":true,"reopened":true,"exactSavedBytesVerified":true},
       "runtimeErrors":[], "runtimeErrorMonitoring":"Owned guarded Desktop/CDP; console/pageerror monitoring and final session console error check: zero errors.", "captureScope":"real-desktop"
+    },
+    "obsidian-image-resizing.png": {
+      "geometry":{"width":1512,"height":949,"deviceScaleFactor":2},"theme":"dark","skin":null,
+      "route":"app://obsidian.md/index.html","path":"Images.md","mode":"live-preview",
+      "contentSha256":"9445bb6e101789418c09e90340175ea6555c80bce0a37eb5437b540b71924572",
+      "assetSha256":"03a1438d5f989ccb6b4f79420771a52ab0d7c2a1abc958ed683b564a752e3efc",
+      "product":"Obsidian 1.13.7","entry":"/Applications/Obsidian.app/Contents/Resources/app.asar","runtime":"Electron 42.3.0","guardCommit":"f0fb34a","capturedAt":"2026-09-30T10:12:35.357Z",
+      "visibleState":{"widths":[240,120,96],"neighborHeight":120,"imagePixels":[3872,2592],"builtInDark":true,"configuredTheme":"obsidian","bodyColorScheme":"dark","rootColorScheme":""},
+      "userStateUnchanged":true,"runtimeErrors":[],"runtimeErrorMonitoring":"Installed Obsidian archive in owned guarded Electron/CDP; zero capture-time console/page errors; original registry fingerprint unchanged.",
+      "captureScope":"real-desktop","bytes":552773,"sha256":"0f6facd1f69a7de6a9b9b6c3bc003122fb8982c200a11ddea028eae289136a35"
     },
     "tocktutor-imported-properties.png": {
       "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
