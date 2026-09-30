@@ -29,7 +29,7 @@ test('first-party OAuth cleanup stays honest under mocked provider failures', as
   symlinkSync(join(root, descriptor.artifactRoot, 'runtime/node_modules'), join(root, 'node_modules'))
   await buildUserRaycast(root)
   process.env.TOCKTEAM_USER_RAYCAST_ID = 'linear'
-  for (const scenario of ['success', 'http', 'transport', 'sync-transport', 'timeout', 'repeated-failure', 'concurrent-failure', 'all-clients'] as const) {
+  for (const scenario of ['success', 'http', 'unconfirmed-success', 'transport', 'sync-transport', 'timeout', 'mixed-revocation', 'repeated-failure', 'concurrent-failure', 'all-clients'] as const) {
     await t.test(scenario, async () => {
       globalThis.fetch = async () => { throw new Error('Network prohibited by test') }
       // Each module instance owns only this scenario's fake clients.
@@ -56,13 +56,13 @@ test('first-party OAuth cleanup stays honest under mocked provider failures', as
         await client.setTokens({ access_token: 'fake-new-token', refresh_token: 'fake-new-token' })
         await client.removeTokens()
         assert.equal(requests.length, 3, 'a new token set receives its own cleanup')
-      } else if (scenario === 'http' || scenario === 'transport' || scenario === 'sync-transport') {
+      } else if (scenario === 'http' || scenario === 'unconfirmed-success' || scenario === 'transport' || scenario === 'sync-transport') {
         const secret = 'fake-sensitive-token'
         globalThis.fetch = scenario === 'sync-transport'
           ? () => { throw new Error(`provider error includes ${secret}`) }
           : async () => {
             if (scenario === 'transport') throw new Error(`provider error includes ${secret}`)
-            return new Response(secret, { status: 503 })
+            return new Response(secret, { status: scenario === 'unconfirmed-success' ? 202 : 503 })
           }
         await client.setTokens({ access_token: secret })
         await assert.rejects(client.removeTokens(), error => {
@@ -86,6 +86,18 @@ test('first-party OAuth cleanup stays honest under mocked provider failures', as
         await assert.rejects(client.removeTokens(), failure)
         assert.equal(aborted, true)
         assert.equal(await client.getTokens(), null)
+      } else if (scenario === 'mixed-revocation') {
+        const tokens = ['fake-already-revoked-refresh', 'fake-revoked-access'] as const, seen: string[] = []
+        globalThis.fetch = async (_input, init) => {
+          const token = new URLSearchParams(String(init?.body)).get('token')!
+          seen.push(token)
+          return new Response(null, { status: token === tokens[0] ? 400 : 200 })
+        }
+        await client.setTokens({ access_token: tokens[1], refresh_token: tokens[0] })
+        await assert.rejects(client.removeTokens(), failure)
+        await assert.rejects(revokeUserRaycastOAuthTokens(), failure)
+        assert.equal(await client.getTokens(), null)
+        assert.deepEqual(seen.sort(), [...tokens].sort(), 'a successful token response must not hide another unconfirmed response')
       } else if (scenario === 'repeated-failure') {
         let requests = 0
         globalThis.fetch = async () => { requests++; return new Response(null, { status: 503 }) }

@@ -70,7 +70,7 @@ test('mocked shutdown rejection or timeout stays visible and stops every owned p
     } finally { rmSync(root, { recursive: true, force: true }) }
   })
   await buildUserRaycast(runtime)
-  for (const scenario of ['http', 'transport', 'timeout'] as const) {
+  for (const scenario of ['http', 'unconfirmed-success', 'transport', 'timeout'] as const) {
     const folder = join(root, scenario)
     mkdirSync(folder)
     writeFileSync(join(folder, 'package.json'), JSON.stringify({ name: 'linear', title: 'Offline Cleanup Fixture', commands: [{ name: 'search-issues', title: 'Search Issues', mode: 'view' }] }))
@@ -78,7 +78,7 @@ test('mocked shutdown rejection or timeout stays visible and stops every owned p
       const React = require('react'); const { OAuth, List } = require('@raycast/api');
       global.fetch = async (url, options) => {
         if (url !== 'https://api.linear.app/oauth/revoke') throw Error('Network prohibited');
-        ${scenario === 'http' ? "return { ok: false, status: 503 };" : scenario === 'transport' ? "throw Error('provider error includes fake-runtime-token');" : "return new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true }));"}
+        ${scenario === 'unconfirmed-success' ? "return { ok: true, status: 202 };" : scenario === 'http' ? "return { ok: false, status: 503 };" : scenario === 'transport' ? "throw Error('provider error includes fake-runtime-token');" : "return new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true }));"}
       };
       const client = new OAuth.PKCEClient({ redirectMethod: OAuth.RedirectMethod.Web, providerId: 'linear' });
       exports.default = function Browse() {

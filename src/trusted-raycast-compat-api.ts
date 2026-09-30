@@ -149,7 +149,8 @@ class LinearPkceClient {
     this.cleanup = Promise.allSettled(values.map(async token => fetch('https://api.linear.app/oauth/revoke', {
       method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token }), signal: AbortSignal.timeout(1500),
     }))).then(responses => {
-      if (responses.some(result => result.status !== 'fulfilled' || !result.value.ok)) throw new Error('Linear OAuth token revocation could not be confirmed')
+      // Linear documents only HTTP 200 as confirmation, not other successful-range statuses.
+      if (responses.some(result => result.status !== 'fulfilled' || result.value.status !== 200)) throw new Error('Linear OAuth token revocation could not be confirmed')
     })
     return this.cleanup
   }
