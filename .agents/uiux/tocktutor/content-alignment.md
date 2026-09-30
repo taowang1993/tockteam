@@ -1,6 +1,14 @@
 # TockTutor and Obsidian Content Alignment
 
-## Barely Visible App and Palace Image Resizing — 2026-09-30
+## Image Alignment and Diagram Editing Reference — 2026-09-30
+
+Source commit `83dba93c` corrects the inherited Crepe image-block seam, not the authored note. The third Markdown image was centered at x=864 while the document, first two images, and its own controls began at x=562; the upstream 100 px minimum height cropped the 96 px photo. The scoped shared recipe now removes auto-centering/minimum dimensions, keeps the image contained, and aligns its caption with the note. Rendered checks measure all three images at x=562 and the small image at 96 × 64.2578125, consistent with the 3872 × 2592 photo. `scripts/tocktutor-image-layout-checks.js` failed on the original rendered page and passes on the built/staged app. Eight appearances, opposite system appearance, 640/390 px layouts, and viewer zoom/exit/focus in all three modes passed. The 200 → 240 → 280 → Undo-to-240 save/reopen check again produced the exact prior saved note bytes; the 120 × 120 neighbor and Markdown caption/alt remain intact.
+
+Surface 28 now includes `obsidian-mermaid-editing.png`, captured from genuine installed Obsidian 1.13.7 in an isolated fixture vault. Its active uppercase Mermaid source and neighboring diagrams accompany the unchanged TockTutor editing capture. The saved note hash is identical in both: `c407aff19710d3cb8a8dd75f312caba27af7c11ec617e6d49e80db3efe09b007`. Obsidian's built-in Mermaid trust prompt was accepted only for the copied fixture, not the user's vault; editor controls and fence presentation are not claimed identical. Both new captures are 1512 × 949 CSS pixels at DPR 2, built-in dark with no skin, with zero capture-time runtime errors/external requests. Native dark mode is explicitly body-owned; the empty inline document color-scheme remains recorded. All owned process trees stopped: final Desktop 42045, diagnostic Desktop 38703/40719, and Obsidian 43631. The user's Obsidian registry is unchanged.
+
+Publication changes only `tocktutor-image-resizing.png` and new `obsidian-mermaid-editing.png`; the other 70 existing screenshots remain byte-identical. The gallery now has 65 unique images and 72 files including seven supplements. See [the alignment and diagram report](../../../.beads/reports/2026-09-30-tocktutor-image-alignment-and-diagram-reference.md) and the JSON proof.
+
+## Historical Palace Photo Refinement — 2026-09-30
 
 Source commit `8f3bed69` increases semantic-canvas dimming from 80% to 95% and replaces the visible Close label with a circular 36 × 36 X button, retaining its accessible name Close. Real Desktop CSS checks confirmed the circle rather than relying on the class name: the ordinary shared rounded utility initially won, so the local full-radius override is explicit. Eight app appearances, opposite system appearance, switches while open, all three editor modes, narrow viewports, maximum zoom eight, dismissal, focus, and restored shell controls passed. The minimum title/control contrast remains 11.74:1. No skin catalog or shared-button behavior changed.
 

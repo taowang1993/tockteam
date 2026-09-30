@@ -13,16 +13,16 @@ const links = [...html.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].
 const sha256 = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex')
 
 test('accounts for every gallery and supplemental capture without stale links', () => {
-  assert.match(html, /Visual Design Audit · 64 Captures/u)
+  assert.match(html, /Visual Design Audit · 65 Captures/u)
   assert.match(html, /Built-in Dark Theme · No Active Skin/u)
   assert.doesNotMatch(html, /UIUX Comparison/u)
   assert.doesNotMatch(html, /Tag and Tab Polish|id="polish"/u)
-  assert.equal(new Set(images).size, 64)
+  assert.equal(new Set(images).size, 65)
   assert.deepEqual(images, links)
   const actual = readdirSync(resolve(root, 'screenshots')).sort()
   assert.deepEqual(actual, proof.gallery.allowlist)
   assert.deepEqual(actual, Object.keys(proof.captures).sort())
-  assert.equal(actual.length, 71)
+  assert.equal(actual.length, 72)
   assert.deepEqual(actual.filter(name => !images.includes(`screenshots/${name}`)), proof.gallery.supplementalCaptures)
   assert.ok(proof.gallery.supplementalCaptures.includes('tocktutor-tag-tab-polish.png'))
   assert.ok(proof.comparisons.every((comparison: { surface: string }) => comparison.surface !== 'polish'))
@@ -106,6 +106,19 @@ test('pairs Image Resizing with byte-identical palace images and saved widths in
   assert.deepEqual(current.visibleState.widths, [240, 120, 96])
   assert.equal(current.visibleState.undoOneStep, true)
   assert.equal(current.visibleState.reopened, true)
+  assert.equal(current.visibleState.alignedImages, true)
+  const layout = proof.migrationReview.imageLayoutRefresh
+  assert.equal(layout.before.image.x - layout.before.document.x, 302)
+  assert.equal(layout.before.image.height, 100)
+  for (const measured of layout.after.measurements) {
+    assert.ok(Math.abs(measured.image.x - measured.document.x) < 1)
+    assert.ok(Math.abs(measured.actions.x - measured.image.x) < 1)
+  }
+  const third = layout.after.measurements[2]
+  assert.ok(Math.abs(third.image.height - 96 * 2592 / 3872) < 1)
+  assert.equal(third.caption.align, 'start')
+  assert.equal(layout.cleanup.verified, true)
+  assert.deepEqual(layout.cleanup.remaining, [])
   const pair = proof.pairs.find((p: { surface: string }) => p.surface === 'image-resizing')
   assert.equal(pair.tocktutor.path, 'Images.md')
   assert.equal(pair.obsidian.path, 'Images.md')
@@ -113,7 +126,31 @@ test('pairs Image Resizing with byte-identical palace images and saved widths in
   assert.match(section, /Potala Palace/u)
 })
 
-test('keeps unmatched migration surfaces distinct from the two palace-photo pairs', () => {
+test('pairs Diagram Editing with genuine Obsidian and identical saved uppercase-fence source', () => {
+  const section = /<section class="surface" id="mermaid-editing">([\s\S]*?)<\/section>/u.exec(html)![1]!
+  assert.deepEqual([...section.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => match[1]), [
+    'screenshots/tocktutor-mermaid-editing.png', 'screenshots/obsidian-mermaid-editing.png',
+  ])
+  assert.doesNotMatch(section, /missing-reference|Reference Not Captured/u)
+  const current = proof.captures['tocktutor-mermaid-editing.png'], native = proof.captures['obsidian-mermaid-editing.png']
+  assert.equal(native.product, 'Obsidian 1.13.7')
+  assert.equal(native.entry, '/Applications/Obsidian.app/Contents/Resources/app.asar')
+  assert.equal(native.captureScope, 'real-desktop')
+  assert.equal(native.contentSha256, current.contentSha256)
+  assert.equal(native.mode, 'live-preview')
+  assert.equal(native.visibleState.editing, true)
+  assert.equal(native.visibleState.uppercaseFence, true)
+  assert.equal(native.visibleState.visibleCode, current.visibleState.visibleCode)
+  assert.ok(native.visibleState.neighborSvgNodes > 0)
+  assert.equal(native.userStateUnchanged, true)
+  const pair = proof.pairs.find((p: { surface: string }) => p.surface === 'mermaid-editing')
+  assert.equal(pair.tocktutor.path, 'Diagrams.md')
+  assert.equal(pair.tocktutor.contentSha256, pair.obsidian.contentSha256)
+  assert.equal(proof.migrationReview.diagramEditingReference.cleanup.verified, true)
+  assert.deepEqual(proof.migrationReview.diagramEditingReference.cleanup.remaining, [])
+})
+
+test('keeps unmatched migration surfaces distinct from the three focused comparisons', () => {
   const additions = proof.migrationReview
   assert.equal(additions.allowlist.length, 6)
   assert.equal(additions.registryUnchanged, true)
@@ -123,12 +160,12 @@ test('keeps unmatched migration surfaces distinct from the two palace-photo pair
     assert.ok(html.includes(`id="${id}"`), id)
     assert.ok(html.includes(`href="#${id}"`), id)
   }
-  assert.match(html, /remaining four additions are TockTutor feature evidence, not matched Obsidian comparisons/u)
+  assert.match(html, /remaining three additions are TockTutor feature evidence, not matched Obsidian comparisons/u)
   for (const name of additions.allowlist) {
     assert.ok(images.includes(`screenshots/${name}`), name)
     assert.equal(proof.captures[name].captureScope, 'real-desktop')
     const expectedCommit = name === 'tocktutor-image-viewer.png' ? additions.imageViewerRefresh.sourceCommit
-      : name === 'tocktutor-image-resizing.png' ? additions.imageResizingRefresh.sourceCommit : additions.sourceCommit
+      : name === 'tocktutor-image-resizing.png' ? additions.imageLayoutRefresh.sourceCommit : additions.sourceCommit
     assert.equal(proof.captures[name].sourceCommit, expectedCommit)
   }
   const fixtures = resolve(root, additions.fixtures)
