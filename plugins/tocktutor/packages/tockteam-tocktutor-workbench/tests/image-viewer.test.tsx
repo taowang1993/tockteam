@@ -66,6 +66,14 @@ describe('TockTutor image viewer', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
+  it('uses the app canvas color for the image viewport and its dialog', async () => {
+    const { unmount } = render(<ImageViewerDialog image={{ alt: 'Photo', src: dataUrl }} onClose={() => {}} />)
+    const dialog = await screen.findByRole('dialog', { name: 'Photo' })
+    expect(dialog.classList.contains('bg-background')).toBe(true)
+    expect(within(dialog).getByLabelText('Image Viewport').classList.contains('bg-background')).toBe(true)
+    unmount()
+  })
+
   it('closes the Reading viewer when the note content changes', async () => {
     const { rerender } = render(<RichReadingView embeds={[localEmbed]} onToggleTask={() => {}} source="![[photo.png]]" title="Note" />)
     fireEvent.click(await screen.findByRole('button', { name: 'View Image: Photo' }))

@@ -86,7 +86,7 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
   return (
     <Dialog open={image !== null} onOpenChange={open => { if (!open) props.onClose() }}>
       <DialogContent
-        className="!max-w-[min(92vw,90rem)] z-[2147483647] w-[min(92vw,90rem)] max-h-[calc(100dvh-2rem)] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-3 border border-border bg-popover p-4 text-popover-foreground shadow-xl"
+        className="!max-w-[min(92vw,90rem)] z-[2147483647] w-[min(92vw,90rem)] max-h-[calc(100dvh-2rem)] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-3 border border-border bg-background p-4 text-foreground shadow-xl"
         overlayClassName="z-[2147483646]"
         onCloseAutoFocus={event => {
           const trigger = props.returnFocusRef?.current
@@ -107,7 +107,7 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
         </DialogHeader>
         <div
           aria-label="Image Viewport"
-          className="flex min-h-0 min-w-0 cursor-grab items-center justify-center overflow-hidden rounded-md bg-surface-muted touch-none active:cursor-grabbing"
+          className="flex min-h-0 min-w-0 cursor-grab items-center justify-center overflow-hidden rounded-md bg-background touch-none active:cursor-grabbing"
           onPointerCancel={stopPan}
           onPointerDown={startPan}
           onPointerMove={movePan}
