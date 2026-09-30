@@ -70,7 +70,7 @@ export function ImageViewerDialog(props) {
             event.currentTarget.releasePointerCapture?.(event.pointerId);
     };
     return (_jsx(Dialog, { open: image !== null, onOpenChange: open => { if (!open)
-            props.onClose(); }, children: _jsxs(DialogContent, { className: "!max-w-[min(92vw,90rem)] z-[2147483647] w-[min(92vw,90rem)] max-h-[calc(100dvh-2rem)] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-3 border border-border bg-background p-4 text-foreground shadow-xl", overlayClassName: "z-[2147483646]", onCloseAutoFocus: event => {
+            props.onClose(); }, children: _jsxs(DialogContent, { className: "!max-w-[min(92vw,90rem)] z-[2147483647] w-[min(92vw,90rem)] max-h-[calc(100dvh-2rem)] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-3 border border-border !bg-background p-4 text-foreground shadow-xl", overlayClassName: "z-[2147483646]", onCloseAutoFocus: event => {
                 const trigger = props.returnFocusRef?.current;
                 if (trigger?.isConnected) {
                     event.preventDefault();

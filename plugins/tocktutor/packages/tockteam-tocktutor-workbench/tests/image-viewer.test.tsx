@@ -69,7 +69,8 @@ describe('TockTutor image viewer', () => {
   it('uses the app canvas color for the image viewport and its dialog', async () => {
     const { unmount } = render(<ImageViewerDialog image={{ alt: 'Photo', src: dataUrl }} onClose={() => {}} />)
     const dialog = await screen.findByRole('dialog', { name: 'Photo' })
-    expect(dialog.classList.contains('bg-background')).toBe(true)
+    // Shared DialogContent also supplies bg-popover; the viewer must win the cascade.
+    expect(dialog.classList.contains('!bg-background')).toBe(true)
     expect(within(dialog).getByLabelText('Image Viewport').classList.contains('bg-background')).toBe(true)
     unmount()
   })
