@@ -1270,6 +1270,10 @@
   & .milkdown .ProseMirror > :is(h1, h2, h3, h4, h5, h6):first-child { margin-top: 0; }
   & .milkdown .ProseMirror > p { margin: 0 0 16px; padding: 0; }
   & .milkdown .ProseMirror a { color: var(--dsw-specific-markdown-accent); font-weight: 500; }
+  /* Keep Crepe's Markdown images in document flow, like the wiki embeds. */
+  & .milkdown .milkdown-image-block > .image-wrapper { margin: 0; min-width: 0; }
+  & .milkdown .milkdown-image-block > .image-wrapper img { min-height: 0; object-fit: contain; }
+  & .milkdown .milkdown-image-block > .caption-input { text-align: start; }
   & .milkdown .ProseMirror hr { background-color: var(--crepe-color-outline); }
   & .milkdown .ProseMirror table { width: max-content; max-width: 100%; table-layout: auto; }
   & .milkdown .milkdown-table-block :is(th, td) { border-color: color-mix(in srgb, var(--dsw-alias-label-secondary) 60%, var(--tt-panel)); }
