@@ -60,6 +60,54 @@ test('an approved local fixture signs in by PKCE without exposing a token to the
   assert.equal(await fetch(callback).then(response => response.status).catch(() => 'closed'), 'closed')
 })
 
+test('mocked shutdown rejection or timeout stays visible and stops every owned process', async t => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-linear-cleanup-runtime-'))
+  const runtime = join(root, 'host'), pids: number[] = []
+  t.after(() => {
+    try {
+      for (const pid of pids) assert.throws(() => process.kill(-pid, 0), /ESRCH/)
+      t.diagnostic(`Stopped owned process groups: ${pids.join(', ')}`)
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  })
+  await buildUserRaycast(runtime)
+  for (const scenario of ['http', 'transport', 'timeout'] as const) {
+    const folder = join(root, scenario)
+    mkdirSync(folder)
+    writeFileSync(join(folder, 'package.json'), JSON.stringify({ name: 'linear', title: 'Offline Cleanup Fixture', commands: [{ name: 'search-issues', title: 'Search Issues', mode: 'view' }] }))
+    writeFileSync(join(folder, 'search-issues.js'), `
+      const React = require('react'); const { OAuth, List } = require('@raycast/api');
+      global.fetch = async (url, options) => {
+        if (url !== 'https://api.linear.app/oauth/revoke') throw Error('Network prohibited');
+        ${scenario === 'http' ? "return { ok: false, status: 503 };" : scenario === 'transport' ? "throw Error('provider error includes fake-runtime-token');" : "return new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true }));"}
+      };
+      const client = new OAuth.PKCEClient({ redirectMethod: OAuth.RedirectMethod.Web, providerId: 'linear' });
+      exports.default = function Browse() {
+        const [ready, setReady] = React.useState(false);
+        React.useEffect(() => { client.setTokens({ access_token: 'fake-runtime-token' }).then(() => setReady(true)); }, []);
+        return React.createElement(List, null, React.createElement(List.Item, { title: ready ? 'Cleanup Fixture Ready' : 'Starting' }));
+      };`)
+    const install = new UserRaycastInstall(join(root, `installed-${scenario}`))
+    const messages: any[] = [], errors: string[] = []
+    const manager = new UserRaycastManager({ install, runtime, nodePath: process.execPath, artifact: resolve('plugins/trusted-raycast/vendor/google-translate.tar'), onMessage: (_owner, message) => messages.push(message), onError: (_owner, error) => errors.push(error.message) })
+    try {
+      const candidate = install.prepare(folder, 'search-issues')
+      install.approve(candidate.digest); install.enable()
+      const started = manager.start({ webContentsId: 17 })
+      if (manager.childPid) pids.push(manager.childPid)
+      await started
+      const deadline = Date.now() + 5000
+      while (!JSON.stringify(messages).includes('Cleanup Fixture Ready') && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
+      assert.match(JSON.stringify(messages), /Cleanup Fixture Ready/)
+      assert.deepEqual(errors, [])
+      await manager.close(); await manager.close()
+      assert.deepEqual(errors, ['Linear OAuth cleanup could not be confirmed; revoke access in Linear settings'])
+      assert.doesNotMatch(JSON.stringify({ messages, errors }), /fake-runtime-token/)
+      assert.equal(messages.some(message => message.type === 'auth-url'), false)
+      assert.equal(manager.childPid, undefined)
+    } finally { await manager.close() }
+  }
+})
+
 test('a suspended login started while rendering resumes after the owned callback', async t => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-linear-suspense-'))
   const folder = join(root, 'fixture')

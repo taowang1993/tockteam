@@ -99,7 +99,8 @@ export const Form = Object.assign(form, { TextField: component('raycast-text-fie
 type LinearAuthRequest = { endpoint: string; clientId: string; codeVerifier: string; redirectURI: string }
 const linearPkceClients = new Set<LinearPkceClient>()
 export async function revokeUserRaycastOAuthTokens(): Promise<void> {
-  for (const client of linearPkceClients) await client.removeTokens()
+  const results = await Promise.allSettled([...linearPkceClients].map(client => client.removeTokens()))
+  if (results.some(result => result.status === 'rejected')) throw new Error('Linear OAuth token revocation could not be confirmed')
 }
 type LinearTokenResponse = { access_token: string; refresh_token?: string; expires_in?: number; id_token?: string }
 class LinearPkceClient {
@@ -107,6 +108,7 @@ class LinearPkceClient {
   description = 'Connect your Linear account'
   private tokens: { accessToken: string; refreshToken?: string; idToken?: string; isExpired: () => boolean } | null = null
   private pending: AbortController | undefined
+  private cleanup: Promise<void> | undefined
   constructor(options: { providerId?: string; redirectMethod?: string }) {
     if (process.env.TOCKTEAM_USER_RAYCAST_ID !== 'linear' || options.providerId !== 'linear' || options.redirectMethod !== 'web') unsupported('OAuth.PKCEClient')
     linearPkceClients.add(this)
@@ -131,19 +133,25 @@ class LinearPkceClient {
   async getTokens() { return this.tokens }
   async setTokens(raw: LinearTokenResponse): Promise<void> {
     if (!raw || typeof raw.access_token !== 'string' || !raw.access_token || raw.access_token.length > 8192 || raw.refresh_token !== undefined && (typeof raw.refresh_token !== 'string' || raw.refresh_token.length > 8192)) throw new Error('Invalid Linear OAuth tokens')
+    if (this.cleanup) await this.cleanup
+    this.cleanup = undefined
     const expiresAt = typeof raw.expires_in === 'number' && Number.isFinite(raw.expires_in) ? Date.now() + raw.expires_in * 1000 : Infinity
     this.tokens = { accessToken: raw.access_token, ...(raw.refresh_token ? { refreshToken: raw.refresh_token } : {}), ...(raw.id_token ? { idToken: raw.id_token } : {}), isExpired: () => Date.now() >= expiresAt }
   }
   async removeTokens(): Promise<void> {
     this.pending?.abort()
+    // Keep only the cleanup outcome: repeated/concurrent callers must not turn a failed revoke into success.
+    if (this.cleanup) return this.cleanup
     const tokens = this.tokens
     this.tokens = null
     if (!tokens) return
     const values = [...new Set([tokens.refreshToken, tokens.accessToken].filter((value): value is string => !!value))]
-    const responses = await Promise.allSettled(values.map(token => fetch('https://api.linear.app/oauth/revoke', {
+    this.cleanup = Promise.allSettled(values.map(async token => fetch('https://api.linear.app/oauth/revoke', {
       method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token }), signal: AbortSignal.timeout(1500),
-    })))
-    if (responses.some(result => result.status !== 'fulfilled' || !result.value.ok)) throw new Error('Linear OAuth token revocation could not be confirmed')
+    }))).then(responses => {
+      if (responses.some(result => result.status !== 'fulfilled' || !result.value.ok)) throw new Error('Linear OAuth token revocation could not be confirmed')
+    })
+    return this.cleanup
   }
 }
 export const OAuth = { RedirectMethod: { Web: 'web' }, PKCEClient: LinearPkceClient }
