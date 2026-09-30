@@ -28,7 +28,7 @@ test('accounts for every gallery and supplemental capture without stale links', 
   assert.ok(proof.pairs.every((pair: { surface: string }) => pair.surface !== 'polish'))
   for (const href of [...html.matchAll(/\bhref="([^"]+)"/gu)].map(match => match[1]!)) {
     if (href.startsWith('#')) assert.ok(html.includes(`id="${href.slice(1)}"`), href)
-    else if (!href.startsWith('data:')) assert.ok(existsSync(resolve(root, href)), href)
+    else if (!href.startsWith('data:') && !href.startsWith('https://')) assert.ok(existsSync(resolve(root, href)), href)
   }
   assert.equal([...html.matchAll(/<span class="badge">Not Applicable<\/span>/gu)].length, 1)
   assert.match(html, /id="assistant"[\s\S]*?Obsidian · Claudian[\s\S]*?obsidian-assistant\.png/u)
@@ -49,15 +49,20 @@ test('adds verified migration surfaces without claiming new Obsidian comparisons
   for (const name of additions.allowlist) {
     assert.ok(images.includes(`screenshots/${name}`), name)
     assert.equal(proof.captures[name].captureScope, 'real-desktop')
-    assert.equal(proof.captures[name].sourceCommit, additions.sourceCommit)
+    assert.equal(proof.captures[name].sourceCommit, name === 'tocktutor-image-viewer.png' ? additions.imageViewerRefresh.sourceCommit : additions.sourceCommit)
   }
   const fixtures = resolve(root, additions.fixtures)
   const source = (name: string) => readFileSync(resolve(fixtures, name), 'utf8')
+  assert.match(source('Viewer.md'), /Potala_palace23\.jpg/u)
+  assert.equal(sha256(readFileSync(resolve(fixtures, 'Attachments/Potala_palace23.jpg'))), proof.captures['tocktutor-image-viewer.png'].assetSha256)
+  assert.equal(proof.captures['tocktutor-image-viewer.png'].path, 'Viewer.md')
+  assert.equal(additions.imageViewerRefresh.obsidianReference, 'pending')
+  assert.match(html, /id="image-viewer"[\s\S]*?Antoine Taveneaux[\s\S]*?CC BY-SA 3\.0/u)
   const afterImages = source('Images.md').replace('tockteam.png|200', 'tockteam.png|240')
   const afterProperties = source('Properties.md').replace('due: null', 'due: "2026-10-01"').replace('finished: null', 'finished: true').replace('rating: 1e-7', 'rating: 1e+21')
   const afterDiagrams = source('Diagrams.md').replace('  A[Start] --> B[Finish]', '  A[Start] --> B[Finish]\n    B --> C[Reviewed]')
   for (const [name, content] of Object.entries({
-    'tocktutor-image-viewer.png': source('Images.md'),
+    'tocktutor-image-viewer.png': source('Viewer.md'),
     'tocktutor-image-resizing.png': afterImages,
     'tocktutor-imported-properties.png': afterProperties,
     'tocktutor-mermaid-reading.png': source('Diagrams.md'),

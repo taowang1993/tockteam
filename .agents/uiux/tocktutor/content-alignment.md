@@ -1,5 +1,9 @@
 # TockTutor and Obsidian Content Alignment
 
+## Potala Palace Image Viewer Refresh — 2026-09-30
+
+Replaced only `tocktutor-image-viewer.png` with a guarded source-built Desktop capture of the requested `Potala_palace23.jpg` photograph (Antoine Taveneaux, CC BY-SA 3.0; Wikimedia Commons file page linked in the gallery). The isolated `Viewer.md` fixture points to a local copy of the exact Wikimedia JPEG; it does not fetch the Wikipedia page at render time. Host-resolved JPEG bytes, intrinsic 3872 × 2592 image pixels, Fit Image, zoom/pan, Escape/focus return, `/tocktutor/Viewer.md`, built-in dark/no skin, 1512 × 949 CSS pixels at DPR 2 (3024 × 1898 PNG), and zero capture-time console/page errors were verified. Guarded root PID 58852 and its complete recorded process tree stopped (`remaining: []`). The separate resizing fixture/screenshot and all previous Obsidian images are unchanged. **Obsidian supports image viewing**, but a matching native Obsidian capture remains pending: the historical native-app launch method is disallowed by the current extended-display-only guard, and WebObsidian is not the native Obsidian app. We have not labeled a substitute as an Obsidian reference. Per-image bytes and hashes are in `content-alignment.json`.
+
 ## Migration Feature Surfaces — 2026-09-29
 
 Added six TockTutor-only captures at source commit `23e2cbcb`: Image Viewer, Image Resizing, Mermaid Reading, Mermaid Live Preview, Diagram Editing, and Imported Properties. Surfaces 25–29 deliberately identify these as feature evidence, not matching Obsidian comparisons. The existing 63 screenshot files, including every Obsidian reference, remain unchanged; the gallery now displays 62 unique images and retains seven supplemental captures (69 total files).

@@ -812,6 +812,7 @@
     "report": "../../../.beads/reports/2026-09-29-tocktutor-migration-review.md",
     "fixtures": "migration-fixtures",
     "referenceStatus": "TockTutor-only feature captures; no matching new Obsidian reference was captured.",
+    "imageViewerRefresh": {"sourceCommit":"992bc7aa","asset":"Attachments/Potala_palace23.jpg","photoCredit":"Antoine Taveneaux, CC BY-SA 3.0","photoPage":"https://commons.wikimedia.org/wiki/File:Potala_palace23.jpg","obsidianReference":"pending","cleanup":{"rootPid":58852,"remaining":[]}},
     "allowlist": ["tocktutor-image-resizing.png", "tocktutor-image-viewer.png", "tocktutor-imported-properties.png", "tocktutor-mermaid-editing.png", "tocktutor-mermaid-live-preview.png", "tocktutor-mermaid-reading.png"],
     "registryUnchanged": true,
     "exactSavedBytesVerified": ["Images.md", "Properties.md", "Diagrams.md"],
@@ -820,12 +821,13 @@
   "captures": {
     "tocktutor-image-viewer.png": {
       "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
-      "route":"/tocktutor/Images.md", "path":"Images.md", "mode":"live-preview",
-      "contentSha256":"6c951a754e523ecff4a0a191f72c6982af4830929959804e6c777bfd60825670",
-      "bytes":221893, "sha256":"76ef23b38d473aa3ef1d4bacfab820582a101f44c15ad0b7b6b07065f86aed56",
-      "sourceCommit":"23e2cbcb", "capturedAt":"2026-09-29T13:09:19.215Z",
-      "visibleState":{"dialog":"Original artwork caption","fit":true,"zoomAndPanVerified":true},
-      "runtimeErrors":[], "runtimeErrorMonitoring":"Owned guarded Desktop/CDP; console/pageerror monitoring and final session console error check: zero errors.", "captureScope":"real-desktop"
+      "route":"/tocktutor/Viewer.md", "path":"Viewer.md", "mode":"live-preview",
+      "contentSha256":"a0933dfb585d23c141bf5fa1fa151055276c97230577072d9113cfe3aac14463",
+      "assetSha256":"03a1438d5f989ccb6b4f79420771a52ab0d7c2a1abc958ed683b564a752e3efc",
+      "bytes":5091193, "sha256":"99ed8c4f00d776f0b7ac30f579e9bfd2cdfdd8eb8f3f339dfa6e4684b8b06f05",
+      "sourceCommit":"992bc7aa", "capturedAt":"2026-09-30T00:26:51Z",
+      "visibleState":{"dialog":"Potala Palace, photographed by Antoine Taveneaux","imagePixels":[3872,2592],"resolvedJpegDataUrl":true,"fit":true,"zoomAndPanVerified":true,"focusRestored":true},
+      "runtimeErrors":[], "runtimeErrorMonitoring":"Owned guarded Desktop/CDP; capture-time console/pageerror monitoring and final session console error check: zero errors.", "captureScope":"real-desktop"
     },
     "tocktutor-image-resizing.png": {
       "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
