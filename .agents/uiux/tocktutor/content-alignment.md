@@ -1,6 +1,12 @@
 # TockTutor and Obsidian Content Alignment
 
-## Image Viewer Lightbox Parity — 2026-09-30
+## Floating Image Overlay — 2026-09-30
+
+At source commit `9f6261ec`, the user requested a photo floating over a dimmed app rather than a separate full-window page. Retook only `tocktutor-image-viewer.png`; all 69 other screenshot files, including the genuine installed Obsidian reference, are unchanged. The products retain identical `Viewer.md` and Potala Palace JPEG bytes, but the current comparison is content alignment, not exact viewer geometry.
+
+The Desktop titlebars now sit below the dimming layer only while this viewer is open. The separate title/× Close row starts below the native 40 px window controls; zoom/pan stays clipped beneath it. Built-in dark/no skin, 1512 × 949 CSS pixels at DPR 2 (3024 × 1898 PNG), eight appearance combinations with opposite system appearance and changes while open, Reading/Source/Live Preview, wheel/keyboard/drag/fit, focus trapping/return, and Close/Escape/gutter dismissal passed. The supplied screenshot's 1478 × 1106 CSS size, 640 px and 390 px widths, long-title truncation, and zoom-eight control separation passed. App chrome restores after dismissal, and a click over the underlying sidebar icon does not activate it. Minimum recorded title/close contrast is 11.74:1; runtime errors and external requests are empty. Guarded final root PID 64343 and all descendants stopped, as did diagnostic roots 42919, 50674, and 61260. See `content-alignment.json` and [the overlay review](../../../.beads/reports/2026-09-30-tocktutor-image-overlay-review.md).
+
+## Historical Image Viewer Lightbox Parity — 2026-09-30
 
 Refreshed only `tocktutor-image-viewer.png` and `obsidian-image-viewer.png` after the lightbox presentation change at source commit `063d1405`. The reference is genuine installed Obsidian 1.13.7 application code (`/Applications/Obsidian.app/Contents/Resources/app.asar`) running through guarded generic Electron 42.3.0, not WebObsidian or an unguarded native executable. Both show byte-identical `Viewer.md` and the local `Potala_palace23.jpg` photograph by Antoine Taveneaux, CC BY-SA 3.0; credits are linked in the gallery. Each capture verified built-in dark/no skin, 1512 × 949 CSS pixels at DPR 2 (3024 × 1898 PNG), the 3872 × 2592 photo, and zero capture-time console/page errors. Only these two allowlisted screenshot targets were published transactionally. Earlier Obsidian images and other feature captures are unchanged; the gallery now displays 63 images with seven supplemental captures (70 files).
 
