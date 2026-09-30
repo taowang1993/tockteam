@@ -19,9 +19,9 @@
     "skinId": null
   },
   "gallery": {
-    "uniqueImageSources": 62,
-    "captureCountLabel": "Visual Design Audit · 62 Captures",
-    "screenshotDirectoryTotal": 69,
+    "uniqueImageSources": 63,
+    "captureCountLabel": "Visual Design Audit · 63 Captures",
+    "screenshotDirectoryTotal": 70,
     "supplementalCaptures": [
       "obsidian-outline.png",
       "obsidian-quick-switcher.png",
@@ -43,6 +43,7 @@
       "obsidian-file-recovery.png",
       "obsidian-graph-global.png",
       "obsidian-graph-local.png",
+      "obsidian-image-viewer.png",
       "obsidian-live-preview-lower.png",
       "obsidian-main-editor.png",
       "obsidian-new-note.png",
@@ -457,6 +458,11 @@
         "obsidian-web-viewer.png"
       ],
       "contentComparison": "same external page"
+    },
+    {
+      "surface": "image-viewer",
+      "screenshots": ["tocktutor-image-viewer.png", "obsidian-image-viewer.png"],
+      "contentComparison": "byte-identical Markdown and local Potala Palace JPEG"
     }
   ],
   "pairs": [
@@ -805,28 +811,67 @@
         "mode": "web-viewer",
         "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       }
+    },
+    {
+      "surface": "image-viewer",
+      "tocktutor": {
+        "screenshot": "tocktutor-image-viewer.png", "path": "Viewer.md", "mode": "image-viewer",
+        "contentSha256": "a0933dfb585d23c141bf5fa1fa151055276c97230577072d9113cfe3aac14463"
+      },
+      "obsidian": {
+        "screenshot": "obsidian-image-viewer.png", "path": "Viewer.md", "mode": "image-viewer",
+        "contentSha256": "a0933dfb585d23c141bf5fa1fa151055276c97230577072d9113cfe3aac14463"
+      }
     }
   ],
   "migrationReview": {
     "sourceCommit": "23e2cbcb",
     "report": "../../../.beads/reports/2026-09-29-tocktutor-migration-review.md",
     "fixtures": "migration-fixtures",
-    "referenceStatus": "TockTutor-only feature captures; no matching new Obsidian reference was captured.",
-    "imageViewerRefresh": {"sourceCommit":"992bc7aa","asset":"Attachments/Potala_palace23.jpg","photoCredit":"Antoine Taveneaux, CC BY-SA 3.0","photoPage":"https://commons.wikimedia.org/wiki/File:Potala_palace23.jpg","obsidianReference":"pending","cleanup":{"rootPid":58852,"remaining":[]}},
+    "referenceStatus": "Image Viewer paired with guarded installed Obsidian 1.13.7; the other five migration captures remain TockTutor-only feature evidence.",
+    "imageViewerRefresh": {
+      "sourceCommit":"634889e0", "asset":"Attachments/Potala_palace23.jpg",
+      "photoCredit":"Antoine Taveneaux, CC BY-SA 3.0", "photoPage":"https://commons.wikimedia.org/wiki/File:Potala_palace23.jpg",
+      "obsidianReference":"obsidian-image-viewer.png", "changedWhileOpen":true,
+      "cleanup":{"verified":true,"rootPid":90792,"recordedPids":[90792,90794,90795,90797,90798,90801,90808,90810,91011,91013,91031,91032,91033,91034,91035,91036,91037,91284,91285,91286,91287,91288,91289,91290,91291],"remaining":[]},
+      "obsidianCleanup":{"verified":true,"rootPid":68976,"remaining":[]},
+      "appearanceChecks": [
+        {"theme":"dark","skin":null,"documentSkin":null,"geometry":[1512,949,2],"dialogBackground":"rgb(21, 21, 23)","viewportBackground":"rgb(21, 21, 23)","foreground":"rgb(249, 250, 251)","expectedBackground":"rgb(21, 21, 23)","textContrast":17.45},
+        {"theme":"light","skin":null,"documentSkin":null,"geometry":[1512,949,2],"dialogBackground":"rgb(255, 255, 255)","viewportBackground":"rgb(255, 255, 255)","foreground":"rgb(15, 17, 21)","expectedBackground":"rgb(255, 255, 255)","textContrast":18.9},
+        {"theme":"dark","skin":"tockteam-skin-navy","documentSkin":null,"geometry":[1512,949,2],"dialogBackground":"rgb(7, 25, 35)","viewportBackground":"rgb(7, 25, 35)","foreground":"rgb(233, 248, 251)","expectedBackground":"rgb(7, 25, 35)","textContrast":16.45},
+        {"theme":"light","skin":"tockteam-skin-navy","documentSkin":null,"geometry":[1512,949,2],"dialogBackground":"rgb(234, 244, 247)","viewportBackground":"rgb(234, 244, 247)","foreground":"rgb(23, 49, 58)","expectedBackground":"rgb(234, 244, 247)","textContrast":12.22},
+        {"theme":"dark","skin":"tockteam-skin-jade","documentSkin":null,"geometry":[1512,949,2],"dialogBackground":"rgb(7, 26, 22)","viewportBackground":"rgb(7, 26, 22)","foreground":"rgb(233, 251, 243)","expectedBackground":"rgb(7, 26, 22)","textContrast":16.74},
+        {"theme":"light","skin":"tockteam-skin-jade","documentSkin":null,"geometry":[1512,949,2],"dialogBackground":"rgb(234, 244, 235)","viewportBackground":"rgb(234, 244, 235)","foreground":"rgb(27, 53, 41)","expectedBackground":"rgb(234, 244, 235)","textContrast":11.74},
+        {"theme":"dark","skin":"tockteam-skin-ember","documentSkin":null,"geometry":[1512,949,2],"dialogBackground":"rgb(22, 17, 13)","viewportBackground":"rgb(22, 17, 13)","foreground":"rgb(253, 240, 230)","expectedBackground":"rgb(22, 17, 13)","textContrast":16.77},
+        {"theme":"light","skin":"tockteam-skin-ember","documentSkin":null,"geometry":[1512,949,2],"dialogBackground":"rgb(248, 242, 233)","viewportBackground":"rgb(248, 242, 233)","foreground":"rgb(59, 42, 27)","expectedBackground":"rgb(248, 242, 233)","textContrast":12.31}
+      ]
+    },
     "allowlist": ["tocktutor-image-resizing.png", "tocktutor-image-viewer.png", "tocktutor-imported-properties.png", "tocktutor-mermaid-editing.png", "tocktutor-mermaid-live-preview.png", "tocktutor-mermaid-reading.png"],
     "registryUnchanged": true,
     "exactSavedBytesVerified": ["Images.md", "Properties.md", "Diagrams.md"],
     "cleanup": {"verified": true, "rootPid": 15846, "recordedPids": [15846,15848,15849,15851,15854,15857,15866,16068,16232,16233,16234,17745], "remaining": []}
   },
   "captures": {
-    "tocktutor-image-viewer.png": {
-      "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
-      "route":"/tocktutor/Viewer.md", "path":"Viewer.md", "mode":"live-preview",
+    "obsidian-image-viewer.png": {
+      "geometry":{"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
+      "route":"app://obsidian.md/index.html", "path":"Viewer.md", "mode":"image-viewer",
       "contentSha256":"a0933dfb585d23c141bf5fa1fa151055276c97230577072d9113cfe3aac14463",
       "assetSha256":"03a1438d5f989ccb6b4f79420771a52ab0d7c2a1abc958ed683b564a752e3efc",
-      "bytes":5091193, "sha256":"99ed8c4f00d776f0b7ac30f579e9bfd2cdfdd8eb8f3f339dfa6e4684b8b06f05",
-      "sourceCommit":"992bc7aa", "capturedAt":"2026-09-30T00:26:51Z",
-      "visibleState":{"dialog":"Potala Palace, photographed by Antoine Taveneaux","imagePixels":[3872,2592],"resolvedJpegDataUrl":true,"fit":true,"zoomAndPanVerified":true,"focusRestored":true},
+      "product":"Obsidian 1.13.7", "entry":"/Applications/Obsidian.app/Contents/Resources/app.asar",
+      "runtime":"Electron 42.3.0", "guardCommit":"f0fb34a", "capturedAt":"2026-09-30T01:33:56.787Z",
+      "visibleState":{"imageViewer":"media-wrapper","imagePixels":[3872,2592],"builtInDark":true},
+      "userStateUnchanged":true, "runtimeErrors":[],
+      "runtimeErrorMonitoring":"Installed Obsidian archive in owned guarded Electron/CDP; capture-time console/pageerror monitoring: zero errors; original user registry/socket fingerprints unchanged.",
+      "captureScope":"real-desktop", "bytes":7188757, "sha256":"43726241483383e96a9ffd858d7520692ad6ef014bbeb5f4fff1827632978551"
+    },
+    "tocktutor-image-viewer.png": {
+      "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
+      "route":"/tocktutor/Viewer.md", "path":"Viewer.md", "mode":"image-viewer", "underlyingEditorMode":"live-preview",
+      "contentSha256":"a0933dfb585d23c141bf5fa1fa151055276c97230577072d9113cfe3aac14463",
+      "assetSha256":"03a1438d5f989ccb6b4f79420771a52ab0d7c2a1abc958ed683b564a752e3efc",
+      "bytes":5091326, "sha256":"88176bed74123bff3d76b75c89e94772a5ab63677427ad33c458f29735d1c1ee",
+      "sourceCommit":"634889e0", "capturedAt":"2026-09-30T02:38:49.549Z",
+      "visibleState":{"dialog":"Potala Palace, photographed by Antoine Taveneaux","imagePixels":[3872,2592],"resolvedJpegDataUrl":true,"fit":true,"zoomAndPanVerified":true,"focusRestored":true,"dialogBackground":"rgb(21, 21, 23)","viewportBackground":"rgb(21, 21, 23)","foreground":"rgb(249, 250, 251)","backgroundFollowsApp":true},
       "runtimeErrors":[], "runtimeErrorMonitoring":"Owned guarded Desktop/CDP; capture-time console/pageerror monitoring and final session console error check: zero errors.", "captureScope":"real-desktop"
     },
     "tocktutor-image-resizing.png": {
