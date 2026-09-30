@@ -60,16 +60,19 @@ test('pairs the Image Viewer with the verified installed Obsidian reference', ()
   ])
   for (const check of refresh.appearanceChecks) {
     assert.equal(check.documentSkin, null)
-    assert.equal(check.dialogBackground, check.expectedBackground)
-    assert.equal(check.viewportBackground, check.expectedBackground)
-    assert.ok(check.textContrast >= 4.5)
+    assert.equal(check.backdrop, 'rgba(0, 0, 0, 0.9)')
+    assert.equal(check.foreground, 'rgb(255, 255, 255)')
     assert.deepEqual(check.geometry, [1512, 949, 2])
-    if (check.skin !== null) {
-      const skin = TOCKTEAM_SKINS.find(skin => skin.id === check.skin)!
-      const hex = skin.palettes[check.theme as 'dark' | 'light'].tokens['--dsw-alias-bg-base']!
-      assert.equal(check.expectedBackground, `rgb(${[1, 3, 5].map(start => Number.parseInt(hex.slice(start, start + 2), 16)).join(', ')})`)
-    }
   }
+  assert.equal(refresh.layout.matchesInstalledObsidianGeometry, true)
+  assert.deepEqual(refresh.layout.dialog, { x: 0, y: 0, width: 1512, height: 949 })
+  assert.deepEqual(refresh.layout.header, { x: 0, y: 0, width: 1512, height: 32 })
+  assert.deepEqual(refresh.layout.close, { x: 1474, y: 6, width: 26, height: 26 })
+  assert.equal(refresh.layout.imagePadding, '8px')
+  assert.equal(refresh.layout.closeIconSize, 18)
+  assert.equal(proof.captures['tocktutor-image-viewer.png'].visibleState.toolbar, false)
+  assert.match(section, /full-window lightbox/u)
+  assert.doesNotMatch(section, /background follows Appearance|with Fit Image, zoom, and pan controls/u)
 })
 
 test('keeps unmatched migration surfaces distinct from the Image Viewer pair', () => {
