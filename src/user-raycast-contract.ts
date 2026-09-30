@@ -51,8 +51,22 @@ export function isUserRaycastApproval(value: unknown): value is Readonly<{ diges
 export function isUserRaycastMutation(value: unknown): value is UserRaycastMutation {
   return value === 'enable' || value === 'disable' || value === 'remove' || value === 'recover'
 }
+export function isUserRaycastAuthUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length > 4096) return false
+  try {
+    const url = new URL(value)
+    const params = url.searchParams
+    return url.protocol === 'https:' && url.host === 'linear.app' && url.pathname === '/oauth/authorize' && !url.hash && !url.username && !url.password
+      && [...params.keys()].sort().join(',') === 'actor,client_id,code_challenge,code_challenge_method,redirect_uri,response_type,scope,state'
+      && params.get('redirect_uri') === 'http://127.0.0.1:38437/linear/callback' && params.get('response_type') === 'code'
+      && params.get('scope') === 'read' && params.get('actor') === 'user' && params.get('code_challenge_method') === 'S256'
+      && /^[A-Za-z0-9_-]{43}$/.test(params.get('state') ?? '') && /^[A-Za-z0-9_-]{43}$/.test(params.get('code_challenge') ?? '')
+      && /^[A-Za-z0-9_-]{1,128}$/.test(params.get('client_id') ?? '')
+  } catch { return false }
+}
 export function isUserRaycastViewMessage(value: unknown): value is UserRaycastMessage {
   if (!record(value) || !identity(value.extensionId) || typeof value.sessionId !== 'string' || value.sessionId.length > 128 || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0) return false
+  if (value.type === 'auth-url') return value.extensionId === 'linear' && isUserRaycastAuthUrl(value.url)
   if (value.type === 'ready' || value.type === 'patch') return record(value.root) && value.root.type === 'root' && Array.isArray(value.root.children)
   if (value.type === 'outcome') return typeof value.eventId === 'string' && value.eventId.length <= 128 && typeof value.succeeded === 'boolean' && typeof value.message === 'string' && value.message.length <= 512
   if (value.type === 'toast') return typeof value.title === 'string' && value.title.length <= 512 && typeof value.message === 'string' && value.message.length <= 4096 && ['failure', 'success', 'animated'].includes(value.style as string)

@@ -1,5 +1,6 @@
 import React from 'react'
 import { afterSucceededEffect } from './trusted-raycast-effect-callback.ts'
+import { authorizeUserRaycastPkce } from './user-raycast-oauth.ts'
 
 const element = (type: string, props: Record<string, unknown> | null, children: React.ReactNode[] = []) => React.createElement(type, props, ...children)
 const component = (type: string) => (props: Record<string, unknown>) => element(type, props, React.Children.toArray(props.children as React.ReactNode))
@@ -45,7 +46,7 @@ export const Grid = Object.assign(searchableCollection('raycast-grid'), {
   EmptyView: component('raycast-empty'),
 })
 type NativeEffectRequest = { kind: 'copy' | 'openGoogleTranslate' | 'paste' | 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>>; text?: string; url?: string }
-type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void; hud?: (message: string) => void; storage?: { getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void>; clear: () => Promise<void> }; cache?: { get: (key: string) => string | undefined; set: (key: string, value: string) => void; remove: (key: string) => void; subscribe: (listener: () => void) => () => void } }
+type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; authUrl?: (url: string) => void | Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void; hud?: (message: string) => void; storage?: { getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void>; clear: () => Promise<void> }; cache?: { get: (key: string) => string | undefined; set: (key: string, value: string) => void; remove: (key: string) => void; subscribe: (listener: () => void) => () => void } }
 let compatibility: Compatibility
 export let queryEpoch = 0
 export let queryText = ''
@@ -94,6 +95,58 @@ const formDropdown = (props: Record<string, unknown>) => {
   return element('raycast-form-dropdown', { title: String(props.title ?? ''), value, fieldEventId: fieldId, onChange: (next: string) => { if (formId !== null) formValues.get(formId)!.set(String(props.id), next); if (typeof props.onChange === 'function') props.onChange(next) } }, React.Children.toArray(props.children as React.ReactNode))
 }
 export const Form = Object.assign(form, { TextField: component('raycast-text-field'), Dropdown: Object.assign(formDropdown, { Item: component('raycast-form-dropdown-item') }) })
+
+type LinearAuthRequest = { endpoint: string; clientId: string; codeVerifier: string; redirectURI: string }
+const linearPkceClients = new Set<LinearPkceClient>()
+export async function revokeUserRaycastOAuthTokens(): Promise<void> {
+  for (const client of linearPkceClients) await client.removeTokens()
+}
+type LinearTokenResponse = { access_token: string; refresh_token?: string; expires_in?: number; id_token?: string }
+class LinearPkceClient {
+  readonly providerName = 'Linear'
+  description = 'Connect your Linear account'
+  private tokens: { accessToken: string; refreshToken?: string; idToken?: string; isExpired: () => boolean } | null = null
+  private pending: AbortController | undefined
+  constructor(options: { providerId?: string; redirectMethod?: string }) {
+    if (process.env.TOCKTEAM_USER_RAYCAST_ID !== 'linear' || options.providerId !== 'linear' || options.redirectMethod !== 'web') unsupported('OAuth.PKCEClient')
+    linearPkceClients.add(this)
+  }
+  async authorizationRequest(options: { endpoint: string; clientId: string; scope: string; extraParameters?: { actor?: string } }): Promise<LinearAuthRequest> {
+    if (options.endpoint !== 'https://linear.app/oauth/authorize' || options.scope !== 'read' || options.extraParameters?.actor !== 'user') throw new Error('Only direct read-only Linear OAuth is supported')
+    return { endpoint: options.endpoint, clientId: options.clientId, codeVerifier: '', redirectURI: '' }
+  }
+  async authorize(request: LinearAuthRequest): Promise<{ authorizationCode: string }> {
+    const onAuthorizeUrl = compatibility.authUrl
+    if (!onAuthorizeUrl) throw new Error('Raycast API OAuth.PKCEClient.authorize is unavailable')
+    if (this.pending) throw new Error('Linear sign-in is already pending')
+    this.pending = new AbortController()
+    try {
+      // The pinned Linear utility reads these fields only after authorize() resolves.
+      const result = await authorizeUserRaycastPkce({ clientId: request.clientId, endpoint: request.endpoint, signal: this.pending.signal, onAuthorizeUrl })
+      request.codeVerifier = result.codeVerifier
+      request.redirectURI = result.redirectURI
+      return { authorizationCode: result.code }
+    } finally { this.pending = undefined }
+  }
+  async getTokens() { return this.tokens }
+  async setTokens(raw: LinearTokenResponse): Promise<void> {
+    if (!raw || typeof raw.access_token !== 'string' || !raw.access_token || raw.access_token.length > 8192 || raw.refresh_token !== undefined && (typeof raw.refresh_token !== 'string' || raw.refresh_token.length > 8192)) throw new Error('Invalid Linear OAuth tokens')
+    const expiresAt = typeof raw.expires_in === 'number' && Number.isFinite(raw.expires_in) ? Date.now() + raw.expires_in * 1000 : Infinity
+    this.tokens = { accessToken: raw.access_token, ...(raw.refresh_token ? { refreshToken: raw.refresh_token } : {}), ...(raw.id_token ? { idToken: raw.id_token } : {}), isExpired: () => Date.now() >= expiresAt }
+  }
+  async removeTokens(): Promise<void> {
+    this.pending?.abort()
+    const tokens = this.tokens
+    this.tokens = null
+    if (!tokens) return
+    const values = [...new Set([tokens.refreshToken, tokens.accessToken].filter((value): value is string => !!value))]
+    const responses = await Promise.allSettled(values.map(token => fetch('https://api.linear.app/oauth/revoke', {
+      method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token }), signal: AbortSignal.timeout(1500),
+    })))
+    if (responses.some(result => result.status !== 'fulfilled' || !result.value.ok)) throw new Error('Linear OAuth token revocation could not be confirmed')
+  }
+}
+export const OAuth = { RedirectMethod: { Web: 'web' }, PKCEClient: LinearPkceClient }
 
 export const environment = Object.freeze({ isDevelopment: false })
 export const Icon = new Proxy({}, { get: (_target, key) => String(key) }) as Record<string, string>

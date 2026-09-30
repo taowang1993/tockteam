@@ -55,6 +55,30 @@ test('a no-view command reports completion without a misleading empty List', asy
   view.dispose(); dom.window.close()
 })
 
+test('a Linear sign-in link stays user-controlled and disappears after the command responds', async () => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>')
+  const document = dom.window.document as Document
+  let listener: ((message: UserRaycastMessage) => void) | undefined
+  const url = 'https://linear.app/oauth/authorize?response_type=code&state=test-state'
+  const bridge = {
+    userRaycastState: async () => ({ ...empty, installed: true, enabled: true, digest: candidate.digest }),
+    userRaycastOpen: async () => listener?.({ type: 'auth-url', extensionId: 'linear', sessionId: 'linear-session', revision: 0, url }),
+    onUserRaycastView: (callback: (message: UserRaycastMessage) => void) => { listener = callback; return () => { listener = undefined } },
+  } as unknown as LauncherPreloadBridge
+  const view = createUserRaycastView(document, bridge, () => {})
+  document.body.append(view.element); await flush()
+  document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="open"]')!.click(); await flush()
+  const field = document.querySelector<HTMLInputElement>('input[aria-label="Linear Sign-In Link"]')!
+  assert.equal(field.readOnly, true)
+  assert.equal(field.value, url)
+  document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="select-sign-in-link"]')!.click()
+  assert.equal(field.selectionStart, 0)
+  assert.equal(field.selectionEnd, url.length)
+  listener?.({ type: 'ready', extensionId: 'linear', sessionId: 'linear-session', revision: 0, root: { type: 'root', props: {}, children: [] } })
+  assert.equal(document.querySelector('input[aria-label="Linear Sign-In Link"]'), null)
+  view.dispose(); dom.window.close()
+})
+
 test('a reviewed menu command activates separately and stays out of the List view', async () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>')
   const document = dom.window.document as Document

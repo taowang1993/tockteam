@@ -118,6 +118,25 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
   }
   const update = (message: UserRaycastMessage): void => {
     if (disposed) return
+    if (message.type === 'auth-url') {
+      if (message.extensionId !== 'linear' || !message.url) return
+      active = { extensionId: message.extensionId, sessionId: message.sessionId, revision: message.revision }
+      const label = document.createElement('label')
+      label.className = 'flex min-w-0 flex-col gap-2 text-sm'
+      label.textContent = 'Linear Sign-In Link'
+      const field = document.createElement('input')
+      field.type = 'text'; field.readOnly = true; field.value = message.url; field.setAttribute('aria-label', 'Linear Sign-In Link')
+      field.className = 'w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-ring'
+      label.append(field)
+      const hint = document.createElement('p')
+      hint.className = 'm-0 text-sm text-muted-foreground'
+      hint.textContent = 'Select and copy this link into your browser to sign in. Return here afterward. This test does not open a browser for you.'
+      const select = button('Select Sign-In Link', 'select-sign-in-link', () => { field.focus(); field.select() })
+      select.disabled = false
+      rendered.replaceChildren(label, hint, select)
+      feedback.textContent = 'Waiting for Linear sign-in.'
+      return
+    }
     if (message.type === 'error') { feedback.textContent = message.message ?? 'Extension failed'; feedback.setAttribute('role', 'alert'); return }
     if (message.type === 'outcome') { feedback.textContent = message.succeeded ? message.eventId === 'run' ? 'Command Complete' : 'Action Complete' : message.message ?? 'Action failed'; feedback.setAttribute('role', message.succeeded ? 'status' : 'alert'); return }
     if (message.type === 'toast') { feedback.textContent = message.title ?? ''; return }

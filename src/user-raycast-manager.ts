@@ -7,12 +7,13 @@ import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { admitTrustedRaycastArtifact, readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
 import { validMenuIcon } from './user-raycast-menu.ts'
+import { isUserRaycastAuthUrl } from './user-raycast-contract.ts'
 import { getTrustedRaycastRuntimeDescriptor } from './trusted-raycast-descriptors.ts'
 import { createTrustedRaycastLineReader, inspectTrustedRaycastProjection } from './trusted-raycast-contract.ts'
 import type { UserRaycastCandidate, UserRaycastInstall } from './user-raycast-install.ts'
 
 export type UserRaycastOwner = Readonly<{ webContentsId: number }>
-export type UserRaycastMessage = Readonly<{ extensionId: string; sessionId: string; revision: number; type: 'ready' | 'patch' | 'error' | 'outcome' | 'toast'; root?: unknown; message?: string; eventId?: string; succeeded?: boolean; title?: string; style?: string }>
+export type UserRaycastMessage = Readonly<{ extensionId: string; sessionId: string; revision: number; type: 'ready' | 'patch' | 'error' | 'outcome' | 'toast' | 'auth-url'; root?: unknown; message?: string; eventId?: string; succeeded?: boolean; title?: string; style?: string; url?: string }>
 type Session = { child: ChildProcessWithoutNullStreams; workspace: string; owner: UserRaycastOwner; candidate: UserRaycastCandidate; id: string; revision: number; actions: Set<string>; action?: { eventId: string; revision: number; nativeUsed: boolean }; resolve: () => void; reject: (error: Error) => void; settled: boolean }
 type NativeRequest = { type: 'native'; extensionId: string; sessionId: string; revision: number; eventId: string; requestId: string; kind: 'copy'; text: string }
 const frameBytes = 1024 * 1024
@@ -36,8 +37,8 @@ const validNode = (value: unknown, state = { nodes: 0, text: 0, actions: new Set
 export class UserRaycastManager {
   private session: Session | undefined
   private stopping: Promise<void> | undefined
-  private readonly options: Readonly<{ install: UserRaycastInstall; runtime: string; nodePath: string; artifact: string; onMessage: (owner: UserRaycastOwner, message: UserRaycastMessage) => void; onError?: (owner: UserRaycastOwner, error: Error) => void; copyText?: (owner: UserRaycastOwner, text: string) => void | Promise<void> }>
-  constructor(options: Readonly<{ install: UserRaycastInstall; runtime: string; nodePath: string; artifact: string; onMessage: (owner: UserRaycastOwner, message: UserRaycastMessage) => void; onError?: (owner: UserRaycastOwner, error: Error) => void; copyText?: (owner: UserRaycastOwner, text: string) => void | Promise<void> }>) { this.options = options }
+  private readonly options: Readonly<{ install: UserRaycastInstall; runtime: string; nodePath: string; artifact: string; onMessage: (owner: UserRaycastOwner, message: UserRaycastMessage) => void; onError?: (owner: UserRaycastOwner, error: Error) => void; copyText?: (owner: UserRaycastOwner, text: string) => void | Promise<void>; linearClientId?: string }>
+  constructor(options: Readonly<{ install: UserRaycastInstall; runtime: string; nodePath: string; artifact: string; onMessage: (owner: UserRaycastOwner, message: UserRaycastMessage) => void; onError?: (owner: UserRaycastOwner, error: Error) => void; copyText?: (owner: UserRaycastOwner, text: string) => void | Promise<void>; linearClientId?: string }>) { this.options = options }
   get childPid(): number | undefined { return this.session?.child.pid }
   get menuActive(): boolean { return this.session?.candidate.mode === 'menu-bar' }
   menuIcon(): Buffer {
@@ -53,6 +54,8 @@ export class UserRaycastManager {
     const workspace = mkdtempSync(join(tmpdir(), 'tockteam-user-raycast-'))
     try {
       const chosen = this.options.install.snapshotTo(join(workspace, 'source'))
+      const linearClientId = chosen.extensionId === 'linear' && chosen.command === 'search-issues' ? this.options.linearClientId : undefined
+      if (linearClientId !== undefined && !/^[a-f0-9]{32}$/i.test(linearClientId)) throw new Error('Invalid Linear test client ID')
       const manifest = JSON.parse(readFileSync(join(workspace, 'source', 'package.json'), 'utf8')) as { preferences?: unknown; commands?: Array<{ name: string; preferences?: unknown }> }
       const defaults: Record<string, string | boolean> = {}
       const commandPreferences = manifest.commands?.find(item => item.name === chosen.command)?.preferences
@@ -70,7 +73,7 @@ export class UserRaycastManager {
       for (const file of ['api.mjs', 'child.mjs']) copyFileSync(join(this.options.runtime, file), join(workspace, file))
       mkdirSync(join(workspace, 'tmp'))
       const id = randomUUID()
-      const child = spawn(this.options.nodePath, [join(workspace, 'child.mjs')], { cwd: workspace, detached: true, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TOCKTEAM_USER_RAYCAST_ID: chosen.extensionId, TOCKTEAM_USER_RAYCAST_SESSION: id, TOCKTEAM_USER_RAYCAST_COMMAND: chosen.command, TOCKTEAM_USER_RAYCAST_MODE: chosen.mode ?? 'view', ...(chosen.mode === 'no-view' || chosen.mode === 'menu-bar' ? { TOCKTEAM_USER_RAYCAST_STATE: this.options.install.statePath(chosen.extensionId) } : {}), TRUSTED_RAYCAST_EXTENSION_ID: chosen.extensionId, TRUSTED_RAYCAST_PREFERENCES: preferences } })
+      const child = spawn(this.options.nodePath, [join(workspace, 'child.mjs')], { cwd: workspace, detached: true, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TOCKTEAM_USER_RAYCAST_ID: chosen.extensionId, TOCKTEAM_USER_RAYCAST_SESSION: id, TOCKTEAM_USER_RAYCAST_COMMAND: chosen.command, TOCKTEAM_USER_RAYCAST_MODE: chosen.mode ?? 'view', ...(linearClientId ? { TOCKTEAM_LINEAR_TEST_CLIENT_ID: linearClientId } : {}), ...(chosen.mode === 'no-view' || chosen.mode === 'menu-bar' ? { TOCKTEAM_USER_RAYCAST_STATE: this.options.install.statePath(chosen.extensionId) } : {}), TRUSTED_RAYCAST_EXTENSION_ID: chosen.extensionId, TRUSTED_RAYCAST_PREFERENCES: preferences } })
       let resolve!: () => void; let reject!: (error: Error) => void
       const ready = new Promise<void>((yes, no) => { resolve = yes; reject = no })
       const session: Session = { child, workspace, owner, candidate: chosen, id, revision: -1, actions: new Set(), ...(chosen.mode === 'no-view' ? { action: { eventId: 'run', revision: 0, nativeUsed: false } } : {}), resolve, reject, settled: false }
@@ -92,7 +95,11 @@ export class UserRaycastManager {
             if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Invalid extension message')
             const message = raw as UserRaycastMessage | NativeRequest
             if (message.extensionId !== chosen.extensionId || message.sessionId !== id || !Number.isSafeInteger(message.revision) || message.revision < 0) throw new Error('Invalid extension message identity')
-            if (message.type === 'native') {
+            if (message.type === 'auth-url') {
+              if (chosen.extensionId !== 'linear' || chosen.command !== 'search-issues' || message.revision !== Math.max(0, session.revision) || !isUserRaycastAuthUrl(message.url) || linearClientId !== undefined && new URL(message.url).searchParams.get('client_id') !== linearClientId) throw new Error('Unapproved OAuth request')
+              this.options.onMessage(owner, message)
+              if (!session.settled) { session.settled = true; session.resolve() }
+            } else if (message.type === 'native') {
               if (Object.keys(message).sort().join(',') !== 'eventId,extensionId,kind,requestId,revision,sessionId,text,type' || message.kind !== 'copy' || typeof message.requestId !== 'string' || message.requestId.length > 128 || typeof message.text !== 'string' || Buffer.byteLength(message.text) > 131072 || !session.action || session.action.nativeUsed || message.eventId !== session.action.eventId || message.revision !== session.action.revision) throw new Error('Unowned native extension request')
               session.action.nativeUsed = true
               void Promise.resolve().then(() => {
@@ -152,7 +159,8 @@ export class UserRaycastManager {
     if (!session.settled) { session.settled = true; session.reject(new Error('Extension was closed before readiness')) }
     this.stopping = (async () => {
       session.child.stdout.resume(); session.child.stderr.resume()
-      await stopOwnedChild(session.child, 250, true)
+      await stopOwnedChild(session.child, session.candidate.extensionId === 'linear' ? 2000 : 250, true)
+      if (session.candidate.extensionId === 'linear' && session.child.exitCode !== 0) this.options.onError?.(session.owner, new Error('Linear OAuth cleanup could not be confirmed; revoke access in Linear settings'))
       rmSync(session.workspace, { recursive: true, force: true })
     })()
     try { await this.stopping } finally { this.stopping = undefined }

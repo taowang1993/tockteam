@@ -2329,6 +2329,7 @@ function initializeLauncher(): void {
       runtime: join(trustedCandidateRoot, 'user-raycast'),
       artifact: join(trustedCandidateRoot, 'trusted-raycast', 'artifact.tar'),
       nodePath: runtimePaths().nodeBinary,
+      ...(!app.isPackaged && process.env.TOCKTEAM_LINEAR_TEST_CLIENT_ID ? { linearClientId: process.env.TOCKTEAM_LINEAR_TEST_CLIENT_ID } : {}),
       onMessage: (owner, message) => {
         if (userRaycast?.menuActive && (message.type === 'ready' || message.type === 'patch')) {
           if (message.extensionId !== 'color-picker') throw new Error('This menu-bar command is unsupported')
