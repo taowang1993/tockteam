@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import { Button } from '@tockteam/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@tockteam/ui/dialog'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ZoomIn, ZoomOut } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@tockteam/ui/dialog'
+import { X } from 'lucide-react'
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
 
 const MAX_IMAGE_DATA_URL_LENGTH = 90_000_000
@@ -56,6 +56,7 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
   const [zoom, setZoom] = useState(1)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [broken, setBroken] = useState(false)
+  const panned = useRef(false)
   const drag = useRef<{ pointerId: number; startX: number; startY: number; x: number; y: number } | null>(null)
 
   useEffect(() => {
@@ -69,12 +70,14 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
   const zoomBy = (factor: number): void => { setZoom(current => clampedZoom(current * factor)) }
   const startPan = (event: ReactPointerEvent<HTMLDivElement>): void => {
     if (event.button !== 0) return
+    panned.current = false
     drag.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, x: offset.x, y: offset.y }
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
   const movePan = (event: ReactPointerEvent<HTMLDivElement>): void => {
     const active = drag.current
     if (active === null || active.pointerId !== event.pointerId) return
+    if (Math.hypot(event.clientX - active.startX, event.clientY - active.startY) > 3) panned.current = true
     setOffset({ x: active.x + event.clientX - active.startX, y: active.y + event.clientY - active.startY })
   }
   const stopPan = (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -83,11 +86,18 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
     if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture?.(event.pointerId)
   }
 
+  // Obsidian 1.13.7 lightbox parity: neutral black/white media chrome,
+  // deliberately independent of app colors (not an ordinary dialog surface).
   return (
     <Dialog open={image !== null} onOpenChange={open => { if (!open) props.onClose() }}>
       <DialogContent
-        className="!max-w-[min(92vw,90rem)] z-[2147483647] w-[min(92vw,90rem)] max-h-[calc(100dvh-2rem)] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-3 border border-border !bg-background p-4 text-foreground shadow-xl"
-        overlayClassName="z-[2147483646]"
+        className="fixed inset-0 z-[2147483647] overflow-hidden text-[#fff] focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2 [-webkit-app-region:no-drag]"
+        overlayClassName="z-[2147483646] !bg-[rgb(0_0_0_/_0.9)]"
+        showCloseButton={false}
+        unstyled
+        onOpenAutoFocus={event => {
+          if (event.target instanceof HTMLElement) { event.preventDefault(); event.target.focus({ preventScroll: true }) }
+        }}
         onCloseAutoFocus={event => {
           const trigger = props.returnFocusRef?.current
           if (trigger?.isConnected) { event.preventDefault(); trigger.focus() }
@@ -97,27 +107,34 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
           if (event.key === '+' || event.key === '=') { event.preventDefault(); zoomBy(1 + ZOOM_STEP) }
           else if (event.key === '-' || event.key === '_') { event.preventDefault(); zoomBy(1 / (1 + ZOOM_STEP)) }
           else if (event.key === '0') { event.preventDefault(); reset() }
+          else if (event.key.startsWith('Arrow')) {
+            const directions: Record<string, readonly [number, number]> = { ArrowLeft: [-PAN_STEP, 0], ArrowRight: [PAN_STEP, 0], ArrowUp: [0, -PAN_STEP], ArrowDown: [0, PAN_STEP] }
+            const delta = directions[event.key]
+            if (delta) { event.preventDefault(); setOffset(current => ({ x: current.x + delta[0], y: current.y + delta[1] })) }
+          }
         }}
-        onWheel={event => { event.preventDefault(); zoomBy(event.deltaY < 0 ? 1.1 : 1 / 1.1) }}
-        onWheelCapture={event => { event.stopPropagation() }}
+        onWheelCapture={event => {
+          if (event.ctrlKey || event.metaKey) return
+          // Radix owns modal scroll locking; React wheel listeners are passive.
+          event.stopPropagation()
+          zoomBy(event.deltaY < 0 ? 1.1 : 1 / 1.1)
+        }}
       >
-        <DialogHeader className="min-w-0 pr-10">
-          <DialogTitle className="truncate text-foreground">{label}</DialogTitle>
-          <DialogDescription className="text-foreground">Use the controls or plus and minus keys to zoom. Drag the image to pan.</DialogDescription>
-        </DialogHeader>
+        <DialogDescription className="sr-only">Use plus and minus keys or the mouse wheel to zoom. Drag or use arrow keys to pan. Press zero to fit the image and Escape to close.</DialogDescription>
         <div
           aria-label="Image Viewport"
-          className="flex min-h-0 min-w-0 cursor-grab items-center justify-center overflow-hidden rounded-md bg-background touch-none active:cursor-grabbing"
+          className="flex size-full min-h-0 min-w-0 cursor-grab items-center justify-center touch-none active:cursor-grabbing"
+          onClick={event => { if (event.target === event.currentTarget && !panned.current) props.onClose() }}
           onPointerCancel={stopPan}
           onPointerDown={startPan}
           onPointerMove={movePan}
           onPointerUp={stopPan}
         >
           {image !== null && (broken
-            ? <div aria-label={label} className="p-8 text-center text-muted-foreground" role="img">Image Preview Is Unavailable</div>
+            ? <div aria-label={label} className="p-8 text-center" role="img">Image Preview Is Unavailable</div>
             : <img
                 alt={image.alt || label}
-                className="max-h-[calc(100dvh-11rem)] max-w-full select-none object-contain"
+                className="box-border m-0 block h-auto w-auto max-h-full max-w-full select-none object-contain p-2"
                 data-offset-x={offset.x}
                 data-offset-y={offset.y}
                 data-zoom={zoom}
@@ -128,18 +145,13 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
                 style={{ transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${zoom})`, transformOrigin: 'center center' }}
               />)}
         </div>
-        <div aria-label="Image Controls" className="flex flex-wrap items-center justify-center gap-1.5" role="group">
-          <Button aria-label="Zoom Out" disabled={zoom <= MIN_ZOOM} onClick={() => { zoomBy(1 / (1 + ZOOM_STEP)) }} size="icon-sm" type="button" variant="outline"><ZoomOut aria-hidden="true" /></Button>
-          <span aria-live="polite" className="min-w-12 text-center text-xs tabular-nums">{String(Math.round(zoom * 100))}%</span>
-          <Button aria-label="Zoom In" disabled={zoom >= MAX_ZOOM} onClick={() => { zoomBy(1 + ZOOM_STEP) }} size="icon-sm" type="button" variant="outline"><ZoomIn aria-hidden="true" /></Button>
-          <Button onClick={reset} size="sm" type="button" variant="outline">Fit Image</Button>
-          <span aria-label="Pan Controls" className="ml-1 inline-flex items-center gap-0.5" role="group">
-            <Button aria-label="Pan Image Left" onClick={() => { setOffset(current => ({ ...current, x: current.x - PAN_STEP })) }} size="icon-sm" type="button" variant="outline"><ArrowLeft aria-hidden="true" /></Button>
-            <Button aria-label="Pan Image Up" onClick={() => { setOffset(current => ({ ...current, y: current.y - PAN_STEP })) }} size="icon-sm" type="button" variant="outline"><ArrowUp aria-hidden="true" /></Button>
-            <Button aria-label="Pan Image Down" onClick={() => { setOffset(current => ({ ...current, y: current.y + PAN_STEP })) }} size="icon-sm" type="button" variant="outline"><ArrowDown aria-hidden="true" /></Button>
-            <Button aria-label="Pan Image Right" onClick={() => { setOffset(current => ({ ...current, x: current.x + PAN_STEP })) }} size="icon-sm" type="button" variant="outline"><ArrowRight aria-hidden="true" /></Button>
-          </span>
+        <div className="pointer-events-none absolute inset-x-0 top-0 box-border flex h-8 items-center justify-center bg-linear-to-b from-[rgb(0_0_0_/_0.4)] to-[transparent] pt-[6px]">
+          <DialogTitle className="m-0 max-w-[calc(100%-96px)] truncate text-[13px] !leading-[1.3] !font-normal">{label}</DialogTitle>
         </div>
+        <Button aria-label="Close" className="absolute top-[6px] right-3 m-0 box-border inline-flex size-[26px] cursor-default items-center justify-center rounded-[8px] border-0 bg-transparent p-1 text-inherit hover:bg-[rgb(255_255_255_/_0.1)] focus-visible:outline-2 focus-visible:outline-ring" onClick={props.onClose} type="button" unstyled>
+          <X aria-hidden="true" className="size-[18px] opacity-85" />
+        </Button>
+        <span aria-live="polite" className="sr-only">{String(Math.round(zoom * 100))}%</span>
       </DialogContent>
     </Dialog>
   )

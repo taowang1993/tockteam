@@ -476,13 +476,13 @@ export function LivePreviewEditorRuntime(props) {
             }
             for (const image of element.querySelectorAll('img')) {
                 const src = safeRasterImageDataUrl(image.getAttribute('src'));
-                const alt = image.alt;
+                const current = imageNode(image);
+                const alt = current?.kind === 'markdown' ? current.authored : image.alt;
                 const existing = imageActions.get(image);
                 if (src === null) {
                     removeImageAction(image);
                     continue;
                 }
-                const current = imageNode(image);
                 if (existing?.image.src === src && existing.image.alt === alt && existing.authored === (current?.authored ?? null))
                     continue;
                 removeImageAction(image);

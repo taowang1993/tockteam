@@ -1,8 +1,8 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { createRoot } from 'react-dom/client';
 import { Button } from '@tockteam/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@tockteam/ui/dialog';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ZoomIn, ZoomOut } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@tockteam/ui/dialog';
+import { X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 const MAX_IMAGE_DATA_URL_LENGTH = 90_000_000;
 const SAFE_RASTER_DATA_URL = /^data:image\/(avif|bmp|gif|jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/iu;
@@ -41,6 +41,7 @@ export function ImageViewerDialog(props) {
     const [zoom, setZoom] = useState(1);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const [broken, setBroken] = useState(false);
+    const panned = useRef(false);
     const drag = useRef(null);
     useEffect(() => {
         setZoom(1);
@@ -53,6 +54,7 @@ export function ImageViewerDialog(props) {
     const startPan = (event) => {
         if (event.button !== 0)
             return;
+        panned.current = false;
         drag.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, x: offset.x, y: offset.y };
         event.currentTarget.setPointerCapture?.(event.pointerId);
     };
@@ -60,6 +62,8 @@ export function ImageViewerDialog(props) {
         const active = drag.current;
         if (active === null || active.pointerId !== event.pointerId)
             return;
+        if (Math.hypot(event.clientX - active.startX, event.clientY - active.startY) > 3)
+            panned.current = true;
         setOffset({ x: active.x + event.clientX - active.startX, y: active.y + event.clientY - active.startY });
     };
     const stopPan = (event) => {
@@ -69,8 +73,15 @@ export function ImageViewerDialog(props) {
         if (event.currentTarget.hasPointerCapture?.(event.pointerId))
             event.currentTarget.releasePointerCapture?.(event.pointerId);
     };
+    // Obsidian 1.13.7 lightbox parity: neutral black/white media chrome,
+    // deliberately independent of app colors (not an ordinary dialog surface).
     return (_jsx(Dialog, { open: image !== null, onOpenChange: open => { if (!open)
-            props.onClose(); }, children: _jsxs(DialogContent, { className: "!max-w-[min(92vw,90rem)] z-[2147483647] w-[min(92vw,90rem)] max-h-[calc(100dvh-2rem)] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-3 border border-border !bg-background p-4 text-foreground shadow-xl", overlayClassName: "z-[2147483646]", onCloseAutoFocus: event => {
+            props.onClose(); }, children: _jsxs(DialogContent, { className: "fixed inset-0 z-[2147483647] overflow-hidden text-[#fff] focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2 [-webkit-app-region:no-drag]", overlayClassName: "z-[2147483646] !bg-[rgb(0_0_0_/_0.9)]", showCloseButton: false, unstyled: true, onOpenAutoFocus: event => {
+                if (event.target instanceof HTMLElement) {
+                    event.preventDefault();
+                    event.target.focus({ preventScroll: true });
+                }
+            }, onCloseAutoFocus: event => {
                 const trigger = props.returnFocusRef?.current;
                 if (trigger?.isConnected) {
                     event.preventDefault();
@@ -91,9 +102,24 @@ export function ImageViewerDialog(props) {
                     event.preventDefault();
                     reset();
                 }
-            }, onWheel: event => { event.preventDefault(); zoomBy(event.deltaY < 0 ? 1.1 : 1 / 1.1); }, onWheelCapture: event => { event.stopPropagation(); }, children: [_jsxs(DialogHeader, { className: "min-w-0 pr-10", children: [_jsx(DialogTitle, { className: "truncate text-foreground", children: label }), _jsx(DialogDescription, { className: "text-foreground", children: "Use the controls or plus and minus keys to zoom. Drag the image to pan." })] }), _jsx("div", { "aria-label": "Image Viewport", className: "flex min-h-0 min-w-0 cursor-grab items-center justify-center overflow-hidden rounded-md bg-background touch-none active:cursor-grabbing", onPointerCancel: stopPan, onPointerDown: startPan, onPointerMove: movePan, onPointerUp: stopPan, children: image !== null && (broken
-                        ? _jsx("div", { "aria-label": label, className: "p-8 text-center text-muted-foreground", role: "img", children: "Image Preview Is Unavailable" })
-                        : _jsx("img", { alt: image.alt || label, className: "max-h-[calc(100dvh-11rem)] max-w-full select-none object-contain", "data-offset-x": offset.x, "data-offset-y": offset.y, "data-zoom": zoom, draggable: false, onError: () => { setBroken(true); }, onLoad: () => { setBroken(false); }, src: image.src, style: { transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${zoom})`, transformOrigin: 'center center' } })) }), _jsxs("div", { "aria-label": "Image Controls", className: "flex flex-wrap items-center justify-center gap-1.5", role: "group", children: [_jsx(Button, { "aria-label": "Zoom Out", disabled: zoom <= MIN_ZOOM, onClick: () => { zoomBy(1 / (1 + ZOOM_STEP)); }, size: "icon-sm", type: "button", variant: "outline", children: _jsx(ZoomOut, { "aria-hidden": "true" }) }), _jsxs("span", { "aria-live": "polite", className: "min-w-12 text-center text-xs tabular-nums", children: [String(Math.round(zoom * 100)), "%"] }), _jsx(Button, { "aria-label": "Zoom In", disabled: zoom >= MAX_ZOOM, onClick: () => { zoomBy(1 + ZOOM_STEP); }, size: "icon-sm", type: "button", variant: "outline", children: _jsx(ZoomIn, { "aria-hidden": "true" }) }), _jsx(Button, { onClick: reset, size: "sm", type: "button", variant: "outline", children: "Fit Image" }), _jsxs("span", { "aria-label": "Pan Controls", className: "ml-1 inline-flex items-center gap-0.5", role: "group", children: [_jsx(Button, { "aria-label": "Pan Image Left", onClick: () => { setOffset(current => ({ ...current, x: current.x - PAN_STEP })); }, size: "icon-sm", type: "button", variant: "outline", children: _jsx(ArrowLeft, { "aria-hidden": "true" }) }), _jsx(Button, { "aria-label": "Pan Image Up", onClick: () => { setOffset(current => ({ ...current, y: current.y - PAN_STEP })); }, size: "icon-sm", type: "button", variant: "outline", children: _jsx(ArrowUp, { "aria-hidden": "true" }) }), _jsx(Button, { "aria-label": "Pan Image Down", onClick: () => { setOffset(current => ({ ...current, y: current.y + PAN_STEP })); }, size: "icon-sm", type: "button", variant: "outline", children: _jsx(ArrowDown, { "aria-hidden": "true" }) }), _jsx(Button, { "aria-label": "Pan Image Right", onClick: () => { setOffset(current => ({ ...current, x: current.x + PAN_STEP })); }, size: "icon-sm", type: "button", variant: "outline", children: _jsx(ArrowRight, { "aria-hidden": "true" }) })] })] })] }) }));
+                else if (event.key.startsWith('Arrow')) {
+                    const directions = { ArrowLeft: [-PAN_STEP, 0], ArrowRight: [PAN_STEP, 0], ArrowUp: [0, -PAN_STEP], ArrowDown: [0, PAN_STEP] };
+                    const delta = directions[event.key];
+                    if (delta) {
+                        event.preventDefault();
+                        setOffset(current => ({ x: current.x + delta[0], y: current.y + delta[1] }));
+                    }
+                }
+            }, onWheelCapture: event => {
+                if (event.ctrlKey || event.metaKey)
+                    return;
+                // Radix owns modal scroll locking; React wheel listeners are passive.
+                event.stopPropagation();
+                zoomBy(event.deltaY < 0 ? 1.1 : 1 / 1.1);
+            }, children: [_jsx(DialogDescription, { className: "sr-only", children: "Use plus and minus keys or the mouse wheel to zoom. Drag or use arrow keys to pan. Press zero to fit the image and Escape to close." }), _jsx("div", { "aria-label": "Image Viewport", className: "flex size-full min-h-0 min-w-0 cursor-grab items-center justify-center touch-none active:cursor-grabbing", onClick: event => { if (event.target === event.currentTarget && !panned.current)
+                        props.onClose(); }, onPointerCancel: stopPan, onPointerDown: startPan, onPointerMove: movePan, onPointerUp: stopPan, children: image !== null && (broken
+                        ? _jsx("div", { "aria-label": label, className: "p-8 text-center", role: "img", children: "Image Preview Is Unavailable" })
+                        : _jsx("img", { alt: image.alt || label, className: "box-border m-0 block h-auto w-auto max-h-full max-w-full select-none object-contain p-2", "data-offset-x": offset.x, "data-offset-y": offset.y, "data-zoom": zoom, draggable: false, onError: () => { setBroken(true); }, onLoad: () => { setBroken(false); }, src: image.src, style: { transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${zoom})`, transformOrigin: 'center center' } })) }), _jsx("div", { className: "pointer-events-none absolute inset-x-0 top-0 box-border flex h-8 items-center justify-center bg-linear-to-b from-[rgb(0_0_0_/_0.4)] to-[transparent] pt-[6px]", children: _jsx(DialogTitle, { className: "m-0 max-w-[calc(100%-96px)] truncate text-[13px] !leading-[1.3] !font-normal", children: label }) }), _jsx(Button, { "aria-label": "Close", className: "absolute top-[6px] right-3 m-0 box-border inline-flex size-[26px] cursor-default items-center justify-center rounded-[8px] border-0 bg-transparent p-1 text-inherit hover:bg-[rgb(255_255_255_/_0.1)] focus-visible:outline-2 focus-visible:outline-ring", onClick: props.onClose, type: "button", unstyled: true, children: _jsx(X, { "aria-hidden": "true", className: "size-[18px] opacity-85" }) }), _jsxs("span", { "aria-live": "polite", className: "sr-only", children: [String(Math.round(zoom * 100)), "%"] })] }) }));
 }
 export function ImageViewerButton(props) {
     const [image, setImage] = useState(null);
