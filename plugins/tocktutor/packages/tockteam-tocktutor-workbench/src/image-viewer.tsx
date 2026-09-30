@@ -92,7 +92,7 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
       <DialogContent
         className="fixed inset-0 z-[2147483647] box-border flex flex-col gap-3 overflow-hidden p-4 pt-[calc(var(--tockteam-titlebar-height,0px)+12px)] text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2 [-webkit-app-region:no-drag]"
         data-tocktutor-image-viewer=""
-        overlayClassName="z-[2147483646] !bg-[color-mix(in_srgb,var(--dsw-alias-bg-base)_80%,transparent)]"
+        overlayClassName="z-[2147483646] !bg-[color-mix(in_srgb,var(--dsw-alias-bg-base)_95%,transparent)]"
         showCloseButton={false}
         unstyled
         onClick={event => { if (event.target === event.currentTarget && !panned.current) props.onClose() }}
@@ -125,8 +125,8 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
         <DialogDescription className="sr-only">Use plus and minus keys or the mouse wheel to zoom. Drag or use arrow keys to pan. Press zero to fit the image and Escape to close.</DialogDescription>
         <div className="flex h-10 shrink-0 items-center gap-4" data-slot="image-viewer-header">
           <DialogTitle className="m-0 min-w-0 flex-1 truncate text-sm">{label}</DialogTitle>
-          <Button aria-label="Close" className="transition-none" onClick={props.onClose} size="lg" type="button" variant="outline">
-            <X aria-hidden="true" data-icon="inline-start" />Close
+          <Button aria-label="Close" className="!rounded-full transition-none" onClick={props.onClose} size="icon-lg" type="button" variant="outline">
+            <X aria-hidden="true" />
           </Button>
         </div>
         <div

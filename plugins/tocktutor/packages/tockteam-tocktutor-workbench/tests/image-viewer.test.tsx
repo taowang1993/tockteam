@@ -72,7 +72,7 @@ describe('TockTutor image viewer', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
-  it('floats the image over the app with a clearly labeled close control outside the image viewport', async () => {
+  it('floats the image over the app with an accessible icon-only circular close control outside the image viewport', async () => {
     const close = vi.fn()
     const { unmount } = render(<ImageViewerDialog image={{ alt: 'Photo', src: dataUrl }} onClose={close} />)
     const dialog = await screen.findByRole('dialog', { name: 'Photo' })
@@ -81,7 +81,10 @@ describe('TockTutor image viewer', () => {
     expect(within(dialog).queryByRole('group', { name: 'Image Controls' })).toBeNull()
     expect(within(dialog).getByRole('heading', { name: 'Photo' })).toBeTruthy()
     const closeButton = within(dialog).getByRole('button', { name: 'Close' })
-    expect(closeButton.textContent?.trim()).toBe('Close')
+    expect(closeButton.textContent?.trim()).toBe('')
+    expect(closeButton.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
+    expect(closeButton.getAttribute('data-size')).toBe('icon-lg')
+    expect(closeButton.classList.contains('!rounded-full')).toBe(true)
     expect(closeButton.getAttribute('data-variant')).toBe('outline')
     expect(closeButton.parentElement?.contains(within(dialog).getByRole('heading', { name: 'Photo' }))).toBe(true)
     expect(within(dialog).getByLabelText('Image Viewport').contains(closeButton)).toBe(false)
