@@ -72,7 +72,7 @@ describe('TockTutor image viewer', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
-  it('presents the image without a dialog card, visible instructions, or a toolbar', async () => {
+  it('floats the image over the app with a clearly labeled close control outside the image viewport', async () => {
     const close = vi.fn()
     const { unmount } = render(<ImageViewerDialog image={{ alt: 'Photo', src: dataUrl }} onClose={close} />)
     const dialog = await screen.findByRole('dialog', { name: 'Photo' })
@@ -80,7 +80,12 @@ describe('TockTutor image viewer', () => {
     expect(dialog.className).not.toMatch(/rounded|bg-popover|border-border|shadow-xl/u)
     expect(within(dialog).queryByRole('group', { name: 'Image Controls' })).toBeNull()
     expect(within(dialog).getByRole('heading', { name: 'Photo' })).toBeTruthy()
-    expect(within(dialog).getByRole('button', { name: 'Close' })).toBeTruthy()
+    const closeButton = within(dialog).getByRole('button', { name: 'Close' })
+    expect(closeButton.textContent?.trim()).toBe('Close')
+    expect(closeButton.getAttribute('data-variant')).toBe('outline')
+    expect(closeButton.parentElement?.contains(within(dialog).getByRole('heading', { name: 'Photo' }))).toBe(true)
+    expect(within(dialog).getByLabelText('Image Viewport').contains(closeButton)).toBe(false)
+    expect(dialog.hasAttribute('data-tocktutor-image-viewer')).toBe(true)
     expect(within(dialog).getByText(/plus and minus keys/u).classList.contains('sr-only')).toBe(true)
     fireEvent.keyDown(dialog, { key: '+', ctrlKey: true })
     expect(within(dialog).getByRole('img').getAttribute('data-zoom')).toBe('1')
@@ -110,6 +115,9 @@ describe('TockTutor image viewer', () => {
     fireEvent.pointerUp(viewport)
     fireEvent.click(viewport)
     expect(close).toHaveBeenCalledOnce()
+    fireEvent.pointerDown(dialog, { button: 0, clientX: 1, clientY: 1 })
+    fireEvent.click(dialog)
+    expect(close).toHaveBeenCalledTimes(2)
     unmount()
   })
 

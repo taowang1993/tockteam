@@ -86,15 +86,17 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
     if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture?.(event.pointerId)
   }
 
-  // Obsidian 1.13.7 lightbox parity: neutral black/white media chrome,
-  // deliberately independent of app colors (not an ordinary dialog surface).
+  // Keep media and controls in separate rows over a uniformly dimmed app.
   return (
     <Dialog open={image !== null} onOpenChange={open => { if (!open) props.onClose() }}>
       <DialogContent
-        className="fixed inset-0 z-[2147483647] overflow-hidden text-[#fff] focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2 [-webkit-app-region:no-drag]"
-        overlayClassName="z-[2147483646] !bg-[rgb(0_0_0_/_0.9)]"
+        className="fixed inset-0 z-[2147483647] box-border flex flex-col gap-3 overflow-hidden p-4 pt-[calc(var(--tockteam-titlebar-height,0px)+12px)] text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2 [-webkit-app-region:no-drag]"
+        data-tocktutor-image-viewer=""
+        overlayClassName="z-[2147483646] !bg-[color-mix(in_srgb,var(--dsw-alias-bg-base)_80%,transparent)]"
         showCloseButton={false}
         unstyled
+        onClick={event => { if (event.target === event.currentTarget && !panned.current) props.onClose() }}
+        onPointerDownCapture={event => { if (event.button === 0) panned.current = false }}
         onOpenAutoFocus={event => {
           if (event.target instanceof HTMLElement) { event.preventDefault(); event.target.focus({ preventScroll: true }) }
         }}
@@ -121,9 +123,15 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
         }}
       >
         <DialogDescription className="sr-only">Use plus and minus keys or the mouse wheel to zoom. Drag or use arrow keys to pan. Press zero to fit the image and Escape to close.</DialogDescription>
+        <div className="flex h-10 shrink-0 items-center gap-4" data-slot="image-viewer-header">
+          <DialogTitle className="m-0 min-w-0 flex-1 truncate text-sm">{label}</DialogTitle>
+          <Button aria-label="Close" className="transition-none" onClick={props.onClose} size="lg" type="button" variant="outline">
+            <X aria-hidden="true" data-icon="inline-start" />Close
+          </Button>
+        </div>
         <div
           aria-label="Image Viewport"
-          className="flex size-full min-h-0 min-w-0 cursor-grab items-center justify-center touch-none active:cursor-grabbing"
+          className="flex min-h-0 min-w-0 flex-1 cursor-grab items-center justify-center overflow-hidden touch-none active:cursor-grabbing"
           onClick={event => { if (event.target === event.currentTarget && !panned.current) props.onClose() }}
           onPointerCancel={stopPan}
           onPointerDown={startPan}
@@ -145,12 +153,6 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
                 style={{ transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${zoom})`, transformOrigin: 'center center' }}
               />)}
         </div>
-        <div className="pointer-events-none absolute inset-x-0 top-0 box-border flex h-8 items-center justify-center bg-linear-to-b from-[rgb(0_0_0_/_0.4)] to-[transparent] pt-[6px]">
-          <DialogTitle className="m-0 max-w-[calc(100%-96px)] truncate text-[13px] !leading-[1.3] !font-normal">{label}</DialogTitle>
-        </div>
-        <Button aria-label="Close" className="absolute top-[6px] right-3 m-0 box-border inline-flex size-[26px] cursor-default items-center justify-center rounded-[8px] border-0 bg-transparent p-1 text-inherit hover:bg-[rgb(255_255_255_/_0.1)] focus-visible:outline-2 focus-visible:outline-ring" onClick={props.onClose} type="button" unstyled>
-          <X aria-hidden="true" className="size-[18px] opacity-85" />
-        </Button>
         <span aria-live="polite" className="sr-only">{String(Math.round(zoom * 100))}%</span>
       </DialogContent>
     </Dialog>

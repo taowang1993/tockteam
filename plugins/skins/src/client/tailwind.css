@@ -1051,6 +1051,12 @@
     -webkit-app-region: drag;
   }
 
+  /* Full-window media overlays must dim the app titlebar, not compete with it. */
+  &:has([data-tocktutor-image-viewer][data-state='open']) body::before,
+  &:has([data-tocktutor-image-viewer][data-state='open']) :is(.tockteam-window-titlebar, .tocktutor-titlebar, .tockteam-panel-toolbar) {
+    z-index: 1000 !important;
+  }
+
   & #root:has([role='presentation'] > [role='dialog']) {
     z-index: 1000 !important;
     overflow: visible !important;

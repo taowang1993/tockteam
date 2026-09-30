@@ -133,6 +133,12 @@ test('Desktop image lightboxes stay below the owned titlebar without changing Ra
   assert.doesNotMatch(css, /\[role='presentation'\] > \[role='dialog'\][^{]*\{[^}]*max-height:/u)
 })
 
+test('only an open Desktop image viewer moves app titlebars below its dimming layer', async () => {
+  const css = await readFile(new URL('../plugins/skins/src/client/tailwind.css', import.meta.url), 'utf8')
+  const shell = css.slice(css.indexOf('@utility tockteam-desktop-shell'), css.indexOf('@utility tockteam-sidebar-styles'))
+  assert.match(shell, /&:has\(\[data-tocktutor-image-viewer\]\[data-state='open'\]\) body::before,[\s\S]*?&:has\(\[data-tocktutor-image-viewer\]\[data-state='open'\]\) :is\(\.tockteam-window-titlebar, \.tocktutor-titlebar, \.tockteam-panel-toolbar\) \{\s*z-index: 1000 !important;\s*\}/u)
+})
+
 test('each retained skin has two distinct palettes with an editor darker than its shell', () => {
   assert.equal(DESKTOP_SKINS.length, 3)
   assert.equal(new Set(DESKTOP_SKINS.map(skin => skin.id)).size, DESKTOP_SKINS.length)
