@@ -50,7 +50,7 @@ test('exports bounded selected context without full content or Agent identity', 
   assert.equal(dependencyNames.some(name => /assistant/iu.test(name)), false)
 })
 
-test('route dispatches only bounded owner props into an accessible Assistant aside', () => {
+test('route dispatches only bounded owner props into the accessible Right Sidebar', () => {
   let dispatched: { key: string; owner: unknown } | undefined
   const html = renderToStaticMarkup(createElement(TockTutorRoute, {
     location: { hash: '', pathname: '/tocktutor', search: '' },
@@ -68,7 +68,8 @@ test('route dispatches only bounded owner props into an accessible Assistant asi
   })
   assert.equal(JSON.stringify(dispatched).includes('source'), false)
   assert.equal(JSON.stringify(dispatched).includes('content'), false)
-  assert.match(html, /<aside[^>]+aria-label="Assistant Panel"/u)
+  assert.match(html, /<aside[^>]+aria-label="Right Sidebar"/u)
+  assert.match(html, /<div[^>]+aria-label="Assistant Panel"[^>]+hidden=""[^>]+inert=""/u)
   assert.match(html, /Assistant Entry/u)
 })
 

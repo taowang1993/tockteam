@@ -44,10 +44,12 @@ it.each(['editors', 'assistant', 'tabs'] as const)('mounts real independent edit
     const toggle = screen.getByRole('button', { name: 'Open Assistant' })
     fireEvent.click(toggle)
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
-    expect(screen.getByLabelText('Assistant Panel').getAttribute('aria-hidden')).toBe('false')
+    expect(screen.getByLabelText('Right Sidebar').getAttribute('aria-hidden')).toBe('false')
+    expect(screen.getByLabelText('Assistant Panel').hasAttribute('hidden')).toBe(false)
     fireEvent.click(toggle)
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.getByLabelText('Assistant Panel').getAttribute('aria-hidden')).toBe('true')
+    expect(screen.getByLabelText('Right Sidebar').getAttribute('aria-hidden')).toBe('true')
+    expect(screen.getByLabelText('Assistant Panel').hasAttribute('inert')).toBe(true)
   }
 
   fireEvent.pointerDown(screen.getByRole('button', { name: 'More Note Actions' }), { button: 0, ctrlKey: false })

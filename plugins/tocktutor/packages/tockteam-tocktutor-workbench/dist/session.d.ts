@@ -43,6 +43,7 @@ export type PaneLayout = {
     children: [PaneLayout, PaneLayout];
 };
 export interface WorkbenchSession {
+    propertiesGroupId?: string;
     layout: PaneLayout;
     routeId: string;
     vault: VaultIdentity | null;

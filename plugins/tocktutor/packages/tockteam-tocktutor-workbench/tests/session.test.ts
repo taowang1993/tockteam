@@ -15,6 +15,35 @@ import {
   createDirtySaveGate,
 } from '../src/session.ts'
 
+test('opens Properties in the sidebar without splitting the editor and reuses its bound view', () => {
+  const source = openNoteTab(createWorkbenchSession('route'), 'group-1', 'Note.md')
+  const opened = openLinkedPane(source, 'group-1', 'properties')
+  assert.deepEqual(opened.session.layout, source.layout)
+  const repeated = openLinkedPane(opened.session, 'group-1', 'properties')
+  assert.equal(repeated.groupId, opened.groupId)
+  assert.equal(repeated.session.groups.length, 2)
+  assert.equal(repeated.session.groups[1]!.linkedView?.sourceTabId, source.groups[0]!.activeTabId)
+  assert.deepEqual(hydrateWorkbenchSession(JSON.parse(JSON.stringify(repeated.session))), repeated.session)
+})
+
+test('restores legacy Properties splits into the sidebar without losing bindings or editor ratios', () => {
+  const source = openNoteTab(createWorkbenchSession('route'), 'group-1', 'Note.md', { pinned: true })
+  const editors = addPaneGroup(source, 'other').session
+  const opened = openLinkedPane(editors, 'group-1', 'properties')
+  const legacy = { ...opened.session, propertiesGroupId: 'missing', layout: {
+    axis: 'vertical', ratio: .35, children: [editors.layout, { groupId: opened.groupId }],
+  } }
+  const restored = hydrateWorkbenchSession(legacy)
+  assert.deepEqual(restored.layout, editors.layout)
+  assert.deepEqual(restored.groups, opened.session.groups)
+  assert.equal(restored.propertiesGroupId, opened.groupId)
+  assert.equal(restored.groups.at(-1)!.linkedView?.pinned, true)
+  const closed = closePaneGroup(restored, opened.groupId).session
+  assert.deepEqual(closed.layout, editors.layout)
+  assert.equal(closed.propertiesGroupId, undefined)
+  assert.deepEqual(source.groups[0]!.tabs.map(tab => tab.path), ['Note.md'])
+})
+
 test('merge coalesces existing destinations while retaining active, pinned and linked bindings', () => {
   let session = createWorkbenchSession('route', { id: 'vault', generation: 1 })
   session = openNoteTab(session, 'group-1', 'Destination.md')
@@ -244,7 +273,7 @@ test('normalizes malformed linked ownership, preserves detached pin and remaps r
   const sourceTab = session.groups[0]!.activeTabId!
   const opened = openLinkedPane(session, 'group-1', 'properties')
   session = toggleLinkedPanePin(opened.session, opened.groupId)
-  assert.equal('axis' in session.layout && session.layout.axis, 'vertical')
+  assert.deepEqual(session.layout, { groupId: 'group-1' })
   const detached = closePaneGroup(session, 'group-1').session
   assert.deepEqual(detached.groups[0]!.linkedView, { kind: 'properties', sourceGroupId: null, sourceTabId: null, path: 'One.md', pinned: true })
   assert.equal(renameNoteTabPath(detached, 'One.md', 'Renamed.md').groups[0]!.linkedView?.path, 'Renamed.md')
@@ -260,7 +289,8 @@ test('normalizes malformed linked ownership, preserves detached pin and remaps r
   assert.equal(focusPaneGroup(session, opened.groupId).focusedGroupId, 'other')
   for (const kind of ['backlinks', 'outgoing-links', 'properties', 'outline', 'graph'] as const) {
     const result = openLinkedPane(session, 'group-1', kind)
-    assert.equal(result.session.groups.at(-1)?.linkedView?.kind, kind)
-    assert.equal(result.session.groups.at(-1)?.tabs.length, 0)
+    const leaf = result.session.groups.find(group => group.id === result.groupId)!
+    assert.equal(leaf.linkedView?.kind, kind)
+    assert.equal(leaf.tabs.length, 0)
   }
 })

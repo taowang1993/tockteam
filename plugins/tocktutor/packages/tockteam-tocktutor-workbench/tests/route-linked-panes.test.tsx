@@ -53,6 +53,42 @@ it('keeps the root dispatch consumer alive when a window-producing protocol requ
   } finally { view.unmount(); syncSpy.mockRestore(); dispatchSpy.mockRestore(); await controller?.dispose() }
 })
 
+it('switches Properties and Assistant in one right sidebar without losing note edits or input drafts', async () => {
+  const { controller, files } = fixture()
+  files.set('One.md', '---\nname: One\naliases: [Original]\n---\n# One\n')
+  await controller.syncLocation('/tocktutor/One.md')
+  controller.setMode('source')
+  const source = controller.getSnapshot().focusedPaneId
+  await controller.openLinkedView(source, 'properties')
+  function Harness() {
+    const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+    return <TockTutorRouteView snapshot={snapshot} paneController={controller} assistantPanel={<input aria-label="Assistant Draft" />} onEdit={text => controller.edit(text)} onMode={mode => controller.setMode(mode)} onSave={() => { void controller.save() }} onSelect={path => { void controller.select(path) }} onMoveCanvas={() => {}} onToggleTask={index => controller.toggleTask(index)} />
+  }
+  const view = render(<Harness />)
+  try {
+    const sidebar = screen.getByRole('complementary', { name: 'Right Sidebar' })
+    const chooser = within(sidebar).getByRole('radiogroup', { name: 'Right Sidebar View' })
+    await waitFor(() => expect(within(sidebar).getByLabelText('Property name')).toBeTruthy())
+    expect(within(screen.getByLabelText('Note Panes')).queryByRole('region', { name: 'Properties Linked View' })).toBeNull()
+    expect(screen.queryByRole('separator', { name: 'Resize Down Split' })).toBeNull()
+    fireEvent.blur(within(sidebar).getByLabelText('Property name'), { target: { value: 'Changed' } })
+    fireEvent.change(within(sidebar).getByLabelText('New aliases Value'), { target: { value: 'Unsubmitted' } })
+    fireEvent.click(within(chooser).getByRole('radio', { name: 'Assistant', exact: true }))
+    expect(within(sidebar).queryByRole('region', { name: 'Properties Linked View' })).toBeNull()
+    expect(sidebar.querySelector('[data-linked-kind="properties"]')).toBeTruthy()
+    fireEvent.change(within(sidebar).getByLabelText('Assistant Draft'), { target: { value: 'Unsent question' } })
+    fireEvent.click(within(chooser).getByRole('radio', { name: 'Properties', exact: true }))
+    expect((within(sidebar).getByLabelText('Property name') as HTMLInputElement).value).toBe('Changed')
+    expect((within(sidebar).getByLabelText('New aliases Value') as HTMLInputElement).value).toBe('Unsubmitted')
+    expect(controller.getPaneSnapshot(source).source).toContain('name: Changed')
+    await act(async () => { expect(await controller.save()).toBe(true) })
+    expect(files.get('One.md')).toContain('name: Changed')
+    expect(files.get('One.md')).not.toContain('Unsubmitted')
+    fireEvent.click(within(chooser).getByRole('radio', { name: 'Assistant', exact: true }))
+    expect((within(sidebar).getByLabelText('Assistant Draft') as HTMLInputElement).value).toBe('Unsent question')
+  } finally { view.unmount(); await controller.dispose() }
+})
+
 it('keeps linked Properties on the source tab, edits its shared record, and restores bound layouts', async () => {
   const { controller, remote, storage } = fixture()
   await controller.syncLocation('/tocktutor/One.md')

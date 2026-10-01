@@ -115,6 +115,7 @@ export interface WorkbenchRouteSnapshot {
     linkedLoading?: boolean;
     linkedError?: string | null;
     layout?: PaneLayout;
+    propertiesPaneId?: string | undefined;
     editorReset?: number;
     attachmentPreview?: AttachmentPreviewResult | null;
     baseFiles?: readonly BaseHydratedFile[];
@@ -332,6 +333,7 @@ export declare class WorkbenchRouteController {
     duplicateNote(target: NoteTarget): Promise<boolean>;
     splitPane(id: string, axis: 'horizontal' | 'vertical'): Promise<boolean>;
     openLinkedView(id: string, kind: LinkedViewKind): Promise<boolean>;
+    selectPropertiesPane(id: string): void;
     unlinkLinkedView(id: string): void;
     toggleLinkedPin(id: string): void;
     bindLinkedProperty(id: string): (key: string, value: PropertyValue) => boolean;
@@ -463,8 +465,8 @@ export interface TockTutorRouteViewProps {
     paneController?: WorkbenchRouteController;
     paneOnly?: boolean;
     paneTabs?: boolean;
-    panePanel?: 'assistant' | WorkbenchUtilityView | null;
-    onPanePanel?(panel: 'assistant' | WorkbenchUtilityView | null): void;
+    panePanel?: 'assistant' | 'file-properties' | WorkbenchUtilityView | null;
+    onPanePanel?(panel: 'assistant' | 'file-properties' | WorkbenchUtilityView | null): void;
     onPaneReveal?(path: string): void;
     onSplitPane?(id: string, axis: 'horizontal' | 'vertical'): void;
     assistantPanel?: ReactNode;

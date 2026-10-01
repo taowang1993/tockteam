@@ -327,6 +327,7 @@ export interface WorkbenchRouteSnapshot {
   linkedLoading?: boolean
   linkedError?: string | null
   layout?: PaneLayout
+  propertiesPaneId?: string | undefined
   editorReset?: number
   attachmentPreview?: AttachmentPreviewResult | null
   baseFiles?: readonly BaseHydratedFile[]
@@ -2043,6 +2044,12 @@ export class WorkbenchRouteController {
     return !this.disposed && this.paneLifetimeFor(added.groupId) === lifetime
   }
 
+  selectPropertiesPane(id: string): void {
+    if (this.disposed || this.pane(id)?.linkedView?.kind !== 'properties') return
+    this.shellSession.propertiesGroupId = id
+    this.syncShell()
+  }
+
   unlinkLinkedView(id: string): void {
     this.shellSession = unlinkPane(this.shellSession, id)
     this.syncShell()
@@ -2172,6 +2179,7 @@ export class WorkbenchRouteController {
     }
     this.update({
       layout: this.shellSession.layout,
+      propertiesPaneId: this.shellSession.propertiesGroupId,
       canGoBack: this.historyBack.length > 0,
       canGoForward: this.historyForward.length > 0,
       focusedPaneId: this.shellSession.focusedGroupId,
@@ -4541,8 +4549,8 @@ export interface TockTutorRouteViewProps {
   paneController?: WorkbenchRouteController
   paneOnly?: boolean
   paneTabs?: boolean
-  panePanel?: 'assistant' | WorkbenchUtilityView | null
-  onPanePanel?(panel: 'assistant' | WorkbenchUtilityView | null): void
+  panePanel?: 'assistant' | 'file-properties' | WorkbenchUtilityView | null
+  onPanePanel?(panel: 'assistant' | 'file-properties' | WorkbenchUtilityView | null): void
   onPaneReveal?(path: string): void
   onSplitPane?(id: string, axis: 'horizontal' | 'vertical'): void
   assistantPanel?: ReactNode
@@ -5669,12 +5677,21 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   }, [snapshot.documentKind, snapshot.path, snapshot.entries])
   const visibleTreeEntries = snapshot.entries.filter(entry => entry.kind === 'directory'
     || (entry.kind === 'document' && supportedDocument(entry.path)))
-  const [localPanel, setLocalPanel] = useState<'assistant' | WorkbenchUtilityView | null>(null)
-  const panel = props.panePanel === undefined ? localPanel : props.panePanel
+  const propertyPanes = snapshot.panes.filter(pane => pane.linkedView?.kind === 'properties')
+  const propertyPaneId = snapshot.propertiesPaneId ?? propertyPanes.at(-1)?.id
+  const [localPanel, setLocalPanel] = useState<'assistant' | 'file-properties' | WorkbenchUtilityView | null>()
+  const panel = props.panePanel === undefined ? localPanel === undefined ? propertyPaneId ? 'file-properties' : null : localPanel : props.panePanel
+  const lastSidebarView = useRef<'assistant' | 'file-properties'>()
   const setPanel = (value: typeof panel | ((current: typeof panel) => typeof panel)): void => {
     const next = typeof value === 'function' ? value(panel) : value
+    if (next === 'assistant' || next === 'file-properties') lastSidebarView.current = next
     if (props.onPanePanel) props.onPanePanel(next)
     else setLocalPanel(next)
+  }
+  const rightSidebarOpen = panel === 'assistant' || panel === 'file-properties'
+  const openProperties = (): void => {
+    setPanel('file-properties')
+    if (!propertyPaneId && props.paneController) void props.paneController.openLinkedView(snapshot.focusedPaneId, 'properties')
   }
   const [noteAction, setNoteAction] = useState<'move' | 'rename' | 'property' | null>(null)
   const [bookmarkDialog, setBookmarkDialog] = useState<{ mode: 'create' } | { id: string; mode: 'edit' } | null>(null)
@@ -5694,6 +5711,15 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const [baseSearches, setBaseSearches] = useState<Record<string, string>>({})
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
+  const [compactWindow, setCompactWindow] = useState(false)
+  useEffect(() => {
+    const query = window.matchMedia?.('(max-width: 760px)')
+    if (!query || props.paneOnly) return
+    const update = (): void => { setCompactWindow(query.matches) }
+    update()
+    query.addEventListener('change', update)
+    return () => { query.removeEventListener('change', update) }
+  }, [props.paneOnly])
   const [noteSearchMode, setNoteSearchMode] = useState<'find' | 'replace' | null>(null)
   const [noteSearchQuery, setNoteSearchQuery] = useState('')
   const [noteSearchReplacement, setNoteSearchReplacement] = useState('')
@@ -5904,7 +5930,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
     }, 0)
     return () => { window.clearTimeout(timer) }
   }, [revealPath, snapshot.entries])
-  const effectiveSidebarOpen = sidebarOpen && snapshot.focusMode !== true
+  const effectiveSidebarOpen = sidebarOpen && snapshot.focusMode !== true && !(compactWindow && rightSidebarOpen)
   const previousSidebarOpen = useRef(effectiveSidebarOpen)
   const shouldAnimateSidebarColumns = previousSidebarOpen.current !== effectiveSidebarOpen
   const contentColumns = `${String(effectiveSidebarOpen ? sidebarWidth : 0)}px minmax(0, 1fr) auto auto`
@@ -6014,7 +6040,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           <TooltipContent>Toggle Files Sidebar</TooltipContent>
         </Tooltip>
       </div>
-      <div className="tocktutor-titlebar-main relative min-w-0" style={{ marginRight: panel === 'assistant' ? assistantPanelWidth : 0 }}>
+      <div className="tocktutor-titlebar-main relative min-w-0" style={{ marginRight: rightSidebarOpen ? assistantPanelWidth : 0 }}>
         {(snapshot.layout || focusedPane ? paneLayoutEntries(snapshot.layout ?? { groupId: focusedPane!.id }) : []).filter(entry => 'groupId' in entry.node && entry.y === 0).map(({ node, x, width }) => {
           const pane = 'groupId' in node ? snapshot.panes.find(pane => pane.id === node.groupId) : undefined
           return pane && <div key={pane.id} data-pane-tabs={pane.id} className="absolute inset-y-0 flex min-w-0 items-center overflow-hidden pr-16 pl-2" style={{ left: `${x}%`, width: `${width}%` }}><PaneTabs {...props} pane={pane} /></div>
@@ -6032,14 +6058,14 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button unstyled
-              aria-expanded={panel === 'assistant'}
-              aria-label="Toggle Assistant Panel"
+              aria-expanded={rightSidebarOpen}
+              aria-label="Toggle Right Sidebar"
               className="tocktutor-panel-icon border-0 bg-transparent p-1.5 text-[var(--tt-muted)]"
-              onClick={() => { setPanel(current => current === 'assistant' ? null : 'assistant') }}
+              onClick={() => { if (rightSidebarOpen) lastSidebarView.current = panel; setPanel(rightSidebarOpen ? null : lastSidebarView.current ?? (propertyPaneId ? 'file-properties' : 'assistant')) }}
               type="button"
             ><WorkbenchGlyph kind="panel-right" /></Button>
           </TooltipTrigger>
-          <TooltipContent>Toggle Assistant Panel</TooltipContent>
+          <TooltipContent>Toggle Right Sidebar</TooltipContent>
         </Tooltip>
         </div>
       </div>
@@ -6216,12 +6242,15 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
                     <DropdownMenuSub>
-                      <DropdownMenuSubTrigger className={NOTE_ACTION_CLASS} disabled={snapshot.documentKind !== 'markdown' || !props.paneController || snapshot.panes.length >= MAX_PANE_GROUPS}><Link2 aria-hidden="true" /><span>Open Linked View</span></DropdownMenuSubTrigger>
+                      <DropdownMenuSubTrigger className={NOTE_ACTION_CLASS} disabled={snapshot.documentKind !== 'markdown' || !props.paneController || (snapshot.panes.length >= MAX_PANE_GROUPS && propertyPanes.length === 0)}><Link2 aria-hidden="true" /><span>Open Linked View</span></DropdownMenuSubTrigger>
                       <DropdownMenuSubContent unstyled className={NOTE_SUBMENU_CLASS} collisionPadding={{ top: 48, bottom: 8, left: 8, right: 8 }}>
                         <DropdownMenuGroup>
-                          {LINKED_VIEW_KINDS.map(kind => <DropdownMenuItem key={kind} className={NOTE_ACTION_CLASS} onSelect={() => {
+                          {LINKED_VIEW_KINDS.map(kind => <DropdownMenuItem key={kind} className={NOTE_ACTION_CLASS} disabled={snapshot.panes.length >= MAX_PANE_GROUPS && (kind !== 'properties' || !propertyPanes.some(pane => pane.linkedView?.sourceGroupId === snapshot.focusedPaneId && pane.activePath === snapshot.path))} onSelect={() => {
                             const controller = props.paneController
-                            if (controller && controller.paneLifetimeFor(snapshot.focusedPaneId) === ownerLifetime && snapshot.vault && sameVault(controller.getSnapshot().vault, snapshot.vault) && controller.getPaneSnapshot(snapshot.focusedPaneId).path === snapshot.path) void controller.openLinkedView(snapshot.focusedPaneId, kind)
+                            if (controller && controller.paneLifetimeFor(snapshot.focusedPaneId) === ownerLifetime && snapshot.vault && sameVault(controller.getSnapshot().vault, snapshot.vault) && controller.getPaneSnapshot(snapshot.focusedPaneId).path === snapshot.path) {
+                              void controller.openLinkedView(snapshot.focusedPaneId, kind)
+                              if (kind === 'properties') setPanel('file-properties')
+                            }
                           }}>{kind === 'graph' ? <Network aria-hidden="true" /> : kind === 'outline' || kind === 'properties' ? <ListTree aria-hidden="true" /> : <Link2 aria-hidden="true" />}<span>{LINKED_VIEW_TITLES[kind]}</span></DropdownMenuItem>)}
                         </DropdownMenuGroup>
                       </DropdownMenuSubContent>
@@ -6566,19 +6595,19 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           type="button"
         />
         {props.paneController && snapshot.layout ? <PaneLayoutView layout={snapshot.layout} onResize={(path, ratio) => { props.paneController!.resizeSplit(path, ratio) }} renderPane={(id, topRow) => (
-          snapshot.panes.find(pane => pane.id === id)?.linkedView ? <LinkedNotePane controller={props.paneController!} id={id} /> : <TockTutorRouteView {...boundPaneProps(props, id)} paneOnly paneTabs={!topRow} panePanel={panel} onPanePanel={setPanel} onPaneReveal={path => { setSidebarOpen(true); setSidebarSearch(false); setRevealPath(path) }} />
+          snapshot.panes.find(pane => pane.id === id)?.linkedView?.kind === 'properties' ? <Empty><EmptyHeader><EmptyTitle>No Note Selected</EmptyTitle></EmptyHeader></Empty> : snapshot.panes.find(pane => pane.id === id)?.linkedView ? <LinkedNotePane controller={props.paneController!} id={id} /> : <TockTutorRouteView {...boundPaneProps(props, id)} paneOnly paneTabs={!topRow} panePanel={panel} onPanePanel={setPanel} onPaneReveal={path => { setSidebarOpen(true); setSidebarSearch(false); setRevealPath(path) }} />
         )} /> : editor}
         <aside
-          aria-hidden={panel !== 'assistant'}
-          aria-label="Assistant Panel"
-          className="tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-w-0 w-0 translate-x-6 grid-rows-[minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto [&>:not(.tocktutor-assistant-resize)]:min-w-[min(240px,calc(100vw-262px))]"
-          data-open={panel === 'assistant'}
-          style={{ width: panel === 'assistant' ? `${String(assistantPanelWidth)}px` : '0px' }}
-          {...(panel === 'assistant' ? {} : { inert: '' })}
+          aria-hidden={!rightSidebarOpen}
+          aria-label="Right Sidebar"
+          className="tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-w-0 w-0 max-w-[calc(100vw-var(--tockteam-rail-width,40px))] translate-x-6 grid-rows-[auto_minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto"
+          data-open={rightSidebarOpen}
+          style={{ width: rightSidebarOpen ? `${String(assistantPanelWidth)}px` : '0px' }}
+          {...(rightSidebarOpen ? {} : { inert: '' })}
         >
-          {panel === 'assistant' && (
+          {rightSidebarOpen && (
             <Button unstyled
-              aria-label="Resize Assistant Panel"
+              aria-label="Resize Right Sidebar"
               aria-orientation="vertical"
               aria-valuemax={MAX_ASSISTANT_PANEL_WIDTH}
               aria-valuemin={MIN_ASSISTANT_PANEL_WIDTH}
@@ -6591,13 +6620,23 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               type="button"
             />
           )}
-          <div className="tocktutor-assistant-content min-h-0 min-w-[min(240px,calc(100vw-262px))] overflow-hidden">{props.assistantPanel}</div>
+          <ToggleGroup aria-label="Right Sidebar View" className="flex min-h-10 w-full shrink-0 gap-1 border-b border-[var(--tt-border)] px-3" size="sm" type="single" value={panel === 'file-properties' ? 'file-properties' : 'assistant'} onValueChange={value => { if (value === 'assistant') setPanel(value); else if (value === 'file-properties') openProperties() }}>
+            <ToggleGroupItem value="file-properties"><ListTree aria-hidden="true" data-icon="inline-start" />Properties</ToggleGroupItem>
+            <ToggleGroupItem value="assistant"><MessageSquare aria-hidden="true" data-icon="inline-start" />Assistant</ToggleGroupItem>
+          </ToggleGroup>
+          <div className="min-h-0 min-w-0 overflow-hidden">
+            <div aria-label="Assistant Panel" className="tocktutor-assistant-content h-full min-h-0 min-w-0 overflow-hidden [&[hidden]]:hidden" hidden={panel !== 'assistant'} {...(panel === 'assistant' ? {} : { inert: '' })}>{props.assistantPanel}</div>
+            <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden [&[hidden]]:hidden" hidden={panel !== 'file-properties'} {...(panel === 'file-properties' ? {} : { inert: '' })}>
+              {propertyPanes.length > 1 && <NativeSelect aria-label="Properties Note" onChange={event => { props.paneController?.selectPropertiesPane(event.currentTarget.value) }} value={propertyPaneId}>{propertyPanes.map(pane => <NativeSelectOption key={pane.id} value={pane.id}>{pane.activePath ?? 'No Active Note'} · {pane.id}</NativeSelectOption>)}</NativeSelect>}
+              {props.paneController && propertyPaneId ? <LinkedNotePane key={propertyPaneId} controller={props.paneController} id={propertyPaneId} /> : <Empty><EmptyHeader><EmptyTitle>No Properties Open</EmptyTitle><EmptyDescription>Open a Markdown note to inspect its properties.</EmptyDescription></EmptyHeader>{snapshot.documentKind === 'markdown' && props.paneController && <Button variant="outline" onClick={openProperties}>Open Properties</Button>}</Empty>}
+            </div>
+          </div>
         </aside>
         <WorkbenchUtilities {...props} onOpenBookmark={openBookmark} snapshot={panel === 'recovery' ? props.paneController?.getRecoverySnapshot() ?? snapshot : snapshot} onInsertCurrentDateTime={kind => { props.onInsertCurrentDateTime?.(kind, snapshot.mode === 'live-preview' ? liveInsertTextRef.current ?? undefined : undefined) }} onClose={() => { if (panel === 'recovery') void props.paneController?.setRecoveryOpen(false); setPanel(null) }} onOpenGraphNode={(path, mode) => {
           const result = props.onOpenGraphNode?.(path, mode)
           if (mode !== 'note' || result === undefined) return
           void Promise.resolve(result).then(success => { if (success === true) setPanel(null) })
-        }} view={panel === 'assistant' ? null : panel} />
+        }} view={rightSidebarOpen ? null : panel} />
         </div>
       </main>
     </TooltipProvider>

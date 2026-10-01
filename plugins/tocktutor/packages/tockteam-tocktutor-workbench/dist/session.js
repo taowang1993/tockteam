@@ -67,6 +67,7 @@ function cloneGroup(group) {
 }
 function cloneSession(session) {
     return {
+        ...(session.propertiesGroupId ? { propertiesGroupId: session.propertiesGroupId } : {}),
         layout: normalizePaneLayout(session.layout, session.groups),
         routeId: session.routeId,
         vault: session.vault === null ? null : { ...session.vault },
@@ -168,6 +169,7 @@ export function hydrateWorkbenchSession(value) {
         ? requestedFocus
         : groups[0].id;
     return syncLinkedViews({
+        ...(typeof value.propertiesGroupId === 'string' ? { propertiesGroupId: value.propertiesGroupId } : {}),
         layout: normalizePaneLayout(value.layout, groups),
         routeId,
         vault,
@@ -190,7 +192,10 @@ export function addPaneGroup(source, requestedId) {
     return { session, groupId };
 }
 function normalizePaneLayout(value, groups) {
-    const remaining = new Set(groups.map(group => group.id));
+    // Properties keeps its linked identity, but occupies the shared right sidebar.
+    const editorGroups = groups.filter(group => group.linkedView?.kind !== 'properties');
+    const layoutGroups = editorGroups.length ? editorGroups : groups.slice(0, 1);
+    const remaining = new Set(layoutGroups.map(group => group.id));
     const seen = new Set();
     const parse = (node, depth) => {
         if (!isRecord(node) || depth >= MAX_PANE_GROUPS || seen.has(node))
@@ -207,12 +212,12 @@ function normalizePaneLayout(value, groups) {
             return null;
         const first = parse(node.children[0], depth + 1);
         const second = parse(node.children[1], depth + 1);
-        return first && second ? { axis: node.axis, ratio: node.ratio, children: [first, second] } : null;
+        return first && second ? { axis: node.axis, ratio: node.ratio, children: [first, second] } : first ?? second;
     };
     const parsed = parse(value, 0);
     if (parsed && remaining.size === 0)
         return parsed;
-    return groups.slice(1).reduce((layout, group) => ({ axis: 'horizontal', ratio: .5, children: [layout, { groupId: group.id }] }), { groupId: groups[0].id });
+    return layoutGroups.slice(1).reduce((layout, group) => ({ axis: 'horizontal', ratio: .5, children: [layout, { groupId: group.id }] }), { groupId: layoutGroups[0].id });
 }
 function removeLayoutGroup(node, id) {
     if ('groupId' in node)
@@ -265,7 +270,7 @@ export function closePaneGroup(source, groupId) {
     const [closed] = session.groups.splice(index, 1);
     if (closed === undefined)
         return { closed: null, nextGroupId: session.focusedGroupId, session };
-    session.layout = removeLayoutGroup(session.layout, groupId);
+    session.layout = normalizePaneLayout(removeLayoutGroup(session.layout, groupId), session.groups);
     if (session.focusedGroupId === groupId) {
         session.focusedGroupId = session.groups[index]?.id ?? session.groups[index - 1]?.id ?? session.groups[0].id;
     }
@@ -530,18 +535,34 @@ export function syncLinkedViews(session) {
                 linked.path = activePath;
         }
     }
+    if (!session.groups.some(group => group.id === session.propertiesGroupId && group.linkedView?.kind === 'properties')) {
+        const properties = session.groups.findLast(group => group.linkedView?.kind === 'properties');
+        if (properties)
+            session.propertiesGroupId = properties.id;
+        else
+            delete session.propertiesGroupId;
+    }
     return session;
 }
 export function openLinkedPane(source, owner, kind) {
     const group = source.groups.find(group => group.id === owner && !group.linkedView);
     const tab = group?.tabs.find(tab => tab.id === group.activeTabId);
-    if (!tab || !LINKED_VIEW_KINDS.includes(kind) || source.groups.length >= MAX_PANE_GROUPS)
+    if (!tab || !LINKED_VIEW_KINDS.includes(kind))
+        return { session: cloneSession(source), groupId: owner };
+    const existing = kind === 'properties' && source.groups.find(group => group.linkedView?.kind === kind
+        && group.linkedView.sourceGroupId === owner && group.linkedView.sourceTabId === tab.id);
+    if (existing)
+        return { session: { ...cloneSession(source), propertiesGroupId: existing.id }, groupId: existing.id };
+    if (source.groups.length >= MAX_PANE_GROUPS)
         return { session: cloneSession(source), groupId: owner };
     const added = splitPaneGroup(source, owner, kind === 'outline' || kind === 'graph' ? 'horizontal' : 'vertical');
     const target = added.session.groups.find(group => group.id === added.groupId);
     target.tabs = [];
     target.activeTabId = null;
     target.linkedView = { kind, sourceGroupId: owner, sourceTabId: tab.id, path: tab.path, pinned: tab.pinned };
+    added.session.layout = normalizePaneLayout(added.session.layout, added.session.groups);
+    if (kind === 'properties')
+        added.session.propertiesGroupId = target.id;
     added.session.focusedGroupId = source.focusedGroupId;
     return { ...added, session: syncLinkedViews(added.session) };
 }

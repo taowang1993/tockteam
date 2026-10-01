@@ -68,7 +68,7 @@ test('route renders an accessible empty Review panel without using the Assistant
   assert.deepEqual(dispatched[2]?.owner, { activePath: null, vault: null })
   assert.equal(JSON.stringify(dispatched).includes('source'), false)
   assert.equal(JSON.stringify(dispatched).includes('content'), false)
-  assert.match(html, /<aside[^>]+aria-label="Assistant Panel"/u)
+  assert.match(html, /<aside[^>]+aria-label="Right Sidebar"/u)
   assert.match(html, /<section[^>]+aria-label="Shared Review Panel"/u)
   assert.match(html, /data-slot="alert"[^>]+role="status">No review workflow is active\.<\/div>/u)
 })
