@@ -1,7 +1,7 @@
 import React from 'react'
 import { afterSucceededEffect } from './trusted-raycast-effect-callback.ts'
 import { authorizeUserRaycastPkce } from './user-raycast-oauth.ts'
-import { isUserRaycastOAuthCleanupReasons, type UserRaycastOAuthCleanupReason } from './user-raycast-contract.ts'
+import { isUserRaycastOAuthCleanupCounts, isUserRaycastOAuthCleanupReasons, type UserRaycastOAuthCleanupReason } from './user-raycast-contract.ts'
 
 const element = (type: string, props: Record<string, unknown> | null, children: React.ReactNode[] = []) => React.createElement(type, props, ...children)
 const component = (type: string) => (props: Record<string, unknown>) => element(type, props, React.Children.toArray(props.children as React.ReactNode))
@@ -99,11 +99,19 @@ export const Form = Object.assign(form, { TextField: component('raycast-text-fie
 
 type LinearAuthRequest = { endpoint: string; clientId: string; codeVerifier: string; redirectURI: string }
 const linearPkceClients = new Set<LinearPkceClient>()
+// Count settled first-party requests across this child's lifetime, never repeated cleanup callers.
+const oauthCleanupCounts = { attempted: 0, confirmed: 0, failed: 0 }
 export async function revokeUserRaycastOAuthTokens(): Promise<void> {
   const results = await Promise.allSettled([...linearPkceClients].map(async client => client.removeTokens()))
   const reasons = results.flatMap<UserRaycastOAuthCleanupReason>(result => result.status === 'fulfilled' ? []
     : result.reason instanceof Error && isUserRaycastOAuthCleanupReasons(result.reason.cause) ? result.reason.cause : ['unknown'])
-  if (reasons.length) throw new Error('Linear OAuth token revocation could not be confirmed', { cause: [...new Set(reasons)].sort() })
+  if (reasons.length) {
+    const complete = results.every(result => result.status === 'fulfilled' || result.reason instanceof Error && isUserRaycastOAuthCleanupReasons(result.reason.cause)
+      && 'cleanupCounts' in result.reason && isUserRaycastOAuthCleanupCounts(result.reason.cleanupCounts) && result.reason.cleanupCounts.failed >= result.reason.cause.length)
+    // Omit incomplete or over-bound totals rather than clamp them or imply zero failures.
+    const counts = complete && isUserRaycastOAuthCleanupCounts(oauthCleanupCounts) && oauthCleanupCounts.failed > 0 ? { ...oauthCleanupCounts } : undefined
+    throw Object.assign(new Error('Linear OAuth token revocation could not be confirmed', { cause: [...new Set(reasons)].sort() }), counts ? { cleanupCounts: counts } : {})
+  }
 }
 type LinearTokenResponse = { access_token: string; refresh_token?: string; expires_in?: number; id_token?: string }
 class LinearPkceClient {
@@ -161,7 +169,9 @@ class LinearPkceClient {
       } catch { return signal.aborted ? 'timeout' : 'transport' }
     })).then(results => {
       const reasons = results.filter((reason): reason is UserRaycastOAuthCleanupReason => reason !== undefined)
-      if (reasons.length) throw new Error('Linear OAuth token revocation could not be confirmed', { cause: [...new Set(reasons)].sort() })
+      const cleanupCounts = { attempted: results.length, confirmed: results.length - reasons.length, failed: reasons.length }
+      for (const key of ['attempted', 'confirmed', 'failed'] as const) oauthCleanupCounts[key] += cleanupCounts[key]
+      if (reasons.length) throw Object.assign(new Error('Linear OAuth token revocation could not be confirmed', { cause: [...new Set(reasons)].sort() }), { cleanupCounts })
     })
     return this.cleanup
   }

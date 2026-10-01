@@ -12,7 +12,8 @@ export type UserRaycastStatus = Readonly<{ candidate?: UserRaycastCandidate; sou
 export type UserRaycastMutation = 'enable' | 'disable' | 'remove' | 'recover'
 export type UserRaycastEvent = Readonly<{ revision: number; eventId: string; kind: 'action' | 'searchChanged'; value?: string }>
 export type UserRaycastOAuthCleanupReason = 'transport' | 'timeout' | 'unknown' | `http-${number}`
-export type UserRaycastOAuthCleanupDiagnostic = Readonly<{ type: 'oauth-cleanup'; extensionId: 'linear'; sessionId: string; reasons: readonly UserRaycastOAuthCleanupReason[] }>
+export type UserRaycastOAuthCleanupCounts = Readonly<{ attempted: number; confirmed: number; failed: number }>
+export type UserRaycastOAuthCleanupDiagnostic = Readonly<{ type: 'oauth-cleanup'; extensionId: 'linear'; sessionId: string; reasons: readonly UserRaycastOAuthCleanupReason[]; counts?: UserRaycastOAuthCleanupCounts }>
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value)
 const digest = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value)
 const identity = (value: unknown): boolean => typeof value === 'string' && /^[a-z0-9][a-z0-9_-]{0,63}$/.test(value)
@@ -23,9 +24,16 @@ export function isUserRaycastOAuthCleanupReasons(value: unknown): value is reado
   return Array.isArray(value) && value.length > 0 && value.length <= 512 && Array.from(value).every(reason => typeof reason === 'string'
     && (reason === 'transport' || reason === 'timeout' || reason === 'unknown' || reason.length === 8 && /^http-[1-5]\d{2}$/.test(reason) && reason !== 'http-200'))
 }
+export function isUserRaycastOAuthCleanupCounts(value: unknown): value is UserRaycastOAuthCleanupCounts {
+  if (!record(value) || !exact(value, ['attempted', 'confirmed', 'failed'])) return false
+  const { attempted, confirmed, failed } = value
+  return typeof attempted === 'number' && typeof confirmed === 'number' && typeof failed === 'number'
+    && [attempted, confirmed, failed].every(count => Number.isSafeInteger(count) && count >= 0 && count <= 512) && attempted === confirmed + failed
+}
 export function isUserRaycastOAuthCleanupDiagnostic(value: unknown): value is UserRaycastOAuthCleanupDiagnostic {
-  return record(value) && exact(value, ['type', 'extensionId', 'sessionId', 'reasons']) && value.type === 'oauth-cleanup' && value.extensionId === 'linear'
+  return record(value) && exact(value, ['type', 'extensionId', 'sessionId', 'reasons', ...(Object.hasOwn(value, 'counts') ? ['counts'] : [])]) && value.type === 'oauth-cleanup' && value.extensionId === 'linear'
     && typeof value.sessionId === 'string' && value.sessionId.length <= 128 && isUserRaycastOAuthCleanupReasons(value.reasons)
+    && (!Object.hasOwn(value, 'counts') || isUserRaycastOAuthCleanupCounts(value.counts) && value.counts.failed >= value.reasons.length)
 }
 export function isUserRaycastCandidate(value: unknown): value is UserRaycastCandidate {
   return record(value) && exact(value, ['command', 'digest', 'extensionId', 'title', ...(['mode', 'version', 'license', 'source'] as const).filter(key => Object.hasOwn(value, key))])

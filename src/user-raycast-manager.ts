@@ -7,14 +7,14 @@ import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { admitTrustedRaycastArtifact, readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
 import { validMenuIcon } from './user-raycast-menu.ts'
-import { isUserRaycastAuthUrl, isUserRaycastOAuthCleanupDiagnostic, type UserRaycastOAuthCleanupReason } from './user-raycast-contract.ts'
+import { isUserRaycastAuthUrl, isUserRaycastOAuthCleanupDiagnostic, type UserRaycastOAuthCleanupCounts, type UserRaycastOAuthCleanupReason } from './user-raycast-contract.ts'
 import { getTrustedRaycastRuntimeDescriptor } from './trusted-raycast-descriptors.ts'
 import { createTrustedRaycastLineReader, inspectTrustedRaycastProjection } from './trusted-raycast-contract.ts'
 import type { UserRaycastCandidate, UserRaycastInstall } from './user-raycast-install.ts'
 
 export type UserRaycastOwner = Readonly<{ webContentsId: number }>
 export type UserRaycastMessage = Readonly<{ extensionId: string; sessionId: string; revision: number; type: 'ready' | 'patch' | 'error' | 'outcome' | 'toast' | 'auth-url'; root?: unknown; message?: string; eventId?: string; succeeded?: boolean; title?: string; style?: string; url?: string }>
-type Session = { child: ChildProcessWithoutNullStreams; workspace: string; owner: UserRaycastOwner; candidate: UserRaycastCandidate; id: string; revision: number; actions: Set<string>; action?: { eventId: string; revision: number; nativeUsed: boolean }; resolve: () => void; reject: (error: Error) => void; settled: boolean; cleanupReasons?: readonly UserRaycastOAuthCleanupReason[] }
+type Session = { child: ChildProcessWithoutNullStreams; workspace: string; owner: UserRaycastOwner; candidate: UserRaycastCandidate; id: string; revision: number; actions: Set<string>; action?: { eventId: string; revision: number; nativeUsed: boolean }; resolve: () => void; reject: (error: Error) => void; settled: boolean; cleanupReasons?: readonly UserRaycastOAuthCleanupReason[]; cleanupCounts?: UserRaycastOAuthCleanupCounts }
 type NativeRequest = { type: 'native'; extensionId: string; sessionId: string; revision: number; eventId: string; requestId: string; kind: 'copy'; text: string }
 const frameBytes = 1024 * 1024
 const types = new Set(['root', 'raycast-list', 'raycast-list-item', 'raycast-section', 'raycast-detail', 'raycast-empty', 'raycast-dropdown', 'raycast-dropdown-item', 'raycast-grid', 'raycast-grid-item', 'raycast-action-panel', 'raycast-action-section', 'raycast-action', 'raycast-menu-bar', 'raycast-menu-section', 'raycast-menu-item', 'raycast-form', 'raycast-text-field', 'raycast-form-dropdown', 'raycast-form-dropdown-item'])
@@ -140,7 +140,11 @@ export class UserRaycastManager {
           for (const line of readDiagnostics(chunk.toString('utf8'))) {
             let diagnostic: unknown
             try { diagnostic = JSON.parse(line) } catch { continue }
-            if (isUserRaycastOAuthCleanupDiagnostic(diagnostic) && diagnostic.sessionId === id) session.cleanupReasons = [...new Set(diagnostic.reasons)].sort()
+            if (isUserRaycastOAuthCleanupDiagnostic(diagnostic) && diagnostic.sessionId === id) {
+              session.cleanupReasons = [...new Set(diagnostic.reasons)].sort()
+              if (diagnostic.counts) session.cleanupCounts = { ...diagnostic.counts }
+              else delete session.cleanupCounts
+            }
           }
         } catch { fail(new Error('Extension diagnostic output exceeded its bound')) }
       })
@@ -173,7 +177,11 @@ export class UserRaycastManager {
     this.stopping = (async () => {
       session.child.stdout.resume(); session.child.stderr.resume()
       await stopOwnedChild(session.child, session.candidate.extensionId === 'linear' ? 2000 : 250, true)
-      if (session.candidate.extensionId === 'linear' && session.child.exitCode !== 0) this.options.onError?.(session.owner, new Error('Linear OAuth cleanup could not be confirmed; revoke access in Linear settings', { cause: session.cleanupReasons ?? ['unknown'] }))
+      if (session.candidate.extensionId === 'linear' && session.child.exitCode !== 0) {
+        const error = new Error('Linear OAuth cleanup could not be confirmed; revoke access in Linear settings', { cause: session.cleanupReasons ?? ['unknown'] })
+        if (session.cleanupCounts) Object.assign(error, { cleanupCounts: { ...session.cleanupCounts } })
+        this.options.onError?.(session.owner, error)
+      }
       rmSync(session.workspace, { recursive: true, force: true })
     })()
     try { await this.stopping } finally { this.stopping = undefined }

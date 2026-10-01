@@ -8,7 +8,7 @@ import Reconciler from 'react-reconciler'
 import * as api from './api.mjs'
 import { createTrustedRaycastLineReader, TRUSTED_RAYCAST_INPUT_FRAME_BYTES } from './trusted-raycast-contract.ts'
 import { createUserRaycastStorage } from './user-raycast-storage.ts'
-import { isUserRaycastOAuthCleanupReasons } from './user-raycast-contract.ts'
+import { isUserRaycastOAuthCleanupCounts, isUserRaycastOAuthCleanupReasons } from './user-raycast-contract.ts'
 
 type Node = { type: string; props: Record<string, unknown>; children: Array<Node | string> }
 const root: Node = { type: 'root', props: {}, children: [] }
@@ -65,8 +65,10 @@ api.configureCompatibility({
 if (extensionId === 'linear') process.once('SIGTERM', () => {
   void api.revokeUserRaycastOAuthTokens().then(() => process.exit(0), (error: unknown) => {
     const reasons = error instanceof Error && isUserRaycastOAuthCleanupReasons(error.cause) ? [...error.cause] : ['unknown']
-    // Flush only allowlisted codes on the private diagnostic pipe before exiting.
-    process.stderr.write(`${JSON.stringify({ type: 'oauth-cleanup', extensionId, sessionId, reasons })}\n`, () => process.exit(1))
+    const counts = error instanceof Error && isUserRaycastOAuthCleanupReasons(error.cause) && 'cleanupCounts' in error && isUserRaycastOAuthCleanupCounts(error.cleanupCounts)
+      && error.cleanupCounts.failed >= reasons.length ? { ...error.cleanupCounts } : undefined
+    // Flush only allowlisted codes and counts on the private diagnostic pipe before exiting.
+    process.stderr.write(`${JSON.stringify({ type: 'oauth-cleanup', extensionId, sessionId, reasons, ...(counts ? { counts } : {}) })}\n`, () => process.exit(1))
   })
 })
 const hostConfig: any = {
