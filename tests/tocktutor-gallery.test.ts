@@ -205,8 +205,8 @@ test('pairs Imported Property Controls with genuine Obsidian and the identical s
   assert.equal(refresh.samePropertyTypes, true)
   assert.equal(refresh.reusesExistingBuild, true)
   const current = proof.captures['tocktutor-imported-properties.png']
-  assert.equal(current.sourceCommit, proof.sidebarToggleRefresh.sourceCommit)
-  assert.equal(current.sha256, proof.sidebarToggleRefresh.sourceCandidateSha256)
+  assert.equal(current.sourceCommit, proof.propertiesEditingRefresh.sourceCommit)
+  assert.equal(current.sha256, proof.propertiesEditingRefresh.screenshotSha256s['tocktutor-imported-properties.png'])
   assert.equal(current.visibleState.rightSidebar, true)
   assert.equal(current.visibleState.fullHeightNote, true)
   assert.equal(current.visibleState.rootColorScheme, 'dark')
@@ -233,6 +233,32 @@ test('pairs Imported Property Controls with genuine Obsidian and the identical s
   assert.deepEqual(refresh.galleryCleanup.remaining, [])
 })
 
+test('publishes the current Properties comparison in the canonical gallery from installed Obsidian', () => {
+  const refresh = proof.propertiesEditingRefresh
+  assert.ok(refresh, 'Current Properties editing has fresh installed Obsidian comparison evidence')
+  assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-imported-properties.png', 'obsidian-imported-properties.png'])
+  assert.equal(refresh.reusesExistingBuild, true)
+  assert.equal(refresh.unrelatedExistingCapturesUnchanged, 71)
+  assert.equal(refresh.sameSavedBytes, true)
+  assert.equal(refresh.samePropertyTypes, true)
+  assert.equal(refresh.registryUnchanged, true)
+  const current = proof.captures['tocktutor-imported-properties.png']
+  const native = proof.captures['obsidian-imported-properties.png']
+  assert.equal(current.sourceCommit, refresh.sourceCommit)
+  assert.equal(native.entry, '/Applications/Obsidian.app/Contents/Resources/app.asar')
+  assert.equal(current.contentSha256, native.contentSha256)
+  assert.equal(current.registrySha256, native.registrySha256)
+  assert.equal(current.visibleState.extraToolbar, false)
+  assert.deepEqual(current.visibleState.rowMenuEntries, ['Rename Property', 'Copy Value', 'Remove Property'])
+  assert.deepEqual(current.visibleState.typeMenuEntries, ['Text', 'List', 'Number', 'Checkbox', 'Date', 'Date & Time'])
+  assert.ok(refresh.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
+  assert.equal(refresh.galleryVerification.bothImagesDecoded, true)
+  assert.deepEqual(refresh.galleryVerification.runtimeErrors, [])
+  assert.match(html, /Properties Editing Refresh/u)
+  assert.doesNotMatch(html, /tocktutor-properties-proof\/index\.html|(?:href|src)="[^"]*webobsidian/iu)
+  assert.equal(existsSync(resolve('.beads/reports/2026-10-01-tocktutor-properties-proof/index.html')), false)
+})
+
 test('keeps unmatched migration surfaces distinct from the four focused comparisons', () => {
   const additions = proof.migrationReview
   assert.equal(additions.allowlist.length, 6)
@@ -249,7 +275,7 @@ test('keeps unmatched migration surfaces distinct from the four focused comparis
     assert.equal(proof.captures[name].captureScope, 'real-desktop')
     const expectedCommit = name === 'tocktutor-image-viewer.png' ? additions.imageViewerRefresh.sourceCommit
       : name === 'tocktutor-image-resizing.png' ? additions.imageLayoutRefresh.sourceCommit
-        : name === 'tocktutor-imported-properties.png' ? proof.sidebarToggleRefresh.sourceCommit : additions.sourceCommit
+        : name === 'tocktutor-imported-properties.png' ? proof.propertiesEditingRefresh.sourceCommit : additions.sourceCommit
     assert.equal(proof.captures[name].sourceCommit, expectedCommit)
   }
   const fixtures = resolve(root, additions.fixtures)

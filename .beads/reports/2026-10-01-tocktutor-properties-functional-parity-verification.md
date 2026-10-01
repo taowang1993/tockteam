@@ -4,6 +4,8 @@
 
 The approved Properties workflows are implemented and verified against webobsidian `c41967a93317b2a0f08511c349ef3dbaf78fc882`. Product source checkpoint: `e193bf3f`. Independent source/evidence review found **0 new confirmed findings**, found no blocking gap within the approved scope, and supports closing the verification slice and epic.
 
+The user-requested screenshot comparison now lives in `.agents/uiux/tocktutor/tocktutor.html`, with fresh installed Obsidian 1.13.7 and TockTutor captures recorded in `content-alignment.json` under `propertiesEditingRefresh`. The separate proof gallery was removed. This report's earlier webobsidian observations and retained reference PNG are historical functional evidence only; their serializer differences are not claims about installed Obsidian.
+
 This is functional verification of the supported workflows, not a claim of identical pixels, every possible value, or identical reference keyboard behavior. TockTutor deliberately keeps the safer writing and recovery rules approved in the plan.
 
 ## Real-App Evidence
@@ -20,11 +22,11 @@ An actual malformed-registry failure displayed “Property-type settings could n
 
 All eight built-in/skin appearance combinations passed measured confirmation text/action contrast, including dark-app/light-system and light-app/dark-system cases. Minimum measured contrast was 5.55:1. The sidebar is bounded to 909 pixels inside the 949-pixel viewport; the confirmation is centered in the full viewport rather than the sidebar. Final renderer/console error counts were zero. TockTutor reported two existing warnings; the reference reported none.
 
-Screenshots were published transactionally from an allowlist of exactly three files. Proof, hashes, exact before/after files, recovery source, appearance measurements, and action results:
+The original functional-run screenshots were published transactionally from an allowlist of exactly three files; the canonical gallery's fresh installed-Obsidian pair has separate provenance in `propertiesEditingRefresh`. Proof, hashes, exact before/after files, recovery source, appearance measurements, and action results:
 
 ```text
 /Users/taowang/projects/tockteam/.beads/reports/2026-10-01-tocktutor-properties-proof/proof.json
-/Users/taowang/projects/tockteam/.beads/reports/2026-10-01-tocktutor-properties-proof/index.html
+/Users/taowang/projects/tockteam/.agents/uiux/tocktutor/tocktutor.html
 ```
 
 ## Confirmed and Fixed Findings
