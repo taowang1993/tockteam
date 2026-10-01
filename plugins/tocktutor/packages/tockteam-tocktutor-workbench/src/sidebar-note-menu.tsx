@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { BookmarkPlus, Copy, ExternalLink, FileClock, FolderInput, FolderOpen, Merge, PanelsTopLeft, Pencil, Trash2 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@tockteam/ui/dropdown-menu'
 
-export type SidebarNoteAction = 'tab' | 'right' | 'open-window' | 'duplicate' | 'move' | 'bookmark' | 'merge' | 'copy-relative' | 'copy-absolute' | 'recovery' | 'open-default' | 'reveal' | 'rename' | 'trash'
+export type SidebarNoteAction = 'tab' | 'right' | 'open-window' | 'duplicate' | 'move' | 'bookmark' | 'merge' | 'copy-relative' | 'copy-absolute' | 'recovery' | 'reveal' | 'rename' | 'trash'
 export interface NoteMenuAnchor { x: number; y: number; row: HTMLElement }
 const menuClass = 'max-h-(--radix-dropdown-menu-content-available-height) min-w-60 overflow-y-auto rounded-lg border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] p-1.5 text-sm text-foreground shadow-xl'
 
@@ -49,7 +49,6 @@ export function SidebarNoteMenu(props: {
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
       <DropdownMenuGroup>
-        {item('open-default', 'Open in Default App', <ExternalLink aria-hidden />, !props.nativeAvailable)}
         {item('reveal', 'Reveal in Finder', <FolderOpen aria-hidden />, !props.nativeAvailable)}
       </DropdownMenuGroup>
       <DropdownMenuSeparator />

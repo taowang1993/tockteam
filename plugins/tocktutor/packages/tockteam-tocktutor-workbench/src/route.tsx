@@ -6259,7 +6259,6 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
-                    {props.nativeNoteActions != null && <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={!nativeNoteActionAvailable || snapshot.documentUnavailable || !['markdown', 'canvas', 'base'].includes(snapshot.documentKind ?? '')} onSelect={() => { props.nativeNoteActions?.run('open-default') }}><ExternalLink aria-hidden="true" /><span>Open in Default App</span></DropdownMenuItem>}
                     {props.nativeNoteActions != null && <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={props.nativeNoteActions.disabled || snapshot.path === null || snapshot.vault === null || props.nativeNoteActions.activePath !== snapshot.path || !sameVault(props.nativeNoteActions.vault, snapshot.vault)} onSelect={() => { props.nativeNoteActions?.run('reveal') }}><FolderOpen aria-hidden="true" /><span>Reveal in Finder</span></DropdownMenuItem>}
                     <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.path === null || props.onRevealFile === undefined} onSelect={requestReveal}><FolderOpen aria-hidden="true" /><span>Reveal File in Navigation</span></DropdownMenuItem>
                   </DropdownMenuGroup>

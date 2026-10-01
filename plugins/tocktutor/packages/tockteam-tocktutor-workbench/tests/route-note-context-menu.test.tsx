@@ -75,12 +75,13 @@ it('right-click and keyboard menus preserve dirty A while opening, renaming and 
     expect(screen.queryByRole('heading', { name: 'File Recovery', exact: true })).toBeNull()
   } finally { view.unmount(); await controller.dispose() }
 })
-it('shows the 13 agreed actions, targets the clicked row and restores focus on Escape', async () => {
+it('keeps its 12 actions in TockTutor, targets the clicked row and restores focus on Escape', async () => {
   const row = document.createElement('button'); document.body.append(row)
   const onAction = vi.fn(), onClose = vi.fn()
   render(<SidebarNoteMenu anchor={{ x: 20, y: 30, row }} bookmarked={false} markdown nativeAvailable onAction={onAction} onClose={onClose} />)
   const menu = await screen.findByRole('menu', { name: 'Note Actions' })
-  expect(within(menu).getAllByRole('menuitem')).toHaveLength(13)
+  expect(within(menu).queryByRole('menuitem', { name: 'Open in Default App', exact: true })).toBeNull()
+  expect(within(menu).getAllByRole('menuitem')).toHaveLength(12)
   expect(within(menu).queryByText(/Side Peek|Claudian|Copy Link|Note Stats/)).toBeNull()
   fireEvent.click(within(menu).getByRole('menuitem', { name: 'Open to the Right' }))
   expect(onAction).toHaveBeenCalledWith('right')

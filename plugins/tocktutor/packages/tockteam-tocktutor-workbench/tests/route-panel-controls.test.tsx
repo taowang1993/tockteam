@@ -225,12 +225,12 @@ describe('TockTutor titlebar panel controls', () => {
     const labels = within(menu).getAllByRole('menuitem').map(item => item.textContent?.trim())
     expect(labels).toEqual(expect.arrayContaining([
       'Open in New Window', 'Rename Note…', 'Move Note…', 'Bookmark Note…',
-      'Add Property', 'Export PDF…', 'Find…', 'Replace…', 'Copy Path', 'Open in Default App', 'Reveal in Finder',
+      'Add Property', 'Export PDF…', 'Find…', 'Replace…', 'Copy Path', 'Reveal in Finder',
       'Reveal File in Navigation', 'Move File to Trash',
     ]))
     expect(labels).toEqual(expect.arrayContaining(['Split Right', 'Split Down']))
     expect(labels).not.toContain('Merge Entire File With…')
-    expect(labels.indexOf('Open in Default App')).toBeLessThan(labels.indexOf('Reveal in Finder'))
+    expect(labels).not.toContain('Open in Default App')
     expect(labels.indexOf('Open in New Window')).toBeLessThan(labels.indexOf('Rename Note…'))
     expect(labels.indexOf('Copy Path')).toBeLessThan(labels.indexOf('Reveal File in Navigation'))
   })
@@ -1651,7 +1651,7 @@ describe('TockTutor titlebar panel controls', () => {
     const run = vi.fn()
     const vault = { id: `vault:${'a'.repeat(64)}`, generation: 1 }
     const nativeNoteActions = { activePath: 'Note.md', vault, disabled: false, message: 'Ready.', run }
-    for (const [label, action] of [['Open in New Window', 'open-window'], ['Export PDF', 'export-pdf'], ['Open in Default App', 'open-default'], ['Reveal in Finder', 'reveal']] as const) {
+    for (const [label, action] of [['Open in New Window', 'open-window'], ['Export PDF', 'export-pdf'], ['Reveal in Finder', 'reveal']] as const) {
       renderRoute({ documentKind: 'markdown', path: 'Note.md', phase: 'ready', vault }, { nativeNoteActions })
       openNoteActions()
       expect(screen.queryByRole('menuitem', { name: /Claudian/ })).toBeNull()

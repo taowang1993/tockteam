@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-export type SidebarNoteAction = 'tab' | 'right' | 'open-window' | 'duplicate' | 'move' | 'bookmark' | 'merge' | 'copy-relative' | 'copy-absolute' | 'recovery' | 'open-default' | 'reveal' | 'rename' | 'trash';
+export type SidebarNoteAction = 'tab' | 'right' | 'open-window' | 'duplicate' | 'move' | 'bookmark' | 'merge' | 'copy-relative' | 'copy-absolute' | 'recovery' | 'reveal' | 'rename' | 'trash';
 export interface NoteMenuAnchor {
     x: number;
     y: number;
