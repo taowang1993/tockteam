@@ -205,7 +205,8 @@ test('pairs Imported Property Controls with genuine Obsidian and the identical s
   assert.equal(refresh.samePropertyTypes, true)
   assert.equal(refresh.reusesExistingBuild, true)
   const current = proof.captures['tocktutor-imported-properties.png']
-  assert.equal(current.sourceCommit, refresh.sourceCommit)
+  assert.equal(current.sourceCommit, proof.sidebarToggleRefresh.sourceCommit)
+  assert.equal(current.sha256, proof.sidebarToggleRefresh.sourceCandidateSha256)
   assert.equal(current.visibleState.rightSidebar, true)
   assert.equal(current.visibleState.fullHeightNote, true)
   assert.equal(current.visibleState.rootColorScheme, 'dark')
@@ -218,6 +219,12 @@ test('pairs Imported Property Controls with genuine Obsidian and the identical s
   assert.deepEqual(current.visibleState.propertyTypes, native.visibleState.propertyTypes)
   assert.equal(current.registrySha256, native.registrySha256)
   assert.equal(current.registryUnchanged, true)
+  assert.equal(current.visibleState.segmentedToggle, true)
+  assert.deepEqual(current.visibleState.selector, [
+    { label: 'Properties', selected: 'true' },
+    { label: 'Assistant', selected: 'false' },
+  ])
+  assert.equal(current.visibleState.toggle.width, 86)
   assert.ok(refresh.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
   assert.equal(refresh.galleryVerification.bothImagesDecoded, true)
   assert.equal(refresh.galleryVerification.surface30Absent, true)
@@ -242,7 +249,7 @@ test('keeps unmatched migration surfaces distinct from the four focused comparis
     assert.equal(proof.captures[name].captureScope, 'real-desktop')
     const expectedCommit = name === 'tocktutor-image-viewer.png' ? additions.imageViewerRefresh.sourceCommit
       : name === 'tocktutor-image-resizing.png' ? additions.imageLayoutRefresh.sourceCommit
-        : name === 'tocktutor-imported-properties.png' ? additions.importedPropertiesRefresh.sourceCommit : additions.sourceCommit
+        : name === 'tocktutor-imported-properties.png' ? proof.sidebarToggleRefresh.sourceCommit : additions.sourceCommit
     assert.equal(proof.captures[name].sourceCommit, expectedCommit)
   }
   const fixtures = resolve(root, additions.fixtures)
@@ -330,13 +337,30 @@ test('records the scrolled lower Live Preview pair with both target sections vis
   }
 })
 
-test('records the corrected Live Preview paragraph and flags the unreplaced Reader View image', () => {
+test('records corrected Live Preview text and a loaded current Reader View capture', () => {
   const expected = 'Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.'
   const corrected = Object.entries(proof.captures).filter(([, capture]) => (capture as { visibleState?: { renderedParagraph?: string } }).visibleState?.renderedParagraph === expected)
-  assert.equal(corrected.length, proof.livePreviewCorrection.updatedCount)
+  assert.equal(corrected.length, proof.livePreviewCorrection.updatedCount + 1)
   assert.ok(corrected.some(([name]) => name === 'tocktutor-tag-tab-polish.png'))
-  assert.equal(proof.livePreviewCorrection.readerView.status, 'earlier-capture')
-  assert.notEqual(proof.captures['tocktutor-web-viewer-reader.png'].sourceCommit, proof.livePreviewCorrection.sourceCommit)
+  const reader = proof.captures['tocktutor-web-viewer-reader.png']
+  const refresh = proof.readerViewRefresh
+  assert.equal(refresh.status, 'verified-current')
+  assert.equal(reader.sourceCommit, refresh.sourceCommit)
+  assert.equal(reader.contentSha256, sha256(readFileSync(resolve(root, 'comparison.md'))))
+  assert.equal(reader.visibleState.renderedParagraph, expected)
+  assert.equal(reader.visibleState.readerArticleVisible, true)
+  assert.equal(reader.visibleState.pageViewEnabled, true)
+  assert.equal(reader.visibleState.readerTitle, 'Example Domain')
+  assert.match(reader.visibleState.readerContent, /This domain is for use in documentation examples/u)
+  assert.equal(reader.visibleState.rootColorScheme, 'dark')
+  assert.equal(reader.visibleState.rootSkin, null)
+  assert.equal(reader.visibleState.bodySkin, null)
+  assert.deepEqual(reader.geometry, { width: 1512, height: 949, deviceScaleFactor: 2 })
+  assert.equal(proof.livePreviewCorrection.readerView.resolvedBy, 'readerViewRefresh')
+  assert.equal(refresh.cleanup.stopped, true)
+  assert.deepEqual(refresh.cleanup.remaining, [])
+  assert.deepEqual(refresh.runtimeErrors, [])
+  assert.doesNotMatch(html, /Reader View.+(?:earlier capture|stayed loading)|earlier Reader View capture/u)
 })
 
 test('tracks only the focused bullet-and-link retake', () => {

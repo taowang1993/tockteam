@@ -1,4 +1,27 @@
 {
+  "readerViewRefresh": {
+    "status":"verified-current","sourceCommit":"1e3174b3","capturedAt":"2026-10-01T07:22:10.681Z",
+    "filename":"tocktutor-web-viewer-reader.png","reusesExistingBuild":true,
+    "report":"../../../.beads/reports/2026-10-01-tocktutor-gallery-followup.md",
+    "geometry":[1512,949,2],"pixels":[3024,1898],"theme":"dark","skin":null,
+    "renderedParagraph":"Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
+    "readerArticleVisible":true,"pageViewEnabled":true,"url":"https://example.com/",
+    "runtimeErrors":[],"consoleWarnings":2,"rendererExternalRequests":[],
+    "networkScope":"Real public Example Domain fetched by the existing Host; no account, sign-in or native-effect actions.",
+    "publicationAllowlist":["tocktutor-imported-properties.png","tocktutor-web-viewer-reader.png"],"unrelatedExistingCapturesUnchanged":71,
+    "cleanup":{"id":"bbd053d7-e7ca-4224-be76-ab4dfa2b36cd","stopped":true,"rootPid":40289,"recordedPids":[40289,40291,40292,40293,40294,40301,40305,40462,40463,40464,40488,40669,40670,40671,40672,40861,40862,40863,40864,40865,40866,40867,40868,40951],"remaining":[]}
+  },
+  "sidebarToggleRefresh": {
+    "sourceCommit":"1e3174b3","filename":"tocktutor-imported-properties.png",
+    "sourceCandidate":"../../../.beads/reports/tocktutor-sidebar-toggle-properties.png",
+    "sourceCandidateSha256":"a33e8f119e2c648c784f2ff6684a46e28e82609a3cb8880396d595d0b08c6254",
+    "sourceProof":"../../../.beads/reports/2026-10-01-tocktutor-sidebar-toggle.json",
+    "sourceRouteSha256":"8a7d2c5643145a3f2b9395bc34d28fbefc60dbe337212b860599eb62c8150448",
+    "captureMethod":"Promoted the unaltered, already verified real Desktop Properties capture from ph35; no additional Properties or Obsidian launch.",
+    "sameSavedBytes":true,"samePropertyTypes":true,"noteBytes":447,"registryUnchanged":true,
+    "geometry":[1512,949,2],"pixels":[3024,1898],"theme":"dark","skin":null,
+    "segmentedToggle":true,"sidebarWidth":470,"runtimeErrors":[],"sourceOwnedTreesStopped":true
+  },
   "capturedAt": "2026-09-25T23:54:43.170Z",
   "sourceCommit": "15fa8806",
   "method": "Bounded app-scoped Playwright sessions over Electron CDP; fresh isolated profiles/vaults; real UI actions and Obsidian application commands; no foreground/OS input automation.",
@@ -1022,15 +1045,16 @@
       "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
       "route":"/tocktutor/Properties.md", "path":"Properties.md", "mode":"live-preview",
       "contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478","registrySha256":"5672e9e6ab76279528ce46c6239771225aed672d969af4688305761e6f4e6798","registryUnchanged":true,
-      "bytes":217887, "sha256":"25d2656f348778df968bc1bf4275cde1fa081fc1e4632d946d939519451ce010",
-      "sourceCommit":"87f870a9", "capturedAt":"2026-10-01T05:51:49.129Z",
+      "bytes":212099, "sha256":"a33e8f119e2c648c784f2ff6684a46e28e82609a3cb8880396d595d0b08c6254",
+      "sourceCommit":"1e3174b3", "capturedAt":"2026-10-01T06:26:05.366Z",
       "visibleState":{"linkedProperties":true,"rightSidebar":true,"fullHeightNote":true,"frontmatterCollapsed":true,"rootColorScheme":"dark","rootSkin":null,"bodySkin":null,"exponentNumber":true,"reopened":true,"unsupportedSourceFallback":true,
+        "segmentedToggle":true,"selector":[{"label":"Properties","selected":"true"},{"label":"Assistant","selected":"false"}],"toggle":{"x":1054,"y":44.5,"width":86,"height":38},
         "values":{"due":"2026-10-01","finished":true,"rating":"1e+21","meeting":"2026-09-29T14:45","labels":["research","next steps"],"tags":["migration","notes"],"aliases":["Migration Guide"]},
         "propertyTypes":{"due":"date","finished":"checkbox","rating":"number","meeting":"datetime","labels":"multitext","tags":"tags","aliases":"aliases","unsupported":"text"},
         "controlTypes":["date","checkbox","number","datetime-local","list","list","list","source"],
         "panel":{"x":1042,"y":40,"width":470,"height":909},"editor":{"x":320,"y":40,"width":722,"height":909},
-        "propertyRows":[{"key":"due","y":176,"bottom":248},{"key":"finished","y":248,"bottom":304},{"key":"rating","y":304,"bottom":376},{"key":"meeting","y":376,"bottom":448},{"key":"labels","y":448,"bottom":548},{"key":"tags","y":548,"bottom":648},{"key":"aliases","y":648,"bottom":748},{"key":"unsupported","y":748,"bottom":812}]},
-      "runtimeErrors":[], "runtimeErrorMonitoring":"Fresh owned guarded Desktop/CDP; capture-time console/pageerror and external-request monitoring plus final session console Errors: 0. Note/types unchanged and full owned tree stopped. Two development startup warnings recorded separately.", "captureScope":"real-desktop"
+        "propertyRows":[{"key":"due","y":184,"bottom":256},{"key":"finished","y":256,"bottom":312},{"key":"rating","y":312,"bottom":384},{"key":"meeting","y":384,"bottom":456},{"key":"labels","y":456,"bottom":556},{"key":"tags","y":556,"bottom":656},{"key":"aliases","y":656,"bottom":756},{"key":"unsupported","y":756,"bottom":820}]},
+      "runtimeErrors":[], "runtimeErrorMonitoring":"Unaltered ph35 real Desktop capture. Owned guarded Desktop/CDP with console/pageerror and external-request monitoring; final console Errors: 0. Note/types unchanged and full owned trees stopped. See sidebarToggleRefresh.sourceProof.", "captureScope":"real-desktop"
     },
     "tocktutor-mermaid-live-preview.png": {
       "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
@@ -2663,29 +2687,23 @@
       "sourceCommit": "f436fcc0"
     },
     "tocktutor-web-viewer-reader.png": {
-      "geometry": {
-        "width": 1512,
-        "height": 949,
-        "deviceScaleFactor": 2
+      "geometry":{"width":1512,"height":949,"deviceScaleFactor":2},"theme":"dark","skin":null,
+      "route":"/tocktutor/comparison.md","path":"comparison.md","mode":"web-viewer","viewerMode":"reader",
+      "contentSha256":"3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+      "bytes":390870,"sha256":"90bd48115e1ba7e23a6699a8abb1d795170ee15d936abcff27799808a7fa5bb9",
+      "capturedAt":"2026-10-01T07:22:10.681Z","sourceCommit":"1e3174b3","url":"https://example.com/","captureScope":"real-desktop",
+      "visibleState":{
+        "assertedText":"Example Domain","assertionPassed":true,"textExcerpt":"Example Domain",
+        "rootColorScheme":"dark","rootSkin":null,"bodySkin":null,"mode":"live-preview",
+        "renderedParagraph":"Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
+        "readerArticleVisible":true,"pageViewEnabled":true,"readerTitle":"Example Domain",
+        "readerContent":"This domain is for use in documentation examples without needing permission. This is not a service, avoid relying on it for testing and monitoring purposes.\nLearn more\n",
+        "articleBounds":{"x":1224,"y":205,"width":276,"height":575.203125},
+        "noteBounds":{"x":320,"y":40,"width":892,"height":909},
+        "paragraphBounds":{"x":412,"y":459.59375,"width":700,"height":24},"loading":false
       },
-      "theme": "dark",
-      "skin": null,
-      "route": "/tocktutor/UIUX%20Comparison.md",
-      "runtimeErrors": [],
-      "path": null,
-      "mode": "web-viewer",
-      "contentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "bytes": 384164,
-      "sha256": "aa52565fe1765f09436471a88ae5e6c81bb5f1bba9da59e051921242e07e9f0c",
-      "capturedAt": "2026-09-25T13:52:59.524Z",
-      "visibleState": {
-        "assertedText": "Example Domain",
-        "assertionPassed": true,
-        "textExcerpt": "Example Domain"
-      },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
-      "url": "https://example.com/",
-      "sourceCommit": "f436fcc0"
+      "runtimeErrors":[],"runtimeErrorMonitoring":"Owned guarded Electron/Playwright CDP capture with pageerror/console listeners and final session console check: zero errors, two existing startup warnings. Actual public Example Domain loaded through the existing Host. Full recorded app/runtime tree stopped; see readerViewRefresh.",
+      "screenshotMethod":"Playwright-owned CDP Page.captureScreenshot at native device pixels; no rescaling or image modification."
     },
     "obsidian-web-viewer.png": {
       "geometry": {
@@ -3142,7 +3160,8 @@
     "readerView": {
       "filename": "tocktutor-web-viewer-reader.png",
       "status": "earlier-capture",
-      "reason": "Reader View remained loading in the final batch and focused retry; original screenshot was retained rather than publishing a loading or failed state."
+      "resolvedBy": "readerViewRefresh",
+      "reason": "Historical September attempt: Reader View remained loading and the original image was retained. The October 1 readerViewRefresh now replaces it with a verified loaded article."
     },
     "cleanup": {
       "verified": true,

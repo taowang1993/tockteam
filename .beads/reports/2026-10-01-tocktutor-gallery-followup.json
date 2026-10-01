@@ -1,0 +1,178 @@
+{
+  "status": "verified-published",
+  "sourceCommit": "1e3174b3",
+  "verification": {
+    "galleryTests": { "pass": 16, "fail": 0 },
+    "typecheck": "passed",
+    "buildManifest": "passed",
+    "existingBuildReused": true,
+    "gallery": {
+      "geometry": [1512,949,2], "surfaceCount": 29, "imageCount": 66, "surface30Absent": true,
+      "propertyPixels": [3024,1898], "readerPixels": [3024,1898], "propertyVisible": true,
+      "captionsCurrent": true, "readerSupplementalLinkPresent": true,
+      "runtimeErrors": [], "failedRequests": [], "finalConsoleErrors": 0
+    },
+    "galleryPreflight": "First decoder check ran before the lazy image loaded; final check waits for complete/native dimensions before decode and passes. Not a product defect.",
+    "galleryCleanup": [
+      {"id":"4d2048d1-3eb2-45a9-9121-b314b7e39ce6","rootPid":42901,"recordedPids":[42901,42903,42904,42905],"stopped":true,"remaining":[]},
+      {"id":"28fa2fe9-0e12-4ee8-b482-fad9a8cce393","rootPid":43213,"recordedPids":[43213,43215,43216,43217],"stopped":true,"remaining":[]}
+    ],
+    "serverCleanup": {"pids":[42895,43206],"portsClosed":[62836,62921],"remaining":[]},
+    "playwrightSessions": [],
+    "ownedDiffCheck": "passed"
+  },
+  "reader": {
+    "state": {
+      "route": "/tocktutor/comparison.md",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "viewerMode": "reader",
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "rootColorScheme": "dark",
+      "rootSkin": null,
+      "bodySkin": null,
+      "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
+      "readerArticleVisible": true,
+      "pageViewEnabled": true,
+      "readerTitle": "Example Domain",
+      "readerContent": "This domain is for use in documentation examples without needing permission. This is not a service, avoid relying on it for testing and monitoring purposes.\nLearn more\n",
+      "viewerUrl": "https://example.com/",
+      "articleBounds": {
+        "x": 1224,
+        "y": 205,
+        "width": 276,
+        "height": 575.203125
+      },
+      "noteBounds": {
+        "x": 320,
+        "y": 40,
+        "width": 892,
+        "height": 909
+      },
+      "paragraphBounds": {
+        "x": 412,
+        "y": 459.59375,
+        "width": 700,
+        "height": 24
+      },
+      "loading": false,
+      "capturedAt": "2026-10-01T07:22:10.681Z"
+    },
+    "afterGeometry": [
+      1512,
+      949,
+      2
+    ],
+    "runtimeErrors": [],
+    "paragraphCheck": "Rendered innerText; normalize layout whitespace, excluding hidden Markdown source",
+    "screenshotMethod": "Owned Playwright CDP Page.captureScreenshot; unaltered native device pixels",
+    "captureScope": "real-desktop",
+    "pixels": [
+      3024,
+      1898
+    ],
+    "sha256": "90bd48115e1ba7e23a6699a8abb1d795170ee15d936abcff27799808a7fa5bb9",
+    "bytes": 390870,
+    "cleanup": {
+      "id": "bbd053d7-e7ca-4224-be76-ab4dfa2b36cd",
+      "stopped": true,
+      "rootPid": 40289,
+      "recordedPids": [
+        40289,
+        40291,
+        40292,
+        40293,
+        40294,
+        40301,
+        40305,
+        40462,
+        40463,
+        40464,
+        40488,
+        40669,
+        40670,
+        40671,
+        40672,
+        40861,
+        40862,
+        40863,
+        40864,
+        40865,
+        40866,
+        40867,
+        40868,
+        40951
+      ],
+      "remaining": []
+    },
+    "console": {
+      "errors": 0,
+      "warnings": 2
+    },
+    "noteSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+    "publicationAllowlist": [
+      "tocktutor-imported-properties.png",
+      "tocktutor-web-viewer-reader.png"
+    ],
+    "sourceCommit": "1e3174b3"
+  },
+  "sidebar": {
+    "sourceCommit": "1e3174b3",
+    "filename": "tocktutor-imported-properties.png",
+    "sourceCandidate": "../../../.beads/reports/tocktutor-sidebar-toggle-properties.png",
+    "sourceCandidateSha256": "a33e8f119e2c648c784f2ff6684a46e28e82609a3cb8880396d595d0b08c6254",
+    "sourceProof": "../../../.beads/reports/2026-10-01-tocktutor-sidebar-toggle.json",
+    "sourceRouteSha256": "8a7d2c5643145a3f2b9395bc34d28fbefc60dbe337212b860599eb62c8150448",
+    "captureMethod": "Promoted the unaltered, already verified real Desktop Properties capture from ph35; no additional Properties or Obsidian launch.",
+    "sameSavedBytes": true,
+    "samePropertyTypes": true,
+    "noteBytes": 447,
+    "registryUnchanged": true,
+    "geometry": [
+      1512,
+      949,
+      2
+    ],
+    "pixels": [
+      3024,
+      1898
+    ],
+    "theme": "dark",
+    "skin": null,
+    "segmentedToggle": true,
+    "sidebarWidth": 470,
+    "runtimeErrors": [],
+    "sourceOwnedTreesStopped": true
+  },
+  "publication": {
+    "published": [
+      {
+        "path": ".agents/uiux/tocktutor/screenshots/tocktutor-imported-properties.png",
+        "hash": "a33e8f119e2c648c784f2ff6684a46e28e82609a3cb8880396d595d0b08c6254"
+      },
+      {
+        "path": ".agents/uiux/tocktutor/screenshots/tocktutor-web-viewer-reader.png",
+        "hash": "90bd48115e1ba7e23a6699a8abb1d795170ee15d936abcff27799808a7fa5bb9"
+      },
+      {
+        "path": ".agents/uiux/tocktutor/content-alignment.json",
+        "hash": "a6135d5cdbfc44c5d57aba6dde4db349d0e463a412b1dfae48936b5b06e0204b"
+      },
+      {
+        "path": ".agents/uiux/tocktutor/content-alignment.md",
+        "hash": "7b36f2ce640be58e03482dc3d15f481d25186434d52123e2c06b7cd7ff384fcd"
+      },
+      {
+        "path": ".agents/uiux/tocktutor/tocktutor.html",
+        "hash": "648e13d8cefeda4a31defee7d5ec13d00dc1cb249f100bc1b5c0feff52523fdc"
+      }
+    ],
+    "unchangedOtherScreenshots": 71,
+    "unchangedObsidianReferences": 33
+  },
+  "protectedPathsAndSourceBuildUnchanged": true
+}
