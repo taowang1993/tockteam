@@ -89,7 +89,7 @@ test('mocked shutdown rejection or timeout stays visible and stops every owned p
         const diagnostic = JSON.parse(String(chunk));
         if (${JSON.stringify(scenario)} === 'extra-field') diagnostic.token = 'fake-runtime-token';
         if (${JSON.stringify(scenario)} === 'inconsistent-counts') diagnostic.counts = { attempted: 2, confirmed: 2, failed: 1 };
-        if (${JSON.stringify(scenario)} === 'legacy-frame') delete diagnostic.counts;
+        if (${JSON.stringify(scenario)} === 'legacy-frame') { write(JSON.stringify(diagnostic) + '\\n'); delete diagnostic.counts; }
         if (${JSON.stringify(scenario)} === 'stale-session') diagnostic.sessionId = 'another-session';
         if (${JSON.stringify(scenario)} === 'no-frame' || ${JSON.stringify(scenario)} === 'early-frame') { process.nextTick(callback); return true; }
         const line = JSON.stringify(diagnostic) + '\\n';
