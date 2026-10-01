@@ -1,7 +1,7 @@
 import React from 'react'
 import { afterSucceededEffect } from './trusted-raycast-effect-callback.ts'
 import { authorizeUserRaycastPkce } from './user-raycast-oauth.ts'
-import { isUserRaycastOAuthCleanupCounts, isUserRaycastOAuthCleanupReasons, type UserRaycastOAuthCleanupReason } from './user-raycast-contract.ts'
+import { isUserRaycastFieldValue, isUserRaycastOAuthCleanupCounts, isUserRaycastOAuthCleanupReasons, type UserRaycastFieldKind, type UserRaycastFieldValue, type UserRaycastOAuthCleanupReason } from './user-raycast-contract.ts'
 
 const element = (type: string, props: Record<string, unknown> | null, children: React.ReactNode[] = []) => React.createElement(type, props, ...children)
 const component = (type: string) => (props: Record<string, unknown>) => element(type, props, React.Children.toArray(props.children as React.ReactNode))
@@ -71,44 +71,53 @@ export function useNavigation(): { push: (view: unknown) => void; pop: () => voi
 }
 
 // Each mounted Form owns its values; no process-global registry outlives that form.
-const FormContext = React.createContext<Map<string, string | boolean> | null>(null)
+const FormContext = React.createContext<Map<string, UserRaycastFieldValue> | null>(null)
+const copyFormValue = (value: UserRaycastFieldValue): UserRaycastFieldValue => Array.isArray(value) ? [...value] : value
 let handleSequence = 0
 const form = (props: Record<string, unknown>) => {
-  const values = React.useRef(new Map<string, string | boolean>()).current
+  const values = React.useRef(new Map<string, UserRaycastFieldValue>()).current
   const formId = React.useId()
   return React.createElement(FormContext.Provider, { value: values }, element('raycast-form', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? {} : { formId }, [props.actions as React.ReactNode, ...React.Children.toArray(props.children as React.ReactNode)]))
 }
-const basicFormField = (fieldKind: string, fallback: string | boolean) => (props: Record<string, unknown>) => {
+const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFieldValue | ((props: Record<string, unknown>) => UserRaycastFieldValue)) => (props: Record<string, unknown>) => {
   const collected = React.useContext(FormContext)
-  const initial = React.useRef(props.defaultValue === undefined ? fallback : props.defaultValue).current
+  const initialRef = React.useRef<UserRaycastFieldValue | undefined>(undefined)
+  if (initialRef.current === undefined) {
+    const initial = props.defaultValue === undefined ? typeof fallback === 'function' ? fallback(props) : fallback : props.defaultValue
+    if (!isUserRaycastFieldValue(fieldKind, initial)) throw new Error('Invalid form field ID or value')
+    initialRef.current = copyFormValue(initial)
+  }
+  const initial = initialRef.current
   const [draft, setDraft] = React.useState(initial)
   const [focusRequest, setFocusRequest] = React.useState(0)
   const [, refresh] = React.useState(0)
-  const value = props.value === undefined ? draft : props.value
+  const rawValue = props.value === undefined ? draft : props.value
   const id = props.id
-  if (typeof id !== 'string' || id.length === 0 || id.length > 128 || typeof value !== typeof fallback) throw new Error('Invalid form field ID or value')
+  if (typeof id !== 'string' || id.length === 0 || id.length > 128 || !isUserRaycastFieldValue(fieldKind, rawValue)) throw new Error('Invalid form field ID or value')
+  const value = copyFormValue(rawValue)
   const fieldEventId = React.useMemo(() => `field-${++handleSequence}`, [id])
-  const change = async (next: string | boolean): Promise<void> => {
-    if (typeof next !== typeof fallback) throw new Error('Invalid form field value')
-    setDraft(next)
-    try { if (typeof props.onChange === 'function') await props.onChange(next) }
+  const change = async (next: UserRaycastFieldValue): Promise<void> => {
+    if (!isUserRaycastFieldValue(fieldKind, next)) throw new Error('Invalid form field value')
+    const snapshot = copyFormValue(next)
+    setDraft(snapshot)
+    try { if (typeof props.onChange === 'function') await props.onChange(copyFormValue(snapshot)) }
     finally { refresh(previous => previous + 1) }
   }
   React.useImperativeHandle(props.ref as React.Ref<{ focus(): void; reset(): void }>, () => ({
     focus: () => setFocusRequest(previous => previous + 1),
-    reset: () => { void change(initial as string | boolean) },
+    reset: () => { void change(initial) },
   }))
   React.useLayoutEffect(() => {
     if (!collected) return
-    collected.set(id, value as string | boolean)
+    collected.set(id, copyFormValue(value))
     return () => { collected.delete(id) }
   }, [collected, id, value])
   // The reviewed bundled projection remains unchanged; callbacks stay in the private child.
   return element('raycast-text-field', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? props : {
     ...props, ref: undefined, fieldKind, value, fieldEventId, focusRequest, onChange: change,
-    onFocus: (next: string | boolean) => typeof props.onFocus === 'function' ? props.onFocus({ target: { id, value: next }, type: 'focus' }) : undefined,
-    onBlur: (next: string | boolean) => typeof props.onBlur === 'function' ? props.onBlur({ target: { id, value: next }, type: 'blur' }) : undefined,
-  })
+    onFocus: (next: UserRaycastFieldValue) => typeof props.onFocus === 'function' ? props.onFocus({ target: { id, value: copyFormValue(next) }, type: 'focus' }) : undefined,
+    onBlur: (next: UserRaycastFieldValue) => typeof props.onBlur === 'function' ? props.onBlur({ target: { id, value: copyFormValue(next) }, type: 'blur' }) : undefined,
+  }, React.Children.toArray(props.children as React.ReactNode))
 }
 const formDropdown = (props: Record<string, unknown>) => {
   const collected = React.useContext(FormContext)
@@ -124,11 +133,23 @@ const formDropdown = (props: Record<string, unknown>) => {
   }
   return element('raycast-form-dropdown', { title: String(props.title ?? ''), value, fieldEventId: fieldId, onChange: (next: string) => { collected?.set(String(props.id), next); if (typeof props.onChange === 'function') props.onChange(next) } }, React.Children.toArray(props.children as React.ReactNode))
 }
+const dropdownItem = component('raycast-form-dropdown-item')
+const firstDropdownValue = (children: React.ReactNode): string | undefined => {
+  for (const child of React.Children.toArray(children)) if (React.isValidElement<Record<string, unknown>>(child)) {
+    if (child.type === dropdownItem && typeof child.props.value === 'string') return child.props.value
+    const nested = firstDropdownValue(child.props.children as React.ReactNode)
+    if (nested !== undefined) return nested
+  }
+}
 export const Form = Object.assign(form, {
   TextField: basicFormField('text', ''), PasswordField: basicFormField('password', ''),
   TextArea: basicFormField('textarea', ''), Checkbox: basicFormField('checkbox', false),
-  Dropdown: Object.assign(formDropdown, { Item: component('raycast-form-dropdown-item') }),
+  Dropdown: Object.assign(process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? formDropdown : basicFormField('dropdown', props => firstDropdownValue(props.children as React.ReactNode) ?? ''), { Item: dropdownItem, Section: section }),
+  TagPicker: Object.assign(basicFormField('tagpicker', []), { Item: dropdownItem }),
+  DropdownItem: dropdownItem, DropdownSection: section, TagPickerItem: dropdownItem,
 })
+export const FormDropdown = Form.Dropdown, FormDropdownItem = dropdownItem, FormDropdownSection = section
+export const FormTagPicker = Form.TagPicker, FormTagPickerItem = dropdownItem
 
 type LinearAuthRequest = { endpoint: string; clientId: string; codeVerifier: string; redirectURI: string }
 const linearPkceClients = new Set<LinearPkceClient>()
@@ -230,7 +251,7 @@ export const Action = Object.assign(action, {
   SubmitForm: (props: Record<string, unknown>) => {
     const collected = React.useContext(FormContext)
     return element('raycast-action', { title: props.title ?? 'Submit', shortcut: JSON.stringify(props.shortcut ?? null), onAction: async () => {
-      const values = Object.fromEntries(collected ?? [])
+      const values = Object.fromEntries(Array.from(collected ?? [], ([id, value]) => [id, copyFormValue(value)]))
       if (typeof props.onSubmit === 'function' && await props.onSubmit(values) === false) throw new Error('Form submission was not accepted')
     } })
   },

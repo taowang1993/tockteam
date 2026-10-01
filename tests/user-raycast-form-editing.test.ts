@@ -61,6 +61,63 @@ test('all supported field kinds submit exact edited value types', async t => {
  assert.deepEqual(await f.submit(),{text:'T',password:'P',area:'A',check:true})
 })
 
+test('sectioned dropdown and tag picker submit declared defaults and exact edited selection types', async t => {
+ const f = await fixture(t, shell("React.createElement(React.Fragment,null,React.createElement(Form.Dropdown,{id:'locale',title:'Language',defaultValue:'fr'},React.createElement(Form.Dropdown.Section,{title:'Languages'},React.createElement(Form.Dropdown.Item,{value:'en',title:'English'}),React.createElement(Form.Dropdown.Item,{value:'fr',title:'French'}))),React.createElement(Form.TagPicker,{id:'colors',title:'Colors',defaultValue:['red']},React.createElement(Form.TagPicker.Item,{value:'red',title:'Red'}),React.createElement(Form.TagPicker.Item,{value:'blue',title:'Blue'})))",''))
+ assert.deepEqual(await f.submit(),{locale:'fr',colors:['red']})
+ await f.edit(f.field('locale'),'en'); await f.edit(f.field('colors'),['blue','red'])
+ assert.deepEqual(await f.submit(),{locale:'en',colors:['blue','red']})
+ assert.deepEqual(f.errors,[])
+})
+
+test('documented legacy choice aliases use the same owned form values', async t => {
+ const f = await fixture(t, shell("React.createElement(React.Fragment,null,React.createElement(require('@raycast/api').FormDropdown,{id:'locale'},React.createElement(Form.DropdownSection,{title:'Languages'},React.createElement(Form.DropdownItem,{value:'en',title:'English'}))),React.createElement(require('@raycast/api').FormTagPicker,{id:'tags',defaultValue:['red']},React.createElement(Form.TagPickerItem,{value:'red',title:'Red'})))",''))
+ assert.deepEqual(await f.submit(),{locale:'en',tags:['red']})
+})
+
+test('dropdown picks the first nested item by default and empty choice fields remain empty', async t => {
+ const f = await fixture(t, shell("React.createElement(React.Fragment,null,React.createElement(Form.Dropdown,{id:'first',title:'First'},React.createElement(Form.Dropdown.Section,{title:'Choices'},React.createElement(Form.Dropdown.Item,{value:'',title:'Empty'}),React.createElement(Form.Dropdown.Item,{value:'second',title:'Second'}))),React.createElement(Form.Dropdown,{id:'empty',title:'Empty Dropdown'}),React.createElement(Form.TagPicker,{id:'tags',title:'Tags'}))",''))
+ assert.deepEqual(await f.submit(),{first:'',empty:'',tags:[]})
+ assert.deepEqual(f.field('tags').props.value,[])
+})
+
+test('choice callbacks preserve controlled updates, typed focus events and default reset snapshots', async t => {
+ const f = await fixture(t, shell("React.createElement(React.Fragment,null,React.createElement(Form.Dropdown,{id:'locale',title:'Language',value:locale,defaultValue:'fr',onChange:async value=>{await new Promise(r=>setTimeout(r,20));setLocale(value)},ref:localeRef},React.createElement(Form.Dropdown.Item,{value:'en',title:'English'}),React.createElement(Form.Dropdown.Item,{value:'fr',title:'French'})),React.createElement(Form.TagPicker,{id:'tags',title:'Tags',value:tags,defaultValue:['red'],onChange:async value=>{await new Promise(r=>setTimeout(r,20));setTags(value)},onFocus:e=>setAnswer(JSON.stringify({type:e.type,target:e.target})),onBlur:e=>setAnswer(JSON.stringify({type:e.type,target:e.target})),ref:tagsRef},React.createElement(Form.TagPicker.Item,{value:'red',title:'Red'}),React.createElement(Form.TagPicker.Item,{value:'blue',title:'Blue'})))", "const [locale,setLocale]=React.useState('en'),[tags,setTags]=React.useState([]);const localeRef=React.useRef(null),tagsRef=React.useRef(null)", "React.createElement(Action.SubmitForm,{title:'Submit Form',onSubmit:values=>setAnswer(JSON.stringify(values))}),React.createElement(Action,{title:'Reset Choices',onAction:async()=>{localeRef.current.reset();tagsRef.current.reset();tagsRef.current.focus();await new Promise(r=>setTimeout(r,40))}})"))
+ assert.deepEqual(await f.submit(),{locale:'en',tags:[]})
+ await f.edit(f.field('locale'),'fr');await f.edit(f.field('tags'),['blue'])
+ assert.deepEqual(await f.submit(),{locale:'fr',tags:['blue']})
+ await f.edit(f.field('tags'),['blue'],'fieldFocused')
+ assert.deepEqual(JSON.parse(f.nodes('raycast-list-item')[0].props.title),{type:'focus',target:{id:'tags',value:['blue']}})
+ await f.edit(f.field('tags'),['blue'],'fieldBlurred')
+ assert.deepEqual(JSON.parse(f.nodes('raycast-list-item')[0].props.title),{type:'blur',target:{id:'tags',value:['blue']}})
+ const focus=f.field('tags').props.focusRequest
+ await f.act('Reset Choices')
+ assert.deepEqual(await f.submit(),{locale:'fr',tags:['red']})
+ assert.ok(f.field('tags').props.focusRequest>focus)
+})
+
+test('choice arrays do not share mutable defaults, callback arguments or submitted snapshots', async t => {
+ const f = await fixture(t, shell("React.createElement(Form.TagPicker,{id:'tags',title:'Tags',defaultValue:defaults,ref:tagsRef,onChange:value=>value.push('callback-mutation')},React.createElement(Form.TagPicker.Item,{value:'red',title:'Red'}),React.createElement(Form.TagPicker.Item,{value:'blue',title:'Blue'}))", "const defaults=React.useRef(['red']).current,tagsRef=React.useRef(null);const [round,setRound]=React.useState(0)", "React.createElement(Action.SubmitForm,{title:'Submit Form',onSubmit:values=>{setAnswer(JSON.stringify(values));values.tags.push('submit-mutation')}}),React.createElement(Action,{title:'Change Defaults',onAction:()=>{defaults.push('blue');setRound(round+1)}}),React.createElement(Action,{title:'Reset Tags',onAction:()=>tagsRef.current.reset()})"))
+ await f.act('Change Defaults'); assert.deepEqual(await f.submit(),{tags:['red']})
+ await f.edit(f.field('tags'),['blue']); assert.deepEqual(await f.submit(),{tags:['blue']})
+ assert.deepEqual(await f.submit(),{tags:['blue']})
+ await f.act('Reset Tags'); assert.deepEqual(await f.submit(),{tags:['red']})
+})
+
+test('malformed choice values reject without losing the valid selection', async t => {
+ const f = await fixture(t, shell("React.createElement(React.Fragment,null,React.createElement(Form.Dropdown,{id:'locale',defaultValue:'en'},React.createElement(Form.Dropdown.Item,{value:'en',title:'English'})),React.createElement(Form.TagPicker,{id:'tags',defaultValue:['red']},React.createElement(Form.TagPicker.Item,{value:'red',title:'Red'})))",''))
+ for (const value of [true,['en'],{},null]) await assert.rejects(async()=>await f.edit(f.field('locale'),value))
+ for (const value of ['red',false,[1],['red','red'],Array(2),Array.from({length:65},(_,i)=>String(i)),['x'.repeat(16385)],['汉'.repeat(6000)]]) await assert.rejects(async()=>await f.edit(f.field('tags'),value))
+ assert.deepEqual(await f.submit(),{locale:'en',tags:['red']})
+ await f.edit(f.field('tags'),[]);assert.deepEqual(await f.submit(),{locale:'en',tags:[]})
+})
+
+test('unmounted choice fields release their values and callback handles', async t => {
+ const f = await fixture(t, shell("React.createElement(React.Fragment,null,show?React.createElement(Form.TagPicker,{id:'tags',defaultValue:['red']},React.createElement(Form.TagPicker.Item,{value:'red',title:'Red'})):null,React.createElement(Form.Dropdown,{id:'locale',defaultValue:'en'},React.createElement(Form.Dropdown.Item,{value:'en',title:'English'})))", "const [show,setShow]=React.useState(true)", "React.createElement(Action.SubmitForm,{title:'Submit Form',onSubmit:values=>setAnswer(JSON.stringify(values))}),React.createElement(Action,{title:'Remove Tags',onAction:()=>setShow(false)})"))
+ const old=f.field('tags'); await f.act('Remove Tags')
+ await assert.rejects(async()=>await f.edit(old,['red']))
+ assert.deepEqual(await f.submit(),{locale:'en'})
+})
+
 test('controlled async change is authoritative and ref reset/focus are projected', async t => {
  const f = await fixture(t, shell("React.createElement(Form.TextField,{id:'name',title:'Name',value:name,defaultValue:'Initial',onChange:async value=>{await new Promise(r=>setTimeout(r,20));setName(value.toUpperCase())},ref:fieldRef})", "const [name,setName]=React.useState('lower');const fieldRef=React.useRef(null)", "React.createElement(Action.SubmitForm,{title:'Submit Form',onSubmit:values=>setAnswer(JSON.stringify(values))}),React.createElement(Action,{title:'Reset and Focus',onAction:async()=>{fieldRef.current.reset();fieldRef.current.focus();await new Promise(r=>setTimeout(r,40))}})"))
  await f.edit(f.field('name'),'upper')

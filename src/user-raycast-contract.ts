@@ -10,11 +10,15 @@ export const USER_RAYCAST_IPC = Object.freeze({
 })
 export type UserRaycastStatus = Readonly<{ candidate?: UserRaycastCandidate; sourceCandidate?: UserRaycastSourceCandidate; digest: string; enabled: boolean; hasPrevious: boolean; installed: boolean; mode?: 'no-view' | 'menu-bar' }>
 export type UserRaycastMutation = 'enable' | 'disable' | 'remove' | 'recover'
-export type UserRaycastFieldKind = 'text' | 'password' | 'textarea' | 'checkbox'
-export type UserRaycastFieldEvent = Readonly<{ sessionId: string; revision: number; eventId: string; requestId: string; kind: 'fieldChanged' | 'fieldFocused' | 'fieldBlurred'; value: string | boolean }>
+export type UserRaycastFieldKind = 'text' | 'password' | 'textarea' | 'checkbox' | 'dropdown' | 'tagpicker'
+export type UserRaycastFieldValue = string | boolean | readonly string[]
+export type UserRaycastFieldEvent = Readonly<{ sessionId: string; revision: number; eventId: string; requestId: string; kind: 'fieldChanged' | 'fieldFocused' | 'fieldBlurred'; value: UserRaycastFieldValue }>
 export type UserRaycastEvent = Readonly<{ sessionId?: string; revision: number; eventId: string; kind: 'action' | 'searchChanged'; value?: string }> | UserRaycastFieldEvent
-export function isUserRaycastFieldValue(kind: unknown, value: unknown): value is string | boolean {
-  return kind === 'checkbox' ? typeof value === 'boolean' : ['text', 'password', 'textarea'].includes(kind as string) && typeof value === 'string' && value.length <= 16384
+export function isUserRaycastFieldValue(kind: unknown, value: unknown): value is UserRaycastFieldValue {
+  if (kind === 'tagpicker') return Array.isArray(value) && value.length <= 64 && Object.keys(value).length === value.length && !Object.hasOwn(value, 'toJSON')
+    && Array.from(value).every(entry => typeof entry === 'string' && entry.length <= 16384) && new Set(value).size === value.length
+    && new TextEncoder().encode(JSON.stringify(value)).byteLength <= 16384
+  return kind === 'checkbox' ? typeof value === 'boolean' : ['text', 'password', 'textarea', 'dropdown'].includes(kind as string) && typeof value === 'string' && value.length <= 16384
 }
 export type UserRaycastOAuthCleanupReason = 'transport' | 'timeout' | 'unknown' | `http-${number}`
 export type UserRaycastOAuthCleanupCounts = Readonly<{ attempted: number; confirmed: number; failed: number }>
@@ -101,7 +105,7 @@ export function isUserRaycastEvent(value: unknown): value is UserRaycastEvent {
   const session = typeof value.sessionId === 'string' && value.sessionId.length > 0 && value.sessionId.length <= 128
   if (value.kind === 'fieldChanged' || value.kind === 'fieldFocused' || value.kind === 'fieldBlurred') return session
     && exact(value, ['sessionId', 'revision', 'eventId', 'requestId', 'kind', 'value']) && typeof value.requestId === 'string' && value.requestId.length > 0 && value.requestId.length <= 128
-    && (typeof value.value === 'boolean' || typeof value.value === 'string' && value.value.length <= 16384)
+    && (isUserRaycastFieldValue('checkbox', value.value) || isUserRaycastFieldValue('text', value.value) || isUserRaycastFieldValue('tagpicker', value.value))
   if (!exact(value, ['revision', 'eventId', 'kind', ...(Object.hasOwn(value, 'sessionId') ? ['sessionId'] : []), ...(Object.hasOwn(value, 'value') ? ['value'] : [])]) || Object.hasOwn(value, 'sessionId') && !session) return false
   return value.kind === 'action' && !Object.hasOwn(value, 'value') || value.kind === 'searchChanged' && typeof value.value === 'string' && value.value.length <= 16384
 }

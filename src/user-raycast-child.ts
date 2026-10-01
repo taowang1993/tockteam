@@ -8,7 +8,7 @@ import Reconciler from 'react-reconciler'
 import * as api from './api.mjs'
 import { createTrustedRaycastLineReader, TRUSTED_RAYCAST_INPUT_FRAME_BYTES } from './trusted-raycast-contract.ts'
 import { createUserRaycastStorage } from './user-raycast-storage.ts'
-import { isUserRaycastEvent, isUserRaycastFieldValue, isUserRaycastOAuthCleanupCounts, isUserRaycastOAuthCleanupReasons } from './user-raycast-contract.ts'
+import { isUserRaycastEvent, isUserRaycastFieldValue, isUserRaycastOAuthCleanupCounts, isUserRaycastOAuthCleanupReasons, type UserRaycastFieldValue } from './user-raycast-contract.ts'
 
 type Node = { type: string; props: Record<string, unknown>; children: Array<Node | string> }
 const root: Node = { type: 'root', props: {}, children: [] }
@@ -19,7 +19,7 @@ const mode = process.env.TOCKTEAM_USER_RAYCAST_MODE
 let revision = -1
 let ready = false
 let handles = new Map<string, () => unknown>()
-let fields = new Map<string, { kind: unknown; change: ((value: string | boolean) => unknown) | undefined; focus: ((value: string | boolean) => unknown) | undefined; blur: ((value: string | boolean) => unknown) | undefined }>()
+let fields = new Map<string, { kind: unknown; change: ((value: UserRaycastFieldValue) => unknown) | undefined; focus: ((value: UserRaycastFieldValue) => unknown) | undefined; blur: ((value: UserRaycastFieldValue) => unknown) | undefined }>()
 let activeField = false
 let activeAction: { eventId: string; revision: number } | undefined
 let nativeSequence = 0
@@ -28,9 +28,10 @@ console.log = (...values: unknown[]) => console.error(...values)
 const send = (value: object): void => { process.stdout.write(`${JSON.stringify(value)}\n`) }
 const serialize = (value: Node | string): unknown => {
   if (typeof value === 'string') return value
-  const props: Record<string, string | number | boolean | null> = {}
+  const props: Record<string, string | number | boolean | null | readonly string[]> = {}
   for (const [key, entry] of Object.entries(value.props)) {
-    if (key !== 'children' && (entry === null || typeof entry === 'string' || typeof entry === 'boolean' || typeof entry === 'number' && Number.isFinite(entry))) props[key] = entry
+    if (key === 'value' && value.type === 'raycast-text-field' && value.props.fieldKind === 'tagpicker' && isUserRaycastFieldValue('tagpicker', entry)) props[key] = entry
+    else if (key !== 'children' && (entry === null || typeof entry === 'string' || typeof entry === 'boolean' || typeof entry === 'number' && Number.isFinite(entry))) props[key] = entry
   }
   if ((value.type === 'raycast-action' || value.type === 'raycast-menu-item') && typeof value.props.onAction === 'function') {
     const id = `action-${handles.size}`
@@ -40,9 +41,9 @@ const serialize = (value: Node | string): unknown => {
   }
   if (value.type === 'raycast-text-field' && typeof value.props.fieldEventId === 'string') fields.set(value.props.fieldEventId, {
     kind: value.props.fieldKind,
-    change: typeof value.props.onChange === 'function' ? value.props.onChange as (next: string | boolean) => unknown : undefined,
-    focus: typeof value.props.onFocus === 'function' ? value.props.onFocus as (next: string | boolean) => unknown : undefined,
-    blur: typeof value.props.onBlur === 'function' ? value.props.onBlur as (next: string | boolean) => unknown : undefined,
+    change: typeof value.props.onChange === 'function' ? value.props.onChange as (next: UserRaycastFieldValue) => unknown : undefined,
+    focus: typeof value.props.onFocus === 'function' ? value.props.onFocus as (next: UserRaycastFieldValue) => unknown : undefined,
+    blur: typeof value.props.onBlur === 'function' ? value.props.onBlur as (next: UserRaycastFieldValue) => unknown : undefined,
   })
   return { type: value.type, props, children: value.children.map(serialize) }
 }
@@ -130,7 +131,7 @@ process.stdin.setEncoding('utf8')
 const readLines = createTrustedRaycastLineReader(TRUSTED_RAYCAST_INPUT_FRAME_BYTES)
 process.stdin.on('data', (chunk: string) => {
   for (const line of readLines(chunk)) {
-    const event = JSON.parse(line) as { type?: string; revision?: number; eventId?: string; kind?: string; value?: string | boolean; requestId?: string; sessionId?: string; succeeded?: boolean; message?: string }
+    const event = JSON.parse(line) as { type?: string; revision?: number; eventId?: string; kind?: string; value?: UserRaycastFieldValue; requestId?: string; sessionId?: string; succeeded?: boolean; message?: string }
     if (event.type === 'native-result') {
       const waiting = typeof event.requestId === 'string' ? nativePending.get(event.requestId) : undefined
       if (!waiting || event.revision !== activeAction?.revision || event.eventId !== activeAction?.eventId || typeof event.succeeded !== 'boolean') throw new Error('Stale native outcome')
@@ -148,7 +149,7 @@ process.stdin.on('data', (chunk: string) => {
       }
       activeField = true
       const callback = event.kind === 'fieldChanged' ? field.change : event.kind === 'fieldFocused' ? field.focus : field.blur
-      Promise.resolve().then(() => callback?.(event.value as string | boolean)).then(() => {
+      Promise.resolve().then(() => callback?.(event.value as UserRaycastFieldValue)).then(() => {
         renderer.flushSyncWork()
         respond(true)
       }, error => respond(false, String(error).slice(0, 512))).finally(() => { activeField = false })

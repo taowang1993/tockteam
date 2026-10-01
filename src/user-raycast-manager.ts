@@ -25,6 +25,11 @@ const validNode = (value: unknown, state = { nodes: 0, text: 0, actions: new Set
   const node = value as { type?: unknown; props?: unknown; children?: unknown }
   if (Object.keys(node).sort().join(',') !== 'children,props,type' || !types.has(node.type as string) || !node.props || typeof node.props !== 'object' || Array.isArray(node.props) || !Array.isArray(node.children) || node.children.length > 1024 || Object.keys(node.props).length > 64) return false
   for (const [key, entry] of Object.entries(node.props)) {
+    if (Array.isArray(entry)) {
+      if (node.type !== 'raycast-text-field' || key !== 'value' || (node.props as Record<string, unknown>).fieldKind !== 'tagpicker' || !Object.hasOwn(node.props, 'fieldEventId') || !isUserRaycastFieldValue('tagpicker', entry)) return false
+      state.text += Buffer.byteLength(JSON.stringify(entry)); if (state.text > 256 * 1024) return false
+      continue
+    }
     if (key.length > 128 || typeof entry !== 'string' && typeof entry !== 'boolean' && entry !== null && (typeof entry !== 'number' || !Number.isFinite(entry))) return false
     if (typeof entry === 'string') { state.text += Buffer.byteLength(entry); if (state.text > 256 * 1024) return false }
     if (key === 'actionEventId') {

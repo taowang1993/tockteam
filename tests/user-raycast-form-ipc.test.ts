@@ -11,7 +11,7 @@ test('field transport accepts only finite typed and bounded exact requests', () 
   for (const invalid of [
     { ...field, sessionId: undefined }, { ...field, sessionId: '' }, { ...field, requestId: '' }, { ...field, requestId: 'x'.repeat(129) },
     { ...field, revision: -1 }, { ...field, revision: 0.5 }, { ...field, eventId: '' }, { ...field, value: 1 },
-    { ...field, value: ['Edited'] }, { ...field, value: 'x'.repeat(16385) }, { ...field, kind: 'native' }, { ...field, path: '/tmp/not-allowed' },
+    { ...field, value: [1] }, { ...field, value: 'x'.repeat(16385) }, { ...field, kind: 'native' }, { ...field, path: '/tmp/not-allowed' },
   ]) assert.equal(isUserRaycastEvent(invalid), false)
   assert.equal(isUserRaycastFieldValue('checkbox', false), true)
   assert.equal(isUserRaycastFieldValue('checkbox', 'false'), false)
@@ -20,6 +20,24 @@ test('field transport accepts only finite typed and bounded exact requests', () 
   assert.equal(isUserRaycastFieldValue('textarea', 'Two\nLines'), true)
   assert.equal(isUserRaycastFieldValue('text', true), false)
   assert.equal(isUserRaycastFieldValue('arbitrary', 'anything'), false)
+})
+
+test('tag requests admit only dense unique bounded string arrays and never widen scalar fields', () => {
+  for (const value of [[], ['red'], ['blue', 'red']]) {
+    assert.equal(isUserRaycastFieldValue('tagpicker', value), true)
+    assert.equal(isUserRaycastEvent({ ...field, value }), true)
+    assert.equal(isUserRaycastFieldValue('text', value), false)
+    assert.equal(isUserRaycastFieldValue('dropdown', value), false)
+  }
+  const extra = Object.assign(['red'], { secret: 'fake-only' })
+  const toJSON = ['red']; Object.defineProperty(toJSON, 'toJSON', { value: () => ['red'] })
+  for (const value of [[1], ['red', 'red'], Array(2), extra, toJSON, Array.from({ length: 65 }, (_, index) => String(index)), ['x'.repeat(16385)], ['汉'.repeat(6000)]]) {
+    assert.equal(isUserRaycastFieldValue('tagpicker', value), false)
+    assert.equal(isUserRaycastEvent({ ...field, value }), false)
+  }
+  assert.equal(isUserRaycastFieldValue('dropdown', ''), true)
+  assert.equal(isUserRaycastFieldValue('tagpicker', 'red'), false)
+  assert.equal(isUserRaycastEvent({ ...field, kind: 'action', value: [] }), false)
 })
 
 for (const changed of [false, true]) test(`field IPC waits for completion and rechecks its owner (${changed ? 'replaced' : 'current'})`, async () => {
