@@ -441,10 +441,10 @@ function MarkdownDocumentProperty(props: {
     </dd>
     {props.editable && <AlertDialog onOpenChange={open => { if (!open && !typeBusy) setTypePending(null) }} open={typePending !== null}>
       <AlertDialogContent className="z-[2147483647] max-h-[85dvh] overflow-y-auto" overlayClassName="z-[2147483646]" onCloseAutoFocus={event => { event.preventDefault(); typeButton.current?.focus() }}>
-        <AlertDialogHeader><AlertDialogTitle>Change Property Type</AlertDialogTitle><AlertDialogDescription>This remembers the type throughout this vault. Only this note’s value will be converted. Save the note to keep the new value.</AlertDialogDescription></AlertDialogHeader>
+        <AlertDialogHeader><AlertDialogTitle>Change Property Type</AlertDialogTitle><AlertDialogDescription className="text-popover-foreground">This remembers the type throughout this vault. Only this note’s value will be converted. Save the note to keep the new value.</AlertDialogDescription></AlertDialogHeader>
         <div className="text-sm"><p className="m-0 font-medium">Current Value</p><pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap break-all text-xs">{JSON.stringify(property.value)}</pre><p className="mt-3 mb-0 font-medium">New Value</p><pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap break-all text-xs">{JSON.stringify(typePending?.value)}</pre></div>
-        {typePending?.lossy && <p className="m-0 text-sm text-warning">Some of the original value will be lost. A recovery copy will be saved before this change.</p>}
-        {typeError && <p className="m-0 text-destructive" role="alert">{typeError}</p>}
+        {typePending?.lossy && <p className="m-0 text-sm font-medium text-popover-foreground">Some of the original value will be lost. A recovery copy will be saved before this change.</p>}
+        {typeError && <p className="m-0 font-medium text-popover-foreground" role="alert">{typeError}</p>}
         <AlertDialogFooter><AlertDialogCancel disabled={typeBusy}>Cancel</AlertDialogCancel><Button disabled={typeBusy} onClick={() => { if (typePending) void applyType(typePending.target, typePending.lossy, typePending.source) }} type="button">{typeBusy ? 'Changing Type…' : 'Change Type'}</Button></AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>}
@@ -452,9 +452,9 @@ function MarkdownDocumentProperty(props: {
       <AlertDialogContent className="z-[2147483647] max-h-[85dvh] overflow-y-auto" overlayClassName="z-[2147483646]" onCloseAutoFocus={event => { event.preventDefault(); actionsButton.current?.focus() }}>
         <AlertDialogHeader>
           <AlertDialogTitle>Remove Property “{property.key}”?</AlertDialogTitle>
-          <AlertDialogDescription>This removes the property from this document.</AlertDialogDescription>
+          <AlertDialogDescription className="text-popover-foreground">This removes the property from this document.</AlertDialogDescription>
         </AlertDialogHeader>
-        {removeError !== '' && <p className="m-0 text-destructive" role="alert">{removeError}</p>}
+        {removeError !== '' && <p className="m-0 font-medium text-popover-foreground" role="alert">{removeError}</p>}
         <AlertDialogFooter>
           <AlertDialogCancel onClick={() => { setRemoveError('') }}>Cancel</AlertDialogCancel>
           <Button onClick={removeProperty} type="button" variant="destructive">Remove Property</Button>
