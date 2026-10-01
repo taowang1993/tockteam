@@ -1,0 +1,135 @@
+{
+  "status": "verified",
+  "builtAtCommit": "910a3bee",
+  "checkoutCommit": "543d6395",
+  "reusesExistingBuild": true,
+  "builtArtifactHashes": {
+    "dist/main.js": "88907c94f512e58cf4d3158e4cc60a8a2aadaab257a9fc749c0e98f8e19031c5",
+    "dist/client.js": "0a26bbbe0e24e0f575eac1ec0bc488df321cc2e8c9332d6c71c719081f272cf3",
+    "plugins/tocktutor/build-manifest.json": "ebc00fc8f12e3f7e652260d0b38f03dd5bb1e1c62d01fe3dec5f50f0d29407ca",
+    "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/client.js": "28130686dab73189eb147e8e54888eb8ef2d1548f422b1320a408b3bac5289b8",
+    "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/route.js": "1ea03ba214dc5f14583e6656c401314bf8722d66b12026090e03b38c54a34841",
+    "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/sidebar-note-menu.js": "87a5449aeb1e47abc95c172f23c7d012fbbfcae4abf2b8c451b95819763be4cd"
+  },
+  "capture": {
+    "capturedAt": "2026-10-01T08:43:44.938Z",
+    "facts": {
+      "route": "/tocktutor/comparison.md",
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "rootColorScheme": "dark",
+      "rootSkin": null,
+      "bodySkin": null,
+      "systemDark": false,
+      "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
+      "hiddenInlineSources": [
+        {
+          "text": "==highlighting==",
+          "display": "none"
+        }
+      ],
+      "rawSourceVisible": false,
+      "activeTab": "comparison.md",
+      "unsaved": false
+    },
+    "labels": [
+      "Backlinks in Document",
+      "Reading View",
+      "Source Mode",
+      "Split Right",
+      "Split Down",
+      "Open in New Window",
+      "Rename Note…",
+      "Move Note…",
+      "Bookmark Note…",
+      "Merge Entire File With…",
+      "Add Property",
+      "Export PDF…",
+      "Find…",
+      "Replace…",
+      "Copy Path",
+      "Open Linked View",
+      "Reveal in Finder",
+      "Reveal File in Navigation",
+      "File Recovery",
+      "Outline",
+      "Properties",
+      "Backlinks",
+      "Graph View",
+      "Web Viewer",
+      "Bookmarks",
+      "Tags",
+      "Attachments and Embeds",
+      "Note Tools",
+      "Workspaces and Panes",
+      "Reviews and Actions",
+      "Merge Recovery",
+      "Move File to Trash"
+    ],
+    "runtimeErrors": [],
+    "png": {
+      "width": 3024,
+      "height": 1898,
+      "sha256": "e968b94a3232162f910c06f5485ada47a8afe0b7799f46f609efce01faa1f6d3",
+      "bytes": 399925
+    }
+  },
+  "cleanup": {
+    "id": "9bd36f9c-1253-4143-af85-35be508692ab",
+    "verified": true,
+    "stopped": true,
+    "rootPid": 57588,
+    "recordedPids": [
+      57588,
+      57590,
+      57591,
+      57592,
+      57593,
+      57596,
+      57602,
+      57707,
+      57708,
+      57709,
+      57710,
+      57711,
+      57712,
+      57790,
+      57946,
+      57947
+    ],
+    "remaining": []
+  },
+  "publication": {
+    "published": [
+      {
+        "path": "screenshots/tocktutor-note-actions-menu.png",
+        "sha256": "e968b94a3232162f910c06f5485ada47a8afe0b7799f46f609efce01faa1f6d3"
+      },
+      {
+        "path": "tocktutor.html",
+        "sha256": "8edf0c6645352867e6f30210a862bbe5faaef96a35ca5a0b3d8fb14a24ae1f3e"
+      },
+      {
+        "path": "content-alignment.json",
+        "sha256": "ec2050fc2182ba5918d615dd9ee9e9c5cbb0b758bc92168526204e6cd355d901"
+      },
+      {
+        "path": "content-alignment.md",
+        "sha256": "ba06366debcae44d92ae558747e66f20adee19a0fb722ae71672452b3a08513a"
+      }
+    ],
+    "unchangedOtherImages": 72,
+    "unchangedObsidianImages": 33
+  },
+  "protectedPathsUnchanged": true,
+  "appSourceBuildStageChanges": false,
+  "consoleErrors": 0,
+  "consoleWarnings": 2,
+  "qualityGates":{"command":"node --test tests/tocktutor-gallery.test.ts tests/tocktutor-content-alignment.test.ts","pass":16,"fail":0,"diffCheck":true},
+  "galleryVerification":{"geometry":[1512,949,2],"surface":"note-actions","bothImagesDecoded":true,"pixels":[3024,1898],"surfaceCount":29,"uniqueImageSources":66,"currentCopyVerified":true,"runtimeErrors":[],"failedRequests":[],"finalConsoleErrors":0},
+  "galleryCleanup":{"id":"b92c564e-ae6e-46e4-9a43-425c96990ba9","stopped":true,"rootPid":60427,"recordedPids":[60427,60429,60430,60431],"remaining":[],"serverPid":60427,"serverPort":49419,"serverStopped":true,"portClosed":true},
+  "playwrightSessions":[]
+}

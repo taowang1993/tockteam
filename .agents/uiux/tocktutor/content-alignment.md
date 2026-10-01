@@ -1,5 +1,11 @@
 # TockTutor and Obsidian Content Alignment
 
+## Current Note Actions Menu — 2026-10-01
+
+Updated only Surface 05's `tocktutor-note-actions-menu.png` after the user-approved removal of Open in Default App. All 72 other screenshots, including all 33 Obsidian references, remain byte-identical. The real isolated Desktop opens the unchanged 1,324-byte `comparison.md` in Live Preview; its corrected first paragraph is visible, the real 32-entry menu omits the outside-app option, and normal note/native actions remain. Outside-app certification is cancelled, not claimed.
+
+Reused the frozen existing build from `910a3bee`, checked out at `543d6395`, without source edits, build, or staging. A peer may edit unbuilt source independently; `noteActionsRefresh.builtArtifactHashes` fingerprints the actual frozen artifacts rather than claiming its new source was captured. The PNG is 3024 × 1898 from 1512 × 949 CSS pixels at DPR 2, explicit dark/no root or body skin despite simulated light system appearance. The paragraph check excludes only proven `display:none` inline-source nodes; no visible content or DOM styles were changed. Fresh style measurements match the recorded link/task colors and checkbox dimensions. Runtime errors are zero, with two startup warnings. Owned root 57588 and all 16 recorded app/runtime PIDs stopped; Playwright detached. The old `menuRefresh` retains its historical filename/reference decision. See [the current menu gallery report](../../../.beads/reports/2026-10-01-tocktutor-note-menu-gallery.md).
+
 ## Current Sidebar and Reader Captures — 2026-10-01
 
 Updated only `tocktutor-imported-properties.png` and `tocktutor-web-viewer-reader.png`; all 71 other screenshots, including every Obsidian reference, remain unchanged. Surface 29 now uses the unaltered, already verified Properties screenshot from `tockteam-ph35` at `1e3174b3`, with the compact icon-only toggle, all eight imported rows, the unchanged 447-byte saved note/type registry, and 470-pixel sidebar. No additional Properties or Obsidian launch was needed.

@@ -1,4 +1,23 @@
 {
+  "noteActionsRefresh": {
+    "status":"verified-current","sourceCommit":"910a3bee","checkoutCommit":"543d6395","capturedAt":"2026-10-01T08:43:44.938Z",
+    "filename":"tocktutor-note-actions-menu.png","reusesExistingBuild":true,
+    "report":"../../../.beads/reports/2026-10-01-tocktutor-note-menu-gallery.md",
+    "publicationAllowlist":["tocktutor-note-actions-menu.png"],"unrelatedExistingCapturesUnchanged":72,
+    "sharedNoteBytes":1324,"contentSha256":"3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+    "menuEntries":32,"openInDefaultAppPresent":false,"outsideAppCertification":"cancelled-not-verified",
+    "geometry":[1512,949,2],"pixels":[3024,1898],"theme":"dark","skin":null,"runtimeErrors":[],"consoleWarnings":2,
+    "sourceOwnership":"Peer may edit unbuilt source; provenance fingerprints the frozen existing built artifacts, not the current working source.",
+    "builtArtifactHashes":{
+      "dist/main.js":"88907c94f512e58cf4d3158e4cc60a8a2aadaab257a9fc749c0e98f8e19031c5",
+      "dist/client.js":"0a26bbbe0e24e0f575eac1ec0bc488df321cc2e8c9332d6c71c719081f272cf3",
+      "plugins/tocktutor/build-manifest.json":"ebc00fc8f12e3f7e652260d0b38f03dd5bb1e1c62d01fe3dec5f50f0d29407ca",
+      "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/client.js":"28130686dab73189eb147e8e54888eb8ef2d1548f422b1320a408b3bac5289b8",
+      "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/route.js":"1ea03ba214dc5f14583e6656c401314bf8722d66b12026090e03b38c54a34841",
+      "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/sidebar-note-menu.js":"87a5449aeb1e47abc95c172f23c7d012fbbfcae4abf2b8c451b95819763be4cd"
+    },
+    "cleanup":{"id":"9bd36f9c-1253-4143-af85-35be508692ab","verified":true,"stopped":true,"rootPid":57588,"recordedPids":[57588,57590,57591,57592,57593,57596,57602,57707,57708,57709,57710,57711,57712,57790,57946,57947],"remaining":[]}
+  },
   "readerViewRefresh": {
     "status":"verified-current","sourceCommit":"1e3174b3","capturedAt":"2026-10-01T07:22:10.681Z",
     "filename":"tocktutor-web-viewer-reader.png","reusesExistingBuild":true,
@@ -1376,22 +1395,27 @@
       "runtimeErrors": [],
       "mode": "live-preview",
       "path": "comparison.md",
-      "capturedAt": "2026-09-25T13:53:02.209Z",
+      "capturedAt": "2026-10-01T08:43:44.938Z",
       "visibleState": {
         "assertedText": "Reading View",
         "assertionPassed": true,
         "textExcerpt": "Reading View",
-        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
+        "rootColorScheme":"dark","rootSkin":null,"bodySkin":null,"systemDark":false,
+        "activeTab":"comparison.md","rawSourceVisible":false,"unsaved":false,
+        "openInDefaultAppPresent":false,"menuEntries":32,
+        "hiddenInlineSources":[{"text":"==highlighting==","display":"none"}],
+        "menuLabels":["Backlinks in Document","Reading View","Source Mode","Split Right","Split Down","Open in New Window","Rename Note…","Move Note…","Bookmark Note…","Merge Entire File With…","Add Property","Export PDF…","Find…","Replace…","Copy Path","Open Linked View","Reveal in Finder","Reveal File in Navigation","File Recovery","Outline","Properties","Backlinks","Graph View","Web Viewer","Bookmarks","Tags","Attachments and Embeds","Note Tools","Workspaces and Panes","Reviews and Actions","Merge Recovery","Move File to Trash"]
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
+      "runtimeErrorMonitoring": "Owned guarded Desktop/CDP; Playwright console/pageerror monitoring during navigation and capture, plus final session console check: zero errors; two startup warnings. Hidden inline-source DOM text is excluded only after verifying display:none; the actual paragraph stays unmodified.",
       "route": "/tocktutor/comparison.md",
       "theme": "dark",
       "skin": null,
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 397824,
-      "sha256": "d64b08baec7712232095c8acad4993aaf0ea2f9685a9fd1107429a61a58d790b",
+      "bytes": 399925,
+      "sha256": "e968b94a3232162f910c06f5485ada47a8afe0b7799f46f609efce01faa1f6d3",
       "captureScope": "real-desktop",
-      "sourceCommit": "f436fcc0",
+      "sourceCommit": "910a3bee",
       "styleEvidence": {
         "link": "rgb(166, 138, 249)",
         "ordered": "rgb(249, 250, 251)",
