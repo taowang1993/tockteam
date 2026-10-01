@@ -1,0 +1,865 @@
+{
+  "sourceCheckpoint": "e193bf3f",
+  "pinnedReference": "c41967a93317b2a0f08511c349ef3dbaf78fc882",
+  "executor": "Parent; app-scoped Playwright connected only to guarded Electron CDP endpoints",
+  "fixtureHashes": {
+    "Properties.md": "47a26e75e398afde7582b4ad271cf5362083c054a509cced120ad48bcfeb1c4f",
+    "More.md": "8a94d43e231288355c1fb11925a023cce50e99aeeffa4030958fb136417472f3",
+    ".obsidian/types.json": "4a24b347eb546d8beb5bbf3d37a7a1da1cd234757dfb09d65285bb339e5dcf1f"
+  },
+  "screenshots": [
+    {
+      "file": "properties.png",
+      "title": "TockTutor Properties",
+      "mode": "Live Preview",
+      "state": "Initial Fixture",
+      "css": [
+        1512,
+        949
+      ],
+      "pixels": [
+        3024,
+        1898
+      ],
+      "deviceScaleFactor": 2,
+      "colorScheme": "dark",
+      "skinId": null,
+      "sha256": "a7eab9601d526afe8c2c065db5a4298922c743527192adaa97023c7aa039f9b1"
+    },
+    {
+      "file": "property-conversion.png",
+      "title": "Change Property Type",
+      "mode": "Live Preview",
+      "state": "Explicit Loss Confirmation",
+      "css": [
+        1512,
+        949
+      ],
+      "pixels": [
+        3024,
+        1898
+      ],
+      "deviceScaleFactor": 2,
+      "colorScheme": "dark",
+      "skinId": null,
+      "sha256": "b34619d93c58cc182da68cd2da15fe7a3e0f6da4b19768e5be9ae32d5f5c7910"
+    },
+    {
+      "file": "reference-properties.png",
+      "title": "Pinned WebObsidian Properties",
+      "mode": "Live",
+      "state": "Initial Fixture",
+      "css": [
+        1512,
+        949
+      ],
+      "pixels": [
+        3024,
+        1898
+      ],
+      "deviceScaleFactor": 2,
+      "colorScheme": "dark",
+      "skinId": null,
+      "sha256": "03a0f8802375faa71443105929bea9f768ea42be95a4aca1cf5e3a2b4d163a92"
+    }
+  ],
+  "tock": {
+    "checkpoint": "e193bf3f",
+    "url": "http://127.0.0.1:63602/tocktutor/Properties.md",
+    "mode": "Live Preview",
+    "geometry": {
+      "css": [
+        1512,
+        949
+      ],
+      "scale": 2,
+      "scheme": "dark",
+      "documentSkin": null,
+      "bodySkin": null
+    },
+    "sidebarBounds": {
+      "x": 1212,
+      "y": 40,
+      "width": 300,
+      "height": 909
+    },
+    "dialogBounds": {
+      "x": 548,
+      "y": 287.2265625,
+      "width": 416,
+      "height": 374.546875
+    },
+    "actionColors": {
+      "foreground": "rgb(15, 17, 21)",
+      "background": "rgb(249, 250, 251)"
+    },
+    "actionContrast": 18.082282383551934,
+    "messageColors": {
+      "background": "rgb(97, 102, 107)",
+      "description": "rgb(249, 250, 251)",
+      "warning": "rgb(249, 250, 251)"
+    },
+    "messageContrast": {
+      "description": 5.549422196980242,
+      "warning": 5.549422196980242
+    },
+    "checks": {
+      "removedToolbar": true,
+      "sixTypes": [
+        "Text",
+        "List",
+        "Number",
+        "Checkbox",
+        "Date",
+        "Date & Time"
+      ],
+      "menuKeyboardEscapeFocus": true,
+      "menuOutsideDismissal": true,
+      "rename": true,
+      "chipEdit": true,
+      "draftAfterToggle": true,
+      "tagNormalization": true,
+      "indexedTags": "Suggestions\nindexed/tag\nresearch",
+      "indexedPropertyNames": "Suggestions\ncourse\ncustom key",
+      "copyValue": "existing, new-tag",
+      "clipboardBoundary": "app-scoped stub; system clipboard untouched",
+      "addRemove": true,
+      "inlineSidebarShared": true,
+      "lossyPreviewAndExplicitConfirmation": true,
+      "dialogEscapeFocus": true,
+      "savedViaShortcut": true
+    },
+    "runtimeErrors": []
+  },
+  "reference": {
+    "pinnedRevision": "c41967a93317b2a0f08511c349ef3dbaf78fc882",
+    "url": "http://127.0.0.1:64115/note/Properties.md",
+    "mode": "Live",
+    "initial": {
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "dark": true,
+      "fields": [
+        {
+          "key": "custom key",
+          "type": "text",
+          "value": "original # Keep this inline comment"
+        },
+        {
+          "key": "note.rating",
+          "type": "number",
+          "value": "",
+          "input": "3",
+          "checked": false
+        },
+        {
+          "key": "123field",
+          "type": "checkbox",
+          "value": "",
+          "input": "on",
+          "checked": false
+        },
+        {
+          "key": "due",
+          "type": "date",
+          "value": "",
+          "input": "2026-10-01",
+          "checked": false
+        },
+        {
+          "key": "meeting",
+          "type": "datetime",
+          "value": "",
+          "input": "2026-10-01T14:45",
+          "checked": false
+        },
+        {
+          "key": "aliases",
+          "type": "list",
+          "value": "Original×+"
+        },
+        {
+          "key": "tags",
+          "type": "list",
+          "value": "existing×+"
+        },
+        {
+          "key": "cssclasses",
+          "type": "list",
+          "value": "wide×+"
+        },
+        {
+          "key": "unsupported",
+          "type": "text",
+          "value": ""
+        },
+        {
+          "key": "child",
+          "type": "text",
+          "value": "keep"
+        }
+      ]
+    },
+    "checks": {
+      "rename": true,
+      "chipEditAndAdd": true,
+      "tagNormalization": true,
+      "addAndRemove": true,
+      "copyValue": "existing, new-tag",
+      "clipboardBoundary": "app-scoped stub; system clipboard untouched",
+      "suggestedTags": "#\nresearch\n#\nindexed/tag",
+      "suggestedNames": "T\ncourse\nT\ncourse name\nT\ncustom key\nT\nother field\nT\n课程",
+      "sixTypes": [
+        {
+          "label": "Text",
+          "present": true
+        },
+        {
+          "label": "List",
+          "present": true
+        },
+        {
+          "label": "Number",
+          "present": true
+        },
+        {
+          "label": "Checkbox",
+          "present": true
+        },
+        {
+          "label": "Date",
+          "present": true
+        },
+        {
+          "label": "Date & time",
+          "present": true
+        }
+      ],
+      "immediateListToText": true,
+      "aliasControl": "Reference continues to show built-in aliases as chips after storing Text.",
+      "savedResponseStatus": 200,
+      "reopened": true
+    },
+    "final": [
+      {
+        "key": "renamed key",
+        "type": "text",
+        "value": "Edited Inline"
+      },
+      {
+        "key": "note.rating",
+        "type": "number",
+        "value": "",
+        "input": "3",
+        "checked": false
+      },
+      {
+        "key": "123field",
+        "type": "checkbox",
+        "value": "",
+        "input": "on",
+        "checked": false
+      },
+      {
+        "key": "due",
+        "type": "date",
+        "value": "",
+        "input": "2026-10-01",
+        "checked": false
+      },
+      {
+        "key": "meeting",
+        "type": "datetime",
+        "value": "",
+        "input": "2026-10-01T14:45",
+        "checked": false
+      },
+      {
+        "key": "aliases",
+        "type": "list",
+        "value": "Updated Alias, Second Alias×+"
+      },
+      {
+        "key": "tags",
+        "type": "list",
+        "value": "existing×new-tag×+"
+      },
+      {
+        "key": "cssclasses",
+        "type": "list",
+        "value": "wide×+"
+      },
+      {
+        "key": "unsupported",
+        "type": "text",
+        "value": ""
+      },
+      {
+        "key": "child",
+        "type": "text",
+        "value": "keep"
+      }
+    ],
+    "errors": []
+  },
+  "themes": {
+    "results": [
+      {
+        "skin": "Default",
+        "mode": "Dark",
+        "system": "light",
+        "colors": {
+          "dialog": {
+            "foreground": "rgb(249, 250, 251)",
+            "background": "rgb(97, 102, 107)",
+            "border": "rgb(249, 250, 251)"
+          },
+          "description": {
+            "foreground": "rgb(249, 250, 251)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(249, 250, 251)"
+          },
+          "title": {
+            "foreground": "rgb(249, 250, 251)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(249, 250, 251)"
+          },
+          "action": {
+            "foreground": "rgb(15, 17, 21)",
+            "background": "rgb(249, 250, 251)",
+            "border": "rgba(0, 0, 0, 0)"
+          },
+          "canvas": {
+            "foreground": "rgb(249, 250, 251)",
+            "background": "rgb(21, 21, 23)",
+            "border": "rgb(249, 250, 251)"
+          },
+          "layers": [
+            {
+              "foreground": "rgb(249, 250, 251)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(249, 250, 251)"
+            }
+          ],
+          "scheme": "dark",
+          "skin": null
+        },
+        "bounds": {
+          "x": 548,
+          "y": 315.2265625,
+          "width": 416,
+          "height": 318.546875
+        },
+        "contrast": {
+          "description": 5.549422196980242,
+          "title": 5.549422196980242,
+          "action": 18.082282383551934
+        }
+      },
+      {
+        "skin": "Default",
+        "mode": "Light",
+        "system": "dark",
+        "colors": {
+          "dialog": {
+            "foreground": "rgb(15, 17, 21)",
+            "background": "rgb(233, 236, 242)",
+            "border": "rgb(15, 17, 21)"
+          },
+          "description": {
+            "foreground": "rgb(15, 17, 21)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(15, 17, 21)"
+          },
+          "title": {
+            "foreground": "rgb(15, 17, 21)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(15, 17, 21)"
+          },
+          "action": {
+            "foreground": "rgb(255, 255, 255)",
+            "background": "rgb(15, 17, 21)",
+            "border": "rgba(0, 0, 0, 0)"
+          },
+          "canvas": {
+            "foreground": "rgb(15, 17, 21)",
+            "background": "rgb(255, 255, 255)",
+            "border": "rgb(15, 17, 21)"
+          },
+          "layers": [
+            {
+              "foreground": "rgb(15, 17, 21)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(15, 17, 21)"
+            }
+          ],
+          "scheme": "light",
+          "skin": null
+        },
+        "bounds": {
+          "x": 548,
+          "y": 315.2265625,
+          "width": 416,
+          "height": 318.546875
+        },
+        "contrast": {
+          "description": 15.967564678281837,
+          "title": 15.967564678281837,
+          "action": 18.896452054380127
+        }
+      },
+      {
+        "skin": "Navy",
+        "mode": "Dark",
+        "system": "light",
+        "colors": {
+          "dialog": {
+            "foreground": "rgb(233, 248, 251)",
+            "background": "rgb(25, 62, 80)",
+            "border": "rgb(233, 248, 251)"
+          },
+          "description": {
+            "foreground": "rgb(233, 248, 251)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(233, 248, 251)"
+          },
+          "title": {
+            "foreground": "rgb(233, 248, 251)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(233, 248, 251)"
+          },
+          "action": {
+            "foreground": "rgb(15, 17, 21)",
+            "background": "rgb(73, 200, 235)",
+            "border": "rgba(0, 0, 0, 0)"
+          },
+          "canvas": {
+            "foreground": "rgb(233, 248, 251)",
+            "background": "rgb(7, 25, 35)",
+            "border": "rgb(233, 248, 251)"
+          },
+          "layers": [
+            {
+              "foreground": "rgb(233, 248, 251)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(233, 248, 251)"
+            }
+          ],
+          "scheme": "dark",
+          "skin": "tockteam-skin-navy"
+        },
+        "bounds": {
+          "x": 548,
+          "y": 315.2265625,
+          "width": 416,
+          "height": 318.546875
+        },
+        "contrast": {
+          "description": 10.445492041679065,
+          "title": 10.445492041679065,
+          "action": 9.668356927793951
+        }
+      },
+      {
+        "skin": "Navy",
+        "mode": "Light",
+        "system": "dark",
+        "colors": {
+          "dialog": {
+            "foreground": "rgb(23, 49, 58)",
+            "background": "rgb(255, 255, 255)",
+            "border": "rgb(23, 49, 58)"
+          },
+          "description": {
+            "foreground": "rgb(23, 49, 58)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(23, 49, 58)"
+          },
+          "title": {
+            "foreground": "rgb(23, 49, 58)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(23, 49, 58)"
+          },
+          "action": {
+            "foreground": "rgb(255, 255, 255)",
+            "background": "rgb(23, 102, 125)",
+            "border": "rgba(0, 0, 0, 0)"
+          },
+          "canvas": {
+            "foreground": "rgb(23, 49, 58)",
+            "background": "rgb(234, 244, 247)",
+            "border": "rgb(23, 49, 58)"
+          },
+          "layers": [
+            {
+              "foreground": "rgb(23, 49, 58)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(23, 49, 58)"
+            }
+          ],
+          "scheme": "light",
+          "skin": "tockteam-skin-navy"
+        },
+        "bounds": {
+          "x": 548,
+          "y": 315.2265625,
+          "width": 416,
+          "height": 318.546875
+        },
+        "contrast": {
+          "description": 13.664273836493933,
+          "title": 13.664273836493933,
+          "action": 6.495286296385493
+        }
+      },
+      {
+        "skin": "Jade",
+        "mode": "Dark",
+        "system": "light",
+        "colors": {
+          "dialog": {
+            "foreground": "rgb(233, 251, 243)",
+            "background": "rgb(27, 73, 59)",
+            "border": "rgb(233, 251, 243)"
+          },
+          "description": {
+            "foreground": "rgb(233, 251, 243)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(233, 251, 243)"
+          },
+          "title": {
+            "foreground": "rgb(233, 251, 243)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(233, 251, 243)"
+          },
+          "action": {
+            "foreground": "rgb(15, 17, 21)",
+            "background": "rgb(82, 214, 160)",
+            "border": "rgba(0, 0, 0, 0)"
+          },
+          "canvas": {
+            "foreground": "rgb(233, 251, 243)",
+            "background": "rgb(7, 26, 22)",
+            "border": "rgb(233, 251, 243)"
+          },
+          "layers": [
+            {
+              "foreground": "rgb(233, 251, 243)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(233, 251, 243)"
+            }
+          ],
+          "scheme": "dark",
+          "skin": "tockteam-skin-jade"
+        },
+        "bounds": {
+          "x": 548,
+          "y": 315.2265625,
+          "width": 416,
+          "height": 318.546875
+        },
+        "contrast": {
+          "description": 9.481320263812119,
+          "title": 9.481320263812119,
+          "action": 10.334566488412754
+        }
+      },
+      {
+        "skin": "Jade",
+        "mode": "Light",
+        "system": "dark",
+        "colors": {
+          "dialog": {
+            "foreground": "rgb(27, 53, 41)",
+            "background": "rgb(252, 255, 251)",
+            "border": "rgb(27, 53, 41)"
+          },
+          "description": {
+            "foreground": "rgb(27, 53, 41)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(27, 53, 41)"
+          },
+          "title": {
+            "foreground": "rgb(27, 53, 41)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(27, 53, 41)"
+          },
+          "action": {
+            "foreground": "rgb(255, 255, 255)",
+            "background": "rgb(36, 108, 74)",
+            "border": "rgba(0, 0, 0, 0)"
+          },
+          "canvas": {
+            "foreground": "rgb(27, 53, 41)",
+            "background": "rgb(234, 244, 235)",
+            "border": "rgb(27, 53, 41)"
+          },
+          "layers": [
+            {
+              "foreground": "rgb(27, 53, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(27, 53, 41)"
+            }
+          ],
+          "scheme": "light",
+          "skin": "tockteam-skin-jade"
+        },
+        "bounds": {
+          "x": 548,
+          "y": 315.2265625,
+          "width": 416,
+          "height": 318.546875
+        },
+        "contrast": {
+          "description": 13.122102686550951,
+          "title": 13.122102686550951,
+          "action": 6.327357784412685
+        }
+      },
+      {
+        "skin": "Ember",
+        "mode": "Dark",
+        "system": "light",
+        "colors": {
+          "dialog": {
+            "foreground": "rgb(253, 240, 230)",
+            "background": "rgb(43, 33, 25)",
+            "border": "rgb(253, 240, 230)"
+          },
+          "description": {
+            "foreground": "rgb(253, 240, 230)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(253, 240, 230)"
+          },
+          "title": {
+            "foreground": "rgb(253, 240, 230)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(253, 240, 230)"
+          },
+          "action": {
+            "foreground": "rgb(15, 17, 21)",
+            "background": "rgb(245, 158, 91)",
+            "border": "rgba(0, 0, 0, 0)"
+          },
+          "canvas": {
+            "foreground": "rgb(253, 240, 230)",
+            "background": "rgb(22, 17, 13)",
+            "border": "rgb(253, 240, 230)"
+          },
+          "layers": [
+            {
+              "foreground": "rgb(253, 240, 230)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(253, 240, 230)"
+            }
+          ],
+          "scheme": "dark",
+          "skin": "tockteam-skin-ember"
+        },
+        "bounds": {
+          "x": 548,
+          "y": 315.2265625,
+          "width": 416,
+          "height": 318.546875
+        },
+        "contrast": {
+          "description": 14.07721129698349,
+          "title": 14.07721129698349,
+          "action": 8.930198334550125
+        }
+      },
+      {
+        "skin": "Ember",
+        "mode": "Light",
+        "system": "dark",
+        "colors": {
+          "dialog": {
+            "foreground": "rgb(59, 42, 27)",
+            "background": "rgb(255, 253, 248)",
+            "border": "rgb(59, 42, 27)"
+          },
+          "description": {
+            "foreground": "rgb(59, 42, 27)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(59, 42, 27)"
+          },
+          "title": {
+            "foreground": "rgb(59, 42, 27)",
+            "background": "rgba(0, 0, 0, 0)",
+            "border": "rgb(59, 42, 27)"
+          },
+          "action": {
+            "foreground": "rgb(255, 255, 255)",
+            "background": "rgb(150, 81, 28)",
+            "border": "rgba(0, 0, 0, 0)"
+          },
+          "canvas": {
+            "foreground": "rgb(59, 42, 27)",
+            "background": "rgb(248, 242, 233)",
+            "border": "rgb(59, 42, 27)"
+          },
+          "layers": [
+            {
+              "foreground": "rgb(59, 42, 27)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(59, 42, 27)"
+            }
+          ],
+          "scheme": "light",
+          "skin": "tockteam-skin-ember"
+        },
+        "bounds": {
+          "x": 548,
+          "y": 315.2265625,
+          "width": 416,
+          "height": 318.546875
+        },
+        "contrast": {
+          "description": 13.475493522029417,
+          "title": 13.475493522029417,
+          "action": 6.016250779894747
+        }
+      }
+    ],
+    "errors": [],
+    "baselineRestored": {
+      "scheme": "dark",
+      "skin": null
+    }
+  },
+  "failure": {
+    "failure": "Property-type settings could not be saved safely. Your note is unchanged.",
+    "dialogRetained": true,
+    "aliasValue": "Updated Alias, Second Alias",
+    "colors": {
+      "text": "rgb(249, 250, 251)",
+      "background": "rgb(97, 102, 107)"
+    },
+    "scheme": "dark",
+    "reopenedAlias": "Updated Alias, Second Alias"
+  },
+  "restart": {
+    "restarted": true,
+    "aliases": "Updated Alias, Second Alias",
+    "roleOptions": [
+      "Snapshot 1 · manualOct 2, 12:05 AM · rev 0aae03ae",
+      "Snapshot 2 · saveOct 2, 12:04 AM · rev 47a26e75",
+      "Snapshot 3 · manualOct 2, 12:04 AM · rev 32c4c4ce"
+    ],
+    "domOptions": [
+      "Snapshot 1 · manualOct 2, 12:05 AM · rev 0aae03ae",
+      "Snapshot 2 · saveOct 2, 12:04 AM · rev 47a26e75",
+      "Snapshot 3 · manualOct 2, 12:04 AM · rev 32c4c4ce"
+    ],
+    "ancestry": [
+      {
+        "tag": "SECTION",
+        "label": "File Recovery",
+        "hidden": false,
+        "inert": false,
+        "ariaHidden": null,
+        "visibility": "visible"
+      },
+      {
+        "tag": "ASIDE",
+        "label": "Workbench Utilities",
+        "hidden": false,
+        "inert": false,
+        "ariaHidden": "false",
+        "visibility": "visible"
+      },
+      {
+        "tag": "DIV",
+        "label": null,
+        "hidden": false,
+        "inert": false,
+        "ariaHidden": null,
+        "visibility": "visible"
+      },
+      {
+        "tag": "MAIN",
+        "label": "TockTutor Workbench",
+        "hidden": false,
+        "inert": false,
+        "ariaHidden": null,
+        "visibility": "visible"
+      },
+      {
+        "tag": "DIV",
+        "label": null,
+        "hidden": false,
+        "inert": false,
+        "ariaHidden": null,
+        "visibility": "visible"
+      },
+      {
+        "tag": "DIV",
+        "label": null,
+        "hidden": false,
+        "inert": false,
+        "ariaHidden": null,
+        "visibility": "visible"
+      },
+      {
+        "tag": "DIV",
+        "label": null,
+        "hidden": false,
+        "inert": false,
+        "ariaHidden": "false",
+        "visibility": "visible"
+      },
+      {
+        "tag": "BODY",
+        "label": null,
+        "hidden": false,
+        "inert": false,
+        "ariaHidden": null,
+        "visibility": "visible"
+      },
+      {
+        "tag": "HTML",
+        "label": null,
+        "hidden": false,
+        "inert": false,
+        "ariaHidden": null,
+        "visibility": "visible"
+      }
+    ]
+  },
+  "recovery": {
+    "originalListPreview": true,
+    "source": "---\n# Keep this authored comment\nrenamed key: Edited Inline # Keep this inline comment\nnote.rating: 3\n123field: false\n课程: Lesson\ndue: 2026-10-01\nmeeting: 2026-10-01T14:45\naliases:\n  - Updated Alias\n  - Second Alias\ntags:\n  - existing\n  - new-tag\ncssclasses: [wide]\nunsupported:\n  child: keep\n---\n# Properties\n\nThis body must survive every Properties action.\n",
+    "restoreOriginalAvailable": true,
+    "restoreAsNewAvailable": true,
+    "sourceNoteNotOverwritten": true
+  },
+  "cleanup": [
+    {
+      "id": "46763f54-730f-4e47-9c12-bc3b7128cbdd",
+      "rootPid": 66944,
+      "recordedProcesses": 11,
+      "remaining": []
+    },
+    {
+      "id": "245a6ed5-f322-4353-9dfa-0fe2cb3718fd",
+      "rootPid": 71141,
+      "recordedProcesses": 6,
+      "remaining": []
+    },
+    {
+      "id": "f0ac5be4-dbd4-400b-9aff-05caa60bb970",
+      "rootPid": 71780,
+      "recordedProcesses": 31,
+      "remaining": []
+    }
+  ],
+  "limitations": [
+    "Clipboard content was verified through an app-scoped stub; the system clipboard was not touched.",
+    "Recovery preview and actions were verified, but Restore Original and Restore as New were intentionally not executed.",
+    "Reference keyboard equivalence and pixel identity are not claimed.",
+    "The restart fixture imported only the previously captured owned snapshots into a new isolated profile; no user settings or plugins were imported."
+  ]
+}

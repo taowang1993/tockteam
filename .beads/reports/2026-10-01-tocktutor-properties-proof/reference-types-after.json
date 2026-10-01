@@ -1,0 +1,14 @@
+{
+  "types": {
+    "custom key": "text",
+    "due": "date",
+    "meeting": "datetime",
+    "aliases": "text",
+    "tags": "tags",
+    "cssclasses": "multitext"
+  },
+  "unrelated": {
+    "keep": true
+  },
+  "large": 9007199254740992
+}

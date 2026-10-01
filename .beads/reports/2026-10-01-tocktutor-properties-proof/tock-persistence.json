@@ -1,0 +1,12 @@
+{
+  "exactSavedBytes": true,
+  "registryType": "text",
+  "literalLargeNumber": true,
+  "authoredComments": true,
+  "nestedYaml": true,
+  "body": true,
+  "failureRetainedExactNote": true,
+  "registryFailureNotClobbered": true,
+  "originalRecoveryList": true,
+  "snapshots": 3
+}
