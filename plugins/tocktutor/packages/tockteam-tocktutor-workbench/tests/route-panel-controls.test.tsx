@@ -38,6 +38,7 @@ afterEach(() => {
 })
 
 function renderRoute(overrides: Partial<WorkbenchRouteSnapshot> = {}, props: {
+  assistantPanel?: ReactNode
   nativeNoteActions?: import('../src/native-actions.ts').TockTutorNativeNoteActions | null
   onAddBookmark?(title?: string, group?: string | null): boolean | void
   onAttachFiles?(files: FileList): void
@@ -713,6 +714,54 @@ describe('TockTutor titlebar panel controls', () => {
     expect(assistantButton.getAttribute('aria-expanded')).toBe('false')
     expect(assistant.getAttribute('data-open')).toBe('false')
     expect(assistant.hasAttribute('inert')).toBe(true)
+  })
+
+  it('shows a compact segmented sidebar toggle with accessible icons and one selected highlight', async () => {
+    renderRoute()
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle Right Sidebar' }))
+    const chooser = screen.getByRole('radiogroup', { name: 'Right Sidebar View' })
+    const properties = within(chooser).getByRole('radio', { name: 'Properties' })
+    const assistant = within(chooser).getByRole('radio', { name: 'Assistant' })
+    expect(chooser.textContent).toBe('')
+    const highlight = chooser.querySelector('.tocktutor-sidebar-view-indicator')
+    expect(highlight?.getAttribute('aria-hidden')).toBe('true')
+    for (const choice of [properties, assistant]) expect(choice.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
+    expect(assistant.getAttribute('aria-checked')).toBe('true')
+    expect(chooser.getAttribute('data-view')).toBe('assistant')
+    fireEvent.click(properties)
+    expect(properties.getAttribute('aria-checked')).toBe('true')
+    expect(assistant.getAttribute('aria-checked')).toBe('false')
+    expect(chooser.getAttribute('data-view')).toBe('file-properties')
+    fireEvent.click(properties)
+    expect(properties.getAttribute('aria-checked')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Toggle Right Sidebar' }).getAttribute('aria-expanded')).toBe('true')
+    properties.focus()
+    fireEvent.keyDown(properties, { key: 'ArrowRight' })
+    await waitFor(() => expect(document.activeElement).toBe(assistant))
+    fireEvent.click(assistant)
+    expect(assistant.getAttribute('aria-checked')).toBe('true')
+    expect(chooser.getAttribute('data-view')).toBe('assistant')
+  })
+
+  it('preserves the Assistant draft while switching sidebar choices and closing the sidebar', () => {
+    renderRoute({}, { assistantPanel: <input aria-label="Assistant Draft" /> })
+    const toggleSidebar = screen.getByRole('button', { name: 'Toggle Right Sidebar' })
+    fireEvent.click(toggleSidebar)
+    const chooser = screen.getByRole('radiogroup', { name: 'Right Sidebar View' })
+    const draft = screen.getByRole('textbox', { name: 'Assistant Draft' }) as HTMLInputElement
+    fireEvent.change(draft, { target: { value: 'Keep this unsent question' } })
+    fireEvent.click(within(chooser).getByRole('radio', { name: 'Properties' }))
+    expect(screen.queryByRole('textbox', { name: 'Assistant Draft' })).toBeNull()
+    expect(draft.closest('[aria-label="Assistant Panel"]')?.hasAttribute('inert')).toBe(true)
+    fireEvent.click(within(chooser).getByRole('radio', { name: 'Assistant' }))
+    expect(screen.getByRole('textbox', { name: 'Assistant Draft' })).toBe(draft)
+    expect(draft.value).toBe('Keep this unsent question')
+    fireEvent.click(toggleSidebar)
+    expect(screen.queryByRole('radiogroup', { name: 'Right Sidebar View' })).toBeNull()
+    fireEvent.click(toggleSidebar)
+    expect(screen.getByRole('textbox', { name: 'Assistant Draft' })).toBe(draft)
+    expect(draft.value).toBe('Keep this unsent question')
+    expect(screen.getByRole('radio', { name: 'Assistant' }).getAttribute('aria-checked')).toBe('true')
   })
 
   it('exposes pane focus and close controls without removing the final pane', () => {

@@ -5689,6 +5689,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
     else setLocalPanel(next)
   }
   const rightSidebarOpen = panel === 'assistant' || panel === 'file-properties'
+  const sidebarView = panel === 'file-properties' ? 'file-properties' : 'assistant'
   const openProperties = (): void => {
     setPanel('file-properties')
     if (!propertyPaneId && props.paneController) void props.paneController.openLinkedView(snapshot.focusedPaneId, 'properties')
@@ -6620,10 +6621,23 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               type="button"
             />
           )}
-          <ToggleGroup aria-label="Right Sidebar View" className="flex min-h-10 w-full shrink-0 gap-1 border-b border-[var(--tt-border)] px-3" size="sm" type="single" value={panel === 'file-properties' ? 'file-properties' : 'assistant'} onValueChange={value => { if (value === 'assistant') setPanel(value); else if (value === 'file-properties') openProperties() }}>
-            <ToggleGroupItem value="file-properties"><ListTree aria-hidden="true" data-icon="inline-start" />Properties</ToggleGroupItem>
-            <ToggleGroupItem value="assistant"><MessageSquare aria-hidden="true" data-icon="inline-start" />Assistant</ToggleGroupItem>
-          </ToggleGroup>
+          <header className="flex min-h-12 shrink-0 items-center border-b border-[var(--tt-border)] px-3 py-1">
+            <ToggleGroup unstyled aria-label="Right Sidebar View" className="tocktutor-sidebar-view-toggle group/sidebar-view relative isolate inline-grid grid-cols-2 gap-0 rounded-lg border border-border bg-muted/20 p-0.5 [&_svg]:text-muted-foreground [&_[data-state=on]_svg]:text-foreground" data-view={sidebarView} orientation="horizontal" type="single" value={sidebarView} onValueChange={value => { if (value === 'assistant') setPanel(value); else if (value === 'file-properties') openProperties() }}>
+              <span aria-hidden="true" className="tocktutor-sidebar-view-indicator pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc((100%_-_4px)/2)] rounded-md border border-border bg-accent transition-transform duration-200 ease-out group-data-[view=assistant]/sidebar-view:translate-x-full motion-reduce:transition-none" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <ToggleGroupItem unstyled aria-label="Properties" className="relative grid h-8 items-center justify-center rounded-md border-0 bg-transparent px-3 py-0" value="file-properties"><ListTree aria-hidden="true" /></ToggleGroupItem>
+                </TooltipTrigger>
+                <TooltipContent>Properties</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <ToggleGroupItem unstyled aria-label="Assistant" className="relative grid h-8 items-center justify-center rounded-md border-0 bg-transparent px-3 py-0" value="assistant"><MessageSquare aria-hidden="true" /></ToggleGroupItem>
+                </TooltipTrigger>
+                <TooltipContent>Assistant</TooltipContent>
+              </Tooltip>
+            </ToggleGroup>
+          </header>
           <div className="min-h-0 min-w-0 overflow-hidden">
             <div aria-label="Assistant Panel" className="tocktutor-assistant-content h-full min-h-0 min-w-0 overflow-hidden [&[hidden]]:hidden" hidden={panel !== 'assistant'} {...(panel === 'assistant' ? {} : { inert: '' })}>{props.assistantPanel}</div>
             <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden [&[hidden]]:hidden" hidden={panel !== 'file-properties'} {...(panel === 'file-properties' ? {} : { inert: '' })}>

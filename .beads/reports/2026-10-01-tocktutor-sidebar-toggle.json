@@ -1,0 +1,842 @@
+{
+  "issue": "tockteam-ph35",
+  "baseCommit": "49db0568ff3f7e4684732cf919b6d7ed8457d03f",
+  "sourceSha256": "8a7d2c5643145a3f2b9395bc34d28fbefc60dbe337212b860599eb62c8150448",
+  "reference": "/Users/taowang/research/tockbot/apps/web/src/components/settings/SettingsSegmentedControl.tsx",
+  "referenceComposition": "/Users/taowang/research/tockbot/apps/web/src/components/chat/AgentArtifactsPanelView.tsx",
+  "implementation": "Existing @tockteam/ui/toggle-group with local Tailwind composition; no fork, new component, dependency, or authority changes",
+  "displayId": 17,
+  "behavior": {
+    "checks": [
+      "One Compact Icon-Only Segmented Control",
+      "Exact CSS and Device Geometry",
+      "Keyboard Resize to 470 Pixels",
+      "200ms Sliding Highlight and Rapid Reversal: {\"duration\":\"0.2s\",\"width\":40,\"frames\":[0,0,10.568359375,17.6845703125,23.1011962890625],\"reversal\":[13.8759765625,8.5208740234375,4.9556884765625]}",
+      "Reduced Motion Settles Immediately",
+      "Selecting the Active Choice Does Not Clear It",
+      "Hidden Properties Is Outside the Accessibility Tree",
+      "Property Edit Survives Switching",
+      "Unsubmitted Property Draft Survives Switching",
+      "Closed Sidebar Is Inert and Inaccessible",
+      "Reopening Retains the Selected View",
+      "Arrow Keys Move Focus",
+      "Keyboard Focus Is Visible",
+      "Enter Selects Assistant",
+      "Assistant Draft Survives Switching and Closing",
+      "Space Selects Properties",
+      "Canonical Assistant Capture State",
+      "Compact Toggle Fits a Narrow Window",
+      "No Runtime Errors or External Requests"
+    ],
+    "runtimeErrors": [],
+    "externalRequests": [],
+    "geometry": [
+      1512,
+      949,
+      2
+    ],
+    "motion": {
+      "duration": "0.2s",
+      "width": 40,
+      "frames": [
+        0,
+        0,
+        10.568359375,
+        17.6845703125,
+        23.1011962890625
+      ],
+      "reversal": [
+        13.8759765625,
+        8.5208740234375,
+        4.9556884765625
+      ]
+    },
+    "focus": {
+      "outline": "solid",
+      "width": "2px",
+      "color": "rgb(249, 250, 251)"
+    },
+    "assistant": {
+      "route": "/tocktutor/Properties.md",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "rootColorScheme": "dark",
+      "rootSkin": null,
+      "bodySkin": null,
+      "selected": "assistant",
+      "indicator": {
+        "x": 1097,
+        "y": 47.5,
+        "width": 40,
+        "height": 32,
+        "top": 47.5,
+        "right": 1137,
+        "bottom": 79.5,
+        "left": 1097
+      }
+    },
+    "narrow": {
+      "viewport": 600,
+      "right": 228,
+      "width": 86,
+      "overflow": false
+    }
+  },
+  "themes": {
+    "results": [
+      {
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "light",
+        "skin": null,
+        "systemDark": true,
+        "width": 86,
+        "choices": [
+          {
+            "name": "Properties",
+            "active": true,
+            "contrast": 5.799289506181867,
+            "foreground": [
+              97,
+              102,
+              107
+            ],
+            "fill": [
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "name": "Assistant",
+            "active": false,
+            "contrast": 5.799289506181867,
+            "foreground": [
+              97,
+              102,
+              107
+            ],
+            "fill": [
+              255,
+              255,
+              255
+            ]
+          }
+        ]
+      },
+      {
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "dark",
+        "skin": null,
+        "systemDark": false,
+        "width": 86,
+        "choices": [
+          {
+            "name": "Properties",
+            "active": true,
+            "contrast": 8.030301396556194,
+            "foreground": [
+              207,
+              211,
+              214
+            ],
+            "fill": [
+              53,
+              54,
+              56
+            ]
+          },
+          {
+            "name": "Assistant",
+            "active": false,
+            "contrast": 10.690163596798392,
+            "foreground": [
+              207,
+              211,
+              214
+            ],
+            "fill": [
+              33,
+              33,
+              33
+            ]
+          }
+        ]
+      },
+      {
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "light",
+        "skin": "tockteam-skin-navy",
+        "systemDark": true,
+        "width": 86,
+        "choices": [
+          {
+            "name": "Properties",
+            "active": true,
+            "contrast": 5.488827036787098,
+            "foreground": [
+              57,
+              92,
+              103
+            ],
+            "fill": [
+              206,
+              228,
+              235
+            ]
+          },
+          {
+            "name": "Assistant",
+            "active": false,
+            "contrast": 6.679380313971566,
+            "foreground": [
+              57,
+              92,
+              103
+            ],
+            "fill": [
+              240,
+              247,
+              248.8
+            ]
+          }
+        ]
+      },
+      {
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "dark",
+        "skin": "tockteam-skin-navy",
+        "systemDark": false,
+        "width": 86,
+        "choices": [
+          {
+            "name": "Properties",
+            "active": true,
+            "contrast": 8.909062145138456,
+            "foreground": [
+              185,
+              219,
+              228
+            ],
+            "fill": [
+              20,
+              52,
+              69
+            ]
+          },
+          {
+            "name": "Assistant",
+            "active": false,
+            "contrast": 10.985516855542535,
+            "foreground": [
+              185,
+              219,
+              228
+            ],
+            "fill": [
+              11.8,
+              35.2,
+              49.400000000000006
+            ]
+          }
+        ]
+      },
+      {
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "light",
+        "skin": "tockteam-skin-jade",
+        "systemDark": true,
+        "width": 86,
+        "choices": [
+          {
+            "name": "Properties",
+            "active": true,
+            "contrast": 5.533770877470163,
+            "foreground": [
+              57,
+              92,
+              72
+            ],
+            "fill": [
+              204,
+              227,
+              210
+            ]
+          },
+          {
+            "name": "Assistant",
+            "active": false,
+            "contrast": 6.8952396174661095,
+            "foreground": [
+              57,
+              92,
+              72
+            ],
+            "fill": [
+              240.8,
+              247,
+              240
+            ]
+          }
+        ]
+      },
+      {
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "dark",
+        "skin": "tockteam-skin-jade",
+        "systemDark": false,
+        "width": 86,
+        "choices": [
+          {
+            "name": "Properties",
+            "active": true,
+            "contrast": 8.621892294285246,
+            "foreground": [
+              185,
+              221,
+              206
+            ],
+            "fill": [
+              21,
+              57,
+              47
+            ]
+          },
+          {
+            "name": "Assistant",
+            "active": false,
+            "contrast": 10.906032982838884,
+            "foreground": [
+              185,
+              221,
+              206
+            ],
+            "fill": [
+              11.8,
+              37.8,
+              32
+            ]
+          }
+        ]
+      },
+      {
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "light",
+        "skin": "tockteam-skin-ember",
+        "systemDark": true,
+        "width": 86,
+        "choices": [
+          {
+            "name": "Properties",
+            "active": true,
+            "contrast": 5.745204047826878,
+            "foreground": [
+              97,
+              74,
+              51
+            ],
+            "fill": [
+              231,
+              212,
+              191
+            ]
+          },
+          {
+            "name": "Assistant",
+            "active": false,
+            "contrast": 7.661040843071122,
+            "foreground": [
+              97,
+              74,
+              51
+            ],
+            "fill": [
+              252,
+              245,
+              237.20000000000002
+            ]
+          }
+        ]
+      },
+      {
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "mode": "dark",
+        "skin": "tockteam-skin-ember",
+        "systemDark": false,
+        "width": 86,
+        "choices": [
+          {
+            "name": "Properties",
+            "active": true,
+            "contrast": 7.847972515545418,
+            "foreground": [
+              208,
+              169,
+              138
+            ],
+            "fill": [
+              35,
+              27,
+              21
+            ]
+          },
+          {
+            "name": "Assistant",
+            "active": false,
+            "contrast": 7.895420023085192,
+            "foreground": [
+              208,
+              169,
+              138
+            ],
+            "fill": [
+              33.400000000000006,
+              26.8,
+              20.8
+            ]
+          }
+        ]
+      }
+    ],
+    "allEssentialMarksMeet3to1": true,
+    "appThemeIndependentOfSystem": true
+  },
+  "captures": {
+    "tocktutor-sidebar-toggle-properties.png": {
+      "sha256": "a33e8f119e2c648c784f2ff6684a46e28e82609a3cb8880396d595d0b08c6254",
+      "bytes": 212099,
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "pixels": [
+        3024,
+        1898
+      ],
+      "theme": "dark",
+      "skin": null,
+      "mode": "live-preview",
+      "route": "/tocktutor/Properties.md",
+      "scope": "real-desktop",
+      "visibleState": {
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "route": "/tocktutor/Properties.md",
+        "path": "Properties.md",
+        "mode": "live-preview",
+        "livePreviewVisible": true,
+        "editor": {
+          "x": 320,
+          "y": 40,
+          "width": 722,
+          "height": 909
+        },
+        "panel": {
+          "x": 1042,
+          "y": 40,
+          "width": 470,
+          "height": 909
+        },
+        "bottomSplits": 0,
+        "selector": [
+          {
+            "label": "Properties",
+            "selected": "true"
+          },
+          {
+            "label": "Assistant",
+            "selected": "false"
+          }
+        ],
+        "toggle": {
+          "x": 1054,
+          "y": 44.5,
+          "width": 86,
+          "height": 38
+        },
+        "indicator": {
+          "x": 1057,
+          "y": 47.5,
+          "width": 40,
+          "height": 32
+        },
+        "frontmatterCollapsed": true,
+        "rows": [
+          {
+            "key": "due",
+            "typeLabel": "due · Date",
+            "inputType": "date",
+            "value": "2026-10-01",
+            "labelBounds": {
+              "x": 1062,
+              "y": 184,
+              "width": 430,
+              "height": 24
+            },
+            "controlBounds": {
+              "x": 1062,
+              "y": 208,
+              "width": 430,
+              "height": 48
+            }
+          },
+          {
+            "key": "finished",
+            "typeLabel": "finished · Checkbox",
+            "inputType": "checkbox",
+            "value": true,
+            "labelBounds": {
+              "x": 1062,
+              "y": 256,
+              "width": 430,
+              "height": 24
+            },
+            "controlBounds": {
+              "x": 1062,
+              "y": 280,
+              "width": 430,
+              "height": 32
+            }
+          },
+          {
+            "key": "rating",
+            "typeLabel": "rating · Number",
+            "inputType": "number",
+            "value": "1e+21",
+            "labelBounds": {
+              "x": 1062,
+              "y": 312,
+              "width": 430,
+              "height": 24
+            },
+            "controlBounds": {
+              "x": 1062,
+              "y": 336,
+              "width": 430,
+              "height": 48
+            }
+          },
+          {
+            "key": "meeting",
+            "typeLabel": "meeting · Date & Time",
+            "inputType": "datetime-local",
+            "value": "2026-09-29T14:45",
+            "labelBounds": {
+              "x": 1062,
+              "y": 384,
+              "width": 430,
+              "height": 24
+            },
+            "controlBounds": {
+              "x": 1062,
+              "y": 408,
+              "width": 430,
+              "height": 48
+            }
+          },
+          {
+            "key": "labels",
+            "typeLabel": "labels · List",
+            "inputType": "list",
+            "value": [
+              "research",
+              "next steps"
+            ],
+            "labelBounds": {
+              "x": 1062,
+              "y": 456,
+              "width": 430,
+              "height": 24
+            },
+            "controlBounds": {
+              "x": 1062,
+              "y": 480,
+              "width": 430,
+              "height": 76
+            }
+          },
+          {
+            "key": "tags",
+            "typeLabel": "tags · List",
+            "inputType": "list",
+            "value": [
+              "migration",
+              "notes"
+            ],
+            "labelBounds": {
+              "x": 1062,
+              "y": 556,
+              "width": 430,
+              "height": 24
+            },
+            "controlBounds": {
+              "x": 1062,
+              "y": 580,
+              "width": 430,
+              "height": 76
+            }
+          },
+          {
+            "key": "aliases",
+            "typeLabel": "aliases · List",
+            "inputType": "list",
+            "value": [
+              "Migration Guide"
+            ],
+            "labelBounds": {
+              "x": 1062,
+              "y": 656,
+              "width": 430,
+              "height": 24
+            },
+            "controlBounds": {
+              "x": 1062,
+              "y": 680,
+              "width": 430,
+              "height": 76
+            }
+          },
+          {
+            "key": "unsupported",
+            "typeLabel": "unsupported · Source Mode",
+            "inputType": "source",
+            "value": "Use Source Mode",
+            "labelBounds": {
+              "x": 1062,
+              "y": 756,
+              "width": 430,
+              "height": 24
+            },
+            "controlBounds": {
+              "x": 1062,
+              "y": 780,
+              "width": 430,
+              "height": 40
+            }
+          }
+        ],
+        "values": {
+          "due": "2026-10-01",
+          "finished": true,
+          "rating": "1e+21",
+          "meeting": "2026-09-29T14:45",
+          "labels": [
+            "research",
+            "next steps"
+          ],
+          "tags": [
+            "migration",
+            "notes"
+          ],
+          "aliases": [
+            "Migration Guide"
+          ]
+        },
+        "unsupportedSourceFallback": true,
+        "noteText": "Imported PropertiesDates, checkboxes, numbers, and lists keep their familiar controls. Empty values follow the imported type. Structured values stay in Source Mode.Obsidian's property-type settings are read-only; edits change this note only.\n    \n  \n    \n      \n    \n    \n      \n        \n      \n    \n  \n    \n  \n    \n  \n    \n  \n    \n  \n    \n      \n    \n    \n      \n        \n      \n    \n  \n    \n  \n    \n  \n    \n      \n    \n    \n      \n        \n      \n    \n  ",
+        "unsaved": false,
+        "capturedAt": "2026-10-01T06:26:05.366Z",
+        "runtimeErrors": [],
+        "externalRequests": []
+      }
+    },
+    "tocktutor-sidebar-toggle-assistant.png": {
+      "sha256": "dc96920467423adad338c462b78133a3e17e19d62dd7c4e00014251b2e7aef6f",
+      "bytes": 231253,
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "pixels": [
+        3024,
+        1898
+      ],
+      "theme": "dark",
+      "skin": null,
+      "mode": "live-preview",
+      "route": "/tocktutor/Properties.md",
+      "scope": "real-desktop",
+      "visibleState": {
+        "route": "/tocktutor/Properties.md",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "selected": "assistant",
+        "indicator": {
+          "x": 1097,
+          "y": 47.5,
+          "width": 40,
+          "height": 32,
+          "top": 47.5,
+          "right": 1137,
+          "bottom": 79.5,
+          "left": 1097
+        }
+      }
+    }
+  },
+  "publicationAllowlist": [
+    "tocktutor-sidebar-toggle-properties.png",
+    "tocktutor-sidebar-toggle-assistant.png"
+  ],
+  "preserved": {
+    "protectedPaths": true,
+    "all73GalleryCaptures": true,
+    "note447Bytes": true,
+    "propertyTypeRegistry": true
+  },
+  "console": {
+    "errors": 0,
+    "startupWarnings": 2,
+    "themeProbeCanvasReadbackWarnings": 10
+  },
+  "cleanup": [
+    {
+      "id": "662f0169-f8a2-4cca-a741-f0dbbf73b4d1",
+      "scope": "stale-stage-preflight-not-published",
+      "rootPid": 34046,
+      "recordedPids": [
+        34046,
+        34048,
+        34049,
+        34050,
+        34051,
+        34057,
+        34061,
+        34212,
+        34213,
+        34247,
+        34440,
+        34441,
+        34442,
+        34443,
+        34444,
+        34445,
+        34446
+      ],
+      "stopped": true,
+      "remaining": []
+    },
+    {
+      "id": "09ff1f6f-9e47-4b5f-a4c3-afedf86a344f",
+      "scope": "current-desktop-proof",
+      "rootPid": 35113,
+      "recordedPids": [
+        35113,
+        35119,
+        35120,
+        35123,
+        35125,
+        35128,
+        35141,
+        35197,
+        35198,
+        35199,
+        35200,
+        35201,
+        35202,
+        35203,
+        35204,
+        35335,
+        35437,
+        35438,
+        35439,
+        35673,
+        35674,
+        35675,
+        35676,
+        35677,
+        35678,
+        35679,
+        35680
+      ],
+      "stopped": true,
+      "remaining": []
+    }
+  ],
+  "checks": {
+    "panelComponents": 114,
+    "sharedUi": 8,
+    "root": {
+      "total": 1631,
+      "pass": 1613,
+      "skip": 18,
+      "fail": 0
+    },
+    "typechecks": [
+      "root",
+      "TockTutor",
+      "shared UI"
+    ],
+    "builds": [
+      "TockTutor",
+      "root",
+      "quick runtime stage"
+    ],
+    "reactDoctor": {
+      "before": {
+        "errors": 2,
+        "warnings": 97
+      },
+      "after": {
+        "errors": 2,
+        "warnings": 97
+      },
+      "newDiagnostics": 0,
+      "score": null
+    },
+    "tockTutorSuite": {
+      "workbenchNode": 420,
+      "workbenchComponentsPass": 744,
+      "workbenchComponentsFail": 1,
+      "preExistingFailure": "Protected route-linked-panes.test.tsx expects a Show Assistant Switch; baseline already failed before the change"
+    }
+  }
+}
