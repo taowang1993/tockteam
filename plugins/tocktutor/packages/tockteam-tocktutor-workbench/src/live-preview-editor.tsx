@@ -253,7 +253,7 @@ function MarkdownDocumentProperty(props: {
   const [typePending, setTypePending] = useState<{ target: EditablePropertyType; value: PropertyValue; lossy: boolean; source: string } | null>(null)
   const [typeBusy, setTypeBusy] = useState(false)
   const [typeError, setTypeError] = useState('')
-  const canChangeType = props.editable && props.rawType !== 'mixed'
+  const canChangeType = props.editable && (props.rawType !== 'mixed' || property.value === null)
     && props.properties.filter(item => item.key.toLowerCase() === property.key.toLowerCase()).length === 1
   const applyType = async (target: EditablePropertyType, allowLossy: boolean, source = props.source): Promise<void> => {
     if (source !== props.source) { setTypeError('The note changed. Cancel and choose the type again.'); return }

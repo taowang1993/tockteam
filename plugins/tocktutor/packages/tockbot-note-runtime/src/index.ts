@@ -2790,6 +2790,7 @@ async function readPassiveBackupFile(
 
 const PROPERTY_TYPES_PATH = '.obsidian/types.json'
 const MAX_PROPERTY_TYPES_BYTES = 64 * 1024
+const MAX_PROPERTY_TYPES_ENTRIES = 1_000
 // Node >=22.19 supports the standard lossless JSON number primitives.
 const losslessJson = JSON as typeof JSON & { rawJSON(source: string): unknown; isRawJSON(value: unknown): boolean }
 const OBSIDIAN_PROPERTY_TYPES = new Set<ObsidianPropertyType>(['text', 'multitext', 'number', 'checkbox', 'date', 'datetime', 'tags', 'aliases'])
@@ -2827,7 +2828,7 @@ function propertyTypesJson(bytes: Uint8Array): Record<string, unknown> {
     }
   }
   const result = data as Record<string, unknown>
-  if (Object.keys((result.types ?? {}) as object).length > 1_000) throw new NoteVaultError('too-large', 'Property-type settings exceed the supported limit.')
+  if (Object.keys((result.types ?? {}) as object).length > MAX_PROPERTY_TYPES_ENTRIES) throw new NoteVaultError('too-large', 'Property-type settings exceed the supported limit.')
   return result
 }
 
@@ -5466,7 +5467,7 @@ export class NoteVaultRuntime extends Service {
         if (current.revision !== request.expectedRevision) throw new NoteVaultError('conflict', 'Property-type settings changed. Reload them before retrying; your note is unchanged.')
         const next = { ...current.data, types: { ...(current.data.types as object ?? {}), [request.key]: request.type } }
         const data = Buffer.from(JSON.stringify(next, null, 2) + '\n')
-        if (data.byteLength > MAX_PROPERTY_TYPES_BYTES) throw new NoteVaultError('too-large', 'Property-type settings exceed the supported limit.')
+        if (data.byteLength > MAX_PROPERTY_TYPES_BYTES || Object.keys(next.types).length > MAX_PROPERTY_TYPES_ENTRIES) throw new NoteVaultError('too-large', 'Property-type settings exceed the supported limit.')
         const parent = await ensurePassiveBackupParent(root, PROPERTY_TYPES_PATH, this.treeConfig.maxEntries)
         const candidate = path.join(root, '.obsidian', 'types.json')
         await writeDocumentAtomic(candidate, data, current.revision === null, async () => {

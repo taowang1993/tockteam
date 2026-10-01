@@ -171,7 +171,7 @@ function MarkdownDocumentProperty(props) {
     const [typePending, setTypePending] = useState(null);
     const [typeBusy, setTypeBusy] = useState(false);
     const [typeError, setTypeError] = useState('');
-    const canChangeType = props.editable && props.rawType !== 'mixed'
+    const canChangeType = props.editable && (props.rawType !== 'mixed' || property.value === null)
         && props.properties.filter(item => item.key.toLowerCase() === property.key.toLowerCase()).length === 1;
     const applyType = async (target, allowLossy, source = props.source) => {
         if (source !== props.source) {

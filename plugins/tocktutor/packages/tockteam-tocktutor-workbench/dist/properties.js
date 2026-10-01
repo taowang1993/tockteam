@@ -247,7 +247,7 @@ export function setFrontmatterProperty(source, key, value) {
         throw new Error('Structured property values must be edited in Source Mode.');
     let serialized = serializedProperty(existing?.rawKey ?? key, value, eol);
     if (existing?.comment)
-        serialized = serialized.replace(eol, ` ${existing.comment}${eol}`);
+        serialized = serialized.replace(eol, () => ` ${existing.comment}${eol}`);
     if (existing !== undefined)
         return `${source.slice(0, existing.start)}${serialized}${source.slice(existing.end)}`;
     const block = frontmatter(source);

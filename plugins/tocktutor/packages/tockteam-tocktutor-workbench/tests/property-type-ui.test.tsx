@@ -41,3 +41,20 @@ it('rejects invalid conversion and never offers coercion of zoned or structured 
   expect((screen.getByRole('button', { name: 'Property Type for zoned' }) as HTMLButtonElement).disabled).toBe(true)
   expect((screen.getByRole('button', { name: 'Property Type for nested' }) as HTMLButtonElement).disabled).toBe(true)
 })
+
+it.each([
+  { raw: 'null', declaredTypes: undefined },
+  { raw: '~', declaredTypes: { field: 'number' as const } },
+])('allows assigning a type to an empty $raw value without coercing its content', async ({ raw, declaredTypes }) => {
+  const change = vi.fn(async () => true)
+  render(<MarkdownDocumentHeader editableProperties onChangePropertyType={change} declaredTypes={declaredTypes} source={`---\nfield: ${raw}\n---\n`} />)
+  expect((screen.getByRole('button', { name: 'Property Type for field' }) as HTMLButtonElement).disabled).toBe(false)
+  choose('field', 'Text')
+  if (raw === '~') {
+    expect(screen.getByRole('alertdialog')).toBeTruthy()
+    expect(change).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Change Type', exact: true }))
+  } else expect(screen.queryByRole('alertdialog')).toBeNull()
+  await waitFor(() => expect(change).toHaveBeenCalledWith('field', 'text', false))
+  expect(screen.queryByRole('alertdialog')).toBeNull()
+})

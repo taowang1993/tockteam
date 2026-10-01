@@ -245,7 +245,7 @@ export function setFrontmatterProperty(source: string, key: string, value: Prope
   if (matches.length > 1) throw new Error('Duplicate properties must be edited in Source Mode.')
   if (existing && !existing.editable) throw new Error('Structured property values must be edited in Source Mode.')
   let serialized = serializedProperty(existing?.rawKey ?? key, value, eol)
-  if (existing?.comment) serialized = serialized.replace(eol, ` ${existing.comment}${eol}`)
+  if (existing?.comment) serialized = serialized.replace(eol, () => ` ${existing.comment}${eol}`)
   if (existing !== undefined) return `${source.slice(0, existing.start)}${serialized}${source.slice(existing.end)}`
   const block = frontmatter(source)
   if (block === null) return `---${eol}${serialized}---${eol}${source}`

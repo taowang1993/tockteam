@@ -49,6 +49,23 @@ test('creates only the fixed registry, persists supported assignments and preser
   assert.equal(JSON.stringify(result).includes('theme'), false)
 })
 
+test('rejects a new key at registry capacity without changing bytes, while existing choices remain editable', async t => {
+  const f = await fixture(t)
+  await mkdir(join(f.vault, '.obsidian'))
+  const types = Object.fromEntries(Array.from({ length: 1_000 }, (_value, index) => [`field ${index}`, 'text']))
+  const original = JSON.stringify({ types, keep: true }) + '\n'
+  await writeFile(f.file, original)
+  const current = await f.runtime.getObsidianPropertyRegistry({ expectedVault: f.expectedVault }, f.signal)
+  await assert.rejects(f.runtime.setObsidianPropertyType({ expectedVault: f.expectedVault, expectedRevision: current.revision, key: 'one more', type: 'number' }, f.signal), code('too-large'))
+  assert.equal(await readFile(f.file, 'utf8'), original)
+  assert.deepEqual(await readdir(join(f.vault, '.obsidian')), ['types.json'])
+  assert.deepEqual(await f.runtime.getObsidianPropertyRegistry({ expectedVault: f.expectedVault }, f.signal), current)
+  const updated = await f.runtime.setObsidianPropertyType({ expectedVault: f.expectedVault, expectedRevision: current.revision, key: 'field 0', type: 'number' }, f.signal)
+  assert.equal(updated.types['field 0'], 'number')
+  assert.equal(Object.keys(updated.types).length, 1_000)
+  assert.equal(JSON.parse(await readFile(f.file, 'utf8')).keep, true)
+})
+
 test('rejects stale revisions, malformed/duplicate/oversized JSON and unsafe names without changing bytes', async t => {
   const f = await fixture(t)
   await mkdir(join(f.vault, '.obsidian'))

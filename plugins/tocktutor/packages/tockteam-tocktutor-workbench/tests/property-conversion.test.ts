@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { preparePropertyTypeChange } from '../src/properties.ts'
+import { preparePropertyTypeChange, setFrontmatterProperty } from '../src/properties.ts'
 
 test('previews all supported property-type conversions without dropping comments, body or other YAML', () => {
   const source = '---\r\n# Keep\r\nstatus: "42" # Keep this comment\r\nnested:\r\n  untouched: yes\r\n---\r\n# Body\r\n'
@@ -28,4 +28,14 @@ test('marks lossy conversions and refuses invalid, structured, ambiguous and out
     assert.equal(preparePropertyTypeChange(`---\nfield: ${raw}\n---\n`, 'field', target).ok, false)
   }
   assert.equal(preparePropertyTypeChange('---\nfield: one\nField: two\n---\n', 'field', 'text').ok, false)
+})
+
+test('preserves replacement-pattern characters in comments as literal authored bytes', () => {
+  for (const comment of ['# $&injected: true', "# $' tail", '# $` prefix']) {
+    const source = `---\r\nfield: "42" ${comment}\r\nother: keep\r\n---\r\n# Body\r\n`
+    const proposal = preparePropertyTypeChange(source, 'field', 'number')
+    assert.equal(proposal.ok, true)
+    if (proposal.ok) assert.equal(proposal.nextSource, source.replace('"42"', '42'))
+    assert.equal(setFrontmatterProperty(source, 'field', 43), source.replace('"42"', '43'))
+  }
 })
