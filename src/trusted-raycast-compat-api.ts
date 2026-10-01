@@ -70,32 +70,46 @@ export function useNavigation(): { push: (view: unknown) => void; pop: () => voi
   return { push: (view: unknown) => { navigationStack.push(view); renderNavigationTop() }, pop: () => { popView() } }
 }
 
-// The Form owns submitted values: uncontrolled fields collect via fieldChanged events, then SubmitForm reads the latest render state.
-const FormContext = React.createContext<string | null>(null)
-let formSequence = 0
+// Each mounted Form owns its values; no process-global registry outlives that form.
+const FormContext = React.createContext<Map<string, string | boolean> | null>(null)
 let handleSequence = 0
-const formValues = new Map<string, Map<string, string>>()
 const form = (props: Record<string, unknown>) => {
-  const id = React.useRef(`form-${++formSequence}`).current
-  if (!formValues.has(id)) formValues.set(id, new Map())
-  return React.createElement(FormContext.Provider, { value: id }, element('raycast-form', {}, [props.actions as React.ReactNode, ...React.Children.toArray(props.children as React.ReactNode)]))
+  const values = React.useRef(new Map<string, string | boolean>()).current
+  return React.createElement(FormContext.Provider, { value: values }, element('raycast-form', {}, [props.actions as React.ReactNode, ...React.Children.toArray(props.children as React.ReactNode)]))
+}
+const basicFormField = (fieldKind: string, fallback: string | boolean) => (props: Record<string, unknown>) => {
+  const collected = React.useContext(FormContext)
+  const initial = React.useRef(props.defaultValue === undefined ? fallback : props.defaultValue).current
+  const value = props.value === undefined ? initial : props.value
+  const id = props.id
+  if (typeof id !== 'string' || id.length === 0 || id.length > 128 || typeof value !== typeof fallback) throw new Error('Invalid form field ID or value')
+  React.useLayoutEffect(() => {
+    if (!collected) return
+    collected.set(id, value as string | boolean)
+    return () => { collected.delete(id) }
+  }, [collected, id, value])
+  // Keep the reviewed bundled projection unchanged; user controls are rendered in a later slice.
+  return element('raycast-text-field', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? props : { ...props, fieldKind, value })
 }
 const formDropdown = (props: Record<string, unknown>) => {
-  const formId = React.useContext(FormContext)
+  const collected = React.useContext(FormContext)
   const fieldId = React.useRef(`field-${++handleSequence}`).current
   let value = typeof props.value === 'string' ? props.value : ''
-  if (formId !== null) {
-    const collected = formValues.get(formId)!
+  if (collected !== null) {
     if (!collected.has(String(props.id))) {
       // Raycast defaults an uncontrolled dropdown to its first item; the submitted values must match.
       const first = React.Children.toArray(props.children as React.ReactNode).find((item: unknown) => typeof item === 'object' && item !== null && (item as { props?: Record<string, unknown> }).props?.value !== '' && (item as { props?: Record<string, unknown> }).props?.value !== undefined)
       collected.set(String(props.id), value !== '' ? value : String((first as { props: Record<string, unknown> }).props.value))
     }
-    value = collected.get(String(props.id))!
+    value = String(collected.get(String(props.id))!)
   }
-  return element('raycast-form-dropdown', { title: String(props.title ?? ''), value, fieldEventId: fieldId, onChange: (next: string) => { if (formId !== null) formValues.get(formId)!.set(String(props.id), next); if (typeof props.onChange === 'function') props.onChange(next) } }, React.Children.toArray(props.children as React.ReactNode))
+  return element('raycast-form-dropdown', { title: String(props.title ?? ''), value, fieldEventId: fieldId, onChange: (next: string) => { collected?.set(String(props.id), next); if (typeof props.onChange === 'function') props.onChange(next) } }, React.Children.toArray(props.children as React.ReactNode))
 }
-export const Form = Object.assign(form, { TextField: component('raycast-text-field'), Dropdown: Object.assign(formDropdown, { Item: component('raycast-form-dropdown-item') }) })
+export const Form = Object.assign(form, {
+  TextField: basicFormField('text', ''), PasswordField: basicFormField('password', ''),
+  TextArea: basicFormField('textarea', ''), Checkbox: basicFormField('checkbox', false),
+  Dropdown: Object.assign(formDropdown, { Item: component('raycast-form-dropdown-item') }),
+})
 
 type LinearAuthRequest = { endpoint: string; clientId: string; codeVerifier: string; redirectURI: string }
 const linearPkceClients = new Set<LinearPkceClient>()
@@ -195,12 +209,10 @@ export const Action = Object.assign(action, {
   Paste: (props: Record<string, unknown>) => element('raycast-action', { icon: props.icon, title: props.title ?? 'Paste', shortcut: JSON.stringify(props.shortcut ?? null), onAction: () => afterSucceededEffect(() => compatibility.native({ kind: 'paste', text: props.content as string }), props.onPaste, props.content) }),
   Push: (props: Record<string, unknown>) => element('raycast-action', { title: props.title, shortcut: JSON.stringify(props.shortcut ?? null), ...(process.env.TRUSTED_RAYCAST_EXTENSION_ID === 'can-i-use' ? { canIUsePush: true } : {}), onAction: () => navigationStack.push(props.target) && renderNavigationTop() }),
   SubmitForm: (props: Record<string, unknown>) => {
-    const formId = React.useContext(FormContext)
-    return element('raycast-action', { title: props.title ?? 'Submit', shortcut: JSON.stringify(props.shortcut ?? null), onAction: () => {
-      const collected = formId !== null ? formValues.get(formId) : undefined
-      const values: Record<string, unknown> = {}
-      if (collected) for (const [key, value] of collected) values[key] = value
-      if (typeof props.onSubmit === 'function') return props.onSubmit(values)
+    const collected = React.useContext(FormContext)
+    return element('raycast-action', { title: props.title ?? 'Submit', shortcut: JSON.stringify(props.shortcut ?? null), onAction: async () => {
+      const values = Object.fromEntries(collected ?? [])
+      if (typeof props.onSubmit === 'function' && await props.onSubmit(values) === false) throw new Error('Form submission was not accepted')
     } })
   },
 })
