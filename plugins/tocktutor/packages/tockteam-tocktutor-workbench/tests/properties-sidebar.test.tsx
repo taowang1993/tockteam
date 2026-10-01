@@ -40,6 +40,7 @@ it('omits the extra Properties toolbar without removing the note editor', async 
   try {
     const sidebar = screen.getByRole('complementary', { name: 'Right Sidebar' })
     const properties = within(sidebar).getByRole('region', { name: 'Properties Linked View' })
+    expect(sidebar.classList.contains('min-h-0')).toBe(true)
     await waitFor(() => expect(within(properties).getByLabelText('Property name')).toBeTruthy())
     for (const name of ['Unlink', 'Pin', 'Unpin', 'Close Properties Linked View']) expect(within(properties).queryByRole('button', { name, exact: true })).toBeNull()
     expect(within(properties).queryByText('Bound', { exact: true })).toBeNull()
