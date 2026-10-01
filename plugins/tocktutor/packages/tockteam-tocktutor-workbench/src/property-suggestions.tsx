@@ -24,7 +24,7 @@ export function PropertySuggestionMenu(props: {
   const [query, setQuery] = useState('')
   return <Popover onOpenChange={value => { setOpen(value); if (value) { setQuery(props.value); if (props.suggestions.status === 'idle') props.suggestions.onRetry() } }} open={open}>
     <PopoverTrigger asChild><Button aria-label={props.label} size="icon-xs" type="button" variant="ghost"><ChevronDown aria-hidden="true" /></Button></PopoverTrigger>
-    <PopoverContent align="start" className="w-64 p-0" onEscapeKeyDown={event => { event.stopPropagation() }} onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation() }}>
+    <PopoverContent align="start" className="w-64 p-0" portalled={false} onEscapeKeyDown={event => { event.stopPropagation() }} onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation() }}>
       <Command>
         <CommandInput aria-label={`Find ${props.label}`} onValueChange={setQuery} placeholder="Type to filter…" value={query} />
         <CommandList className="max-h-48">

@@ -18,6 +18,7 @@ function PopoverAnchor(props: React.ComponentProps<typeof PopoverPrimitive.Ancho
 }
 
 type PopoverContentProps = React.ComponentProps<typeof PopoverPrimitive.Content> & {
+  portalled?: boolean
   unstyled?: boolean
 }
 
@@ -25,22 +26,20 @@ function PopoverContent({
   align = 'center',
   className,
   sideOffset = 4,
+  portalled = true,
   unstyled = false,
   ...props
 }: PopoverContentProps): React.ReactElement {
-  return (
-    <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Content
-        data-slot="popover-content"
-        align={align}
-        sideOffset={sideOffset}
-        className={unstyled
-          ? className
-          : cn('z-50 flex w-72 origin-(--radix-popover-content-transform-origin) flex-col gap-2.5 rounded-lg bg-popover p-2.5 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden', className)}
-        {...props}
-      />
-    </PopoverPrimitive.Portal>
-  )
+  const content = <PopoverPrimitive.Content
+    data-slot="popover-content"
+    align={align}
+    sideOffset={sideOffset}
+    className={unstyled
+      ? className
+      : cn('z-50 flex w-72 origin-(--radix-popover-content-transform-origin) flex-col gap-2.5 rounded-lg bg-popover p-2.5 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden', className)}
+    {...props}
+  />
+  return portalled ? <PopoverPrimitive.Portal>{content}</PopoverPrimitive.Portal> : content
 }
 
 function PopoverHeader({ className, ...props }: React.ComponentProps<'div'>): React.ReactElement {

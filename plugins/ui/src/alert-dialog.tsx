@@ -19,19 +19,18 @@ function AlertDialogOverlay({ className, ...props }: React.ComponentProps<typeof
   return <AlertDialogPrimitive.Overlay data-slot="alert-dialog-overlay" className={cn('fixed inset-0 z-50 bg-black/35', className)} {...props} />
 }
 
-function AlertDialogContent({ className, children, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Content>): React.ReactElement {
-  return (
-    <AlertDialogPortal>
-      <AlertDialogOverlay />
-      <AlertDialogPrimitive.Content
-        data-slot="alert-dialog-content"
-        className={cn('fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 outline-none sm:max-w-sm', className)}
-        {...props}
-      >
-        {children}
-      </AlertDialogPrimitive.Content>
-    </AlertDialogPortal>
-  )
+function AlertDialogContent({ className, children, portalled = true, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & { portalled?: boolean }): React.ReactElement {
+  const content = <>
+    <AlertDialogOverlay />
+    <AlertDialogPrimitive.Content
+      data-slot="alert-dialog-content"
+      className={cn('fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 outline-none sm:max-w-sm', className)}
+      {...props}
+    >
+      {children}
+    </AlertDialogPrimitive.Content>
+  </>
+  return portalled ? <AlertDialogPortal>{content}</AlertDialogPortal> : content
 }
 
 function AlertDialogHeader({ className, ...props }: React.ComponentProps<'div'>): React.ReactElement {

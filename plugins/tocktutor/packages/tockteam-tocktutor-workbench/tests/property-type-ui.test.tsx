@@ -20,6 +20,22 @@ it('offers all six types, previews conversion and preserves an explicit loss con
   expect(screen.queryByRole('alertdialog')).toBeNull()
 })
 
+it('keeps property menus in their owning workbench rather than behind its route', () => {
+  render(<div data-tockteam-tocktutor-route="true"><MarkdownDocumentHeader editableProperties onChangePropertyType={async () => true} onRemoveProperty={() => true} source={'---\nstatus: active\n---\n'} /></div>)
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Property Type for status' }), { key: 'Enter' })
+  expect(screen.getByRole('menu').closest('[data-tockteam-tocktutor-route]')).toBeTruthy()
+  fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Actions for status' }), { key: 'Enter' })
+  expect(screen.getByRole('menu').closest('[data-tockteam-tocktutor-route]')).toBeTruthy()
+})
+
+it('keeps confirmation content and its blocking overlay in the owning workbench', () => {
+  render(<div data-tockteam-tocktutor-route="true"><MarkdownDocumentHeader editableProperties onChangePropertyType={async () => true} source={'---\naliases: [one, two]\n---\n'} /></div>)
+  choose('aliases', 'Text')
+  expect(screen.getByRole('alertdialog').closest('[data-tockteam-tocktutor-route]')).toBeTruthy()
+  expect(document.querySelector('[data-slot="alert-dialog-overlay"]')?.closest('[data-tockteam-tocktutor-route]')).toBeTruthy()
+})
+
 it('keeps a failed conversion open, reports the cause, and supports retry or cancellation', async () => {
   const change = vi.fn().mockRejectedValueOnce(new Error('Settings changed; reload before retrying.')).mockResolvedValue(true)
   render(<MarkdownDocumentHeader editableProperties onChangePropertyType={change} source={'---\nstatus: "42"\n---\n'} />)

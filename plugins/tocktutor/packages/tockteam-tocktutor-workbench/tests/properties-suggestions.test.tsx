@@ -22,6 +22,13 @@ it('offers indexed and imported names without duplicate fields and accepts free-
   expect(add).toHaveBeenLastCalledWith('my own field')
 })
 
+it('keeps suggestion controls within the owning workbench overlay layer', async () => {
+  render(<div data-tockteam-tocktutor-route="true"><MarkdownDocumentHeader editableProperties onAddProperty={() => true} source="" suggestions={suggestions} /></div>)
+  fireEvent.click(screen.getByRole('button', { name: 'Add Property' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Property Name Suggestions' }))
+  expect((await screen.findByRole('option', { name: 'course name' })).closest('[data-tockteam-tocktutor-route]')).toBeTruthy()
+})
+
 it('shows recoverable error and incomplete states without losing free-form input', async () => {
   render(<MarkdownDocumentHeader editableProperties onAddProperty={() => true} source="" suggestions={{ ...suggestions, incomplete: true, status: 'error' }} />)
   fireEvent.click(screen.getByRole('button', { name: 'Add Property' }))
