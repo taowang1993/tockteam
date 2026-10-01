@@ -20074,10 +20074,11 @@ function PopoverContent3({
   align = "center",
   className,
   sideOffset = 4,
+  portalled = true,
   unstyled = false,
   ...props
 }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(Portal3, { children: /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
+  const content = /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(
     Content2,
     {
       "data-slot": "popover-content",
@@ -20086,7 +20087,8 @@ function PopoverContent3({
       className: unstyled ? className : cn("z-50 flex w-72 origin-(--radix-popover-content-transform-origin) flex-col gap-2.5 rounded-lg bg-popover p-2.5 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden", className),
       ...props
     }
-  ) });
+  );
+  return portalled ? /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(Portal3, { children: content }) : content;
 }
 
 // ../../../ui/src/textarea.tsx
