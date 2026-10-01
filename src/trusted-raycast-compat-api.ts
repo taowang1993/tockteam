@@ -232,6 +232,7 @@ export function openExtensionPreferences(): void { compatibility.openPreferences
 let preferences: Record<string, unknown> | undefined
 export function getPreferenceValues<T>(): T {
   preferences ??= (() => { try { const parsed: unknown = JSON.parse(process.env.TRUSTED_RAYCAST_PREFERENCES ?? '{}'); return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {} } catch { return {} } })()
+  if (process.env.TOCKTEAM_USER_RAYCAST_ID !== undefined) return { ...preferences } as T
   const defaults = process.env.TRUSTED_RAYCAST_EXTENSION_ID === 'kaomoji-search'
     ? { displayMode: 'list', primaryAction: 'paste-to-active-app' }
     : { langFrom: 'auto', lang1: 'en', lang2: 'en', autoInput: true, defaultAction: 'copy', prioritizeCrossLanguage: false, proxy: '' }

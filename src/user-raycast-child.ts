@@ -60,7 +60,8 @@ api.configureCompatibility({
   selection: async () => { throw new Error('Selected text is unsupported for user extensions') },
   toast: (toast: object) => send({ type: 'toast', extensionId, sessionId, revision, ...toast }),
   cache: storage.cache,
-  ...(mode === 'no-view' || mode === 'menu-bar' ? { storage, hud: (message: string) => send({ type: 'toast', extensionId, sessionId, revision, title: message.slice(0, 512), message: '', style: 'success' }) } : {}),
+  storage,
+  hud: (message: string) => send({ type: 'toast', extensionId, sessionId, revision, title: message.slice(0, 512), message: '', style: 'success' }),
 })
 if (extensionId === 'linear') process.once('SIGTERM', () => {
   void api.revokeUserRaycastOAuthTokens().then(() => process.exit(0), (error: unknown) => {

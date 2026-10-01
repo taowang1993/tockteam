@@ -58,7 +58,7 @@ Use one pinned OAuth sample whose provider permits a TockTeam-owned redirect. St
 
 Retest the pinned matrix on the final build/disposable install; update `.agents/references/tocklauncher.md` only after behavior changes, reconcile notices/licensing and provide exact unsupported reasons. Acceptance: existing three remain supported with settings preserved; per-command measured status, safe process cleanup, and no unsupported-platform claims. Verification: full source gates and one permitted guarded installed Desktop proof; environment-blocked checks stay explicitly unverified.
 
-**Dependency shape:** `1 → 2 → 3 → 4 → {5, 6} → 7`. Stop at any checkpoint if demand/compatibility gain does not justify the next API family. No website is required for the first usable self-install path.
+**Original proof dependency shape:** `1 → 2 → 3 → 4 → {5, 6} → 7`. The expanded owner-approved target below supersedes the original demand-based stopping rule; historical slice completion is not proof of that broader scope. No website is required for the first usable self-install path.
 
 ## Measured Progress — 2026-09-29
 
@@ -73,5 +73,46 @@ Slices 1–3 are complete with separate pinned view and no-view proofs; see `.be
 
 ## Beads
 
-- Epic: `tockteam-qwzg` (open; implementation is not yet claimed).
-- Child issues: `tockteam-qwzg.1` through `tockteam-qwzg.7`, matching the slices above. Review this plan before implementation, and claim only the first ready slice after authorization.
+- Epic: `tockteam-qwzg` (open; resumed and claimed for the owner-approved expansion).
+- Historical proof slices: `tockteam-qwzg.1` through `tockteam-qwzg.7`.
+- Expanded Tinycast target: `tockteam-qwzg.8`; first claimed source slice: `tockteam-qwzg.8.1` (view data and declared preferences). Beads remains the task/status source of truth.
+
+## Expanded Owner-Approved Target — 2026-10-01
+
+The owner selected **Tinycast's documented macOS compatibility scope**, not universal Raycast Store compatibility. The behavior reference is `/Users/taowang/research/launcher/tinycast` at `6fc6aa1b909ca24e3cd25e35c078a7c808ca34a9`; `docs/features/extensions.md` takes precedence over its older website compatibility page. Its public API pin is `@raycast/api` **2.0.3**. Tinycast's historical 32/37-extension and 114/147-view-command boot/render counts are not TockLauncher evidence and do not prove actions or effects.
+
+After a separate plain-language callback-ownership explanation, the owner selected **Leave Raycast Alone (Recommended)**. Do not register/take over `raycast://` or `com.raycast://` sign-in links. Independent provider-approved callbacks remain in scope; sign-ins that require those handler claims are an explicitly approved compatibility exception. This decision does not authorize a real sign-in, provider cleanup, account access, credentials, Keychain use, or changing this Mac's settings. The existing Linear cleanup gate (`tockteam-qwzg.6.6`) stays blocked and unverified.
+
+### Supported Behavior and Exclusions
+
+Extend the existing approved Desktop child, installer, bounded inert renderer and finite main-owned adapters. Do not add JavaScriptCore, a second launcher/plugin/agent system, a UI/theme layer or a dependency just to mirror Tinycast's implementation. Preserve the three pinned bundled identities and all existing user data/disablement. Reading Tinycast behavior is permitted; no AGPL implementation, generated runtime or artwork is imported. Source/build/runtime approval stays distinct and exact-digest-bound.
+
+The target includes List/Grid sections, empty states, details, dropdowns, filtering and selection; Detail markdown/metadata; every documented Form field and controlled/default/ref/validation/submission behavior; ActionPanel sections/submenus/shortcuts and convenience/legacy Action variants; preserved navigation state; storage, Cache, preferences, feedback and environment; app/file/clipboard/selection effects; command arguments/context/metadata; chosen installs/assets/native helpers; explicit menu activation/background refresh; and provider-approved PKCE with per-extension credential ownership.
+
+Tinycast-excluded Raycast AI/browser/window services, its non-PKCE sign-in proxy and tool/AI entry points remain explicitly unsupported. TockLauncher already uses real Node: do not regress working streams, sockets, WebAssembly or cancellation merely to reproduce JavaScriptCore limits. Wider Node support still needs measured lifecycle/command evidence, not an import-count claim.
+
+### Implementation Order and Acceptance
+
+**View Data and Declared Preferences (`tockteam-qwzg.8.1`).** Configure the existing private storage/HUD for view commands and return only selected-extension manifest defaults, including names also used by bundled extensions. Prove save/reopen, extension separation, command-default precedence, false-valued defaults and HUD feedback through approved fake-only child fixtures. Preserve bundled behavior, storage custody and cleanup. Two new private behavior probes already fail both defects; the existing focused baseline passes 28/28.
+
+**Remaining SDK Behavior.** Complete typed LocalStorage/all-items, Cache subscriptions/namespaces, declared preference editing, environment paths/appearance/context and feedback contracts without changing existing data interpretation silently. Any persistence migration or sensitive preference/native effect needs its own reviewed slice and test-first check.
+
+**Forms, Then Collections and Detail.** Carry bounded revision-owned field/blur/selection events through the existing contract/child/manager/renderer. Prove text/password/textarea/checkbox first, then dropdown/tag/date/file fields and refs, including controlled updates, draft/focus preservation, validation and typed submission. Follow with default/custom filtering, selection, sections, metadata, markdown and validated images/assets. Functions never reach the renderer; no arbitrary HTML/file URL/script/network authority is added. Verify visible bounded paging, keyboard and empty/loading/error states.
+
+**Navigation and Actions.** Preserve mounted React view state across push/pop; implement root/clear/close, global/item actions, shortcuts, submenus and documented legacy variants. Async actions remain owned by their source session/revision. Stale/repeated handles cannot affect another command, and native success callbacks await real outcomes.
+
+**Native Effects.** Extend finite main-owned clipboard/app/file/selection adapters, never renderer-selected generic paths/process/IPC. Separate read and mutation admission/cancellation/lifecycle tests. Use controlled fixtures; unavoidable OS input, account/clipboard/Keychain changes require fresh immediate authority and an allowed verification path. Confirm destructive actions or retain recovery. Environment-blocked effects remain unverified, not passed.
+
+**Installed Commands, Preferences and Assets.** Reuse prepare/review/approved build/built approval/apply/enable/previous recovery for multiple extensions/commands, arguments/preferences/context and safe asset/helper resolution. Preserve selected-install data, bounded no-follow file/archive admission, helper identity and explicit build consent. Source/build/helper failures retain the current version; no arbitrary lifecycle script executes silently.
+
+**Generic Menus and Refresh.** Generalize the existing Color-Picker-only projection through the Desktop menu owner. Prove sections/submenus, async actions, metadata/context and explicitly activated bounded/coalesced refresh. Installation alone runs nothing; disable/update/quit drains menus, timers and groups. Late callbacks never cross extension ownership.
+
+**PKCE and Final Evidence.** Generalize only provider-approved independent callbacks, owned secrets and cancel/uninstall behavior, without hijacking Raycast links or concealing the Linear warning. Retest the complete versioned behavior ledger and pinned real-command matrix on the final owned Desktop build/disposable install. Keep boot/render/action/effect results separate. `tockteam-qwzg.7` waits for `tockteam-qwzg.8` and the original OAuth gate; no full-scope claim until supported paths are verified or an exception is explicitly accepted.
+
+Each implementation slice receives a Beads child and a failing public behavior check before code. Split further whenever native effects, migration or unrelated UI ownership would otherwise share a large change. Closed historical slices remain limited proofs, not completion of this expansion.
+
+### Verification and Shared-Checkout Barriers
+
+Use independently written fake-only fixtures, temp-only first-party runtime builds and focused `node --test` checks first; no selected third-party command/account/native effect follows from this expansion alone. Run exact focused/bundled/lifecycle regressions and `pnpm run typecheck` for each source slice. Actual visible UI changes need guarded extended-display Electron/CDP proof, semantic DSH tokens, exact geometry/theme/mode/content/error evidence, allowlisted screenshot publication and full owned-tree cleanup. Never run legacy direct-GUI-launch harnesses.
+
+Reserve shared root tests/build/staging/generated output, index/commit and display separately. Run `pnpm test`, `pnpm run build`, staging and one final permitted installed smoke only at coordinated final barriers. Preserve the Properties session's source/tests/generated outputs and protected-test ownership, keep one source writer per shared checkout, make scoped commits, and never create a worktree or push. A writer lease, unavailable driver, missing consent or provider prerequisite blocks that operation; it never authorizes bypassing a boundary or claiming compatibility.
