@@ -1,0 +1,467 @@
+{
+  "issue": "tockteam-v3zg",
+  "sourceCommits": [
+    "d61d777a",
+    "87f870a9"
+  ],
+  "behavior": {
+    "checks": [
+      "Canonical Dark Geometry and No Skin",
+      "Properties Is Beside the Full-Height Note",
+      "Hidden Properties Is Outside the Accessibility Tree",
+      "Property Edits Survive Switching",
+      "Unsubmitted Property Draft Survives Switching",
+      "Keyboard Resize Widens the Sidebar",
+      "Closed Sidebar Is Inert",
+      "Reopening Keeps the Selected Properties View",
+      "Unsent Assistant Draft Survives Switching",
+      "Pinned Properties Remains Bound When Another Note Opens",
+      "Keyboard Choice Opens Assistant",
+      "Changing Notes Keeps the Existing Assistant Draft Reset",
+      "Same-Note Assistant Draft Still Survives Switching",
+      "Narrow Sidebar Controls Stay Inside the Window",
+      "No Runtime Errors or External Requests"
+    ],
+    "runtimeErrors": [],
+    "externalRequests": [],
+    "initial": {
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "colorScheme": "dark",
+      "rootSkin": null,
+      "bodySkin": null,
+      "editor": {
+        "x": 320,
+        "y": 40,
+        "width": 892,
+        "height": 909,
+        "top": 40,
+        "right": 1212,
+        "bottom": 949,
+        "left": 320
+      },
+      "sidebar": {
+        "x": 1212,
+        "y": 40,
+        "width": 300,
+        "height": 909,
+        "top": 40,
+        "right": 1512,
+        "bottom": 949,
+        "left": 1212
+      },
+      "bottomSplits": 0
+    },
+    "propertiesCapture": {
+      "route": "/tocktutor/Properties.md",
+      "path": "Properties.md",
+      "mode": "live-preview",
+      "theme": "dark",
+      "skin": null,
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "capturedAt": "2026-10-01T01:58:30.412Z"
+    },
+    "assistantCapture": {
+      "route": "/tocktutor/Properties.md",
+      "path": "Properties.md",
+      "mode": "live-preview",
+      "theme": "dark",
+      "skin": null,
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "capturedAt": "2026-10-01T01:58:30.673Z",
+      "unsentDraft": true
+    },
+    "narrow": {
+      "width": 600,
+      "filesHidden": "true",
+      "sidebar": {
+        "x": 300,
+        "y": 40,
+        "width": 300,
+        "height": 909,
+        "top": 40,
+        "right": 600,
+        "bottom": 949,
+        "left": 300
+      },
+      "viewportOverflow": false,
+      "controlsOverflow": false
+    }
+  },
+  "themes": {
+    "checks": [
+      {
+        "theme": "dark",
+        "skin": null,
+        "systemTheme": "light",
+        "panelWidth": 300,
+        "controlsOverflow": false,
+        "selected": [
+          {
+            "label": "Properties",
+            "text": "rgb(249, 250, 251)",
+            "background": "rgb(44, 44, 46)",
+            "ratio": 13.33617423071505
+          },
+          {
+            "label": "Assistant",
+            "text": "rgb(249, 250, 251)",
+            "background": "rgb(30, 30, 30)",
+            "ratio": 15.95286574315298
+          }
+        ],
+        "propertyCount": 8
+      },
+      {
+        "theme": "light",
+        "skin": null,
+        "systemTheme": "dark",
+        "panelWidth": 300,
+        "controlsOverflow": false,
+        "selected": [
+          {
+            "label": "Properties",
+            "text": "rgb(15, 17, 21)",
+            "background": "rgb(255, 255, 255)",
+            "ratio": 18.896452054380127
+          },
+          {
+            "label": "Assistant",
+            "text": "rgb(15, 17, 21)",
+            "background": "rgb(255, 255, 255)",
+            "ratio": 18.896452054380127
+          }
+        ],
+        "propertyCount": 8
+      },
+      {
+        "theme": "dark",
+        "skin": "tockteam-skin-navy",
+        "systemTheme": "light",
+        "panelWidth": 300,
+        "controlsOverflow": false,
+        "selected": [
+          {
+            "label": "Properties",
+            "text": "rgb(233, 248, 251)",
+            "background": "rgb(15, 42, 57)",
+            "ratio": 13.671475748124486
+          },
+          {
+            "label": "Assistant",
+            "text": "rgb(233, 248, 251)",
+            "background": "rgb(11, 34, 48)",
+            "ratio": 14.999134677756654
+          }
+        ],
+        "propertyCount": 8
+      },
+      {
+        "theme": "light",
+        "skin": "tockteam-skin-navy",
+        "systemTheme": "dark",
+        "panelWidth": 300,
+        "controlsOverflow": false,
+        "selected": [
+          {
+            "label": "Properties",
+            "text": "rgb(23, 49, 58)",
+            "background": "rgb(220, 235, 240)",
+            "ratio": 11.181745443698086
+          },
+          {
+            "label": "Assistant",
+            "text": "rgb(23, 49, 58)",
+            "background": "rgb(245, 250, 251)",
+            "ratio": 12.980894386787863
+          }
+        ],
+        "propertyCount": 8
+      },
+      {
+        "theme": "dark",
+        "skin": "tockteam-skin-jade",
+        "systemTheme": "light",
+        "panelWidth": 300,
+        "controlsOverflow": false,
+        "selected": [
+          {
+            "label": "Properties",
+            "text": "rgb(233, 251, 243)",
+            "background": "rgb(16, 46, 38)",
+            "ratio": 13.574103764639526
+          },
+          {
+            "label": "Assistant",
+            "text": "rgb(233, 251, 243)",
+            "background": "rgb(11, 36, 30)",
+            "ratio": 15.216209781330681
+          }
+        ],
+        "propertyCount": 8
+      },
+      {
+        "theme": "light",
+        "skin": "tockteam-skin-jade",
+        "systemTheme": "dark",
+        "panelWidth": 300,
+        "controlsOverflow": false,
+        "selected": [
+          {
+            "label": "Properties",
+            "text": "rgb(27, 53, 41)",
+            "background": "rgb(219, 236, 222)",
+            "ratio": 10.747138954268838
+          },
+          {
+            "label": "Assistant",
+            "text": "rgb(27, 53, 41)",
+            "background": "rgb(246, 250, 245)",
+            "ratio": 12.539701567157891
+          }
+        ],
+        "propertyCount": 8
+      },
+      {
+        "theme": "dark",
+        "skin": "tockteam-skin-ember",
+        "systemTheme": "light",
+        "panelWidth": 300,
+        "controlsOverflow": false,
+        "selected": [
+          {
+            "label": "Properties",
+            "text": "rgb(253, 240, 230)",
+            "background": "rgb(36, 28, 20)",
+            "ratio": 15.011949227789058
+          },
+          {
+            "label": "Assistant",
+            "text": "rgb(253, 240, 230)",
+            "background": "rgb(33, 26, 21)",
+            "ratio": 15.355121898532204
+          }
+        ],
+        "propertyCount": 8
+      },
+      {
+        "theme": "light",
+        "skin": "tockteam-skin-ember",
+        "systemTheme": "dark",
+        "panelWidth": 300,
+        "controlsOverflow": false,
+        "selected": [
+          {
+            "label": "Properties",
+            "text": "rgb(59, 42, 27)",
+            "background": "rgb(239, 227, 210)",
+            "ratio": 10.821066031272093
+          },
+          {
+            "label": "Assistant",
+            "text": "rgb(59, 42, 27)",
+            "background": "rgb(255, 250, 244)",
+            "ratio": 13.198254227619962
+          }
+        ],
+        "propertyCount": 8
+      }
+    ],
+    "runtimeErrors": []
+  },
+  "finalState": {
+    "reopenValues": true,
+    "narrow": {
+      "viewport": [
+        390,
+        949,
+        2
+      ],
+      "sidebar": {
+        "x": 90,
+        "y": 40,
+        "width": 300,
+        "height": 909,
+        "top": 40,
+        "right": 390,
+        "bottom": 949,
+        "left": 90
+      },
+      "controlsOverflow": false,
+      "documentOverflow": false
+    },
+    "motion": {
+      "closing": {
+        "hidden": "true",
+        "inert": true,
+        "duration": "0.42s, 0.3s, 0.46s, 0s"
+      },
+      "rapidReopen": true
+    },
+    "final": {
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "theme": "dark",
+      "rootSkin": null,
+      "bodySkin": null,
+      "linkedProperties": 1,
+      "bottomSplits": 0
+    }
+  },
+  "captures": {
+    "tocktutor-properties-right-sidebar.png": {
+      "route": "/tocktutor/Properties.md",
+      "path": "Properties.md",
+      "mode": "live-preview",
+      "theme": "dark",
+      "skin": null,
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "capturedAt": "2026-10-01T01:58:30.412Z",
+      "contentSha256": "d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478",
+      "registrySha256": "5672e9e6ab76279528ce46c6239771225aed672d969af4688305761e6f4e6798",
+      "pngPixels": [
+        3024,
+        1898
+      ],
+      "bytes": 290079,
+      "sha256": "29ef8f5bff6e749bd2aac34ce83004fe1f6ca77daefcc4bdc7fbc90231385706",
+      "file": "/Users/taowang/projects/tockteam/.beads/reports/tocktutor-properties-right-sidebar.png"
+    },
+    "tocktutor-assistant-right-sidebar.png": {
+      "route": "/tocktutor/Properties.md",
+      "path": "Properties.md",
+      "mode": "live-preview",
+      "theme": "dark",
+      "skin": null,
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "capturedAt": "2026-10-01T01:58:30.673Z",
+      "unsentDraft": true,
+      "contentSha256": "d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478",
+      "registrySha256": "5672e9e6ab76279528ce46c6239771225aed672d969af4688305761e6f4e6798",
+      "pngPixels": [
+        3024,
+        1898
+      ],
+      "bytes": 252160,
+      "sha256": "bb4ac157b668287d56353e43aa7890cb803aea349e4acbff919be30cf0657180",
+      "file": "/Users/taowang/projects/tockteam/.beads/reports/tocktutor-assistant-right-sidebar.png"
+    }
+  },
+  "cleanup": [
+    {
+      "rootPid": 93150,
+      "recordedPids": [
+        93150,
+        93154,
+        93155,
+        93157,
+        93158,
+        93161,
+        93177,
+        93349,
+        93363,
+        93586,
+        93587,
+        93588,
+        93589,
+        93590,
+        93591,
+        93592,
+        93593
+      ],
+      "remaining": [],
+      "stopped": true
+    },
+    {
+      "rootPid": 95999,
+      "recordedPids": [
+        95999,
+        96013,
+        96014,
+        96016,
+        96017,
+        96021,
+        96031,
+        96151,
+        96152,
+        96153,
+        96154,
+        96155,
+        96156,
+        96157,
+        96217,
+        96387,
+        96388
+      ],
+      "remaining": [],
+      "stopped": true
+    }
+  ],
+  "placement": {
+    "displayId": 17,
+    "bounds": {
+      "x": 1512,
+      "y": 30,
+      "width": 1366,
+      "height": 994
+    },
+    "focused": false
+  },
+  "console": {
+    "errors": 0,
+    "warnings": 2
+  },
+  "publication": {
+    "allowlist": [
+      "tocktutor-properties-right-sidebar.png",
+      "tocktutor-assistant-right-sidebar.png"
+    ],
+    "priorScreenshotsUnchanged": 73,
+    "protectedPathsUntouched": [
+      "AGENTS.md",
+      "tests/right-panel-layout.test.ts",
+      ".playwright-cli"
+    ],
+    "directory": "/Users/taowang/projects/tockteam/.beads/reports"
+  },
+  "checks": {
+    "root": {
+      "passed": 1607,
+      "skipped": 18,
+      "failed": 0
+    },
+    "nested": {
+      "nodeTestsPassed": 1148,
+      "componentTestsPassed": 756,
+      "failed": 0
+    },
+    "afterClippingFix": {
+      "focusedComponentTestsPassed": 156,
+      "failed": 0
+    },
+    "typechecks": true,
+    "buildManifest": true
+  }
+}
