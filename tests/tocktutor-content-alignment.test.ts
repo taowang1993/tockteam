@@ -10,7 +10,7 @@ test('compares matching content and includes the installed Claudian assistant', 
   const proof = JSON.parse(readFileSync(`${root}/content-alignment.json`, 'utf8'))
   assert.equal(proof.cleanup.verified, true)
   const sources = new Set([...html.matchAll(/<img[^>]*src="screenshots\/([^"]+)"/gu)].map(match => match[1]))
-  assert.equal(sources.size, proof.gallery.uniqueImageSources)
+  assert.equal(new Set([...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => match[1])).size, proof.gallery.uniqueImageSources)
   for (const name of sources) {
     const capture = proof.captures[name!]
     assert.ok(capture, name)

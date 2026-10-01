@@ -13,11 +13,11 @@ const links = [...html.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].
 const sha256 = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex')
 
 test('accounts for every gallery and supplemental capture without stale links', () => {
-  assert.match(html, /Visual Design Audit · 66 Captures/u)
+  assert.match(html, /Visual Design Audit · 68 Captures/u)
   assert.match(html, /Built-in Dark Theme · No Active Skin/u)
   assert.doesNotMatch(html, /UIUX Comparison/u)
   assert.doesNotMatch(html, /Tag and Tab Polish|id="polish"/u)
-  assert.equal(new Set(images).size, 66)
+  assert.equal(new Set(images).size, 68)
   assert.deepEqual(images, links)
   const actual = readdirSync(resolve(root, 'screenshots')).sort()
   assert.deepEqual(actual, proof.gallery.allowlist)
@@ -34,6 +34,28 @@ test('accounts for every gallery and supplemental capture without stale links', 
   assert.equal([...html.matchAll(/<span class="badge">Not Applicable<\/span>/gu)].length, 1)
   assert.match(html, /id="assistant"[\s\S]*?Obsidian · Claudian[\s\S]*?obsidian-assistant\.png/u)
   assert.match(html, /id="reviews"[\s\S]*?Not Applicable/u)
+})
+
+test('shows both shared right sidebar views with full-resolution links to the verified captures', () => {
+  const section = /<section class="surface" id="right-sidebar">([\s\S]*?)<\/section>/u.exec(html)?.[1]
+  assert.ok(section, 'Shared Right Sidebar section is present')
+  assert.match(html, /href="#right-sidebar"/u)
+  const sidebarProof = JSON.parse(readFileSync(resolve('.beads/reports/2026-10-01-tocktutor-properties-sidebar.json'), 'utf8'))
+  const sources = ['tocktutor-properties-right-sidebar.png', 'tocktutor-assistant-right-sidebar.png'].map(name => `../../../.beads/reports/${name}`)
+  assert.deepEqual([...section.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => match[1]), sources)
+  assert.deepEqual([...section.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].map(match => match[1]), sources)
+  assert.match(section, /no new Obsidian reference/u)
+  for (const source of sources) {
+    const capture = sidebarProof.captures[source.split('/').at(-1)!]
+    const bytes = readFileSync(resolve(root, source))
+    assert.equal(sha256(bytes), capture.sha256)
+    assert.deepEqual([bytes.readUInt32BE(16), bytes.readUInt32BE(20)], [3024, 1898])
+    assert.deepEqual(capture.geometry, [1512, 949, 2])
+    assert.equal(capture.theme, 'dark')
+    assert.equal(capture.skin, null)
+  }
+  assert.deepEqual(sidebarProof.behavior.runtimeErrors, [])
+  assert.ok(sidebarProof.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
 })
 
 test('pairs the Image Viewer with the verified installed Obsidian reference', () => {
