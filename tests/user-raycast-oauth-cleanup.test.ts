@@ -9,6 +9,20 @@ import { pathToFileURL } from 'node:url'
 import { buildUserRaycast } from '../scripts/user-raycast-build.mjs'
 import { admitTrustedRaycastArtifact } from '../src/trusted-raycast-artifact-admission.ts'
 import { trustedRaycastDescriptors } from '../src/trusted-raycast-descriptors.ts'
+import { isUserRaycastOAuthCleanupDiagnostic, isUserRaycastOAuthCleanupReasons, isUserRaycastViewMessage } from '../src/user-raycast-contract.ts'
+
+test('cleanup details admit only bounded coarse codes, never a renderer message', () => {
+  const reasons = ['http-400', 'http-503', 'http-202', 'transport', 'timeout', 'unknown']
+  const diagnostic = { type: 'oauth-cleanup', extensionId: 'linear', sessionId: 'fixture-session', reasons }
+  assert.equal(isUserRaycastOAuthCleanupDiagnostic(diagnostic), true)
+  assert.equal(isUserRaycastViewMessage({ ...diagnostic, revision: 0 }), false)
+  for (const invalid of [[], Array(1), ['http-200'], ['http-0'], ['http-600'], ['http-503\n'], ['fake-sensitive-token'], [{ token: 'fake-sensitive-token' }], Array(513).fill('timeout')]) {
+    assert.equal(isUserRaycastOAuthCleanupReasons(invalid), false, 'unsafe or empty details must not be admitted')
+  }
+  for (const invalid of [{ ...diagnostic, token: 'fake-sensitive-token' }, { ...diagnostic, extensionId: 'other' }, { ...diagnostic, sessionId: 'x'.repeat(129) }]) {
+    assert.equal(isUserRaycastOAuthCleanupDiagnostic(invalid), false)
+  }
+})
 
 type Api = typeof import('../src/trusted-raycast-compat-api.ts')
 const failure = /Linear OAuth token revocation could not be confirmed/
@@ -65,10 +79,15 @@ test('first-party OAuth cleanup stays honest under mocked provider failures', as
             return new Response(secret, { status: scenario === 'unconfirmed-success' ? 202 : 503 })
           }
         await client.setTokens({ access_token: secret })
-        await assert.rejects(client.removeTokens(), error => {
-          assert.doesNotMatch(String(error), /fake-sensitive-token/)
-          return failure.test(String(error))
-        })
+        const reasons = [scenario === 'http' ? 'http-503' : scenario === 'unconfirmed-success' ? 'http-202' : 'transport']
+        const check = (error: unknown) => {
+          assert.ok(error instanceof Error)
+          assert.doesNotMatch(JSON.stringify({ message: error.message, cause: error.cause }), /fake-sensitive-token/)
+          assert.deepEqual(error.cause, reasons, 'safe failure details survive direct and shared cleanup')
+          return failure.test(error.message)
+        }
+        await assert.rejects(client.removeTokens(), check)
+        await assert.rejects(revokeUserRaycastOAuthTokens(), check)
         assert.equal(await client.getTokens(), null)
       } else if (scenario === 'timeout') {
         let aborted = false

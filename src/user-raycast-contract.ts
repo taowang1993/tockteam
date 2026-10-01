@@ -11,11 +11,22 @@ export const USER_RAYCAST_IPC = Object.freeze({
 export type UserRaycastStatus = Readonly<{ candidate?: UserRaycastCandidate; sourceCandidate?: UserRaycastSourceCandidate; digest: string; enabled: boolean; hasPrevious: boolean; installed: boolean; mode?: 'no-view' | 'menu-bar' }>
 export type UserRaycastMutation = 'enable' | 'disable' | 'remove' | 'recover'
 export type UserRaycastEvent = Readonly<{ revision: number; eventId: string; kind: 'action' | 'searchChanged'; value?: string }>
+export type UserRaycastOAuthCleanupReason = 'transport' | 'timeout' | 'unknown' | `http-${number}`
+export type UserRaycastOAuthCleanupDiagnostic = Readonly<{ type: 'oauth-cleanup'; extensionId: 'linear'; sessionId: string; reasons: readonly UserRaycastOAuthCleanupReason[] }>
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value)
 const digest = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value)
 const identity = (value: unknown): boolean => typeof value === 'string' && /^[a-z0-9][a-z0-9_-]{0,63}$/.test(value)
 const commandIdentity = (value: unknown): boolean => typeof value === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(value)
 const exact = (value: object, expected: string[]): boolean => JSON.stringify(Object.keys(value).sort()) === JSON.stringify(expected.sort())
+// Host-only shutdown details: no provider messages, bodies, URLs or credential identifiers.
+export function isUserRaycastOAuthCleanupReasons(value: unknown): value is readonly UserRaycastOAuthCleanupReason[] {
+  return Array.isArray(value) && value.length > 0 && value.length <= 512 && Array.from(value).every(reason => typeof reason === 'string'
+    && (reason === 'transport' || reason === 'timeout' || reason === 'unknown' || reason.length === 8 && /^http-[1-5]\d{2}$/.test(reason) && reason !== 'http-200'))
+}
+export function isUserRaycastOAuthCleanupDiagnostic(value: unknown): value is UserRaycastOAuthCleanupDiagnostic {
+  return record(value) && exact(value, ['type', 'extensionId', 'sessionId', 'reasons']) && value.type === 'oauth-cleanup' && value.extensionId === 'linear'
+    && typeof value.sessionId === 'string' && value.sessionId.length <= 128 && isUserRaycastOAuthCleanupReasons(value.reasons)
+}
 export function isUserRaycastCandidate(value: unknown): value is UserRaycastCandidate {
   return record(value) && exact(value, ['command', 'digest', 'extensionId', 'title', ...(['mode', 'version', 'license', 'source'] as const).filter(key => Object.hasOwn(value, key))])
     && commandIdentity(value.command) && identity(value.extensionId) && digest(value.digest) && typeof value.title === 'string' && value.title.length > 0 && value.title.length <= 128

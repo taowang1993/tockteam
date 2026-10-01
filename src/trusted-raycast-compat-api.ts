@@ -1,6 +1,7 @@
 import React from 'react'
 import { afterSucceededEffect } from './trusted-raycast-effect-callback.ts'
 import { authorizeUserRaycastPkce } from './user-raycast-oauth.ts'
+import { isUserRaycastOAuthCleanupReasons, type UserRaycastOAuthCleanupReason } from './user-raycast-contract.ts'
 
 const element = (type: string, props: Record<string, unknown> | null, children: React.ReactNode[] = []) => React.createElement(type, props, ...children)
 const component = (type: string) => (props: Record<string, unknown>) => element(type, props, React.Children.toArray(props.children as React.ReactNode))
@@ -100,7 +101,9 @@ type LinearAuthRequest = { endpoint: string; clientId: string; codeVerifier: str
 const linearPkceClients = new Set<LinearPkceClient>()
 export async function revokeUserRaycastOAuthTokens(): Promise<void> {
   const results = await Promise.allSettled([...linearPkceClients].map(client => client.removeTokens()))
-  if (results.some(result => result.status === 'rejected')) throw new Error('Linear OAuth token revocation could not be confirmed')
+  const reasons = results.flatMap<UserRaycastOAuthCleanupReason>(result => result.status === 'fulfilled' ? []
+    : result.reason instanceof Error && isUserRaycastOAuthCleanupReasons(result.reason.cause) ? result.reason.cause : ['unknown'])
+  if (reasons.length) throw new Error('Linear OAuth token revocation could not be confirmed', { cause: [...new Set(reasons)].sort() })
 }
 type LinearTokenResponse = { access_token: string; refresh_token?: string; expires_in?: number; id_token?: string }
 class LinearPkceClient {
@@ -146,11 +149,19 @@ class LinearPkceClient {
     this.tokens = null
     if (!tokens) return
     const values = [...new Set([tokens.refreshToken, tokens.accessToken].filter((value): value is string => !!value))]
-    this.cleanup = Promise.allSettled(values.map(async token => fetch('https://api.linear.app/oauth/revoke', {
-      method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token }), signal: AbortSignal.timeout(1500),
-    }))).then(responses => {
-      // Linear documents only HTTP 200 as confirmation, not other successful-range statuses.
-      if (responses.some(result => result.status !== 'fulfilled' || result.value.status !== 200)) throw new Error('Linear OAuth token revocation could not be confirmed')
+    this.cleanup = Promise.all(values.map(async (token): Promise<UserRaycastOAuthCleanupReason | undefined> => {
+      const signal = AbortSignal.timeout(1500)
+      try {
+        const { status } = await fetch('https://api.linear.app/oauth/revoke', {
+          method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token }), signal,
+        })
+        // Linear documents only HTTP 200 as confirmation; never read a failure body.
+        if (status === 200) return
+        return Number.isInteger(status) && status >= 100 && status <= 599 ? `http-${status}` : 'unknown'
+      } catch { return signal.aborted ? 'timeout' : 'transport' }
+    })).then(results => {
+      const reasons = results.filter((reason): reason is UserRaycastOAuthCleanupReason => reason !== undefined)
+      if (reasons.length) throw new Error('Linear OAuth token revocation could not be confirmed', { cause: [...new Set(reasons)].sort() })
     })
     return this.cleanup
   }
