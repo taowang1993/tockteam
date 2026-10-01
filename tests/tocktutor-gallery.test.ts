@@ -13,16 +13,16 @@ const links = [...html.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].
 const sha256 = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex')
 
 test('accounts for every gallery and supplemental capture without stale links', () => {
-  assert.match(html, /Visual Design Audit · 65 Captures/u)
+  assert.match(html, /Visual Design Audit · 66 Captures/u)
   assert.match(html, /Built-in Dark Theme · No Active Skin/u)
   assert.doesNotMatch(html, /UIUX Comparison/u)
   assert.doesNotMatch(html, /Tag and Tab Polish|id="polish"/u)
-  assert.equal(new Set(images).size, 65)
+  assert.equal(new Set(images).size, 66)
   assert.deepEqual(images, links)
   const actual = readdirSync(resolve(root, 'screenshots')).sort()
   assert.deepEqual(actual, proof.gallery.allowlist)
   assert.deepEqual(actual, Object.keys(proof.captures).sort())
-  assert.equal(actual.length, 72)
+  assert.equal(actual.length, 73)
   assert.deepEqual(actual.filter(name => !images.includes(`screenshots/${name}`)), proof.gallery.supplementalCaptures)
   assert.ok(proof.gallery.supplementalCaptures.includes('tocktutor-tag-tab-polish.png'))
   assert.ok(proof.comparisons.every((comparison: { surface: string }) => comparison.surface !== 'polish'))
@@ -150,7 +150,50 @@ test('pairs Diagram Editing with genuine Obsidian and identical saved uppercase-
   assert.deepEqual(proof.migrationReview.diagramEditingReference.cleanup.remaining, [])
 })
 
-test('keeps unmatched migration surfaces distinct from the three focused comparisons', () => {
+test('pairs Imported Property Controls with genuine Obsidian and the identical saved note', () => {
+  const section = /<section class="surface" id="imported-properties">([\s\S]*?)<\/section>/u.exec(html)![1]!
+  assert.deepEqual([...section.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => match[1]), [
+    'screenshots/tocktutor-imported-properties.png', 'screenshots/obsidian-imported-properties.png',
+  ])
+  assert.doesNotMatch(section, /missing-reference|Reference Not Captured/u)
+  const native = proof.captures['obsidian-imported-properties.png']
+  assert.equal(native.product, 'Obsidian 1.13.7')
+  assert.equal(native.entry, '/Applications/Obsidian.app/Contents/Resources/app.asar')
+  assert.equal(native.captureScope, 'real-desktop')
+  assert.equal(native.contentSha256, proof.captures['tocktutor-imported-properties.png'].contentSha256)
+  assert.equal(native.mode, 'live-preview')
+  assert.equal(native.theme, 'dark')
+  assert.equal(native.skin, null)
+  assert.equal(native.visibleState.bodyColorScheme, 'dark')
+  assert.equal(native.visibleState.fileProperties, true)
+  assert.equal(native.visibleState.frontmatterCollapsed, true)
+  assert.equal(native.visibleState.structuredValueWarning, 'Type mismatch, expected Text')
+  assert.deepEqual(native.visibleState.values, {
+    due: '2026-10-01', finished: true, rating: '1e+21', meeting: '2026-09-29T14:45',
+    labels: ['research', 'next steps'], tags: ['migration', 'notes'], aliases: ['Migration Guide'],
+    unsupported: '{"nested":"value"}',
+  })
+  const registry = readFileSync(resolve(root, 'migration-fixtures/types.json'))
+  assert.deepEqual(native.visibleState.propertyTypes, JSON.parse(registry.toString()).types)
+  assert.equal(native.registrySha256, sha256(registry))
+  assert.equal(native.registryUnchanged, true)
+  assert.equal(native.userStateUnchanged, true)
+  const pair = proof.pairs.find((p: { surface: string }) => p.surface === 'imported-properties')
+  assert.equal(pair.tocktutor.path, 'Properties.md')
+  assert.equal(pair.tocktutor.contentSha256, pair.obsidian.contentSha256)
+  const reference = proof.migrationReview.importedPropertiesReference
+  assert.equal(reference.samePropertyTypes, true)
+  assert.equal(reference.unrelatedExistingCapturesUnchanged, 72)
+  assert.deepEqual(reference.publicationAllowlist, ['obsidian-imported-properties.png'])
+  assert.equal(reference.cleanup.verified, true)
+  assert.deepEqual(reference.cleanup.remaining, [])
+  assert.equal(reference.galleryVerification.bothImagesDecoded, true)
+  assert.equal(reference.galleryVerification.missingReference, false)
+  assert.equal(reference.galleryCleanup.serverStopped, true)
+  assert.deepEqual(reference.galleryCleanup.remaining, [])
+})
+
+test('keeps unmatched migration surfaces distinct from the four focused comparisons', () => {
   const additions = proof.migrationReview
   assert.equal(additions.allowlist.length, 6)
   assert.equal(additions.registryUnchanged, true)
@@ -160,7 +203,7 @@ test('keeps unmatched migration surfaces distinct from the three focused compari
     assert.ok(html.includes(`id="${id}"`), id)
     assert.ok(html.includes(`href="#${id}"`), id)
   }
-  assert.match(html, /remaining three additions are TockTutor feature evidence, not matched Obsidian comparisons/u)
+  assert.match(html, /remaining two additions are TockTutor feature evidence, not matched Obsidian comparisons/u)
   for (const name of additions.allowlist) {
     assert.ok(images.includes(`screenshots/${name}`), name)
     assert.equal(proof.captures[name].captureScope, 'real-desktop')

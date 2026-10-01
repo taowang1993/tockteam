@@ -1,6 +1,14 @@
 # TockTutor and Obsidian Content Alignment
 
-## Image Alignment and Diagram Editing Reference — 2026-09-30
+## Imported Property Controls Reference — 2026-10-01
+
+Surface 29 now pairs the unchanged TockTutor Imported Properties capture with `obsidian-imported-properties.png`, a genuine installed Obsidian 1.13.7 capture. The copied saved `Properties.md` is 447 bytes with SHA `d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478`, identical to the TockTutor capture: due 2026-10-01, finished checked, rating 1e+21, meeting 2026-09-29T14:45, the same list/tag/alias values, and the original structured object. The fixture's 162-byte type registry was copied only into the isolated vault's `.obsidian/types.json`; its SHA `5672e9e6ab76279528ce46c6239771225aed672d969af4688305761e6f4e6798` remains unchanged. The live native type manager matches all eight declared types.
+
+Obsidian uses its real File properties sidebar with the in-note Properties group collapsed. Its sidebar was widened through the app's own resize handle to 470 CSS pixels so the complete date-time, lists, alias, and structured value are legible. Native structured YAML remains an object and shows Type mismatch, expected Text; this is not TockTutor's Use Source Mode control. The capture is Live Preview, built-in dark/no skin, 1512 × 949 CSS pixels at DPR 2, producing a 3024 × 1898 PNG. Native body color-scheme is explicitly dark; the empty document inline scheme is recorded honestly. Capture-time errors/external requests are zero. The original user registry hash/mtime, copied note bytes, and copied type registry stayed unchanged. No note or property was edited for the reference.
+
+Only the new native PNG is published; all 72 existing captures remain byte-identical. Gallery totals are now 66 unique images and 73 files with seven supplements. Native root 73618, initial diagnostic root 72222, and inspection root 72043 stopped with their full recorded trees. See [the imported property reference report](../../../.beads/reports/2026-10-01-tocktutor-imported-properties-reference.md) and `content-alignment.json` for proof.
+
+## Historical Image Alignment and Diagram Editing Reference — 2026-09-30
 
 Source commit `83dba93c` corrects the inherited Crepe image-block seam, not the authored note. The third Markdown image was centered at x=864 while the document, first two images, and its own controls began at x=562; the upstream 100 px minimum height cropped the 96 px photo. The scoped shared recipe now removes auto-centering/minimum dimensions, keeps the image contained, and aligns its caption with the note. Rendered checks measure all three images at x=562 and the small image at 96 × 64.2578125, consistent with the 3872 × 2592 photo. `scripts/tocktutor-image-layout-checks.js` failed on the original rendered page and passes on the built/staged app. Eight appearances, opposite system appearance, 640/390 px layouts, and viewer zoom/exit/focus in all three modes passed. The 200 → 240 → 280 → Undo-to-240 save/reopen check again produced the exact prior saved note bytes; the 120 × 120 neighbor and Markdown caption/alt remain intact.
 

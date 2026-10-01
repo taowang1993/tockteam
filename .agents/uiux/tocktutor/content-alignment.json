@@ -19,9 +19,9 @@
     "skinId": null
   },
   "gallery": {
-    "uniqueImageSources": 65,
-    "captureCountLabel": "Visual Design Audit · 65 Captures",
-    "screenshotDirectoryTotal": 72,
+    "uniqueImageSources": 66,
+    "captureCountLabel": "Visual Design Audit · 66 Captures",
+    "screenshotDirectoryTotal": 73,
     "supplementalCaptures": [
       "obsidian-outline.png",
       "obsidian-quick-switcher.png",
@@ -45,6 +45,7 @@
       "obsidian-graph-local.png",
       "obsidian-image-resizing.png",
       "obsidian-image-viewer.png",
+      "obsidian-imported-properties.png",
       "obsidian-live-preview-lower.png",
       "obsidian-main-editor.png",
       "obsidian-mermaid-editing.png",
@@ -475,6 +476,11 @@
       "surface":"mermaid-editing",
       "screenshots":["tocktutor-mermaid-editing.png","obsidian-mermaid-editing.png"],
       "contentComparison":"byte-identical saved uppercase Mermaid fence in Live Preview; different editor controls and fence presentation"
+    },
+    {
+      "surface":"imported-properties",
+      "screenshots":["tocktutor-imported-properties.png","obsidian-imported-properties.png"],
+      "contentComparison":"byte-identical saved Properties.md and the same declared property types; native controls and structured-value presentation differ"
     }
   ],
   "pairs": [
@@ -850,13 +856,18 @@
       "surface":"mermaid-editing",
       "tocktutor":{"screenshot":"tocktutor-mermaid-editing.png","path":"Diagrams.md","mode":"live-preview","contentSha256":"c407aff19710d3cb8a8dd75f312caba27af7c11ec617e6d49e80db3efe09b007"},
       "obsidian":{"screenshot":"obsidian-mermaid-editing.png","path":"Diagrams.md","mode":"live-preview","contentSha256":"c407aff19710d3cb8a8dd75f312caba27af7c11ec617e6d49e80db3efe09b007"}
+    },
+    {
+      "surface":"imported-properties",
+      "tocktutor":{"screenshot":"tocktutor-imported-properties.png","path":"Properties.md","mode":"live-preview","contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478"},
+      "obsidian":{"screenshot":"obsidian-imported-properties.png","path":"Properties.md","mode":"live-preview","contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478"}
     }
   ],
   "migrationReview": {
     "sourceCommit": "23e2cbcb",
     "report": "../../../.beads/reports/2026-09-29-tocktutor-migration-review.md",
     "fixtures": "migration-fixtures",
-    "referenceStatus": "Image Viewer and Image Resizing pair byte-identical palace photo/content; Diagram Editing pairs the identical saved uppercase Mermaid fence with genuine installed Obsidian 1.13.7. TockTutor's Markdown image is now left-aligned and uncropped. Editor controls and lightbox geometry are not claimed identical. Three remaining migration captures stay TockTutor-only evidence.",
+    "referenceStatus": "Image Viewer, Image Resizing, Diagram Editing, and Imported Property Controls have genuine installed Obsidian 1.13.7 references with identical note content. Imported Properties also uses the same declared types; Obsidian shows its own structured-value warning, not TockTutor's Source Mode control. Controls and geometry are not claimed identical. Two Mermaid mode captures remain TockTutor-only evidence.",
     "imageViewerRefresh": {
       "sourceCommit":"8f3bed69", "asset":"Attachments/Potala_palace23.jpg",
       "report":"../../../.beads/reports/2026-09-30-tocktutor-palace-photo-refinement.md",
@@ -923,6 +934,19 @@
       "userRegistryUnchanged":true,"runtimeErrors":[],"externalRequests":[],
       "cleanup":{"verified":true,"rootPid":43631,"recordedPids":[43631,43642,43643,43644,44519,44520],"remaining":[]}
     },
+    "importedPropertiesReference": {
+      "product":"Obsidian 1.13.7","screenshot":"obsidian-imported-properties.png","report":"../../../.beads/reports/2026-10-01-tocktutor-imported-properties-reference.md",
+      "sameSavedBytes":true,"samePropertyTypes":true,"contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478","noteBytes":447,
+      "registrySha256":"5672e9e6ab76279528ce46c6239771225aed672d969af4688305761e6f4e6798","registryBytes":162,"registryUnchanged":true,"userRegistryUnchanged":true,
+      "geometry":[1512,949,2],"theme":"dark","skin":null,"filePropertiesWidth":470,"frontmatterCollapsed":true,
+      "captureMethod":"Genuine installed app in an isolated guarded vault; copied registry, file opened, native Show file properties and Toggle fold properties commands, app-scoped sidebar resize. No note/property editing or DOM styling overrides.",
+      "publicationAllowlist":["obsidian-imported-properties.png"],"unrelatedExistingCapturesUnchanged":72,"runtimeErrors":[],"externalRequests":[],
+      "galleryVerification":{"geometry":[1512,949,2],"surface":"imported-properties","bothImagesDecoded":true,"missingReference":false,"runtimeErrors":[],"failedRequests":[]},
+      "galleryCleanup":{"verified":true,"rootPid":74517,"recordedPids":[74517,74519,74520,74521],"remaining":[],"serverPid":74490,"serverStopped":true},
+      "cleanup":{"verified":true,"rootPid":73618,"recordedPids":[73618,73622,73623,73624,74001,74002],"remaining":[]},
+      "diagnosticCleanup":{"verified":true,"rootPid":72222,"recordedPids":[72222,72224,72225,72226,73293,73294],"remaining":[]},
+      "inspectCleanup":{"verified":true,"rootPid":72043,"recordedPids":[72043,72071,72072],"remaining":[]}
+    },
     "allowlist": ["tocktutor-image-resizing.png", "tocktutor-image-viewer.png", "tocktutor-imported-properties.png", "tocktutor-mermaid-editing.png", "tocktutor-mermaid-live-preview.png", "tocktutor-mermaid-reading.png"],
     "registryUnchanged": true,
     "exactSavedBytesVerified": ["Images.md", "Properties.md", "Diagrams.md"],
@@ -970,6 +994,13 @@
       "visibleState":{"widths":[240,120,96],"neighborHeight":120,"imagePixels":[3872,2592],"builtInDark":true,"configuredTheme":"obsidian","bodyColorScheme":"dark","rootColorScheme":""},
       "userStateUnchanged":true,"runtimeErrors":[],"runtimeErrorMonitoring":"Installed Obsidian archive in owned guarded Electron/CDP; zero capture-time console/page errors; original registry fingerprint unchanged.",
       "captureScope":"real-desktop","bytes":552773,"sha256":"0f6facd1f69a7de6a9b9b6c3bc003122fb8982c200a11ddea028eae289136a35"
+    },
+    "obsidian-imported-properties.png": {
+      "geometry":{"width":1512,"height":949,"deviceScaleFactor":2},"theme":"dark","skin":null,"route":"app://obsidian.md/index.html","path":"Properties.md","mode":"live-preview",
+      "contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478","registrySha256":"5672e9e6ab76279528ce46c6239771225aed672d969af4688305761e6f4e6798",
+      "product":"Obsidian 1.13.7","entry":"/Applications/Obsidian.app/Contents/Resources/app.asar","runtime":"Electron 42.3.0","capturedAt":"2026-10-01T00:04:15.789Z",
+      "visibleState":{"fileProperties":true,"frontmatterCollapsed":true,"propertyTypes":{"due":"date","finished":"checkbox","rating":"number","meeting":"datetime","labels":"multitext","tags":"tags","aliases":"aliases","unsupported":"text"},"values":{"due":"2026-10-01","finished":true,"rating":"1e+21","meeting":"2026-09-29T14:45","labels":["research","next steps"],"tags":["migration","notes"],"aliases":["Migration Guide"],"unsupported":"{\"nested\":\"value\"}"},"structuredValueType":"unknown","structuredValueWarning":"Type mismatch, expected Text","panel":{"x":1042,"y":40,"width":470,"height":909},"propertyRows":[{"key":"due","y":52,"height":29},{"key":"finished","y":81,"height":29},{"key":"rating","y":110,"height":29},{"key":"meeting","y":139,"height":29},{"key":"labels","y":168,"height":29},{"key":"tags","y":197,"height":29.5},{"key":"aliases","y":226.5,"height":29},{"key":"unsupported","y":255.5,"height":29}],"builtInDark":true,"configuredTheme":"obsidian","bodyColorScheme":"dark","rootColorScheme":""},
+      "registryUnchanged":true,"userStateUnchanged":true,"runtimeErrors":[],"runtimeErrorMonitoring":"Installed Obsidian archive in owned guarded Electron/CDP; zero capture-time console/page errors and external requests. Final console Errors: 0. Copied note/types and original user registry are byte-unchanged.","captureScope":"real-desktop","bytes":171089,"sha256":"3a0070ce4cc21eb102b9f3fc7511c356ecd650b73a068bd572088ab0dc683d32"
     },
     "tocktutor-imported-properties.png": {
       "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
