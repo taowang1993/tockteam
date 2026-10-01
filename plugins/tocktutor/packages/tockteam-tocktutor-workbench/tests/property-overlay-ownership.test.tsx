@@ -15,16 +15,19 @@ it.each([false, true])('keeps shared popover defaults unless local ownership is 
   expect(content.closest('[data-overlay-owner]') !== null).toBe(local)
 })
 
-it.each([false, true])('keeps shared alert-dialog defaults and its overlay together: %s', async local => {
+it.each([false, true])('keeps alert dialogs portaled and supports an owning modal layer: %s', async layered => {
   render(<div data-overlay-owner="true"><AlertDialog defaultOpen>
-    <AlertDialogContent {...(local ? { portalled: false } : {})}>
+    <AlertDialogContent {...(layered ? { className: 'z-[2147483647]', overlayClassName: 'z-[2147483646]' } : {})}>
       <AlertDialogTitle>Confirm Change</AlertDialogTitle>
       <AlertDialogDescription>Confirm the intended property change.</AlertDialogDescription>
     </AlertDialogContent>
   </AlertDialog></div>)
   const content = await screen.findByRole('alertdialog')
   const overlay = document.querySelector('[data-slot="alert-dialog-overlay"]')
-  expect(content.closest('[data-overlay-owner]') !== null).toBe(local)
+  expect(content.closest('[data-overlay-owner]')).toBeNull()
   expect(overlay).not.toBeNull()
-  expect(overlay?.closest('[data-overlay-owner]') !== null).toBe(local)
+  expect(overlay?.closest('[data-overlay-owner]')).toBeNull()
+  expect(content.classList.contains(layered ? 'z-[2147483647]' : 'z-50')).toBe(true)
+  expect(overlay?.classList.contains(layered ? 'z-[2147483646]' : 'z-50')).toBe(true)
+  expect(content.hasAttribute('overlayClassName')).toBe(false)
 })

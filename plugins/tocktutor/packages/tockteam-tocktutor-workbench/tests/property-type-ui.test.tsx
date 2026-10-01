@@ -29,11 +29,15 @@ it('keeps property menus in their owning workbench rather than behind its route'
   expect(screen.getByRole('menu').closest('[data-tockteam-tocktutor-route]')).toBeTruthy()
 })
 
-it('keeps confirmation content and its blocking overlay in the owning workbench', () => {
+it('uses the existing workbench modal layer outside translated sidebar ancestors', () => {
   render(<div data-tockteam-tocktutor-route="true"><MarkdownDocumentHeader editableProperties onChangePropertyType={async () => true} source={'---\naliases: [one, two]\n---\n'} /></div>)
   choose('aliases', 'Text')
-  expect(screen.getByRole('alertdialog').closest('[data-tockteam-tocktutor-route]')).toBeTruthy()
-  expect(document.querySelector('[data-slot="alert-dialog-overlay"]')?.closest('[data-tockteam-tocktutor-route]')).toBeTruthy()
+  const dialog = screen.getByRole('alertdialog')
+  const overlay = document.querySelector('[data-slot="alert-dialog-overlay"]')
+  expect(dialog.closest('[data-tockteam-tocktutor-route]')).toBeNull()
+  expect(overlay?.closest('[data-tockteam-tocktutor-route]')).toBeNull()
+  expect(dialog.classList.contains('z-[2147483647]')).toBe(true)
+  expect(overlay?.classList.contains('z-[2147483646]')).toBe(true)
 })
 
 it('keeps a failed conversion open, reports the cause, and supports retry or cancellation', async () => {
