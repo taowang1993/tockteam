@@ -8,6 +8,7 @@ import Reconciler from 'react-reconciler'
 import * as api from './api.mjs'
 import { createTrustedRaycastLineReader, TRUSTED_RAYCAST_INPUT_FRAME_BYTES } from './trusted-raycast-contract.ts'
 import { createUserRaycastStorage } from './user-raycast-storage.ts'
+import { isUserRaycastOAuthCleanupReasons } from './user-raycast-contract.ts'
 
 type Node = { type: string; props: Record<string, unknown>; children: Array<Node | string> }
 const root: Node = { type: 'root', props: {}, children: [] }
@@ -62,7 +63,11 @@ api.configureCompatibility({
   ...(mode === 'no-view' || mode === 'menu-bar' ? { storage, hud: (message: string) => send({ type: 'toast', extensionId, sessionId, revision, title: message.slice(0, 512), message: '', style: 'success' }) } : {}),
 })
 if (extensionId === 'linear') process.once('SIGTERM', () => {
-  void api.revokeUserRaycastOAuthTokens().then(() => process.exit(0), () => { console.error('Linear OAuth token revocation could not be confirmed'); process.exit(1) })
+  void api.revokeUserRaycastOAuthTokens().then(() => process.exit(0), (error: unknown) => {
+    const reasons = error instanceof Error && isUserRaycastOAuthCleanupReasons(error.cause) ? [...error.cause] : ['unknown']
+    // Flush only allowlisted codes on the private diagnostic pipe before exiting.
+    process.stderr.write(`${JSON.stringify({ type: 'oauth-cleanup', extensionId, sessionId, reasons })}\n`, () => process.exit(1))
+  })
 })
 const hostConfig: any = {
   supportsMutation: true, supportsPersistence: false, supportsHydration: false, isPrimaryRenderer: false, now: Date.now,

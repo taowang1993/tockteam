@@ -43,7 +43,7 @@ test('first-party OAuth cleanup stays honest under mocked provider failures', as
   symlinkSync(join(root, descriptor.artifactRoot, 'runtime/node_modules'), join(root, 'node_modules'))
   await buildUserRaycast(root)
   process.env.TOCKTEAM_USER_RAYCAST_ID = 'linear'
-  for (const scenario of ['success', 'http', 'unconfirmed-success', 'transport', 'sync-transport', 'timeout', 'mixed-revocation', 'repeated-failure', 'concurrent-failure', 'all-clients'] as const) {
+  for (const scenario of ['success', 'http', 'unconfirmed-success', 'unknown-status', 'transport', 'sync-transport', 'timeout', 'mixed-revocation', 'repeated-failure', 'concurrent-failure', 'all-clients', 'invalid-shared-cause'] as const) {
     await t.test(scenario, async () => {
       globalThis.fetch = async () => { throw new Error('Network prohibited by test') }
       // Each module instance owns only this scenario's fake clients.
@@ -70,16 +70,20 @@ test('first-party OAuth cleanup stays honest under mocked provider failures', as
         await client.setTokens({ access_token: 'fake-new-token', refresh_token: 'fake-new-token' })
         await client.removeTokens()
         assert.equal(requests.length, 3, 'a new token set receives its own cleanup')
-      } else if (scenario === 'http' || scenario === 'unconfirmed-success' || scenario === 'transport' || scenario === 'sync-transport') {
+      } else if (scenario === 'http' || scenario === 'unconfirmed-success' || scenario === 'unknown-status' || scenario === 'transport' || scenario === 'sync-transport') {
         const secret = 'fake-sensitive-token'
+        let bodyReads = 0
         globalThis.fetch = scenario === 'sync-transport'
           ? () => { throw new Error(`provider error includes ${secret}`) }
           : async () => {
             if (scenario === 'transport') throw new Error(`provider error includes ${secret}`)
-            return new Response(secret, { status: scenario === 'unconfirmed-success' ? 202 : 503 })
+            if (scenario === 'unknown-status') return { status: secret } as unknown as Response
+            const response = new Response(secret, { status: scenario === 'unconfirmed-success' ? 202 : 503 })
+            response.text = response.json = async () => { bodyReads++; throw new Error('Provider body must not be read') }
+            return response
           }
         await client.setTokens({ access_token: secret })
-        const reasons = [scenario === 'http' ? 'http-503' : scenario === 'unconfirmed-success' ? 'http-202' : 'transport']
+        const reasons = [scenario === 'http' ? 'http-503' : scenario === 'unconfirmed-success' ? 'http-202' : scenario === 'unknown-status' ? 'unknown' : 'transport']
         const check = (error: unknown) => {
           assert.ok(error instanceof Error)
           assert.doesNotMatch(JSON.stringify({ message: error.message, cause: error.cause }), /fake-sensitive-token/)
@@ -88,6 +92,7 @@ test('first-party OAuth cleanup stays honest under mocked provider failures', as
         }
         await assert.rejects(client.removeTokens(), check)
         await assert.rejects(revokeUserRaycastOAuthTokens(), check)
+        assert.equal(bodyReads, 0)
         assert.equal(await client.getTokens(), null)
       } else if (scenario === 'timeout') {
         let aborted = false
@@ -102,7 +107,8 @@ test('first-party OAuth cleanup stays honest under mocked provider failures', as
           })
         }
         await client.setTokens({ access_token: 'fake-timeout-token' })
-        await assert.rejects(client.removeTokens(), failure)
+        await assert.rejects(client.removeTokens(), { cause: ['timeout'] })
+        await assert.rejects(revokeUserRaycastOAuthTokens(), { cause: ['timeout'] })
         assert.equal(aborted, true)
         assert.equal(await client.getTokens(), null)
       } else if (scenario === 'mixed-revocation') {
@@ -113,8 +119,8 @@ test('first-party OAuth cleanup stays honest under mocked provider failures', as
           return new Response(null, { status: token === tokens[0] ? 400 : 200 })
         }
         await client.setTokens({ access_token: tokens[1], refresh_token: tokens[0] })
-        await assert.rejects(client.removeTokens(), failure)
-        await assert.rejects(revokeUserRaycastOAuthTokens(), failure)
+        await assert.rejects(client.removeTokens(), { cause: ['http-400'] })
+        await assert.rejects(revokeUserRaycastOAuthTokens(), { cause: ['http-400'] })
         assert.equal(await client.getTokens(), null)
         assert.deepEqual(seen.sort(), [...tokens].sort(), 'a successful token response must not hide another unconfirmed response')
       } else if (scenario === 'repeated-failure') {
@@ -133,18 +139,30 @@ test('first-party OAuth cleanup stays honest under mocked provider failures', as
         const results = await Promise.allSettled([client.removeTokens(), client.removeTokens()])
         assert.deepEqual(results.map(result => result.status), ['rejected', 'rejected'])
         assert.equal(await client.getTokens(), null)
+      } else if (scenario === 'invalid-shared-cause') {
+        // An SDK consumer can override its public method; its error details are not trusted.
+        const later = create()
+        globalThis.fetch = async () => new Response(null, { status: 200 })
+        for (const remove of [async () => { throw new Error('fake-sensitive-token', { cause: ['fake-sensitive-token'] }) }, () => { throw new Error('fake-sensitive-token') }]) {
+          client.removeTokens = remove
+          await later.setTokens({ access_token: 'fake-later-token' })
+          await assert.rejects(revokeUserRaycastOAuthTokens(), { message: 'Linear OAuth token revocation could not be confirmed', cause: ['unknown'] })
+          assert.equal(await later.getTokens(), null, 'a synchronous failure must not skip later clients')
+        }
       } else {
-        const later = create(), seen: string[] = []
+        const later = create(), third = create(), seen: string[] = []
         globalThis.fetch = async (_input, init) => {
           const token = new URLSearchParams(String(init?.body)).get('token')!
           seen.push(token)
+          if (token === 'fake-third-token') throw new Error('fake-sensitive-token')
           return new Response(null, { status: token === 'fake-first-token' ? 503 : 200 })
         }
         await client.setTokens({ access_token: 'fake-first-token' })
         await later.setTokens({ access_token: 'fake-later-token' })
-        await assert.rejects(revokeUserRaycastOAuthTokens(), failure)
-        assert.deepEqual(seen.sort(), ['fake-first-token', 'fake-later-token'])
-        assert.equal(await client.getTokens(), null); assert.equal(await later.getTokens(), null)
+        await third.setTokens({ access_token: 'fake-third-token' })
+        await assert.rejects(revokeUserRaycastOAuthTokens(), { cause: ['http-503', 'transport'] })
+        assert.deepEqual(seen.sort(), ['fake-first-token', 'fake-later-token', 'fake-third-token'])
+        assert.equal(await client.getTokens(), null); assert.equal(await later.getTokens(), null); assert.equal(await third.getTokens(), null)
       }
     })
   }

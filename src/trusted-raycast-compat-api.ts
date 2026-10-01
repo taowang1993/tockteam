@@ -100,7 +100,7 @@ export const Form = Object.assign(form, { TextField: component('raycast-text-fie
 type LinearAuthRequest = { endpoint: string; clientId: string; codeVerifier: string; redirectURI: string }
 const linearPkceClients = new Set<LinearPkceClient>()
 export async function revokeUserRaycastOAuthTokens(): Promise<void> {
-  const results = await Promise.allSettled([...linearPkceClients].map(client => client.removeTokens()))
+  const results = await Promise.allSettled([...linearPkceClients].map(async client => client.removeTokens()))
   const reasons = results.flatMap<UserRaycastOAuthCleanupReason>(result => result.status === 'fulfilled' ? []
     : result.reason instanceof Error && isUserRaycastOAuthCleanupReasons(result.reason.cause) ? result.reason.cause : ['unknown'])
   if (reasons.length) throw new Error('Linear OAuth token revocation could not be confirmed', { cause: [...new Set(reasons)].sort() })
