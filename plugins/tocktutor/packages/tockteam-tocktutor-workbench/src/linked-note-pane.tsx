@@ -1,3 +1,4 @@
+import { cn } from '@tockteam/ui'
 import { Alert } from '@tockteam/ui/alert'
 import { Button } from '@tockteam/ui/button'
 import { useEffect, type ReactNode } from 'react'
@@ -20,20 +21,22 @@ export function LinkedNotePane({ controller, id }: { controller: WorkbenchRouteC
   const current = (): boolean => controller.paneLifetimeFor(id) === lifetime
   const onSelect = (path: string): void => { if (current()) void controller.navigateLinkedView(id, path) }
   const retry = (): void => { if (current()) void controller.loadLinkedView(id) }
-  const property = controller.bindLinkedProperty(id)
+  const property = controller.bindPropertyActions(id)
   const title = LINKED_VIEW_TITLES[linked.kind]
   const loading = snapshot.linkedLoading === true || (snapshot.revision === null && snapshot.linkedError == null)
-  return <section onKeyDown={event => { event.stopPropagation() }} aria-label={`${title} Linked View`} data-pane-id={id} data-linked-kind={linked.kind} className="grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-[var(--tt-bg)]">
-    <header className="flex min-h-10 flex-wrap items-center gap-2 border-b border-[var(--tt-border)] bg-[var(--tt-panel)] px-3 py-1">
+  const save = snapshot.saveStatus !== 'saved' && <Button size="sm" variant="ghost" disabled={snapshot.saveStatus === 'saving' || snapshot.documentUnavailable} onClick={() => { if (current()) void controller.saveLinkedView(id) }}>{snapshot.saveStatus === 'saving' ? 'Saving…' : 'Save'}</Button>
+  return <section onKeyDown={event => { event.stopPropagation() }} aria-label={`${title} Linked View`} data-pane-id={id} data-linked-kind={linked.kind} className={cn('grid h-full min-h-0 min-w-0 overflow-hidden bg-[var(--tt-bg)]', linked.kind === 'properties' ? 'grid-rows-[minmax(0,1fr)]' : 'grid-rows-[auto_minmax(0,1fr)]')}>
+    {linked.kind !== 'properties' && <header className="flex min-h-10 flex-wrap items-center gap-2 border-b border-[var(--tt-border)] bg-[var(--tt-panel)] px-3 py-1">
       <h2 className="m-0 truncate text-sm" title={linked.path ?? undefined}>{title}{linked.path ? ` · ${linked.path}` : ''}</h2>
       <span className="text-xs text-[var(--tt-muted)]">{linked.sourceGroupId ? 'Bound' : linked.pinned ? 'Pinned' : 'Following Active Note'}{linked.sourceGroupId && linked.pinned ? ' · Pinned' : ''}</span>
       <span className="flex-1" />
-      {snapshot.saveStatus !== 'saved' && <Button size="sm" variant="ghost" disabled={snapshot.saveStatus === 'saving' || snapshot.documentUnavailable} onClick={() => { if (current()) void controller.saveLinkedView(id) }}>{snapshot.saveStatus === 'saving' ? 'Saving…' : 'Save'}</Button>}
+      {save}
       {linked.sourceGroupId && <Button size="sm" variant="ghost" onClick={() => { if (current()) controller.unlinkLinkedView(id) }}>Unlink</Button>}
       <Button size="sm" variant="ghost" disabled={!linked.path} aria-pressed={linked.pinned} onClick={() => { if (current()) controller.toggleLinkedPin(id) }}>{linked.pinned ? 'Unpin' : 'Pin'}</Button>
       <Button size="sm" variant="ghost" aria-label={`Close ${title} Linked View`} onClick={() => { if (current()) void controller.closePane(id) }}>Close</Button>
-    </header>
+    </header>}
     <div className={`min-h-0 min-w-0 overflow-auto ${linked.kind === 'graph' ? 'relative' : 'p-5'}`}>
+      {linked.kind === 'properties' && save}
       {snapshot.saveStatus === 'save-failed' && <Alert unstyled role="alert">{snapshot.message}</Alert>}
       {!linked.path ? <Alert unstyled role="status">No active editor note.</Alert>
         : loading ? <Alert unstyled role="status">Loading {title.toLocaleLowerCase()}…</Alert>
@@ -43,7 +46,7 @@ export function LinkedNotePane({ controller, id }: { controller: WorkbenchRouteC
                 {(linked.kind === 'backlinks' || linked.kind === 'outgoing-links' || linked.kind === 'graph') && snapshot.saveStatus !== 'saved' && <Alert unstyled role="status">Relationships reflect the saved note. Save to refresh.</Alert>}
                 {linked.kind === 'backlinks' && <NoteBacklinks links={snapshot.links} loading={snapshot.linksLoading === true} onSelect={onSelect} onRetry={retry} />}
                 {linked.kind === 'outgoing-links' && <NoteOutgoingLinks links={snapshot.links} loading={snapshot.linksLoading === true} onSelect={onSelect} onRetry={retry} />}
-                {linked.kind === 'properties' && <MarkdownDocumentHeader className="[&_dl]:grid-cols-1 [&_dt]:min-h-6 [&_dd]:pb-3 [&_dd_form]:basis-full" declaredTypes={controller.getObsidianPropertyTypes()} editableProperties source={snapshot.source} onAddProperty={key => property(key, '')} onSetProperty={property} />}
+                {linked.kind === 'properties' && <MarkdownDocumentHeader key={lifetime} className="[&_dl]:grid-cols-1 [&_dt]:min-h-6 [&_dd]:pb-3 [&_dd_form]:basis-full" declaredTypes={controller.getObsidianPropertyTypes()} editableProperties source={snapshot.source} propertyDrafts={controller.getPropertyDrafts(id)} onAddProperty={key => property.set(key, '')} onSetProperty={property.set} onRenameProperty={property.rename} onRemoveProperty={property.remove} />}
                 {linked.kind === 'outline' && <NoteOutlinePanel snapshot={snapshot} onJumpToLine={undefined} onNavigateHeading={async (headings, index) => {
                   if (!current() || !linked.path || !await controller.navigateLinkedView(id, linked.path)) return false
                   const editor = controller.getSnapshot()

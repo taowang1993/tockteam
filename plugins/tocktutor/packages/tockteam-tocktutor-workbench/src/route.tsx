@@ -103,7 +103,7 @@ import {
   replaceLivePreviewLine,
 } from './live-preview.ts'
 import { renderMarkdownHtml } from './rich-markdown.ts'
-import { parseFrontmatterProperties, setFrontmatterProperty, type PropertyValue } from './properties.ts'
+import { isValidPropertyName, parseFrontmatterProperties, removeFrontmatterProperty, renameFrontmatterProperty, setFrontmatterProperty, type PropertyValue } from './properties.ts'
 import { addBookmark, editBookmark as updateBookmark, getBookmark, loadBookmarks, remapBookmarks, removeBookmark as removeStoredBookmark, saveBookmarks, type Bookmark as TockTutorBookmark } from './bookmarks.ts'
 import { layoutGraph, projectGraph, type GraphPosition } from './graph.ts'
 import { BUILTIN_TEMPLATES, buildCaptureNote, buildJournalNote, expandTemplate, uniqueNotePath } from './capture.ts'
@@ -343,6 +343,7 @@ export interface WorkbenchRouteSnapshot {
   embeds?: readonly ResolvedEmbed[]
   entries: readonly VaultTreeEntry[]
   facets?: VaultFacetsResult | null
+  facetsStatus?: 'idle' | 'loading' | 'ready' | 'error'
   focusedPaneId: string
   focusMode?: boolean
   graph?: VaultGraphResult | null
@@ -737,6 +738,7 @@ function initialSnapshot(): WorkbenchRouteSnapshot {
     embeds: Object.freeze([]),
     entries: Object.freeze([]),
     facets: null,
+    facetsStatus: 'idle',
     focusedPaneId: 'pane-1',
     focusMode: false,
     graph: null,
@@ -829,6 +831,8 @@ export class WorkbenchRouteController {
   private vaultGeneration = 0
   private propertyTypes: { vault: VaultReference; values: ObsidianPropertyTypes } | null = null
   private propertyTypesAbort: AbortController | null = null
+  private facetsAbort: AbortController | null = null
+  private readonly propertyInputDrafts = new Map<string, Map<string, string>>()
   private shellSession: WorkbenchSession = createWorkbenchSession(ROUTE_PREFIX, null, 'pane-1')
   private readonly recentlyClosed: RouteTabSummary[] = []
   private readonly historyBack: string[] = []
@@ -1582,21 +1586,34 @@ export class WorkbenchRouteController {
     }
   }
 
+  getPropertySuggestions = () => ({
+    names: [...new Set([...(this.snapshot.facets?.properties.map(item => item.key) ?? []), ...Object.keys(this.getObsidianPropertyTypes())])].filter(isValidPropertyName),
+    tags: this.snapshot.facets?.tags.map(item => item.tag) ?? [],
+    status: this.snapshot.facetsStatus ?? 'idle',
+    incomplete: this.snapshot.facets?.complete === false || this.snapshot.facets?.truncated === true,
+    onRetry: () => { void this.loadFacets() },
+  })
+
   async loadFacets(): Promise<boolean> {
     const vault = this.snapshot.vault
-    if (vault === null) return false
-    const operation = this.nextOperation()
+    if (vault === null || this.disposed) return false
+    this.facetsAbort?.abort()
+    const abort = new AbortController()
+    this.facetsAbort = abort
+    const current = (): boolean => !this.disposed && !abort.signal.aborted && this.facetsAbort === abort && sameVault(this.snapshot.vault, vault)
+    this.update({ facets: null, facetsStatus: 'loading' })
     try {
-      const facets = remoteValue(await this.remote.tocktutorWorkbench.facets({ expectedVault: vault, limit: 1_000 }, operation.signal))
-      if (!this.current(operation.id, vault)
-        || facets.generation !== vault.generation
-        || !Array.isArray(facets.tags)
-        || !Array.isArray(facets.properties)
-        || facets.tags.length > 1_000
-        || facets.properties.length > 1_000) return false
-      this.update({ facets })
+      const facets = remoteValue(await this.remote.tocktutorWorkbench.facets({ expectedVault: vault, limit: 1_000 }, abort.signal))
+      if (!current()) return false
+      if (facets.generation !== vault.generation
+        || !Array.isArray(facets.tags) || !Array.isArray(facets.properties)
+        || facets.tags.length > 1_000 || facets.properties.length > 1_000
+        || facets.tags.some(item => typeof item.tag !== 'string')
+        || facets.properties.some(item => typeof item.key !== 'string')) throw new Error('Invalid suggestions')
+      this.update({ facets, facetsStatus: 'ready' })
       return true
     } catch {
+      if (current()) this.update({ facets: null, facetsStatus: 'error' })
       return false
     }
   }
@@ -2060,13 +2077,35 @@ export class WorkbenchRouteController {
     this.syncShell()
   }
 
-  bindLinkedProperty(id: string): (key: string, value: PropertyValue) => boolean {
+  getPropertyDrafts(id: string): Map<string, string> {
+    const { vault, path } = this.getPaneSnapshot(id)
+    if (!vault || !path) return new Map()
+    // Input drafts belong to a vault/note, not a view or editing mode.
+    const key = JSON.stringify([vault.id, path])
+    let drafts = this.propertyInputDrafts.get(key)
+    if (!drafts) { drafts = new Map(); this.propertyInputDrafts.set(key, drafts) }
+    return drafts
+  }
+
+  bindPropertyActions(id: string) {
     const edit = this.bindPaneEdit(id)
-    return (key, value) => {
+    const lifetime = this.paneLifetimeFor(id)
+    const change = (transform: (source: string) => string): boolean => {
       const snapshot = this.getPaneSnapshot(id)
-      if (!this.pane(id)?.linkedView || snapshot.documentKind !== 'markdown' || snapshot.documentUnavailable) return false
-      try { return edit(setFrontmatterProperty(snapshot.source, key, value)) } catch { return false }
+      if (this.paneLifetimeFor(id) !== lifetime || snapshot.documentKind !== 'markdown' || snapshot.documentUnavailable
+        || (!this.pane(id)?.linkedView && snapshot.mode === 'reading')) return false
+      try { return edit(transform(snapshot.source)) } catch { return false }
     }
+    return {
+      set: (key: string, value: PropertyValue) => change(source => setFrontmatterProperty(source, key, value)),
+      rename: (from: string, to: string) => change(source => renameFrontmatterProperty(source, from, to)),
+      remove: (key: string) => change(source => removeFrontmatterProperty(source, key)),
+    }
+  }
+
+  bindLinkedProperty(id: string): (key: string, value: PropertyValue) => boolean {
+    const set = this.bindPropertyActions(id).set
+    return (key, value) => !!this.pane(id)?.linkedView && set(key, value)
   }
 
   async saveLinkedView(id: string): Promise<boolean> {
@@ -2476,6 +2515,8 @@ export class WorkbenchRouteController {
     this.propertyTypes = null
     this.propertyTypesAbort?.abort()
     this.propertyTypesAbort = null
+    this.facetsAbort?.abort()
+    this.facetsAbort = null
     this.cancelTreeRefresh()
     for (const load of this.linkedLoads.values()) load.abort.abort()
     this.linkedLoads.clear()
@@ -2511,6 +2552,7 @@ export class WorkbenchRouteController {
       embeds: Object.freeze([]),
       entries: Object.freeze([]),
       facets: null,
+      facetsStatus: 'idle',
       focusedPaneId: 'pane-1',
       graph: null,
       graphLayout: Object.freeze([]),
@@ -4519,6 +4561,8 @@ export class WorkbenchRouteController {
     this.operation += 1
     this.operationAbort?.abort()
     this.propertyTypesAbort?.abort()
+    this.facetsAbort?.abort()
+    this.propertyInputDrafts.clear()
     this.cancelRecoveryOperations()
     this.cancelEmbedOperation()
     for (const load of this.linkedLoads.values()) load.abort.abort()
@@ -5625,13 +5669,13 @@ function boundPaneProps(props: TockTutorRouteViewProps, id: string): TockTutorRo
   const controller = props.paneController!
   const snapshot = controller.getPaneSnapshot(id)
   const lifetime = controller.paneLifetimeFor(id)
-  const bound = { ...props, snapshot, nativeNoteActions: id === props.snapshot.focusedPaneId ? props.nativeNoteActions ?? null : null }
+  const bound = { ...props, snapshot, onSetProperty: controller.bindPropertyActions(id).set, nativeNoteActions: id === props.snapshot.focusedPaneId ? props.nativeNoteActions ?? null : null }
   // Delayed editor/menu callbacks may act only for the exact focused view that rendered them.
   const owns = (): boolean => {
     const current = controller.getSnapshot()
     return controller.paneLifetimeFor(id) === lifetime && current.focusedPaneId === id && current.path === snapshot.path && snapshot.vault !== null && sameVault(current.vault, snapshot.vault)
   }
-  for (const name of ['onMode', 'onSelectionChange', 'onSetProperty', 'onToggleTask', 'onRenameTitle', 'onMoveNote', 'onPrepareNoteMerge', 'onAddBookmark', 'onEditBookmark', 'onRemoveBookmark', 'onRevealFile', 'onAttachFiles', 'onUploadImage', 'onCanvasChange', 'onOpenInternalLink', 'onTrashCurrent', 'onLoadRelationships', 'onOpenRecovery'] as const) {
+  for (const name of ['onMode', 'onSelectionChange', 'onToggleTask', 'onRenameTitle', 'onMoveNote', 'onPrepareNoteMerge', 'onAddBookmark', 'onEditBookmark', 'onRemoveBookmark', 'onRevealFile', 'onAttachFiles', 'onUploadImage', 'onCanvasChange', 'onOpenInternalLink', 'onTrashCurrent', 'onLoadRelationships', 'onOpenRecovery'] as const) {
     const callback = props[name]
     if (callback) Object.assign(bound, { [name]: (...args: never[]) => owns() ? (callback as (...args: never[]) => unknown)(...args) : false })
   }
@@ -5670,6 +5714,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const backlinkLabel = `${String(backlinkCount)} backlink${backlinkCount === 1 ? '' : 's'}`
   const documents = snapshot.entries.filter(entry => entry.kind === 'document' && supportedDocument(entry.path))
   const focusedPane = snapshot.panes.find(pane => pane.id === snapshot.focusedPaneId)
+  const propertyActions = props.paneController?.bindPropertyActions(snapshot.focusedPaneId)
   const baseFile = useMemo(() => {
     if (snapshot.documentKind !== 'base' || snapshot.path === null) return undefined
     const entry = snapshot.entries.find(entry => entry.path === snapshot.path && entry.kind === 'document')
@@ -6371,6 +6416,9 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 embeds={snapshot.embeds}
                 declaredTypes={props.paneController?.getObsidianPropertyTypes()}
                 onAddProperty={key => props.onSetProperty?.(key, '') ?? false}
+                onRenameProperty={propertyActions?.rename}
+                onRemoveProperty={propertyActions?.remove}
+                propertyDrafts={props.paneController?.getPropertyDrafts(snapshot.focusedPaneId)}
                 onEdit={props.onEdit}
                 onEditSource={() => { props.onMode('source') }}
                 {...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle })}

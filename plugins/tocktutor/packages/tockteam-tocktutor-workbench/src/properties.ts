@@ -31,7 +31,12 @@ export type PropertyRenameResult =
 
 export const MAX_FRONTMATTER_BYTES = 1_000_000
 export const MAX_PROPERTIES = 1_000
-const KEY = /^[A-Za-z_][A-Za-z0-9_-]{0,127}$/u
+const KEY = /^[\p{L}\p{N}_][\p{L}\p{N}_. -]*$/u
+
+export function isValidPropertyName(key: unknown): key is string {
+  return typeof key === 'string' && key.length <= 128 && key.trim() === key && KEY.test(key)
+    && !['__proto__', 'constructor', 'prototype'].includes(key)
+}
 
 interface PropertyRange extends FrontmatterProperty {
   editable: boolean
@@ -135,12 +140,12 @@ function ranges(source: string): PropertyRange[] {
   for (let index = 0; index < lines.length && properties.length < MAX_PROPERTIES; index += 1) {
     const line = lines[index]![0]
     const content = line.replace(/(?:\r\n|\n|\r)$/u, '')
-    const match = content.match(/^([A-Za-z_][A-Za-z0-9_-]{0,127}):(?:\s*(.*))?$/u)
-    if (match === null) {
+    const match = content.match(/^([^:]+):(?:[ \t]*(.*))?$/u)
+    const key = match?.[1]?.trimEnd()
+    if (match === null || !isValidPropertyName(key)) {
       offset += line.length
       continue
     }
-    const key = match[1]!
     let end = offset + line.length
     const items: string[] = []
     let editable = true
@@ -200,9 +205,9 @@ function serializedProperty(key: string, value: PropertyValue, eol: string): str
 }
 
 export function setFrontmatterProperty(source: string, key: string, value: PropertyValue): string {
-  if (!KEY.test(key)) throw new Error('The property name is invalid.')
+  if (!isValidPropertyName(key)) throw new Error('The property name is invalid.')
   if (new TextEncoder().encode(source).byteLength > MAX_FRONTMATTER_BYTES) throw new Error('This note is too large to edit properties. Use Source Mode.')
-  const eol = source.includes('\r\n') ? '\r\n' : '\n'
+  const eol = source.match(/\r\n|\n|\r/u)?.[0] ?? '\n'
   const properties = ranges(source)
   const matches = properties.filter(property => property.key.toLocaleLowerCase() === key.toLocaleLowerCase())
   const existing = matches[0]
@@ -218,15 +223,32 @@ export function setFrontmatterProperty(source: string, key: string, value: Prope
 }
 
 export function renameFrontmatterProperty(source: string, from: string, to: string): string {
-  if (!KEY.test(from) || !KEY.test(to)) throw new Error('The property name is invalid.')
+  if (!isValidPropertyName(from) || !isValidPropertyName(to)) throw new Error('The property name is invalid.')
   const properties = ranges(source)
-  const sourceProperty = properties.find(property => property.key.toLocaleLowerCase() === from.toLocaleLowerCase())
+  const matches = properties.filter(property => property.key.toLocaleLowerCase() === from.toLocaleLowerCase())
+  if (matches.length > 1) throw new Error('Duplicate properties must be edited in Source Mode.')
+  const sourceProperty = matches[0]
   if (sourceProperty === undefined) return source
   if (properties.some(property => property.key.toLocaleLowerCase() === to.toLocaleLowerCase() && property !== sourceProperty)) {
     throw new Error('The target property already exists.')
   }
   const prefixLength = sourceProperty.key.length
   return `${source.slice(0, sourceProperty.start)}${to}${source.slice(sourceProperty.start + prefixLength)}`
+}
+
+export function removeFrontmatterProperty(source: string, key: string): string {
+  if (!isValidPropertyName(key)) throw new Error('The property name is invalid.')
+  if (new TextEncoder().encode(source).byteLength > MAX_FRONTMATTER_BYTES) throw new Error('This note is too large to edit properties. Use Source Mode.')
+  const matches = ranges(source).filter(property => property.key.toLocaleLowerCase() === key.toLocaleLowerCase())
+  if (matches.length > 1) throw new Error('Duplicate properties must be edited in Source Mode.')
+  const property = matches[0]
+  if (!property) return source
+  if (!property.editable) throw new Error('Structured property values must be edited in Source Mode.')
+  return source.slice(0, property.start) + source.slice(property.end)
+}
+
+export function normalizePropertyListValue(key: string, value: string): string {
+  return key === 'tags' || key === 'cssclasses' ? value.trim().replace(/^#+/u, '').replace(/\s+/gu, '-') : value
 }
 
 export async function renamePropertiesRecoverably(
