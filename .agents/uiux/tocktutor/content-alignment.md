@@ -1,6 +1,14 @@
 # TockTutor and Obsidian Content Alignment
 
-## Imported Property Controls Reference — 2026-10-01
+## Imported Property Controls Pair Retake — 2026-10-01
+
+Retook only `tocktutor-imported-properties.png` and `obsidian-imported-properties.png` in fresh isolated Desktop runs. TockTutor uses the existing build from `87f870a9`, checked out at `705a14a0`, without any source edits, rebuild, or staging. Properties appears in the shared right sidebar beside the full-height note. Both apps reopen the same previously verified 447-byte saved `Properties.md` (SHA `d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478`) and identical 162-byte imported type registry (SHA `5672e9e6ab76279528ce46c6239771225aed672d969af4688305761e6f4e6798`). Both sidebars are 470 CSS pixels wide, with all eight rows visible and duplicate in-note properties collapsed. TockTutor retains Use Source Mode for structured YAML; Obsidian retains its native object and Type mismatch, expected Text warning. This is not a new save test or a claim of identical controls.
+
+Each capture verifies Live Preview, built-in dark/no skin, 1512 × 949 CSS pixels at DPR 2, 3024 × 1898 PNG pixels, and zero capture-time errors/external requests. TockTutor's inline document color-scheme is dark and root/body skins are absent; Obsidian's body owns its native dark scheme, with empty inline document scheme recorded honestly. Copied note/types and the user's Obsidian registry hash/mtime remain unchanged. Full owned trees for TockTutor 23645, Obsidian 24648, and gallery 25341 stopped with no descendants; gallery server 25330 stopped and its port closed.
+
+Removed only the duplicate Surface 30 section and index link; its historical report images remain intact. The gallery ends at Surface 29, with 66 unique images, 73 screenshot files, and seven supplements. Transactional publication preserved all 71 unrelated screenshot files. The live gallery decoded both new images, confirmed the counts and removed surface, and recorded zero runtime errors, failed requests, or HTTP failures. See [the pair retake report](../../../.beads/reports/2026-10-01-tocktutor-imported-properties-retake.md) and `content-alignment.json`.
+
+## Historical Imported Property Controls Reference — 2026-10-01
 
 Surface 29 now pairs the unchanged TockTutor Imported Properties capture with `obsidian-imported-properties.png`, a genuine installed Obsidian 1.13.7 capture. The copied saved `Properties.md` is 447 bytes with SHA `d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478`, identical to the TockTutor capture: due 2026-10-01, finished checked, rating 1e+21, meeting 2026-09-29T14:45, the same list/tag/alias values, and the original structured object. The fixture's 162-byte type registry was copied only into the isolated vault's `.obsidian/types.json`; its SHA `5672e9e6ab76279528ce46c6239771225aed672d969af4688305761e6f4e6798` remains unchanged. The live native type manager matches all eight declared types.
 

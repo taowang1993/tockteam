@@ -13,11 +13,11 @@ const links = [...html.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].
 const sha256 = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex')
 
 test('accounts for every gallery and supplemental capture without stale links', () => {
-  assert.match(html, /Visual Design Audit · 68 Captures/u)
+  assert.match(html, /Visual Design Audit · 66 Captures/u)
   assert.match(html, /Built-in Dark Theme · No Active Skin/u)
   assert.doesNotMatch(html, /UIUX Comparison/u)
   assert.doesNotMatch(html, /Tag and Tab Polish|id="polish"/u)
-  assert.equal(new Set(images).size, 68)
+  assert.equal(new Set(images).size, 66)
   assert.deepEqual(images, links)
   const actual = readdirSync(resolve(root, 'screenshots')).sort()
   assert.deepEqual(actual, proof.gallery.allowlist)
@@ -36,26 +36,10 @@ test('accounts for every gallery and supplemental capture without stale links', 
   assert.match(html, /id="reviews"[\s\S]*?Not Applicable/u)
 })
 
-test('shows both shared right sidebar views with full-resolution links to the verified captures', () => {
-  const section = /<section class="surface" id="right-sidebar">([\s\S]*?)<\/section>/u.exec(html)?.[1]
-  assert.ok(section, 'Shared Right Sidebar section is present')
-  assert.match(html, /href="#right-sidebar"/u)
-  const sidebarProof = JSON.parse(readFileSync(resolve('.beads/reports/2026-10-01-tocktutor-properties-sidebar.json'), 'utf8'))
-  const sources = ['tocktutor-properties-right-sidebar.png', 'tocktutor-assistant-right-sidebar.png'].map(name => `../../../.beads/reports/${name}`)
-  assert.deepEqual([...section.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => match[1]), sources)
-  assert.deepEqual([...section.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].map(match => match[1]), sources)
-  assert.match(section, /no new Obsidian reference/u)
-  for (const source of sources) {
-    const capture = sidebarProof.captures[source.split('/').at(-1)!]
-    const bytes = readFileSync(resolve(root, source))
-    assert.equal(sha256(bytes), capture.sha256)
-    assert.deepEqual([bytes.readUInt32BE(16), bytes.readUInt32BE(20)], [3024, 1898])
-    assert.deepEqual(capture.geometry, [1512, 949, 2])
-    assert.equal(capture.theme, 'dark')
-    assert.equal(capture.skin, null)
-  }
-  assert.deepEqual(sidebarProof.behavior.runtimeErrors, [])
-  assert.ok(sidebarProof.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
+test('ends at Imported Property Controls without a duplicate Surface 30', () => {
+  assert.doesNotMatch(html, /Surface 30|id="right-sidebar"|href="#right-sidebar"|Shared Right Sidebar/u)
+  assert.equal([...html.matchAll(/<section class="surface"/gu)].length, 29)
+  assert.equal([...html.matchAll(/<section class="surface" id="([^"]+)"/gu)].at(-1)?.[1], 'imported-properties')
 })
 
 test('pairs the Image Viewer with the verified installed Obsidian reference', () => {
@@ -213,6 +197,33 @@ test('pairs Imported Property Controls with genuine Obsidian and the identical s
   assert.equal(reference.galleryVerification.missingReference, false)
   assert.equal(reference.galleryCleanup.serverStopped, true)
   assert.deepEqual(reference.galleryCleanup.remaining, [])
+  const refresh = proof.migrationReview.importedPropertiesRefresh
+  assert.ok(refresh, 'The pair has fresh capture evidence')
+  assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-imported-properties.png', 'obsidian-imported-properties.png'])
+  assert.equal(refresh.unrelatedExistingCapturesUnchanged, 71)
+  assert.equal(refresh.sameSavedBytes, true)
+  assert.equal(refresh.samePropertyTypes, true)
+  assert.equal(refresh.reusesExistingBuild, true)
+  const current = proof.captures['tocktutor-imported-properties.png']
+  assert.equal(current.sourceCommit, refresh.sourceCommit)
+  assert.equal(current.visibleState.rightSidebar, true)
+  assert.equal(current.visibleState.fullHeightNote, true)
+  assert.equal(current.visibleState.rootColorScheme, 'dark')
+  assert.equal(current.visibleState.rootSkin, null)
+  assert.equal(current.visibleState.bodySkin, null)
+  const { unsupported: nativeObject, ...editableValues } = native.visibleState.values
+  assert.equal(nativeObject, '{"nested":"value"}')
+  assert.deepEqual(current.visibleState.values, editableValues)
+  assert.equal(current.visibleState.unsupportedSourceFallback, true)
+  assert.deepEqual(current.visibleState.propertyTypes, native.visibleState.propertyTypes)
+  assert.equal(current.registrySha256, native.registrySha256)
+  assert.equal(current.registryUnchanged, true)
+  assert.ok(refresh.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
+  assert.equal(refresh.galleryVerification.bothImagesDecoded, true)
+  assert.equal(refresh.galleryVerification.surface30Absent, true)
+  assert.deepEqual(refresh.galleryVerification.runtimeErrors, [])
+  assert.equal(refresh.galleryCleanup.serverStopped, true)
+  assert.deepEqual(refresh.galleryCleanup.remaining, [])
 })
 
 test('keeps unmatched migration surfaces distinct from the four focused comparisons', () => {
@@ -230,7 +241,8 @@ test('keeps unmatched migration surfaces distinct from the four focused comparis
     assert.ok(images.includes(`screenshots/${name}`), name)
     assert.equal(proof.captures[name].captureScope, 'real-desktop')
     const expectedCommit = name === 'tocktutor-image-viewer.png' ? additions.imageViewerRefresh.sourceCommit
-      : name === 'tocktutor-image-resizing.png' ? additions.imageLayoutRefresh.sourceCommit : additions.sourceCommit
+      : name === 'tocktutor-image-resizing.png' ? additions.imageLayoutRefresh.sourceCommit
+        : name === 'tocktutor-imported-properties.png' ? additions.importedPropertiesRefresh.sourceCommit : additions.sourceCommit
     assert.equal(proof.captures[name].sourceCommit, expectedCommit)
   }
   const fixtures = resolve(root, additions.fixtures)

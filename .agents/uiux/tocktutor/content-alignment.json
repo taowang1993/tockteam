@@ -19,8 +19,8 @@
     "skinId": null
   },
   "gallery": {
-    "uniqueImageSources": 68,
-    "captureCountLabel": "Visual Design Audit · 68 Captures",
+    "uniqueImageSources": 66,
+    "captureCountLabel": "Visual Design Audit · 66 Captures",
     "screenshotDirectoryTotal": 73,
     "supplementalCaptures": [
       "obsidian-outline.png",
@@ -947,6 +947,22 @@
       "diagnosticCleanup":{"verified":true,"rootPid":72222,"recordedPids":[72222,72224,72225,72226,73293,73294],"remaining":[]},
       "inspectCleanup":{"verified":true,"rootPid":72043,"recordedPids":[72043,72071,72072],"remaining":[]}
     },
+    "importedPropertiesRefresh": {
+      "sourceCommit":"87f870a9","checkoutCommit":"705a14a0","reusesExistingBuild":true,
+      "report":"../../../.beads/reports/2026-10-01-tocktutor-imported-properties-retake.md",
+      "publicationAllowlist":["tocktutor-imported-properties.png","obsidian-imported-properties.png"],"unrelatedExistingCapturesUnchanged":71,
+      "sameSavedBytes":true,"samePropertyTypes":true,"noteBytes":447,"contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478",
+      "registryBytes":162,"registrySha256":"5672e9e6ab76279528ce46c6239771225aed672d969af4688305761e6f4e6798","registryUnchanged":true,"userRegistryUnchanged":true,
+      "geometry":[1512,949,2],"theme":"dark","skin":null,"sidebarWidths":[470,470],"frontmatterCollapsed":true,
+      "captureMethod":"Fresh isolated guarded Desktop/CDP runs; reopened previously verified saved note and copied type registry, real linked Properties/native File properties controls and sidebar resizing. No note editing, new save test, custom DOM styling, source edits, build or stage.",
+      "runtimeErrors":[],"externalRequests":[],"startupWarnings":["Electron development CSP warning","Vue compile-time feature flags warning"],
+      "cleanup":[
+        {"id":"d7690f13-72be-4976-b235-a62c26413be0","stopped":true,"rootPid":23645,"recordedPids":[23645,23647,23648,23649,23650,23654,23658,23765,23766,23767,23768,23769,23770,23771,23773,23855,24031,24032,24034,24035],"remaining":[]},
+        {"id":"5e3e7f7e-218d-4892-9865-6625d3fddaa3","stopped":true,"rootPid":24648,"recordedPids":[24648,24650,24651,24652,24898,24899],"remaining":[]}
+      ],
+      "galleryVerification":{"geometry":[1512,949,2],"surface":"imported-properties","bothImagesDecoded":true,"surface30Absent":true,"surfaceCount":29,"imageCount":66,"missingReference":false,"runtimeErrors":[],"failedRequests":[],"httpErrors":[]},
+      "galleryCleanup":{"id":"ae11bd6f-f8d1-41fc-9372-5821ebe4d451","stopped":true,"rootPid":25341,"recordedPids":[25341,25343,25344,25345],"remaining":[],"serverPid":25330,"serverStopped":true,"portClosed":true}
+    },
     "allowlist": ["tocktutor-image-resizing.png", "tocktutor-image-viewer.png", "tocktutor-imported-properties.png", "tocktutor-mermaid-editing.png", "tocktutor-mermaid-live-preview.png", "tocktutor-mermaid-reading.png"],
     "registryUnchanged": true,
     "exactSavedBytesVerified": ["Images.md", "Properties.md", "Diagrams.md"],
@@ -998,18 +1014,23 @@
     "obsidian-imported-properties.png": {
       "geometry":{"width":1512,"height":949,"deviceScaleFactor":2},"theme":"dark","skin":null,"route":"app://obsidian.md/index.html","path":"Properties.md","mode":"live-preview",
       "contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478","registrySha256":"5672e9e6ab76279528ce46c6239771225aed672d969af4688305761e6f4e6798",
-      "product":"Obsidian 1.13.7","entry":"/Applications/Obsidian.app/Contents/Resources/app.asar","runtime":"Electron 42.3.0","capturedAt":"2026-10-01T00:04:15.789Z",
+      "product":"Obsidian 1.13.7","entry":"/Applications/Obsidian.app/Contents/Resources/app.asar","runtime":"Electron 42.3.0","capturedAt":"2026-10-01T05:52:33.541Z",
       "visibleState":{"fileProperties":true,"frontmatterCollapsed":true,"propertyTypes":{"due":"date","finished":"checkbox","rating":"number","meeting":"datetime","labels":"multitext","tags":"tags","aliases":"aliases","unsupported":"text"},"values":{"due":"2026-10-01","finished":true,"rating":"1e+21","meeting":"2026-09-29T14:45","labels":["research","next steps"],"tags":["migration","notes"],"aliases":["Migration Guide"],"unsupported":"{\"nested\":\"value\"}"},"structuredValueType":"unknown","structuredValueWarning":"Type mismatch, expected Text","panel":{"x":1042,"y":40,"width":470,"height":909},"propertyRows":[{"key":"due","y":52,"height":29},{"key":"finished","y":81,"height":29},{"key":"rating","y":110,"height":29},{"key":"meeting","y":139,"height":29},{"key":"labels","y":168,"height":29},{"key":"tags","y":197,"height":29.5},{"key":"aliases","y":226.5,"height":29},{"key":"unsupported","y":255.5,"height":29}],"builtInDark":true,"configuredTheme":"obsidian","bodyColorScheme":"dark","rootColorScheme":""},
-      "registryUnchanged":true,"userStateUnchanged":true,"runtimeErrors":[],"runtimeErrorMonitoring":"Installed Obsidian archive in owned guarded Electron/CDP; zero capture-time console/page errors and external requests. Final console Errors: 0. Copied note/types and original user registry are byte-unchanged.","captureScope":"real-desktop","bytes":171089,"sha256":"3a0070ce4cc21eb102b9f3fc7511c356ecd650b73a068bd572088ab0dc683d32"
+      "registryUnchanged":true,"userStateUnchanged":true,"runtimeErrors":[],"runtimeErrorMonitoring":"Fresh installed Obsidian archive in owned guarded Electron/CDP; zero capture-time console/page errors and external requests. Final console Errors: 0. Copied note/types and original user registry are byte-unchanged; full owned tree stopped.","captureScope":"real-desktop","bytes":171031,"sha256":"e4d1859abb755813f2c7a1c6f9e3e3081a20ea1e746af4e14dd9c5027c2867d0"
     },
     "tocktutor-imported-properties.png": {
       "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
       "route":"/tocktutor/Properties.md", "path":"Properties.md", "mode":"live-preview",
-      "contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478",
-      "bytes":220626, "sha256":"2ac250ee65a5ff260e38487869fd7453c149329e161c62aa605f52d7be6bf842",
-      "sourceCommit":"23e2cbcb", "capturedAt":"2026-09-29T13:14:36.712Z",
-      "visibleState":{"linkedProperties":true,"nullDateAndCheckbox":true,"exponentNumber":true,"reopened":true,"unsupportedSourceFallback":true},
-      "runtimeErrors":[], "runtimeErrorMonitoring":"Owned guarded Desktop/CDP; console/pageerror monitoring and final session console error check: zero errors.", "captureScope":"real-desktop"
+      "contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478","registrySha256":"5672e9e6ab76279528ce46c6239771225aed672d969af4688305761e6f4e6798","registryUnchanged":true,
+      "bytes":217887, "sha256":"25d2656f348778df968bc1bf4275cde1fa081fc1e4632d946d939519451ce010",
+      "sourceCommit":"87f870a9", "capturedAt":"2026-10-01T05:51:49.129Z",
+      "visibleState":{"linkedProperties":true,"rightSidebar":true,"fullHeightNote":true,"frontmatterCollapsed":true,"rootColorScheme":"dark","rootSkin":null,"bodySkin":null,"exponentNumber":true,"reopened":true,"unsupportedSourceFallback":true,
+        "values":{"due":"2026-10-01","finished":true,"rating":"1e+21","meeting":"2026-09-29T14:45","labels":["research","next steps"],"tags":["migration","notes"],"aliases":["Migration Guide"]},
+        "propertyTypes":{"due":"date","finished":"checkbox","rating":"number","meeting":"datetime","labels":"multitext","tags":"tags","aliases":"aliases","unsupported":"text"},
+        "controlTypes":["date","checkbox","number","datetime-local","list","list","list","source"],
+        "panel":{"x":1042,"y":40,"width":470,"height":909},"editor":{"x":320,"y":40,"width":722,"height":909},
+        "propertyRows":[{"key":"due","y":176,"bottom":248},{"key":"finished","y":248,"bottom":304},{"key":"rating","y":304,"bottom":376},{"key":"meeting","y":376,"bottom":448},{"key":"labels","y":448,"bottom":548},{"key":"tags","y":548,"bottom":648},{"key":"aliases","y":648,"bottom":748},{"key":"unsupported","y":748,"bottom":812}]},
+      "runtimeErrors":[], "runtimeErrorMonitoring":"Fresh owned guarded Desktop/CDP; capture-time console/pageerror and external-request monitoring plus final session console Errors: 0. Note/types unchanged and full owned tree stopped. Two development startup warnings recorded separately.", "captureScope":"real-desktop"
     },
     "tocktutor-mermaid-live-preview.png": {
       "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
