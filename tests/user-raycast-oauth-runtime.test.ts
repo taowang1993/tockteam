@@ -70,7 +70,7 @@ test('mocked shutdown rejection or timeout stays visible and stops every owned p
     } finally { rmSync(root, { recursive: true, force: true }) }
   })
   await buildUserRaycast(runtime)
-  for (const scenario of ['http', 'unconfirmed-success', 'transport', 'timeout', 'fragmented', 'extra-field', 'stale-session', 'no-frame', 'early-frame', 'interrupted'] as const) {
+  for (const scenario of ['http', 'unauthorized', 'unconfirmed-success', 'transport', 'timeout', 'fragmented', 'extra-field', 'stale-session', 'no-frame', 'early-frame', 'interrupted'] as const) {
     const folder = join(root, scenario)
     mkdirSync(folder)
     writeFileSync(join(folder, 'package.json'), JSON.stringify({ name: 'linear', title: 'Offline Cleanup Fixture', commands: [{ name: 'search-issues', title: 'Search Issues', mode: 'view' }] }))
@@ -78,7 +78,7 @@ test('mocked shutdown rejection or timeout stays visible and stops every owned p
       const React = require('react'); const { OAuth, List } = require('@raycast/api');
       global.fetch = async (url, options) => {
         if (url !== 'https://api.linear.app/oauth/revoke') throw Error('Network prohibited');
-        ${scenario === 'unconfirmed-success' ? "return { ok: true, status: 202 };" : scenario === 'transport' ? "throw Error('provider error includes fake-runtime-token');" : scenario === 'timeout' ? "return new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true }));" : "return { ok: false, status: 503 };"}
+        ${scenario === 'unauthorized' ? "return { ok: false, status: 401 };" : scenario === 'unconfirmed-success' ? "return { ok: true, status: 202 };" : scenario === 'transport' ? "throw Error('provider error includes fake-runtime-token');" : scenario === 'timeout' ? "return new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true }));" : "return { ok: false, status: 503 };"}
       };
       // A synthetic SDK consumer corrupts/splits the private wire, not the Host parser.
       if (${JSON.stringify(scenario)} === 'interrupted') process.on('SIGTERM', () => { for (;;) {} });
@@ -121,7 +121,7 @@ test('mocked shutdown rejection or timeout stays visible and stops every owned p
       assert.deepEqual(errors, [])
       await manager.close(); await manager.close()
       assert.deepEqual(errors, ['Linear OAuth cleanup could not be confirmed; revoke access in Linear settings'])
-      const expected = scenario === 'http' || scenario === 'fragmented' ? 'http-503' : scenario === 'unconfirmed-success' ? 'http-202' : scenario === 'transport' || scenario === 'timeout' ? scenario : 'unknown'
+      const expected = scenario === 'http' || scenario === 'fragmented' ? 'http-503' : scenario === 'unauthorized' ? 'http-401' : scenario === 'unconfirmed-success' ? 'http-202' : scenario === 'transport' || scenario === 'timeout' ? scenario : 'unknown'
       assert.deepEqual(causes, [[expected]], 'safe reason codes reach the parent observer without changing the warning')
       assert.doesNotMatch(JSON.stringify({ messages, errors, causes }), /fake-runtime-token|oauth-cleanup/)
       assert.equal(messages.some(message => Object.hasOwn(message, 'reasons') || Object.hasOwn(message, 'cause')), false)

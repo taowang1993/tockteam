@@ -43,7 +43,7 @@ test('first-party OAuth cleanup stays honest under mocked provider failures', as
   symlinkSync(join(root, descriptor.artifactRoot, 'runtime/node_modules'), join(root, 'node_modules'))
   await buildUserRaycast(root)
   process.env.TOCKTEAM_USER_RAYCAST_ID = 'linear'
-  for (const scenario of ['success', 'http', 'unconfirmed-success', 'unknown-status', 'transport', 'sync-transport', 'timeout', 'mixed-revocation', 'repeated-failure', 'concurrent-failure', 'all-clients', 'invalid-shared-cause'] as const) {
+  for (const scenario of ['success', 'http', 'unauthorized', 'unconfirmed-success', 'unknown-status', 'transport', 'sync-transport', 'timeout', 'mixed-revocation', 'mixed-unauthorized', 'all-unauthorized', 'repeated-failure', 'concurrent-failure', 'all-clients', 'invalid-shared-cause'] as const) {
     await t.test(scenario, async () => {
       globalThis.fetch = async () => { throw new Error('Network prohibited by test') }
       // Each module instance owns only this scenario's fake clients.
@@ -70,7 +70,7 @@ test('first-party OAuth cleanup stays honest under mocked provider failures', as
         await client.setTokens({ access_token: 'fake-new-token', refresh_token: 'fake-new-token' })
         await client.removeTokens()
         assert.equal(requests.length, 3, 'a new token set receives its own cleanup')
-      } else if (scenario === 'http' || scenario === 'unconfirmed-success' || scenario === 'unknown-status' || scenario === 'transport' || scenario === 'sync-transport') {
+      } else if (scenario === 'http' || scenario === 'unauthorized' || scenario === 'unconfirmed-success' || scenario === 'unknown-status' || scenario === 'transport' || scenario === 'sync-transport') {
         const secret = 'fake-sensitive-token'
         let bodyReads = 0
         globalThis.fetch = scenario === 'sync-transport'
@@ -78,12 +78,12 @@ test('first-party OAuth cleanup stays honest under mocked provider failures', as
           : async () => {
             if (scenario === 'transport') throw new Error(`provider error includes ${secret}`)
             if (scenario === 'unknown-status') return { status: secret } as unknown as Response
-            const response = new Response(secret, { status: scenario === 'unconfirmed-success' ? 202 : 503 })
+            const response = new Response(secret, { status: scenario === 'unauthorized' ? 401 : scenario === 'unconfirmed-success' ? 202 : 503 })
             response.text = response.json = async () => { bodyReads++; throw new Error('Provider body must not be read') }
             return response
           }
         await client.setTokens({ access_token: secret })
-        const reasons = [scenario === 'http' ? 'http-503' : scenario === 'unconfirmed-success' ? 'http-202' : scenario === 'unknown-status' ? 'unknown' : 'transport']
+        const reasons = [scenario === 'http' ? 'http-503' : scenario === 'unauthorized' ? 'http-401' : scenario === 'unconfirmed-success' ? 'http-202' : scenario === 'unknown-status' ? 'unknown' : 'transport']
         const check = (error: unknown) => {
           assert.ok(error instanceof Error)
           assert.doesNotMatch(JSON.stringify({ message: error.message, cause: error.cause }), /fake-sensitive-token/)
@@ -111,16 +111,17 @@ test('first-party OAuth cleanup stays honest under mocked provider failures', as
         await assert.rejects(revokeUserRaycastOAuthTokens(), { cause: ['timeout'] })
         assert.equal(aborted, true)
         assert.equal(await client.getTokens(), null)
-      } else if (scenario === 'mixed-revocation') {
-        const tokens = ['fake-already-revoked-refresh', 'fake-revoked-access'] as const, seen: string[] = []
+      } else if (scenario === 'mixed-revocation' || scenario === 'mixed-unauthorized' || scenario === 'all-unauthorized') {
+        const tokens = ['fake-unconfirmed-refresh', 'fake-revoked-access'] as const, seen: string[] = []
+        const status = scenario === 'mixed-revocation' ? 400 : 401
         globalThis.fetch = async (_input, init) => {
           const token = new URLSearchParams(String(init?.body)).get('token')!
           seen.push(token)
-          return new Response(null, { status: token === tokens[0] ? 400 : 200 })
+          return new Response(null, { status: scenario === 'all-unauthorized' || token === tokens[0] ? status : 200 })
         }
         await client.setTokens({ access_token: tokens[1], refresh_token: tokens[0] })
-        await assert.rejects(client.removeTokens(), { cause: ['http-400'] })
-        await assert.rejects(revokeUserRaycastOAuthTokens(), { cause: ['http-400'] })
+        await assert.rejects(client.removeTokens(), { cause: [`http-${status}`] })
+        await assert.rejects(revokeUserRaycastOAuthTokens(), { cause: [`http-${status}`] })
         assert.equal(await client.getTokens(), null)
         assert.deepEqual(seen.sort(), [...tokens].sort(), 'a successful token response must not hide another unconfirmed response')
       } else if (scenario === 'repeated-failure') {
