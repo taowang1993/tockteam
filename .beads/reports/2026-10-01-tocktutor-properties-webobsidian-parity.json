@@ -1,0 +1,74 @@
+{
+  "scope": "Properties Only",
+  "method": "unchanged pure helpers, source inspection, existing focused tests; no GUI",
+  "checked": [
+    {
+      "check": "core-type-overlap",
+      "type": "text",
+      "passed": true
+    },
+    {
+      "check": "core-type-overlap",
+      "type": "list",
+      "passed": true
+    },
+    {
+      "check": "core-type-overlap",
+      "type": "number",
+      "passed": true
+    },
+    {
+      "check": "core-type-overlap",
+      "type": "checkbox",
+      "passed": true
+    },
+    {
+      "check": "core-type-overlap",
+      "type": "date",
+      "passed": true
+    },
+    {
+      "check": "core-type-overlap",
+      "type": "datetime",
+      "passed": true
+    },
+    {
+      "check": "confirmed-name-gap",
+      "key": "custom key",
+      "web": "accepted",
+      "tocktutor": "omitted/rejected"
+    },
+    {
+      "check": "confirmed-name-gap",
+      "key": "note.rating",
+      "web": "accepted",
+      "tocktutor": "omitted/rejected"
+    },
+    {
+      "check": "confirmed-name-gap",
+      "key": "123field",
+      "web": "accepted",
+      "tocktutor": "omitted/rejected"
+    },
+    {
+      "check": "confirmed-tag-normalization-gap",
+      "entered": "#new tag",
+      "web": "new-tag",
+      "tocktutor": "#new tag"
+    },
+    {
+      "check": "intentional-safer-yaml-preservation",
+      "tocktutor": "preserves unrelated comment/nesting; rejects flattening",
+      "web": "whole-block serializer drops comment and moves nested child to top level"
+    }
+  ],
+  "sourceSha256": {
+    "/Users/taowang/research/tutor/webobsidian/web/src/lib/livePreview.ts": "ab05a0159f2d8b2b5a78cb8e2272ab24317bfe12f950e01abcc2b5c680bf0916",
+    "/Users/taowang/research/tutor/webobsidian/web/src/components/Editor.tsx": "3cd62b5fc223d7846ebe1f5c714e21b2c4788e1d05ea720cf013f1f67938fb6f",
+    "/Users/taowang/research/tutor/webobsidian/server/src/services/propertytypes.ts": "f861594d50cd41fb9a27222d29af69488dd3afb3ebbfaa6a7c332b230ed27517",
+    "/Users/taowang/projects/tockteam/plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/live-preview-editor.tsx": "15ff1bc2f5fa66f3b00e4c098a6ec35763b2d8be68843b68c1b68a725d5c1eb0",
+    "/Users/taowang/projects/tockteam/plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/properties.ts": "c88202e65eefb8227769df4a5e0fc73dc1140a01741f09c1c09259d21f9aebde",
+    "/Users/taowang/projects/tockteam/plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/linked-note-pane.tsx": "bbee4394ac958f288bfa580023626ebabb0de6649865feacc4d9f9f2bfe29aab",
+    "/Users/taowang/projects/tockteam/plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx": "8a7d2c5643145a3f2b9395bc34d28fbefc60dbe337212b860599eb62c8150448"
+  }
+}
