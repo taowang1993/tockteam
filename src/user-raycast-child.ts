@@ -8,7 +8,7 @@ import Reconciler from 'react-reconciler'
 import * as api from './api.mjs'
 import { createTrustedRaycastLineReader, TRUSTED_RAYCAST_INPUT_FRAME_BYTES } from './trusted-raycast-contract.ts'
 import { createUserRaycastStorage } from './user-raycast-storage.ts'
-import { isUserRaycastOAuthCleanupCounts, isUserRaycastOAuthCleanupReasons } from './user-raycast-contract.ts'
+import { isUserRaycastEvent, isUserRaycastFieldValue, isUserRaycastOAuthCleanupCounts, isUserRaycastOAuthCleanupReasons } from './user-raycast-contract.ts'
 
 type Node = { type: string; props: Record<string, unknown>; children: Array<Node | string> }
 const root: Node = { type: 'root', props: {}, children: [] }
@@ -19,6 +19,8 @@ const mode = process.env.TOCKTEAM_USER_RAYCAST_MODE
 let revision = -1
 let ready = false
 let handles = new Map<string, () => unknown>()
+let fields = new Map<string, { kind: unknown; change: ((value: string | boolean) => unknown) | undefined; focus: ((value: string | boolean) => unknown) | undefined; blur: ((value: string | boolean) => unknown) | undefined }>()
+let activeField = false
 let activeAction: { eventId: string; revision: number } | undefined
 let nativeSequence = 0
 const nativePending = new Map<string, { resolve: () => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>()
@@ -36,10 +38,17 @@ const serialize = (value: Node | string): unknown => {
     handles.set(id, value.type === 'raycast-menu-item' ? () => action({ type: 'left-click' }) : () => action())
     props.actionEventId = id
   }
+  if (value.type === 'raycast-text-field' && typeof value.props.fieldEventId === 'string') fields.set(value.props.fieldEventId, {
+    kind: value.props.fieldKind,
+    change: typeof value.props.onChange === 'function' ? value.props.onChange as (next: string | boolean) => unknown : undefined,
+    focus: typeof value.props.onFocus === 'function' ? value.props.onFocus as (next: string | boolean) => unknown : undefined,
+    blur: typeof value.props.onBlur === 'function' ? value.props.onBlur as (next: string | boolean) => unknown : undefined,
+  })
   return { type: value.type, props, children: value.children.map(serialize) }
 }
 const emit = (): void => {
   handles = new Map()
+  fields = new Map()
   root.props.searchable = api.viewSearchable()
   const projection = serialize(root)
   send({ type: ready ? 'patch' : 'ready', extensionId, sessionId, revision: ++revision, root: projection })
@@ -121,7 +130,7 @@ process.stdin.setEncoding('utf8')
 const readLines = createTrustedRaycastLineReader(TRUSTED_RAYCAST_INPUT_FRAME_BYTES)
 process.stdin.on('data', (chunk: string) => {
   for (const line of readLines(chunk)) {
-    const event = JSON.parse(line) as { type?: string; revision?: number; eventId?: string; kind?: string; value?: string; requestId?: string; succeeded?: boolean; message?: string }
+    const event = JSON.parse(line) as { type?: string; revision?: number; eventId?: string; kind?: string; value?: string | boolean; requestId?: string; sessionId?: string; succeeded?: boolean; message?: string }
     if (event.type === 'native-result') {
       const waiting = typeof event.requestId === 'string' ? nativePending.get(event.requestId) : undefined
       if (!waiting || event.revision !== activeAction?.revision || event.eventId !== activeAction?.eventId || typeof event.succeeded !== 'boolean') throw new Error('Stale native outcome')
@@ -129,14 +138,30 @@ process.stdin.on('data', (chunk: string) => {
       if (event.succeeded) waiting.resolve(); else waiting.reject(new Error(event.message ?? 'Copy failed'))
       continue
     }
-    if (event.type !== 'event' || event.revision !== revision) throw new Error('Stale user extension event')
+    if (event.type !== 'event') throw new Error('Invalid user extension event')
+    if (event.kind === 'fieldChanged' || event.kind === 'fieldFocused' || event.kind === 'fieldBlurred') {
+      const { type: _type, ...input } = event
+      const field = typeof event.eventId === 'string' ? fields.get(event.eventId) : undefined
+      const respond = (succeeded: boolean, message = ''): void => send({ type: 'field-outcome', extensionId, sessionId, revision, eventId: event.eventId, requestId: event.requestId, succeeded, message })
+      if (!isUserRaycastEvent(input) || input.sessionId !== sessionId || input.revision !== revision || !field || !isUserRaycastFieldValue(field.kind, event.value) || activeAction || activeField) {
+        respond(false, 'Field event is stale or busy'); continue
+      }
+      activeField = true
+      const callback = event.kind === 'fieldChanged' ? field.change : event.kind === 'fieldFocused' ? field.focus : field.blur
+      Promise.resolve().then(() => callback?.(event.value as string | boolean)).then(() => {
+        renderer.flushSyncWork()
+        respond(true)
+      }, error => respond(false, String(error).slice(0, 512))).finally(() => { activeField = false })
+      continue
+    }
+    if (event.revision !== revision || event.sessionId !== undefined && event.sessionId !== sessionId) throw new Error('Stale user extension event')
     if (event.kind === 'searchChanged') {
       if (typeof event.value !== 'string' || event.value.length > 16384) throw new Error('Invalid search input')
       if (event.value !== api.queryText) { api.advanceQuery(event.value); searchHandler?.(event.value) }
       continue
     }
     const action = event.kind === 'action' && typeof event.eventId === 'string' ? handles.get(event.eventId) : undefined
-    if (!action || activeAction) throw new Error('Stale or busy user extension action')
+    if (!action || activeAction || activeField) throw new Error('Stale or busy user extension action')
     activeAction = { eventId: event.eventId!, revision }
     const actionRevision = revision
     Promise.resolve().then(action).then(() => send({ type: 'outcome', extensionId, sessionId, revision: actionRevision, eventId: event.eventId, succeeded: true, message: '' }), error => send({ type: 'outcome', extensionId, sessionId, revision: actionRevision, eventId: event.eventId, succeeded: false, message: String(error).slice(0, 512) })).finally(() => { activeAction = undefined })

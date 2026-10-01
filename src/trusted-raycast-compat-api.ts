@@ -75,21 +75,40 @@ const FormContext = React.createContext<Map<string, string | boolean> | null>(nu
 let handleSequence = 0
 const form = (props: Record<string, unknown>) => {
   const values = React.useRef(new Map<string, string | boolean>()).current
-  return React.createElement(FormContext.Provider, { value: values }, element('raycast-form', {}, [props.actions as React.ReactNode, ...React.Children.toArray(props.children as React.ReactNode)]))
+  const formId = React.useId()
+  return React.createElement(FormContext.Provider, { value: values }, element('raycast-form', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? {} : { formId }, [props.actions as React.ReactNode, ...React.Children.toArray(props.children as React.ReactNode)]))
 }
 const basicFormField = (fieldKind: string, fallback: string | boolean) => (props: Record<string, unknown>) => {
   const collected = React.useContext(FormContext)
   const initial = React.useRef(props.defaultValue === undefined ? fallback : props.defaultValue).current
-  const value = props.value === undefined ? initial : props.value
+  const [draft, setDraft] = React.useState(initial)
+  const [focusRequest, setFocusRequest] = React.useState(0)
+  const [, refresh] = React.useState(0)
+  const value = props.value === undefined ? draft : props.value
   const id = props.id
   if (typeof id !== 'string' || id.length === 0 || id.length > 128 || typeof value !== typeof fallback) throw new Error('Invalid form field ID or value')
+  const fieldEventId = React.useMemo(() => `field-${++handleSequence}`, [id])
+  const change = async (next: string | boolean): Promise<void> => {
+    if (typeof next !== typeof fallback) throw new Error('Invalid form field value')
+    setDraft(next)
+    try { if (typeof props.onChange === 'function') await props.onChange(next) }
+    finally { refresh(previous => previous + 1) }
+  }
+  React.useImperativeHandle(props.ref as React.Ref<{ focus(): void; reset(): void }>, () => ({
+    focus: () => setFocusRequest(previous => previous + 1),
+    reset: () => { void change(initial as string | boolean) },
+  }))
   React.useLayoutEffect(() => {
     if (!collected) return
     collected.set(id, value as string | boolean)
     return () => { collected.delete(id) }
   }, [collected, id, value])
-  // Keep the reviewed bundled projection unchanged; user controls are rendered in a later slice.
-  return element('raycast-text-field', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? props : { ...props, fieldKind, value })
+  // The reviewed bundled projection remains unchanged; callbacks stay in the private child.
+  return element('raycast-text-field', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? props : {
+    ...props, ref: undefined, fieldKind, value, fieldEventId, focusRequest, onChange: change,
+    onFocus: (next: string | boolean) => typeof props.onFocus === 'function' ? props.onFocus({ target: { id, value: next }, type: 'focus' }) : undefined,
+    onBlur: (next: string | boolean) => typeof props.onBlur === 'function' ? props.onBlur({ target: { id, value: next }, type: 'blur' }) : undefined,
+  })
 }
 const formDropdown = (props: Record<string, unknown>) => {
   const collected = React.useContext(FormContext)

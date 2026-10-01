@@ -15,7 +15,7 @@ export function registerUserRaycastIpcHandlers(args: Readonly<{
   approve: (owner: UserRaycastOwner, digest: string) => Promise<UserRaycastStatus>
   mutate: (action: UserRaycastMutation) => Promise<UserRaycastStatus> | UserRaycastStatus
   open: (owner: UserRaycastOwner) => Promise<void>
-  send: (owner: UserRaycastOwner, event: UserRaycastEvent) => void
+  send: (owner: UserRaycastOwner, event: UserRaycastEvent) => void | Promise<void>
   close: (owner: UserRaycastOwner) => Promise<void>
 }>): () => void {
   const noArgs = (name: string, extra: unknown[]): void => { if (extra.length) throw new Error(`${name} accepts no arguments`) }
@@ -70,10 +70,12 @@ export function registerUserRaycastIpcHandlers(args: Readonly<{
       catch (error) { await args.close(owner); throw error }
       return Object.freeze({ ok: true as const })
     }],
-    [USER_RAYCAST_IPC.event, (event: unknown, raw: unknown, ...extra: unknown[]) => {
+    [USER_RAYCAST_IPC.event, async (event: unknown, raw: unknown, ...extra: unknown[]) => {
       const owner = args.guard.assert(event, 'launcher')
-      if (extra.length || !isUserRaycastEvent(raw)) throw new Error('Invalid extension event')
-      args.send(owner, raw)
+      if (extra.length || !isUserRaycastEvent(raw) || typeof raw.sessionId !== 'string') throw new Error('Invalid extension event')
+      await args.send(owner, raw)
+      try { if (args.guard.assert(event, 'launcher').webContentsId !== owner.webContentsId) throw new Error('Extension owner changed') }
+      catch (error) { await args.close(owner); throw error }
       return Object.freeze({ ok: true as const })
     }],
     [USER_RAYCAST_IPC.close, async (event: unknown, ...extra: unknown[]) => {

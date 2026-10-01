@@ -7,18 +7,20 @@ import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { admitTrustedRaycastArtifact, readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
 import { validMenuIcon } from './user-raycast-menu.ts'
-import { isUserRaycastAuthUrl, isUserRaycastOAuthCleanupDiagnostic, type UserRaycastOAuthCleanupCounts, type UserRaycastOAuthCleanupReason } from './user-raycast-contract.ts'
+import { isUserRaycastAuthUrl, isUserRaycastEvent, isUserRaycastFieldValue, isUserRaycastOAuthCleanupDiagnostic, type UserRaycastEvent, type UserRaycastFieldKind, type UserRaycastOAuthCleanupCounts, type UserRaycastOAuthCleanupReason } from './user-raycast-contract.ts'
 import { getTrustedRaycastRuntimeDescriptor } from './trusted-raycast-descriptors.ts'
 import { createTrustedRaycastLineReader, inspectTrustedRaycastProjection } from './trusted-raycast-contract.ts'
 import type { UserRaycastCandidate, UserRaycastInstall } from './user-raycast-install.ts'
 
 export type UserRaycastOwner = Readonly<{ webContentsId: number }>
 export type UserRaycastMessage = Readonly<{ extensionId: string; sessionId: string; revision: number; type: 'ready' | 'patch' | 'error' | 'outcome' | 'toast' | 'auth-url'; root?: unknown; message?: string; eventId?: string; succeeded?: boolean; title?: string; style?: string; url?: string }>
-type Session = { child: ChildProcessWithoutNullStreams; workspace: string; owner: UserRaycastOwner; candidate: UserRaycastCandidate; id: string; revision: number; actions: Set<string>; action?: { eventId: string; revision: number; nativeUsed: boolean }; resolve: () => void; reject: (error: Error) => void; settled: boolean; cleanupReasons?: readonly UserRaycastOAuthCleanupReason[]; cleanupCounts?: UserRaycastOAuthCleanupCounts }
+type PendingField = { requestId: string; eventId: string; resolve: () => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }
+type Session = { child: ChildProcessWithoutNullStreams; workspace: string; owner: UserRaycastOwner; candidate: UserRaycastCandidate; id: string; revision: number; actions: Set<string>; fields: Map<string, UserRaycastFieldKind>; field?: PendingField; action?: { eventId: string; revision: number; nativeUsed: boolean }; resolve: () => void; reject: (error: Error) => void; settled: boolean; cleanupReasons?: readonly UserRaycastOAuthCleanupReason[]; cleanupCounts?: UserRaycastOAuthCleanupCounts }
+type FieldOutcome = { type: 'field-outcome'; extensionId: string; sessionId: string; revision: number; eventId: string; requestId: string; succeeded: boolean; message: string }
 type NativeRequest = { type: 'native'; extensionId: string; sessionId: string; revision: number; eventId: string; requestId: string; kind: 'copy'; text: string }
 const frameBytes = 1024 * 1024
 const types = new Set(['root', 'raycast-list', 'raycast-list-item', 'raycast-section', 'raycast-detail', 'raycast-empty', 'raycast-dropdown', 'raycast-dropdown-item', 'raycast-grid', 'raycast-grid-item', 'raycast-action-panel', 'raycast-action-section', 'raycast-action', 'raycast-menu-bar', 'raycast-menu-section', 'raycast-menu-item', 'raycast-form', 'raycast-text-field', 'raycast-form-dropdown', 'raycast-form-dropdown-item'])
-const validNode = (value: unknown, state = { nodes: 0, text: 0, actions: new Set<string>() }, depth = 0): boolean => {
+const validNode = (value: unknown, state = { nodes: 0, text: 0, actions: new Set<string>(), fields: new Set<string>() }, depth = 0): boolean => {
   if (!value || typeof value !== 'object' || Array.isArray(value) || depth > 32 || ++state.nodes > 8192) return false
   const node = value as { type?: unknown; props?: unknown; children?: unknown }
   if (Object.keys(node).sort().join(',') !== 'children,props,type' || !types.has(node.type as string) || !node.props || typeof node.props !== 'object' || Array.isArray(node.props) || !Array.isArray(node.children) || node.children.length > 1024 || Object.keys(node.props).length > 64) return false
@@ -29,6 +31,12 @@ const validNode = (value: unknown, state = { nodes: 0, text: 0, actions: new Set
       if (node.type !== 'raycast-action' && node.type !== 'raycast-menu-item' || typeof entry !== 'string' || entry.length > 128 || state.actions.size >= 256 || state.actions.has(entry)) return false
       state.actions.add(entry)
     }
+  }
+  const props = node.props as Record<string, unknown>
+  if (node.type === 'raycast-text-field' && Object.hasOwn(props, 'fieldEventId')) {
+    if (typeof props.fieldEventId !== 'string' || !props.fieldEventId || props.fieldEventId.length > 128 || state.fields.size >= 64 || state.fields.has(props.fieldEventId)
+      || !isUserRaycastFieldValue(props.fieldKind, props.value) || !Number.isSafeInteger(props.focusRequest) || (props.focusRequest as number) < 0) return false
+    state.fields.add(props.fieldEventId)
   }
   return node.children.every(child => typeof child === 'string' ? (state.text += Buffer.byteLength(child)) <= 256 * 1024 && Buffer.byteLength(child) <= 16384 : validNode(child, state, depth + 1))
 }
@@ -76,7 +84,7 @@ export class UserRaycastManager {
       const child = spawn(this.options.nodePath, [join(workspace, 'child.mjs')], { cwd: workspace, detached: true, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TOCKTEAM_USER_RAYCAST_ID: chosen.extensionId, TOCKTEAM_USER_RAYCAST_SESSION: id, TOCKTEAM_USER_RAYCAST_COMMAND: chosen.command, TOCKTEAM_USER_RAYCAST_MODE: chosen.mode ?? 'view', ...(linearClientId ? { TOCKTEAM_LINEAR_TEST_CLIENT_ID: linearClientId } : {}), TOCKTEAM_USER_RAYCAST_STATE: this.options.install.statePath(chosen.extensionId), TRUSTED_RAYCAST_EXTENSION_ID: chosen.extensionId, TRUSTED_RAYCAST_PREFERENCES: preferences } })
       let resolve!: () => void; let reject!: (error: Error) => void
       const ready = new Promise<void>((yes, no) => { resolve = yes; reject = no })
-      const session: Session = { child, workspace, owner, candidate: chosen, id, revision: -1, actions: new Set(), ...(chosen.mode === 'no-view' ? { action: { eventId: 'run', revision: 0, nativeUsed: false } } : {}), resolve, reject, settled: false }
+      const session: Session = { child, workspace, owner, candidate: chosen, id, revision: -1, actions: new Set(), fields: new Map(), ...(chosen.mode === 'no-view' ? { action: { eventId: 'run', revision: 0, nativeUsed: false } } : {}), resolve, reject, settled: false }
       this.session = session
       const fail = (error: Error): void => {
         if (this.session !== session) return
@@ -93,7 +101,7 @@ export class UserRaycastManager {
           for (const line of readLines(chunk)) {
             const raw: unknown = JSON.parse(line)
             if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Invalid extension message')
-            const message = raw as UserRaycastMessage | NativeRequest
+            const message = raw as UserRaycastMessage | NativeRequest | FieldOutcome
             if (message.extensionId !== chosen.extensionId || message.sessionId !== id || !Number.isSafeInteger(message.revision) || message.revision < 0) throw new Error('Invalid extension message identity')
             if (message.type === 'auth-url') {
               if (chosen.extensionId !== 'linear' || chosen.command !== 'search-issues' || message.revision !== Math.max(0, session.revision) || !isUserRaycastAuthUrl(message.url) || linearClientId !== undefined && new URL(message.url).searchParams.get('client_id') !== linearClientId) throw new Error('Unapproved OAuth request')
@@ -114,10 +122,20 @@ export class UserRaycastManager {
               if (message.revision <= session.revision || (session.revision === -1) !== (message.type === 'ready') || !validNode(message.root) || inspectTrustedRaycastProjection(message.root).rootBytes > frameBytes) throw new Error('Invalid extension projection')
               session.revision = message.revision
               session.actions = new Set<string>()
-              const collect = (node: any): void => { if (typeof node.props.actionEventId === 'string') session.actions.add(node.props.actionEventId); for (const entry of node.children) if (typeof entry !== 'string') collect(entry) }
+              session.fields = new Map()
+              const collect = (node: any): void => {
+                if (typeof node.props.actionEventId === 'string') session.actions.add(node.props.actionEventId)
+                if (node.type === 'raycast-text-field' && typeof node.props.fieldEventId === 'string') session.fields.set(node.props.fieldEventId, node.props.fieldKind)
+                for (const entry of node.children) if (typeof entry !== 'string') collect(entry)
+              }
               collect(message.root)
               this.options.onMessage(owner, message)
               if (!session.settled) { session.settled = true; session.resolve() }
+            } else if (message.type === 'field-outcome') {
+              const waiting = session.field
+              if (Object.keys(message).sort().join(',') !== 'eventId,extensionId,message,requestId,revision,sessionId,succeeded,type' || !waiting || message.eventId !== waiting.eventId || message.requestId !== waiting.requestId || message.revision !== session.revision || typeof message.succeeded !== 'boolean' || typeof message.message !== 'string' || message.message.length > 512) throw new Error('Unowned field outcome')
+              clearTimeout(waiting.timer); delete session.field
+              if (message.succeeded) waiting.resolve(); else waiting.reject(new Error(message.message))
             } else if (message.type === 'outcome' && message.revision === session.action?.revision && message.eventId === session.action.eventId && typeof message.succeeded === 'boolean' && typeof message.message === 'string' && message.message.length <= 512) {
               delete session.action
               this.options.onMessage(owner, message)
@@ -159,11 +177,24 @@ export class UserRaycastManager {
       throw error
     }
   }
-  send(owner: UserRaycastOwner, event: Readonly<{ revision: number; eventId: string; kind: 'action' | 'searchChanged'; value?: string }>): void {
+  send(owner: UserRaycastOwner, event: UserRaycastEvent): void | Promise<void> {
     const session = this.session
-    if (!session || owner.webContentsId !== session.owner.webContentsId) throw new Error('Extension owner is stale')
-    if (event.revision !== session.revision || !Number.isSafeInteger(event.revision) || typeof event.eventId !== 'string' || event.eventId.length > 128 || event.kind !== 'action' && event.kind !== 'searchChanged' || event.kind === 'action' && !session.actions.has(event.eventId) || event.kind === 'searchChanged' && (typeof event.value !== 'string' || event.value.length > 16384) || session.action) throw new Error('Extension event is stale or busy')
+    if (!session || owner.webContentsId !== session.owner.webContentsId || event.sessionId !== undefined && event.sessionId !== session.id) throw new Error('Extension owner is stale')
+    if (!isUserRaycastEvent(event) || event.revision !== session.revision || session.action || session.field) throw new Error('Extension event is stale or busy')
     if (session.child.stdin.writableLength > 32768) throw new Error('Extension input is busy')
+    if (event.kind === 'fieldChanged' || event.kind === 'fieldFocused' || event.kind === 'fieldBlurred') {
+      if (event.sessionId !== session.id || !session.fields.has(event.eventId) || !isUserRaycastFieldValue(session.fields.get(event.eventId), event.value)) throw new Error('Extension field is stale or invalid')
+      const completion = new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          delete session.field; reject(new Error('Field callback timed out'))
+          if (this.session === session) void this.close().catch(error => this.options.onError?.(owner, error))
+        }, 10000)
+        session.field = { requestId: event.requestId, eventId: event.eventId, resolve, reject, timer }
+      })
+      session.child.stdin.write(`${JSON.stringify({ type: 'event', ...event })}\n`)
+      return completion
+    }
+    if (event.kind === 'action' && !session.actions.has(event.eventId)) throw new Error('Extension action is stale')
     if (event.kind === 'action') session.action = { eventId: event.eventId, revision: event.revision, nativeUsed: false }
     session.child.stdin.write(`${JSON.stringify({ type: 'event', ...event })}\n`)
   }
@@ -173,6 +204,7 @@ export class UserRaycastManager {
     const session = this.session
     if (!session) return
     this.session = undefined
+    if (session.field) { clearTimeout(session.field.timer); session.field.reject(new Error('Extension closed before the field callback completed')); delete session.field }
     if (!session.settled) { session.settled = true; session.reject(new Error('Extension was closed before readiness')) }
     this.stopping = (async () => {
       session.child.stdout.resume(); session.child.stderr.resume()

@@ -10,7 +10,12 @@ export const USER_RAYCAST_IPC = Object.freeze({
 })
 export type UserRaycastStatus = Readonly<{ candidate?: UserRaycastCandidate; sourceCandidate?: UserRaycastSourceCandidate; digest: string; enabled: boolean; hasPrevious: boolean; installed: boolean; mode?: 'no-view' | 'menu-bar' }>
 export type UserRaycastMutation = 'enable' | 'disable' | 'remove' | 'recover'
-export type UserRaycastEvent = Readonly<{ revision: number; eventId: string; kind: 'action' | 'searchChanged'; value?: string }>
+export type UserRaycastFieldKind = 'text' | 'password' | 'textarea' | 'checkbox'
+export type UserRaycastFieldEvent = Readonly<{ sessionId: string; revision: number; eventId: string; requestId: string; kind: 'fieldChanged' | 'fieldFocused' | 'fieldBlurred'; value: string | boolean }>
+export type UserRaycastEvent = Readonly<{ sessionId?: string; revision: number; eventId: string; kind: 'action' | 'searchChanged'; value?: string }> | UserRaycastFieldEvent
+export function isUserRaycastFieldValue(kind: unknown, value: unknown): value is string | boolean {
+  return kind === 'checkbox' ? typeof value === 'boolean' : ['text', 'password', 'textarea'].includes(kind as string) && typeof value === 'string' && value.length <= 16384
+}
 export type UserRaycastOAuthCleanupReason = 'transport' | 'timeout' | 'unknown' | `http-${number}`
 export type UserRaycastOAuthCleanupCounts = Readonly<{ attempted: number; confirmed: number; failed: number }>
 export type UserRaycastOAuthCleanupDiagnostic = Readonly<{ type: 'oauth-cleanup'; extensionId: 'linear'; sessionId: string; reasons: readonly UserRaycastOAuthCleanupReason[]; counts?: UserRaycastOAuthCleanupCounts }>
@@ -92,6 +97,11 @@ export function isUserRaycastViewMessage(value: unknown): value is UserRaycastMe
   return value.type === 'error' && typeof value.message === 'string' && value.message.length <= 512
 }
 export function isUserRaycastEvent(value: unknown): value is UserRaycastEvent {
-  if (!record(value) || !exact(value, ['revision', 'eventId', 'kind', ...(Object.hasOwn(value, 'value') ? ['value'] : [])]) || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0 || typeof value.eventId !== 'string' || value.eventId.length > 128) return false
+  if (!record(value) || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0 || typeof value.eventId !== 'string' || !value.eventId || value.eventId.length > 128) return false
+  const session = typeof value.sessionId === 'string' && value.sessionId.length > 0 && value.sessionId.length <= 128
+  if (value.kind === 'fieldChanged' || value.kind === 'fieldFocused' || value.kind === 'fieldBlurred') return session
+    && exact(value, ['sessionId', 'revision', 'eventId', 'requestId', 'kind', 'value']) && typeof value.requestId === 'string' && value.requestId.length > 0 && value.requestId.length <= 128
+    && (typeof value.value === 'boolean' || typeof value.value === 'string' && value.value.length <= 16384)
+  if (!exact(value, ['revision', 'eventId', 'kind', ...(Object.hasOwn(value, 'sessionId') ? ['sessionId'] : []), ...(Object.hasOwn(value, 'value') ? ['value'] : [])]) || Object.hasOwn(value, 'sessionId') && !session) return false
   return value.kind === 'action' && !Object.hasOwn(value, 'value') || value.kind === 'searchChanged' && typeof value.value === 'string' && value.value.length <= 16384
 }

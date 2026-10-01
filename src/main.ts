@@ -2851,7 +2851,7 @@ function initializeLauncher(): void {
       if (userRaycast.menuActive) return
       await userRaycast.start(owner)
     },
-    send: (owner, event) => { if (!userRaycast) throw new Error('Local extension is unavailable'); userRaycast.send(owner, event) },
+    send: (owner, event) => { if (!userRaycast) throw new Error('Local extension is unavailable'); return userRaycast.send(owner, event) },
     close: async owner => { await userRaycast?.closeOwner(owner) },
   })
   const disposeWindowIpc = registerLauncherWindowIpcHandlers({
