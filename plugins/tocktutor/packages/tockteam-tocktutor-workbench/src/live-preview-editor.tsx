@@ -14,6 +14,8 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@tockteam/ui/dropdown-menu'
 import { Input } from '@tockteam/ui/input'
@@ -33,8 +35,9 @@ import type { EditorCommandId } from './editor-commands.ts'
 import type { EditorSearchRequest, EditorSearchState } from './editor-search.ts'
 import type { LivePreviewTableAction } from './milkdown-editor-commands.ts'
 import { NoteTitleEditor } from './source-editor.tsx'
-import { MAX_FRONTMATTER_BYTES, MAX_PROPERTIES, normalizePropertyListValue, parseFrontmatterProperties, type FrontmatterProperty, type PropertyType, type PropertyValue } from './properties.ts'
+import { MAX_FRONTMATTER_BYTES, MAX_PROPERTIES, normalizePropertyListValue, parseFrontmatterProperties, preparePropertyTypeChange, type EditablePropertyType, type FrontmatterProperty, type PropertyType, type PropertyValue } from './properties.ts'
 import type { ObsidianPropertyTypes } from './types.ts'
+import { PropertySuggestionMenu, type PropertySuggestions } from './property-suggestions.tsx'
 
 const propertyIcons = { text: AlignLeft, list: List, number: Hash, checkbox: CheckSquare, date: CalendarDays, datetime: CalendarDays, mixed: List } satisfies Record<PropertyType, typeof AlignLeft>
 const propertyTypeLabels = { text: 'Text', list: 'List', number: 'Number', checkbox: 'Checkbox', date: 'Date', datetime: 'Date & Time', mixed: 'Source Mode' } satisfies Record<PropertyType, string>
@@ -70,7 +73,9 @@ export interface LivePreviewEditorProps {
   onSetProperty?: (key: string, value: PropertyValue) => boolean
   onRenameProperty?: ((from: string, to: string) => boolean) | undefined
   onRemoveProperty?: ((key: string) => boolean) | undefined
+  onChangePropertyType?: ((key: string, type: EditablePropertyType, allowLossy: boolean) => Promise<boolean>) | undefined
   propertyDrafts?: Map<string, string> | undefined
+  suggestions?: PropertySuggestions | undefined
   resolvedEmbeds?: readonly import('./embeds.ts').ResolvedEmbedNode[]
   onSelectionChange?: (selection: LivePreviewSelection) => void
   searchCurrentIndex?: number | null
@@ -109,7 +114,7 @@ function propertyDraftKey(kind: PropertyDraftKind, property?: string, index?: nu
   return `${propertyDraftPrefix}${kind}${property === undefined ? '' : `:${encodeURIComponent(property)}`}${index === undefined ? '' : `:${index}`}`
 }
 
-function PropertyListEditor(props: { name: string; values: string[]; onSet: (values: string[]) => boolean | undefined; propertyDrafts?: Map<string, string> | undefined }): ReactNode {
+function PropertyListEditor(props: { name: string; values: string[]; onSet: (values: string[]) => boolean | undefined; propertyDrafts?: Map<string, string> | undefined; suggestions?: PropertySuggestions | undefined }): ReactNode {
   const addKey = propertyDraftKey('list-add', props.name)
   const findEditingIndex = (): number => props.values.findIndex((_value, index) => props.propertyDrafts?.has(propertyDraftKey('list-edit', props.name, index)) === true)
   const [draft, setDraft] = useState(() => props.propertyDrafts?.get(addKey) ?? '')
@@ -196,7 +201,7 @@ function PropertyListEditor(props: { name: string; values: string[]; onSet: (val
   return <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
     {props.values.map((value, index) => <span className="inline-flex min-h-6 max-w-full items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_10%,transparent)] px-2 text-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_85%,var(--tt-text))]" key={`${index}:${value}`}>
       {editingIndex === index
-        ? <Input aria-label={`Edit ${value} in ${props.name}`} className="h-6 min-w-12 max-w-48 border-0 bg-transparent px-0 py-0 text-xs" onBlur={commitEdit} onChange={event => { setCurrentEditDraft(event.currentTarget.value) }} onKeyDown={event => {
+        ? <Input aria-label={`Edit ${value} in ${props.name}`} autoFocus className="h-6 min-w-12 max-w-48 border-0 bg-transparent px-0 py-0 text-xs" onBlur={commitEdit} onChange={event => { setCurrentEditDraft(event.currentTarget.value) }} onKeyDown={event => {
             if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancelEdit() }
             if (event.key === 'Enter') { event.preventDefault(); commitEdit() }
           }} value={editDraft} />
@@ -213,6 +218,7 @@ function PropertyListEditor(props: { name: string; values: string[]; onSet: (val
       }
     }}>
       <Input aria-label={`New ${props.name} Value`} className="h-7 min-w-28 flex-1 text-xs" onChange={event => { setAddDraft(event.currentTarget.value); setError('') }} value={draft} />
+      {props.name.toLowerCase() === 'tags' && props.suggestions && <PropertySuggestionMenu items={props.suggestions.tags.filter(tag => !props.values.includes(normalizePropertyListValue(props.name, tag)))} label={`${props.name} Value Suggestions`} onSelect={value => { if (!update([...props.values, normalizePropertyListValue(props.name, value)])) return false; props.propertyDrafts?.delete(addKey); setDraft(''); return true }} suggestions={props.suggestions} value={draft} />}
       <Button aria-label={`Add ${props.name} Value`} disabled={props.onSet === undefined} size="xs" type="submit" variant="outline">Add</Button>
     </form>
     {error && <span className="basis-full text-xs text-destructive" role="alert">{error}</span>}
@@ -221,6 +227,10 @@ function PropertyListEditor(props: { name: string; values: string[]; onSet: (val
 
 function MarkdownDocumentProperty(props: {
   property: FrontmatterProperty
+  rawType: PropertyType
+  source: string
+  onChangePropertyType?: LivePreviewEditorProps['onChangePropertyType']
+  suggestions?: PropertySuggestions | undefined
   properties: FrontmatterProperty[]
   editable: boolean
   propertyDrafts?: Map<string, string> | undefined
@@ -239,6 +249,32 @@ function MarkdownDocumentProperty(props: {
   const renameKey = propertyDraftKey('rename', property.key)
   const scalarKey = propertyDraftKey('scalar', property.key)
   const rowErrorId = useId()
+  const typeButton = useRef<HTMLButtonElement>(null)
+  const [typePending, setTypePending] = useState<{ target: EditablePropertyType; value: PropertyValue; lossy: boolean; source: string } | null>(null)
+  const [typeBusy, setTypeBusy] = useState(false)
+  const [typeError, setTypeError] = useState('')
+  const canChangeType = props.editable && props.rawType !== 'mixed'
+    && props.properties.filter(item => item.key.toLowerCase() === property.key.toLowerCase()).length === 1
+  const applyType = async (target: EditablePropertyType, allowLossy: boolean, source = props.source): Promise<void> => {
+    if (source !== props.source) { setTypeError('The note changed. Cancel and choose the type again.'); return }
+    setTypeBusy(true); setTypeError('')
+    try {
+      if (!await props.onChangePropertyType?.(property.key, target, allowLossy)) throw new Error('The type could not be changed. Your input is unchanged.')
+      setTypePending(null)
+    } catch (error) { setTypeError(error instanceof Error ? error.message : 'The type could not be changed.') }
+    finally { setTypeBusy(false) }
+  }
+  const chooseType = (target: EditablePropertyType): void => {
+    const pendingInput = props.propertyDrafts?.get(propertyDraftKey('scalar', property.key))
+      ?? props.propertyDrafts?.get(propertyDraftKey('list-add', property.key))
+    const pendingChip = Array.isArray(property.value) && property.value.some((_value, index) => props.propertyDrafts?.has(propertyDraftKey('list-edit', property.key, index)))
+    if (pendingInput || pendingChip) { setRowError('Finish or cancel the unfinished value before changing its type.'); return }
+    const proposal = preparePropertyTypeChange(props.source, property.key, target)
+    if (!proposal.ok) { setRowError(proposal.message); return }
+    setTypeError('')
+    if (proposal.nextSource === props.source) void applyType(target, false)
+    else setTypePending({ target, value: proposal.value, lossy: proposal.lossy, source: props.source })
+  }
   const [renaming, setRenaming] = useState(() => props.propertyDrafts?.has(renameKey) === true)
   const [renameDraft, setRenameDraft] = useState(() => props.propertyDrafts?.get(renameKey) ?? property.key)
   const originalScalar = Array.isArray(property.value) ? JSON.stringify(property.value) : String(property.value ?? '')
@@ -344,7 +380,7 @@ function MarkdownDocumentProperty(props: {
   }
   const displayValue = (): ReactNode => {
     if (props.editable && property.type === 'mixed' && property.value !== null) return <span className="text-muted-foreground">Use Source Mode</span>
-    if (props.editable && list) return <PropertyListEditor name={property.key} onSet={values => props.onSetProperty?.(property.key, values)} propertyDrafts={props.propertyDrafts} values={Array.isArray(property.value) ? property.value : []} />
+    if (props.editable && list) return <PropertyListEditor name={property.key} onSet={values => props.onSetProperty?.(property.key, values)} propertyDrafts={props.propertyDrafts} suggestions={props.suggestions} values={Array.isArray(property.value) ? property.value : []} />
     if (props.editable && !checkbox) return <Input aria-describedby={props.error === '' ? undefined : props.errorId} aria-invalid={props.error === '' ? undefined : true} aria-label={`Property ${property.key}`} onBlur={event => {
       try {
         const text = event.currentTarget.value
@@ -370,7 +406,12 @@ function MarkdownDocumentProperty(props: {
   }
   return <>
     <dt className="flex min-h-8 min-w-0 items-center gap-2 self-start text-[var(--tt-muted)]" title={`${property.key} · ${propertyTypeLabels[property.type]}`}>
-      <IconComponent aria-hidden="true" className="size-4 shrink-0" />
+      {props.onChangePropertyType ? <DropdownMenu>
+        <DropdownMenuTrigger asChild><Button unstyled aria-label={`Property Type for ${property.key}`} className="inline-flex size-6 shrink-0 items-center justify-center rounded bg-transparent p-0 text-inherit hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" disabled={!canChangeType || typeBusy} ref={typeButton} title={propertyTypeLabels[property.type]} type="button"><IconComponent aria-hidden="true" className="size-4" /></Button></DropdownMenuTrigger>
+        <DropdownMenuContent align="start"><DropdownMenuRadioGroup onValueChange={value => { chooseType(value as EditablePropertyType) }} value={property.type}>
+          {(Object.keys(propertyTypeLabels) as PropertyType[]).filter(type => type !== 'mixed').map(type => <DropdownMenuRadioItem key={type} value={type}>{propertyTypeLabels[type]}</DropdownMenuRadioItem>)}
+        </DropdownMenuRadioGroup></DropdownMenuContent>
+      </DropdownMenu> : <IconComponent aria-hidden="true" className="size-4 shrink-0" />}
       {renaming && props.editable
         ? <Input aria-describedby={rowError === '' ? undefined : rowErrorId} aria-invalid={rowError === '' ? undefined : true} aria-label={`Rename Property ${property.key}`} autoFocus className="h-7 min-w-0 flex-1 text-xs" onBlur={commitRename} onChange={event => { props.propertyDrafts?.set(renameKey, event.currentTarget.value); setRenameDraft(event.currentTarget.value); setRowError('') }} onKeyDown={event => {
             if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancelRename() }
@@ -394,8 +435,19 @@ function MarkdownDocumentProperty(props: {
     </dt>
     <dd className="m-0 flex min-h-8 min-w-0 flex-wrap items-center gap-1 py-1 text-[var(--tt-text)]">
       {displayValue()}
+      {typeBusy && <span className="basis-full text-xs text-muted-foreground" role="status">Remembering type…</span>}
+      {typeError && !typePending && <span className="basis-full text-xs text-destructive" role="alert">{typeError}</span>}
       {rowError !== '' && <span className="basis-full text-xs text-destructive" id={rowErrorId} role="alert">{rowError}</span>}
     </dd>
+    {props.editable && <AlertDialog onOpenChange={open => { if (!open && !typeBusy) setTypePending(null) }} open={typePending !== null}>
+      <AlertDialogContent onCloseAutoFocus={event => { event.preventDefault(); typeButton.current?.focus() }}>
+        <AlertDialogHeader><AlertDialogTitle>Change Property Type</AlertDialogTitle><AlertDialogDescription>This remembers the type throughout this vault. Only this note’s value will be converted. Save the note to keep the new value.</AlertDialogDescription></AlertDialogHeader>
+        <div className="text-sm"><p className="m-0 font-medium">Current Value</p><pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap break-all text-xs">{JSON.stringify(property.value)}</pre><p className="mt-3 mb-0 font-medium">New Value</p><pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap break-all text-xs">{JSON.stringify(typePending?.value)}</pre></div>
+        {typePending?.lossy && <p className="m-0 text-sm text-warning">Some of the original value will be lost. A recovery copy will be saved before this change.</p>}
+        {typeError && <p className="m-0 text-destructive" role="alert">{typeError}</p>}
+        <AlertDialogFooter><AlertDialogCancel disabled={typeBusy}>Cancel</AlertDialogCancel><Button disabled={typeBusy} onClick={() => { if (typePending) void applyType(typePending.target, typePending.lossy, typePending.source) }} type="button">{typeBusy ? 'Changing Type…' : 'Change Type'}</Button></AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>}
     {props.editable && <AlertDialog onOpenChange={setRemoveOpen} open={removeOpen}>
       <AlertDialogContent onCloseAutoFocus={event => { event.preventDefault(); actionsButton.current?.focus() }}>
         <AlertDialogHeader>
@@ -426,13 +478,16 @@ export function MarkdownDocumentHeader(props: {
   onAddProperty?: (key: string) => boolean
   onRenameProperty?: ((from: string, to: string) => boolean) | undefined
   onRemoveProperty?: ((key: string) => boolean) | undefined
+  onChangePropertyType?: LivePreviewEditorProps['onChangePropertyType']
   onRenameTitle?: (title: string) => Promise<boolean> | boolean
   onSetProperty?: (key: string, value: PropertyValue) => boolean
   propertyDrafts?: Map<string, string> | undefined
+  suggestions?: PropertySuggestions | undefined
   source: string
   title?: string
 }): ReactNode {
   const properties = useMemo(() => parseFrontmatterProperties(props.source, props.declaredTypes), [props.source, props.declaredTypes])
+  const rawTypes = useMemo(() => new Map(parseFrontmatterProperties(props.source).map(property => [property.key, property.type])), [props.source])
   const errorId = useId()
   const propertiesId = useId()
   const addKey = propertyDraftKey('add-property')
@@ -488,7 +543,11 @@ export function MarkdownDocumentHeader(props: {
                     onSetProperty={props.onSetProperty}
                     properties={properties}
                     property={property}
+                    rawType={rawTypes.get(property.key) ?? 'mixed'}
+                    source={props.source}
+                    onChangePropertyType={props.onChangePropertyType}
                     propertyDrafts={props.propertyDrafts}
+                    suggestions={props.suggestions}
                     setError={setError}
                   />
                 </div>)}
@@ -524,6 +583,7 @@ export function MarkdownDocumentHeader(props: {
                     }}
                   >
                     <Input aria-describedby={error === '' ? undefined : errorId} aria-invalid={error === '' ? undefined : true} aria-label="Property Name" autoFocus className="h-7 max-w-52 rounded-md text-xs" onChange={event => { props.propertyDrafts?.set(addKey, event.currentTarget.value); setName(event.currentTarget.value); setError('') }} placeholder="Property name" value={name} />
+                    {props.suggestions && <PropertySuggestionMenu items={props.suggestions.names.filter(name => !properties.some(property => property.key.toLowerCase() === name.toLowerCase()))} label="Property Name Suggestions" onSelect={key => { if (!props.onAddProperty?.(key)) { setError('That property could not be added.'); return false } cancel(); return true }} suggestions={props.suggestions} value={name} />}
                     <Button className="bg-transparent text-[var(--tt-text)]" size="xs" type="submit" variant="outline">Add</Button>
                     <Button aria-label="Cancel Adding Property" className="bg-transparent" onClick={cancel} size="icon-xs" type="button" variant="ghost"><X aria-hidden="true" /></Button>
                     {error !== '' && <span className="basis-full text-xs text-[var(--dsw-alias-state-error-primary)]" id={errorId} role="alert">{error}</span>}
@@ -540,7 +600,7 @@ export function MarkdownDocumentHeader(props: {
 export function LivePreviewEditor(props: LivePreviewEditorProps): ReactNode {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <MarkdownDocumentHeader className="mx-auto w-[calc(100%-48px)] max-w-[700px] pt-[18px]" declaredTypes={props.declaredTypes} editableProperties={props.onSetProperty !== undefined} onRenameProperty={props.onRenameProperty} onRemoveProperty={props.onRemoveProperty} propertyDrafts={props.propertyDrafts} source={props.content} {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })} {...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle })} {...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty })} {...(props.title === undefined ? {} : { title: props.title })} />
+      <MarkdownDocumentHeader className="mx-auto w-[calc(100%-48px)] max-w-[700px] pt-[18px]" declaredTypes={props.declaredTypes} editableProperties={props.onSetProperty !== undefined} onRenameProperty={props.onRenameProperty} onRemoveProperty={props.onRemoveProperty} onChangePropertyType={props.onChangePropertyType} propertyDrafts={props.propertyDrafts} suggestions={props.suggestions} source={props.content} {...(props.onAddProperty === undefined ? {} : { onAddProperty: props.onAddProperty })} {...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle })} {...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty })} {...(props.title === undefined ? {} : { title: props.title })} />
       <Suspense fallback={<div aria-label={props.ariaLabel ?? 'Live Preview Editor'} className={props.className}>Loading Live Preview…</div>}>
         <LazyLivePreviewEditor {...props} />
       </Suspense>

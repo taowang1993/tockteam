@@ -103,7 +103,7 @@ import {
   replaceLivePreviewLine,
 } from './live-preview.ts'
 import { renderMarkdownHtml } from './rich-markdown.ts'
-import { isValidPropertyName, parseFrontmatterProperties, removeFrontmatterProperty, renameFrontmatterProperty, setFrontmatterProperty, type PropertyValue } from './properties.ts'
+import { isValidPropertyName, parseFrontmatterProperties, removeFrontmatterProperty, renameFrontmatterProperty, setFrontmatterProperty, preparePropertyTypeChange, obsidianPropertyType, type EditablePropertyType, type PropertyValue } from './properties.ts'
 import { addBookmark, editBookmark as updateBookmark, getBookmark, loadBookmarks, remapBookmarks, removeBookmark as removeStoredBookmark, saveBookmarks, type Bookmark as TockTutorBookmark } from './bookmarks.ts'
 import { layoutGraph, projectGraph, type GraphPosition } from './graph.ts'
 import { BUILTIN_TEMPLATES, buildCaptureNote, buildJournalNote, expandTemplate, uniqueNotePath } from './capture.ts'
@@ -177,6 +177,8 @@ import type {
   NoteVaultChangeEvent,
   OpenDocumentResult,
   ObsidianPropertyTypes,
+  ObsidianPropertyRegistry,
+  SetObsidianPropertyTypeRequest,
   ReadSnapshotRequest,
   RenameDocumentRequest,
   RenameDocumentResult,
@@ -241,6 +243,8 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     recoverMerge?(request: import('./types.ts').MergeRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').MergeResult>>
     currentVault(signal?: AbortSignal): Promise<RemoteResult<ActiveVaultResult>>
     getObsidianPropertyTypes?(expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<ObsidianPropertyTypes>>
+    getObsidianPropertyRegistry?(expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<ObsidianPropertyRegistry>>
+    setObsidianPropertyType?(request: SetObsidianPropertyTypeRequest, signal?: AbortSignal): Promise<RemoteResult<ObsidianPropertyRegistry>>
     createManagedVault(request: CreateManagedVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>
     openSandboxVault(request: VaultGenerationRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>
     listTree(request: ListTreeRequest, signal?: AbortSignal): Promise<RemoteResult<VaultTreePage>>
@@ -831,6 +835,8 @@ export class WorkbenchRouteController {
   private vaultGeneration = 0
   private propertyTypes: { vault: VaultReference; values: ObsidianPropertyTypes } | null = null
   private propertyTypesAbort: AbortController | null = null
+  private propertyTypesRevision: string | null | undefined
+  private propertyTypeWrite: AbortController | null = null
   private facetsAbort: AbortController | null = null
   private readonly propertyInputDrafts = new Map<string, Map<string, string>>()
   private shellSession: WorkbenchSession = createWorkbenchSession(ROUTE_PREFIX, null, 'pane-1')
@@ -2100,7 +2106,80 @@ export class WorkbenchRouteController {
       set: (key: string, value: PropertyValue) => change(source => setFrontmatterProperty(source, key, value)),
       rename: (from: string, to: string) => change(source => renameFrontmatterProperty(source, from, to)),
       remove: (key: string) => change(source => removeFrontmatterProperty(source, key)),
+      changeType: this.remote.tocktutorWorkbench?.setObsidianPropertyType
+        ? (key: string, target: EditablePropertyType, allowLossy: boolean) => {
+          if (this.paneLifetimeFor(id) !== lifetime) return Promise.reject(new Error('The note changed.'))
+          return this.changePropertyType(id, key, target, allowLossy)
+        } : undefined,
     }
+  }
+
+  async loadPropertyTypes(): Promise<boolean> {
+    const vault = this.snapshot.vault
+    if (!vault || this.disposed) return false
+    this.propertyTypesAbort?.abort()
+    const abort = new AbortController()
+    this.propertyTypesAbort = abort
+    const current = () => !this.disposed && !abort.signal.aborted && this.propertyTypesAbort === abort && sameVault(this.snapshot.vault, vault)
+    try {
+      if (this.remote.tocktutorWorkbench.getObsidianPropertyRegistry) {
+        const result = remoteValue(await this.remote.tocktutorWorkbench.getObsidianPropertyRegistry(vault, abort.signal))
+        if (!current()) return false
+        if (result.generation !== vault.generation || !(result.revision === null || /^file:[0-9a-f]{64}$/u.test(result.revision))) throw new Error('Invalid property settings')
+        this.propertyTypesRevision = result.revision
+        this.propertyTypes = { vault, values: Object.freeze({ ...result.types }) }
+      } else if (this.remote.tocktutorWorkbench.getObsidianPropertyTypes) {
+        const values = remoteValue(await this.remote.tocktutorWorkbench.getObsidianPropertyTypes(vault, abort.signal))
+        if (!current()) return false
+        this.propertyTypes = { vault, values: Object.freeze({ ...values }) }
+      } else return false
+      this.update({})
+      return true
+    } catch {
+      if (current()) this.propertyTypesRevision = undefined
+      return false
+    }
+  }
+
+  async changePropertyType(id: string, key: string, target: EditablePropertyType, allowLossy = false): Promise<boolean> {
+    const initial = this.getPaneSnapshot(id), lifetime = this.paneLifetimeFor(id)
+    if (!initial.vault || !initial.path || initial.documentKind !== 'markdown' || initial.documentUnavailable) throw new Error('Open a Markdown note before changing its property type.')
+    const vault = initial.vault
+    if (!this.pane(id)?.linkedView && initial.mode === 'reading') throw new Error('Switch to an editing mode before changing this type.')
+    if (this.propertyTypeWrite) throw new Error('Wait for the current type change to finish.')
+    const proposal = preparePropertyTypeChange(initial.source, key, target)
+    if (!proposal.ok) throw new Error(proposal.message)
+    if (proposal.lossy && !allowLossy) throw new Error('Confirm the value conversion before changing this type.')
+    const setter = this.remote.tocktutorWorkbench.setObsidianPropertyType
+    if (!setter) throw new Error('Remembered property types are unavailable.')
+    const edit = this.bindPaneEdit(id), abort = new AbortController()
+    this.propertyTypeWrite = abort
+    const current = () => !this.disposed && !abort.signal.aborted && this.paneLifetimeFor(id) === lifetime
+      && sameVault(this.snapshot.vault, vault) && this.getPaneSnapshot(id).path === initial.path && this.getPaneSnapshot(id).source === initial.source
+      && this.getPaneSnapshot(id).localEditRevision === initial.localEditRevision
+    try {
+      if (this.propertyTypesRevision === undefined && !await this.loadPropertyTypes()) throw new Error('Property settings could not be read. Your note is unchanged; retry after correcting the settings.')
+      if (!current()) throw new Error('The note changed. Your original values were not converted.')
+      const expectedRevision = this.propertyTypesRevision ?? null
+      if (proposal.nextSource !== initial.source) {
+        const recovery = remoteValue(await this.remote.tocktutorWorkbench.captureSnapshot({ expectedVault: initial.vault, path: initial.path, content: initial.source, reason: 'manual' }, abort.signal))
+        if (!current() || recovery.generation !== initial.vault.generation || recovery.snapshot?.path !== initial.path) throw new Error('A recovery copy could not be verified. Your original note is unchanged.')
+      }
+      if (!current()) throw new Error('The note changed. Your original values were not converted.')
+      const saved = remoteValue(await this.remote.tocktutorWorkbench.setObsidianPropertyType!({ expectedVault: initial.vault, expectedRevision, key, type: obsidianPropertyType(key, target) }, abort.signal))
+      if (saved.generation !== initial.vault.generation || !saved.revision || !/^file:[0-9a-f]{64}$/u.test(saved.revision)
+        || saved.types[key] !== obsidianPropertyType(key, target)) throw new Error('The saved type could not be verified. Your original note is unchanged; reload before retrying.')
+      if (sameVault(this.snapshot.vault, initial.vault)) {
+        this.propertyTypesRevision = saved.revision
+        this.propertyTypes = { vault: initial.vault, values: Object.freeze({ ...saved.types }) }
+        this.update({})
+      }
+      if (!current() || !edit(proposal.nextSource)) throw new Error('The note changed while its type was remembered. Your original values were not converted; reload the settings before retrying.')
+      return true
+    } catch (error) {
+      this.propertyTypesRevision = undefined
+      throw error
+    } finally { if (this.propertyTypeWrite === abort) this.propertyTypeWrite = null }
   }
 
   bindLinkedProperty(id: string): (key: string, value: PropertyValue) => boolean {
@@ -2513,6 +2592,8 @@ export class WorkbenchRouteController {
     }
     if (this.disposed) return
     this.propertyTypes = null
+    this.propertyTypesRevision = undefined
+    this.propertyTypeWrite?.abort()
     this.propertyTypesAbort?.abort()
     this.propertyTypesAbort = null
     this.facetsAbort?.abort()
@@ -2643,16 +2724,7 @@ export class WorkbenchRouteController {
         workspaces: Object.freeze(this.workspaces.map(workspace => Object.freeze({ ...workspace }))),
       })
       this.syncShell()
-      if (this.remote.tocktutorWorkbench.getObsidianPropertyTypes) {
-        const abort = new AbortController()
-        this.propertyTypesAbort = abort
-        void this.remote.tocktutorWorkbench.getObsidianPropertyTypes(vault, abort.signal).then(result => {
-          const values = remoteValue(result)
-          if (this.disposed || abort.signal.aborted || this.propertyTypesAbort !== abort || !sameVault(this.snapshot.vault, vault)) return
-          this.propertyTypes = { vault, values: Object.freeze({ ...values }) }
-          this.update({})
-        }).catch(() => undefined)
-      }
+      void this.loadPropertyTypes()
       const path = pathFromTockTutorLocation(this.pathname) ?? this.pane()?.activePath ?? null
       if (path !== null && !this.pane()?.linkedView) await this.select(path, false, undefined, true, false, true)
       await Promise.all(this.shellSession.groups.map(group => {
@@ -4561,6 +4633,7 @@ export class WorkbenchRouteController {
     this.operation += 1
     this.operationAbort?.abort()
     this.propertyTypesAbort?.abort()
+    this.propertyTypeWrite?.abort()
     this.facetsAbort?.abort()
     this.propertyInputDrafts.clear()
     this.cancelRecoveryOperations()
@@ -6419,6 +6492,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                 onRenameProperty={propertyActions?.rename}
                 onRemoveProperty={propertyActions?.remove}
                 propertyDrafts={props.paneController?.getPropertyDrafts(snapshot.focusedPaneId)}
+                suggestions={props.paneController?.getPropertySuggestions()}
+                onChangePropertyType={propertyActions?.changeType}
                 onEdit={props.onEdit}
                 onEditSource={() => { props.onMode('source') }}
                 {...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle })}

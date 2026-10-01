@@ -3,8 +3,9 @@ import type { EditorWidgetTarget } from './editor-widgets.ts';
 import type { EditorCommandId } from './editor-commands.ts';
 import type { EditorSearchRequest, EditorSearchState } from './editor-search.ts';
 import type { LivePreviewTableAction } from './milkdown-editor-commands.ts';
-import { type PropertyValue } from './properties.ts';
+import { type EditablePropertyType, type PropertyValue } from './properties.ts';
 import type { ObsidianPropertyTypes } from './types.ts';
+import { type PropertySuggestions } from './property-suggestions.tsx';
 export interface LivePreviewSelection {
     from: number;
     to: number;
@@ -31,6 +32,11 @@ export interface LivePreviewEditorProps {
     onSearchState?: (state: EditorSearchState) => void;
     onOpenExternalUrl?: (url: string) => void;
     onSetProperty?: (key: string, value: PropertyValue) => boolean;
+    onRenameProperty?: ((from: string, to: string) => boolean) | undefined;
+    onRemoveProperty?: ((key: string) => boolean) | undefined;
+    onChangePropertyType?: ((key: string, type: EditablePropertyType, allowLossy: boolean) => Promise<boolean>) | undefined;
+    propertyDrafts?: Map<string, string> | undefined;
+    suggestions?: PropertySuggestions | undefined;
     resolvedEmbeds?: readonly import('./embeds.ts').ResolvedEmbedNode[];
     onSelectionChange?: (selection: LivePreviewSelection) => void;
     searchCurrentIndex?: number | null;
@@ -46,8 +52,13 @@ export declare function MarkdownDocumentHeader(props: {
     className?: string;
     declaredTypes?: ObsidianPropertyTypes | undefined;
     onAddProperty?: (key: string) => boolean;
+    onRenameProperty?: ((from: string, to: string) => boolean) | undefined;
+    onRemoveProperty?: ((key: string) => boolean) | undefined;
+    onChangePropertyType?: LivePreviewEditorProps['onChangePropertyType'];
     onRenameTitle?: (title: string) => Promise<boolean> | boolean;
     onSetProperty?: (key: string, value: PropertyValue) => boolean;
+    propertyDrafts?: Map<string, string> | undefined;
+    suggestions?: PropertySuggestions | undefined;
     source: string;
     title?: string;
 }): ReactNode;

@@ -1,4 +1,8 @@
-import type { PrepareMergeRequest as RuntimePrepareMergeRequest, PreparedMergeResult as RuntimePreparedMergeResult, ApplyMergeRequest as RuntimeApplyMergeRequest, MergeRequest as RuntimeMergeRequest, MergeResult as RuntimeMergeResult, MergeListResult as RuntimeMergeListResult, MergeListRequest as RuntimeMergeListRequest, MergeLinkPreviewRequest as RuntimeMergeLinkPreviewRequest, MergeLinkPreviewResult as RuntimeMergeLinkPreviewResult } from 'tockbot-note-runtime';
+import type { ObsidianPropertyRegistry as RuntimeObsidianPropertyRegistry, SetObsidianPropertyTypeRequest as RuntimeSetObsidianPropertyTypeRequest, PrepareMergeRequest as RuntimePrepareMergeRequest, PreparedMergeResult as RuntimePreparedMergeResult, ApplyMergeRequest as RuntimeApplyMergeRequest, MergeRequest as RuntimeMergeRequest, MergeResult as RuntimeMergeResult, MergeListResult as RuntimeMergeListResult, MergeListRequest as RuntimeMergeListRequest, MergeLinkPreviewRequest as RuntimeMergeLinkPreviewRequest, MergeLinkPreviewResult as RuntimeMergeLinkPreviewResult } from 'tockbot-note-runtime';
+export interface ObsidianPropertyRegistry extends RuntimeObsidianPropertyRegistry {
+}
+export interface SetObsidianPropertyTypeRequest extends RuntimeSetObsidianPropertyTypeRequest {
+}
 export interface PrepareMergeRequest extends RuntimePrepareMergeRequest {
 }
 export interface PreparedMergeResult extends RuntimePreparedMergeResult {
@@ -21,7 +25,7 @@ export interface VaultReference {
     generation: number;
     id: string;
 }
-export type ObsidianPropertyType = 'text' | 'multitext' | 'number' | 'checkbox' | 'date' | 'datetime' | 'tags' | 'aliases';
+export type ObsidianPropertyType = import('tockbot-note-runtime').ObsidianPropertyType;
 export type ObsidianPropertyTypes = Readonly<Record<string, ObsidianPropertyType>>;
 export interface ActiveVaultResult {
     /** UI-only path; never accepted as filesystem authority. */

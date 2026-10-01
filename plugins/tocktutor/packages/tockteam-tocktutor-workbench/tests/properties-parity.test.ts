@@ -43,3 +43,23 @@ test('broader property names still refuse injection, duplicates, reserved keys a
   assert.throws(() => renameFrontmatterProperty(source, 'custom key', 'renamed'), /Duplicate/)
   assert.equal(setFrontmatterProperty(source, 'keep', 'changed'), source.replace('keep: original', 'keep: changed'))
 })
+
+test('keeps quoted ordinary keys and scalar comments without treating plain apostrophes as YAML quotes', () => {
+  const source = '---\r\n"custom key": "old #literal" # Keep\r\nowner: O\'Brien # Keep owner\r\n---\r\nBody\r\n'
+  assert.equal(parseFrontmatterProperties(source)[0]?.key, 'custom key')
+  assert.equal(parseFrontmatterProperties(source)[0]?.value, 'old #literal')
+  assert.equal(parseFrontmatterProperties(source)[1]?.value, "O'Brien")
+  assert.equal(setFrontmatterProperty(source, 'custom key', 'new'), source.replace('"old #literal"', 'new'))
+  assert.equal(renameFrontmatterProperty(source, 'custom key', 'new name'), source.replace('"custom key":', 'new name:'))
+  assert.equal(setFrontmatterProperty(source, 'owner', 'Other'), source.replace("O'Brien", 'Other'))
+})
+
+test('requires Source Mode for malformed quotes and hidden duplicate keys beyond the property limit', () => {
+  for (const raw of ['"unterminated', "'unterminated", '9007199254740993']) {
+    const source = `---\nfield: ${raw}\n---\n`
+    assert.equal(parseFrontmatterProperties(source)[0]?.type, 'mixed')
+    assert.throws(() => setFrontmatterProperty(source, 'field', 'changed'), /Source Mode/u)
+  }
+  const source = `---\n${Array.from({ length: 1_000 }, (_, index) => `field${index}: original`).join('\n')}\nfield0: hidden duplicate\n---\n`
+  assert.throws(() => setFrontmatterProperty(source, 'field0', 'changed'), /Source Mode/u)
+})

@@ -22,7 +22,7 @@ A user should be able to manage supported properties in either editing surface, 
 
 This plan follows `.beads/reports/2026-10-01-tocktutor-properties-webobsidian-parity.md`. The reference is `/Users/taowang/research/tutor/webobsidian`; its tracked revision and source fingerprints are recorded in the adjacent parity report JSON. The original audit was source/pure-helper based, not a fresh two-app browser certification. The user has now authorized implementation and separately approved the type-settings write gate. The epic and implementation slices stay open until their behavior and real-app evidence are verified.
 
-`tests/properties-ui.test.tsx` below is a planned new workbench test file created with the row-action slice; it does not exist yet. Commands naming it are future slice checks, not claims of current passing tests. Existing tests and generated outputs must be verified fresh.
+The planned `tests/properties-ui.test.tsx` now exists. Source checkpoint `bfc6f757` delivered row actions and editable chips. The follow-up implementation adds bounded name/tag suggestions, the approved fixed-path registry Host/runtime seam, and previewed six-type conversions with the existing recovery snapshots. Current verification: 428/428 workbench Node checks, 778/778 workbench component checks, focused registry/race/failure checks, nested typecheck/build, and build-manifest check pass. The registry preserves unknown settings, including exact numeric literals. User-approved minimal checks in the protected linked-pane test remain unstaged beside user edits. Root gates and fresh two-app Desktop proof remain pending; no complete parity certification is claimed.
 
 ## Scope and Ownership
 

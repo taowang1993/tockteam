@@ -49,6 +49,11 @@ export declare function LivePreviewView(props: {
     onSearchState?: ((state: EditorSearchState) => void) | undefined;
     onSelectionChange?: ((selection: LivePreviewSelection) => void) | undefined;
     onSetProperty?: ((key: string, value: PropertyValue) => boolean) | undefined;
+    onRenameProperty?: LivePreviewEditorProps['onRenameProperty'];
+    onRemoveProperty?: LivePreviewEditorProps['onRemoveProperty'];
+    propertyDrafts?: LivePreviewEditorProps['propertyDrafts'];
+    suggestions?: LivePreviewEditorProps['suggestions'];
+    onChangePropertyType?: LivePreviewEditorProps['onChangePropertyType'];
     onToggleTask(index: number): void;
     searchCurrentIndex?: number | null;
     searchQuery?: string;

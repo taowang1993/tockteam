@@ -140,6 +140,19 @@ export interface VaultReference {
   id: string
 }
 
+export type ObsidianPropertyType = 'text' | 'multitext' | 'number' | 'checkbox' | 'date' | 'datetime' | 'tags' | 'aliases'
+export interface ObsidianPropertyRegistry {
+  generation: number
+  revision: string | null
+  types: Readonly<Record<string, ObsidianPropertyType>>
+}
+export interface SetObsidianPropertyTypeRequest {
+  expectedVault: VaultReference
+  expectedRevision: string | null
+  key: string
+  type: ObsidianPropertyType
+}
+
 export interface TockTeamDesktopRevealIdentity {
   dev: string
   ino: string
@@ -2721,7 +2734,7 @@ async function scanPassiveBackupEntries(
 
 async function readPassiveBackupFile(
   root: string,
-  request: ReadPassiveBackupEntryRequest,
+  request: Pick<ReadPassiveBackupEntryRequest, 'path' | 'expectedRevision'>,
   signal: AbortSignal,
 ): Promise<Omit<PassiveBackupContentResult, 'generation'>> {
   signal.throwIfAborted()
@@ -2773,6 +2786,72 @@ async function readPassiveBackupFile(
   } finally {
     await handle.close().catch(() => undefined)
   }
+}
+
+const PROPERTY_TYPES_PATH = '.obsidian/types.json'
+const MAX_PROPERTY_TYPES_BYTES = 64 * 1024
+// Node >=22.19 supports the standard lossless JSON number primitives.
+const losslessJson = JSON as typeof JSON & { rawJSON(source: string): unknown; isRawJSON(value: unknown): boolean }
+const OBSIDIAN_PROPERTY_TYPES = new Set<ObsidianPropertyType>(['text', 'multitext', 'number', 'checkbox', 'date', 'datetime', 'tags', 'aliases'])
+
+function propertyTypeKey(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= 128 && value.trim() === value
+    && /^[\p{L}\p{N}_][\p{L}\p{N}\p{M}_. -]*$/u.test(value)
+    && !['__proto__', 'constructor', 'prototype'].includes(value)
+}
+
+function propertyTypesJson(bytes: Uint8Array): Record<string, unknown> {
+  const raw = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+  const data: unknown = JSON.parse(raw, (_key: string, value: unknown, context?: { source?: string }) => {
+    if (typeof value !== 'number') return value
+    if (!context?.source || !losslessJson.rawJSON) throw new NoteVaultError('unavailable', 'Lossless settings editing requires a supported Node runtime.')
+    return losslessJson.rawJSON(context.source)
+  })
+  if (data === null || typeof data !== 'object' || Array.isArray(data) || losslessJson.isRawJSON(data)
+    || (Object.hasOwn(data, 'types') && (typeof (data as Record<string, unknown>).types !== 'object'
+      || (data as Record<string, unknown>).types === null || Array.isArray((data as Record<string, unknown>).types) || losslessJson.isRawJSON((data as Record<string, unknown>).types)))) {
+    throw new NoteVaultError('invalid-content', 'Property-type settings are malformed. The original file was not changed.')
+  }
+  // JSON.parse discards duplicate keys. Refuse them before preserving/editing settings.
+  const tokens = [...raw.matchAll(/"(?:\\.|[^"\\])*"|[{}\[\],:]/gu)].map(match => match[0])
+  const objects: Array<Set<string> | null> = []
+  for (let index = 0; index < tokens.length; index++) {
+    const token = tokens[index]!
+    if (token === '{') objects.push(new Set())
+    else if (token === '[') objects.push(null)
+    else if (token === '}' || token === ']') objects.pop()
+    else if (token.startsWith('"') && tokens[index + 1] === ':' && objects.at(-1)) {
+      const key = JSON.parse(token) as string, keys = objects.at(-1)!
+      if (keys.has(key)) throw new NoteVaultError('invalid-content', 'Duplicate settings must be corrected before changing a property type.')
+      keys.add(key)
+    }
+  }
+  const result = data as Record<string, unknown>
+  if (Object.keys((result.types ?? {}) as object).length > 1_000) throw new NoteVaultError('too-large', 'Property-type settings exceed the supported limit.')
+  return result
+}
+
+function knownPropertyTypes(data: Record<string, unknown>): Record<string, ObsidianPropertyType> {
+  return Object.fromEntries(Object.entries((data.types ?? {}) as object)
+    .filter(([key, value]) => propertyTypeKey(key) && OBSIDIAN_PROPERTY_TYPES.has(value as ObsidianPropertyType)))
+}
+
+async function readPropertyTypesRegistry(root: string, signal: AbortSignal, maxEntries: number) {
+  signal.throwIfAborted()
+  await assertPassiveDestinationUnaliased(root, PROPERTY_TYPES_PATH, maxEntries)
+  const candidate = path.join(root, '.obsidian', 'types.json')
+  let identity: import('node:fs').BigIntStats
+  try { await assertNoDirectorySymlinks(root, candidate); identity = await lstat(candidate, { bigint: true }) }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { data: {} as Record<string, unknown>, revision: null }
+    throw error
+  }
+  if (!identity.isFile() || identity.isSymbolicLink() || identity.nlink !== 1n) throw new NoteVaultError('unsafe-target', 'Property-type settings must be an unlinked regular file.')
+  if (identity.size > BigInt(MAX_PROPERTY_TYPES_BYTES)) throw new NoteVaultError('too-large', 'Property-type settings exceed the supported limit.')
+  const revision = fileRevision(identity)
+  const read = await readPassiveBackupFile(root, { path: PROPERTY_TYPES_PATH, expectedRevision: revision }, signal)
+  if (read.size > MAX_PROPERTY_TYPES_BYTES) throw new NoteVaultError('too-large', 'Property-type settings exceed the supported limit.')
+  return { data: propertyTypesJson(read.data), revision }
 }
 
 async function assertPassiveSiblingUnaliased(
@@ -5358,6 +5437,63 @@ export class NoteVaultRuntime extends Service {
     }
   }
 
+  async getObsidianPropertyRegistry(request: { expectedVault: VaultReference }, signal: AbortSignal): Promise<ObsidianPropertyRegistry> {
+    const { root, state } = this.captureExpectedVault(request.expectedVault)
+    try {
+      const current = await readPropertyTypesRegistry(root, signal, this.treeConfig.maxEntries)
+      this.assertCapturedVault(state, root)
+      return { generation: state.generation, revision: current.revision, types: knownPropertyTypes(current.data) }
+    } catch (error) {
+      this.assertCapturedVault(state, root)
+      if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError')) throw error
+      throw new NoteVaultError('unsafe-target', 'Property-type settings could not be read safely. The original file was not changed.')
+    }
+  }
+
+  async setObsidianPropertyType(request: SetObsidianPropertyTypeRequest, signal: AbortSignal): Promise<ObsidianPropertyRegistry> {
+    if (!hasExactKeys(request, ['expectedVault', 'expectedRevision', 'key', 'type']) || !propertyTypeKey(request.key)
+      || !OBSIDIAN_PROPERTY_TYPES.has(request.type)
+      || !(request.expectedRevision === null || typeof request.expectedRevision === 'string' && /^file:[0-9a-f]{64}$/u.test(request.expectedRevision))) {
+      throw new NoteVaultError('invalid-content', 'The property type or name is invalid.')
+    }
+    const { root, state } = this.captureExpectedVault(request.expectedVault)
+    signal.throwIfAborted()
+    return this.runDraftOperation(`property-types:${root}`, async () => {
+      let committed = false
+      try {
+        const current = await readPropertyTypesRegistry(root, signal, this.treeConfig.maxEntries)
+        this.assertCapturedVault(state, root)
+        if (current.revision !== request.expectedRevision) throw new NoteVaultError('conflict', 'Property-type settings changed. Reload them before retrying; your note is unchanged.')
+        const next = { ...current.data, types: { ...(current.data.types as object ?? {}), [request.key]: request.type } }
+        const data = Buffer.from(JSON.stringify(next, null, 2) + '\n')
+        if (data.byteLength > MAX_PROPERTY_TYPES_BYTES) throw new NoteVaultError('too-large', 'Property-type settings exceed the supported limit.')
+        const parent = await ensurePassiveBackupParent(root, PROPERTY_TYPES_PATH, this.treeConfig.maxEntries)
+        const candidate = path.join(root, '.obsidian', 'types.json')
+        await writeDocumentAtomic(candidate, data, current.revision === null, async () => {
+          signal.throwIfAborted()
+          this.assertCapturedVault(state, root)
+          await assertDestinationParentBound(root, parent)
+          const latest = await readPropertyTypesRegistry(root, signal, this.treeConfig.maxEntries)
+          if (latest.revision !== current.revision) throw new NoteVaultError('conflict', 'Property-type settings changed before they could be saved.')
+          this.assertCapturedVault(state, root)
+        })
+        committed = true
+        const saved = await readPropertyTypesRegistry(root, POST_COMMIT_SIGNAL, this.treeConfig.maxEntries)
+        this.assertCapturedVault(state, root)
+        if (JSON.stringify(saved.data) !== JSON.stringify(next)) {
+          throw new NoteVaultError('partial', 'Settings were saved but changed before verification. Reload before retrying.')
+        }
+        this.emitEntryChange('updated', PROPERTY_TYPES_PATH, state)
+        return { generation: state.generation, revision: saved.revision, types: knownPropertyTypes(saved.data) }
+      } catch (error) {
+        if (committed) throw new NoteVaultError('partial', 'Property-type settings were saved but could not be verified. Your original note is unchanged; reload before retrying.')
+        this.assertCapturedVault(state, root)
+        if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError')) throw error
+        throw new NoteVaultError('unsafe-target', 'Property-type settings could not be saved safely. Your note is unchanged.')
+      }
+    })
+  }
+
   async restorePassiveBackupEntry(
     request: RestorePassiveBackupEntryRequest,
     signal: AbortSignal,
@@ -5390,7 +5526,6 @@ export class NoteVaultRuntime extends Service {
       const claimed = await lstat(candidate, { bigint: true })
       const entry = await readPassiveBackupFile(root, {
         expectedRevision: fileRevision(claimed),
-        expectedVault: request.expectedVault,
         path: relativePath,
       }, POST_COMMIT_SIGNAL)
       await assertPassiveDestinationUnaliased(root, relativePath, this.treeConfig.maxEntries)

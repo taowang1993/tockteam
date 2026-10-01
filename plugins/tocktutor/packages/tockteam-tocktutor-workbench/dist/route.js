@@ -40,7 +40,7 @@ import { WorkbenchGlyph } from "./workbench-glyph.js";
 import { parseCanvasDocument, updateCanvasNodePosition, } from "./canvas.js";
 import { projectLivePreview, replaceLivePreviewLine, } from "./live-preview.js";
 import { renderMarkdownHtml } from "./rich-markdown.js";
-import { parseFrontmatterProperties, setFrontmatterProperty } from "./properties.js";
+import { isValidPropertyName, parseFrontmatterProperties, removeFrontmatterProperty, renameFrontmatterProperty, setFrontmatterProperty, preparePropertyTypeChange, obsidianPropertyType } from "./properties.js";
 import { addBookmark, editBookmark as updateBookmark, getBookmark, loadBookmarks, remapBookmarks, removeBookmark as removeStoredBookmark, saveBookmarks } from "./bookmarks.js";
 import { layoutGraph, projectGraph } from "./graph.js";
 import { BUILTIN_TEMPLATES, buildCaptureNote, buildJournalNote, expandTemplate, uniqueNotePath } from "./capture.js";
@@ -370,6 +370,7 @@ function initialSnapshot() {
         embeds: Object.freeze([]),
         entries: Object.freeze([]),
         facets: null,
+        facetsStatus: 'idle',
         focusedPaneId: 'pane-1',
         focusMode: false,
         graph: null,
@@ -445,6 +446,10 @@ export class WorkbenchRouteController {
     vaultGeneration = 0;
     propertyTypes = null;
     propertyTypesAbort = null;
+    propertyTypesRevision;
+    propertyTypeWrite = null;
+    facetsAbort = null;
+    propertyInputDrafts = new Map();
     shellSession = createWorkbenchSession(ROUTE_PREFIX, null, 'pane-1');
     recentlyClosed = [];
     historyBack = [];
@@ -1214,24 +1219,38 @@ export class WorkbenchRouteController {
             return false;
         }
     }
+    getPropertySuggestions = () => ({
+        names: [...new Set([...(this.snapshot.facets?.properties.map(item => item.key) ?? []), ...Object.keys(this.getObsidianPropertyTypes())])].filter(isValidPropertyName),
+        tags: this.snapshot.facets?.tags.map(item => item.tag) ?? [],
+        status: this.snapshot.facetsStatus ?? 'idle',
+        incomplete: this.snapshot.facets?.complete === false || this.snapshot.facets?.truncated === true,
+        onRetry: () => { void this.loadFacets(); },
+    });
     async loadFacets() {
         const vault = this.snapshot.vault;
-        if (vault === null)
+        if (vault === null || this.disposed)
             return false;
-        const operation = this.nextOperation();
+        this.facetsAbort?.abort();
+        const abort = new AbortController();
+        this.facetsAbort = abort;
+        const current = () => !this.disposed && !abort.signal.aborted && this.facetsAbort === abort && sameVault(this.snapshot.vault, vault);
+        this.update({ facets: null, facetsStatus: 'loading' });
         try {
-            const facets = remoteValue(await this.remote.tocktutorWorkbench.facets({ expectedVault: vault, limit: 1_000 }, operation.signal));
-            if (!this.current(operation.id, vault)
-                || facets.generation !== vault.generation
-                || !Array.isArray(facets.tags)
-                || !Array.isArray(facets.properties)
-                || facets.tags.length > 1_000
-                || facets.properties.length > 1_000)
+            const facets = remoteValue(await this.remote.tocktutorWorkbench.facets({ expectedVault: vault, limit: 1_000 }, abort.signal));
+            if (!current())
                 return false;
-            this.update({ facets });
+            if (facets.generation !== vault.generation
+                || !Array.isArray(facets.tags) || !Array.isArray(facets.properties)
+                || facets.tags.length > 1_000 || facets.properties.length > 1_000
+                || facets.tags.some(item => typeof item.tag !== 'string')
+                || facets.properties.some(item => typeof item.key !== 'string'))
+                throw new Error('Invalid suggestions');
+            this.update({ facets, facetsStatus: 'ready' });
             return true;
         }
         catch {
+            if (current())
+                this.update({ facets: null, facetsStatus: 'error' });
             return false;
         }
     }
@@ -1754,19 +1773,141 @@ export class WorkbenchRouteController {
         this.shellSession = toggleLinkedPanePin(this.shellSession, id);
         this.syncShell();
     }
-    bindLinkedProperty(id) {
+    getPropertyDrafts(id) {
+        const { vault, path } = this.getPaneSnapshot(id);
+        if (!vault || !path)
+            return new Map();
+        // Input drafts belong to a vault/note, not a view or editing mode.
+        const key = JSON.stringify([vault.id, path]);
+        let drafts = this.propertyInputDrafts.get(key);
+        if (!drafts) {
+            drafts = new Map();
+            this.propertyInputDrafts.set(key, drafts);
+        }
+        return drafts;
+    }
+    bindPropertyActions(id) {
         const edit = this.bindPaneEdit(id);
-        return (key, value) => {
+        const lifetime = this.paneLifetimeFor(id);
+        const change = (transform) => {
             const snapshot = this.getPaneSnapshot(id);
-            if (!this.pane(id)?.linkedView || snapshot.documentKind !== 'markdown' || snapshot.documentUnavailable)
+            if (this.paneLifetimeFor(id) !== lifetime || snapshot.documentKind !== 'markdown' || snapshot.documentUnavailable
+                || (!this.pane(id)?.linkedView && snapshot.mode === 'reading'))
                 return false;
             try {
-                return edit(setFrontmatterProperty(snapshot.source, key, value));
+                return edit(transform(snapshot.source));
             }
             catch {
                 return false;
             }
         };
+        return {
+            set: (key, value) => change(source => setFrontmatterProperty(source, key, value)),
+            rename: (from, to) => change(source => renameFrontmatterProperty(source, from, to)),
+            remove: (key) => change(source => removeFrontmatterProperty(source, key)),
+            changeType: this.remote.tocktutorWorkbench?.setObsidianPropertyType
+                ? (key, target, allowLossy) => {
+                    if (this.paneLifetimeFor(id) !== lifetime)
+                        return Promise.reject(new Error('The note changed.'));
+                    return this.changePropertyType(id, key, target, allowLossy);
+                } : undefined,
+        };
+    }
+    async loadPropertyTypes() {
+        const vault = this.snapshot.vault;
+        if (!vault || this.disposed)
+            return false;
+        this.propertyTypesAbort?.abort();
+        const abort = new AbortController();
+        this.propertyTypesAbort = abort;
+        const current = () => !this.disposed && !abort.signal.aborted && this.propertyTypesAbort === abort && sameVault(this.snapshot.vault, vault);
+        try {
+            if (this.remote.tocktutorWorkbench.getObsidianPropertyRegistry) {
+                const result = remoteValue(await this.remote.tocktutorWorkbench.getObsidianPropertyRegistry(vault, abort.signal));
+                if (!current())
+                    return false;
+                if (result.generation !== vault.generation || !(result.revision === null || /^file:[0-9a-f]{64}$/u.test(result.revision)))
+                    throw new Error('Invalid property settings');
+                this.propertyTypesRevision = result.revision;
+                this.propertyTypes = { vault, values: Object.freeze({ ...result.types }) };
+            }
+            else if (this.remote.tocktutorWorkbench.getObsidianPropertyTypes) {
+                const values = remoteValue(await this.remote.tocktutorWorkbench.getObsidianPropertyTypes(vault, abort.signal));
+                if (!current())
+                    return false;
+                this.propertyTypes = { vault, values: Object.freeze({ ...values }) };
+            }
+            else
+                return false;
+            this.update({});
+            return true;
+        }
+        catch {
+            if (current())
+                this.propertyTypesRevision = undefined;
+            return false;
+        }
+    }
+    async changePropertyType(id, key, target, allowLossy = false) {
+        const initial = this.getPaneSnapshot(id), lifetime = this.paneLifetimeFor(id);
+        if (!initial.vault || !initial.path || initial.documentKind !== 'markdown' || initial.documentUnavailable)
+            throw new Error('Open a Markdown note before changing its property type.');
+        const vault = initial.vault;
+        if (!this.pane(id)?.linkedView && initial.mode === 'reading')
+            throw new Error('Switch to an editing mode before changing this type.');
+        if (this.propertyTypeWrite)
+            throw new Error('Wait for the current type change to finish.');
+        const proposal = preparePropertyTypeChange(initial.source, key, target);
+        if (!proposal.ok)
+            throw new Error(proposal.message);
+        if (proposal.lossy && !allowLossy)
+            throw new Error('Confirm the value conversion before changing this type.');
+        const setter = this.remote.tocktutorWorkbench.setObsidianPropertyType;
+        if (!setter)
+            throw new Error('Remembered property types are unavailable.');
+        const edit = this.bindPaneEdit(id), abort = new AbortController();
+        this.propertyTypeWrite = abort;
+        const current = () => !this.disposed && !abort.signal.aborted && this.paneLifetimeFor(id) === lifetime
+            && sameVault(this.snapshot.vault, vault) && this.getPaneSnapshot(id).path === initial.path && this.getPaneSnapshot(id).source === initial.source
+            && this.getPaneSnapshot(id).localEditRevision === initial.localEditRevision;
+        try {
+            if (this.propertyTypesRevision === undefined && !await this.loadPropertyTypes())
+                throw new Error('Property settings could not be read. Your note is unchanged; retry after correcting the settings.');
+            if (!current())
+                throw new Error('The note changed. Your original values were not converted.');
+            const expectedRevision = this.propertyTypesRevision ?? null;
+            if (proposal.nextSource !== initial.source) {
+                const recovery = remoteValue(await this.remote.tocktutorWorkbench.captureSnapshot({ expectedVault: initial.vault, path: initial.path, content: initial.source, reason: 'manual' }, abort.signal));
+                if (!current() || recovery.generation !== initial.vault.generation || recovery.snapshot?.path !== initial.path)
+                    throw new Error('A recovery copy could not be verified. Your original note is unchanged.');
+            }
+            if (!current())
+                throw new Error('The note changed. Your original values were not converted.');
+            const saved = remoteValue(await this.remote.tocktutorWorkbench.setObsidianPropertyType({ expectedVault: initial.vault, expectedRevision, key, type: obsidianPropertyType(key, target) }, abort.signal));
+            if (saved.generation !== initial.vault.generation || !saved.revision || !/^file:[0-9a-f]{64}$/u.test(saved.revision)
+                || saved.types[key] !== obsidianPropertyType(key, target))
+                throw new Error('The saved type could not be verified. Your original note is unchanged; reload before retrying.');
+            if (sameVault(this.snapshot.vault, initial.vault)) {
+                this.propertyTypesRevision = saved.revision;
+                this.propertyTypes = { vault: initial.vault, values: Object.freeze({ ...saved.types }) };
+                this.update({});
+            }
+            if (!current() || !edit(proposal.nextSource))
+                throw new Error('The note changed while its type was remembered. Your original values were not converted; reload the settings before retrying.');
+            return true;
+        }
+        catch (error) {
+            this.propertyTypesRevision = undefined;
+            throw error;
+        }
+        finally {
+            if (this.propertyTypeWrite === abort)
+                this.propertyTypeWrite = null;
+        }
+    }
+    bindLinkedProperty(id) {
+        const set = this.bindPropertyActions(id).set;
+        return (key, value) => !!this.pane(id)?.linkedView && set(key, value);
     }
     async saveLinkedView(id) {
         const snapshot = this.getPaneSnapshot(id);
@@ -2184,8 +2325,12 @@ export class WorkbenchRouteController {
         if (this.disposed)
             return;
         this.propertyTypes = null;
+        this.propertyTypesRevision = undefined;
+        this.propertyTypeWrite?.abort();
         this.propertyTypesAbort?.abort();
         this.propertyTypesAbort = null;
+        this.facetsAbort?.abort();
+        this.facetsAbort = null;
         this.cancelTreeRefresh();
         for (const load of this.linkedLoads.values())
             load.abort.abort();
@@ -2224,6 +2369,7 @@ export class WorkbenchRouteController {
             embeds: Object.freeze([]),
             entries: Object.freeze([]),
             facets: null,
+            facetsStatus: 'idle',
             focusedPaneId: 'pane-1',
             graph: null,
             graphLayout: Object.freeze([]),
@@ -2317,17 +2463,7 @@ export class WorkbenchRouteController {
                 workspaces: Object.freeze(this.workspaces.map(workspace => Object.freeze({ ...workspace }))),
             });
             this.syncShell();
-            if (this.remote.tocktutorWorkbench.getObsidianPropertyTypes) {
-                const abort = new AbortController();
-                this.propertyTypesAbort = abort;
-                void this.remote.tocktutorWorkbench.getObsidianPropertyTypes(vault, abort.signal).then(result => {
-                    const values = remoteValue(result);
-                    if (this.disposed || abort.signal.aborted || this.propertyTypesAbort !== abort || !sameVault(this.snapshot.vault, vault))
-                        return;
-                    this.propertyTypes = { vault, values: Object.freeze({ ...values }) };
-                    this.update({});
-                }).catch(() => undefined);
-            }
+            void this.loadPropertyTypes();
             const path = pathFromTockTutorLocation(this.pathname) ?? this.pane()?.activePath ?? null;
             if (path !== null && !this.pane()?.linkedView)
                 await this.select(path, false, undefined, true, false, true);
@@ -4495,6 +4631,9 @@ export class WorkbenchRouteController {
         this.operation += 1;
         this.operationAbort?.abort();
         this.propertyTypesAbort?.abort();
+        this.propertyTypeWrite?.abort();
+        this.facetsAbort?.abort();
+        this.propertyInputDrafts.clear();
         this.cancelRecoveryOperations();
         this.cancelEmbedOperation();
         for (const load of this.linkedLoads.values())
@@ -4939,13 +5078,13 @@ function boundPaneProps(props, id) {
     const controller = props.paneController;
     const snapshot = controller.getPaneSnapshot(id);
     const lifetime = controller.paneLifetimeFor(id);
-    const bound = { ...props, snapshot, nativeNoteActions: id === props.snapshot.focusedPaneId ? props.nativeNoteActions ?? null : null };
+    const bound = { ...props, snapshot, onSetProperty: controller.bindPropertyActions(id).set, nativeNoteActions: id === props.snapshot.focusedPaneId ? props.nativeNoteActions ?? null : null };
     // Delayed editor/menu callbacks may act only for the exact focused view that rendered them.
     const owns = () => {
         const current = controller.getSnapshot();
         return controller.paneLifetimeFor(id) === lifetime && current.focusedPaneId === id && current.path === snapshot.path && snapshot.vault !== null && sameVault(current.vault, snapshot.vault);
     };
-    for (const name of ['onMode', 'onSelectionChange', 'onSetProperty', 'onToggleTask', 'onRenameTitle', 'onMoveNote', 'onPrepareNoteMerge', 'onAddBookmark', 'onEditBookmark', 'onRemoveBookmark', 'onRevealFile', 'onAttachFiles', 'onUploadImage', 'onCanvasChange', 'onOpenInternalLink', 'onTrashCurrent', 'onLoadRelationships', 'onOpenRecovery']) {
+    for (const name of ['onMode', 'onSelectionChange', 'onToggleTask', 'onRenameTitle', 'onMoveNote', 'onPrepareNoteMerge', 'onAddBookmark', 'onEditBookmark', 'onRemoveBookmark', 'onRevealFile', 'onAttachFiles', 'onUploadImage', 'onCanvasChange', 'onOpenInternalLink', 'onTrashCurrent', 'onLoadRelationships', 'onOpenRecovery']) {
         const callback = props[name];
         if (callback)
             Object.assign(bound, { [name]: (...args) => owns() ? callback(...args) : false });
@@ -4992,6 +5131,7 @@ export function TockTutorRouteView(props) {
     const backlinkLabel = `${String(backlinkCount)} backlink${backlinkCount === 1 ? '' : 's'}`;
     const documents = snapshot.entries.filter(entry => entry.kind === 'document' && supportedDocument(entry.path));
     const focusedPane = snapshot.panes.find(pane => pane.id === snapshot.focusedPaneId);
+    const propertyActions = props.paneController?.bindPropertyActions(snapshot.focusedPaneId);
     const baseFile = useMemo(() => {
         if (snapshot.documentKind !== 'base' || snapshot.path === null)
             return undefined;
@@ -5450,7 +5590,7 @@ export function TockTutorRouteView(props) {
                         return;
                     event.preventDefault();
                     props.onAttachFiles?.(event.clipboardData.files);
-                }, children: [snapshot.mergeRecoveryPending && props.onListMergeRecovery && _jsxs(Alert, { children: [_jsx("p", { children: "Merge Recovery Needs Attention" }), _jsx(Button, { variant: "outline", onClick: () => setMergeRecoveryOpen(true), children: "Review Merge Recovery" })] }), snapshot.message.startsWith('This pane changed in another view.') && _jsx(Alert, { role: "alert", children: snapshot.message }), snapshot.path === null ? (_jsx(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: _jsxs(EmptyHeader, { unstyled: true, children: [_jsx("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }), _jsx(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }), _jsx(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })] }) })) : props.paneOnly && snapshot.revision === null ? _jsx(Alert, { unstyled: true, children: "Loading this note\u2026" }) : snapshot.mode === 'source' ? (_jsx("div", { className: "flex h-full min-h-0 flex-col", children: _jsx(SourceEditor, { ariaLabel: sourceLabel, className: "h-full", content: snapshot.source, localEditRevision: snapshot.localEditRevision, onContentChange: props.onEdit, ...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState }), onSelectionChange: selection => { props.onSelectionChange?.(selection.main.from, selection.main.to); }, ...(noteSearchMode === null ? {} : { searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), selectionRequest: snapshot.selectionRequest, ...(snapshot.embeds === undefined ? {} : { resolvedEmbeds: snapshot.embeds }), spellCheck: true, title: noteTitle(snapshot.path) }, `${snapshot.path}:${snapshot.editorReset ?? 0}`) })) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (_jsx(LivePreviewView, { documentKey: snapshot.path, commandRef: liveCommandRef, insertTextRef: liveInsertTextRef, ...(props.onUploadImage === undefined ? {} : { onUploadImage: props.onUploadImage }), slashLinks: props.paneController?.slashLinkContext(snapshot.focusedPaneId), onOpenInternalLink: (target, kind) => { void props.onOpenInternalLink?.(target, kind); }, localEditRevision: snapshot.localEditRevision, embeds: snapshot.embeds, declaredTypes: props.paneController?.getObsidianPropertyTypes(), onAddProperty: key => props.onSetProperty?.(key, '') ?? false, onEdit: props.onEdit, onEditSource: () => { props.onMode('source'); }, ...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle }), ...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState }), onSelectionChange: selection => { props.onSelectionChange?.(selection.from, selection.to); }, ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), ...(noteSearchMode === null ? {} : { searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), onToggleTask: props.onToggleTask, source: snapshot.source, title: noteTitle(snapshot.path) }, `${snapshot.path}:${snapshot.editorReset ?? 0}`)) : snapshot.documentKind === 'canvas' ? (_jsx(CanvasBoard, { disabled: snapshot.revision === null || props.onCanvasChange === undefined, onChange: change => { props.onCanvasChange?.(change); }, revision: snapshot.revision ?? 'unavailable', source: snapshot.source })) : snapshot.documentKind === 'base' ? (_jsx(ExecutableBaseView, { activeView: baseView, ...(baseFile === undefined ? {} : { baseFile }), files: snapshot.baseFiles ?? [], loadStatus: snapshot.baseStatus, onRetry: props.onBaseRetry, onActiveViewChange: setBaseView, ...(props.onBaseSourceChange === undefined ? {} : { onSourceChange: props.onBaseSourceChange }), ...(props.onBaseNewNote === undefined ? {} : { onNewNote: () => setBaseNoteOpen(true) }), onSearchChange: (view, search) => { setBaseSearches(current => ({ ...current, [view]: search })); }, searches: baseSearches, ...(props.onBaseCopy === undefined ? {} : { onCopy: props.onBaseCopy }), ...(props.onBaseEdit === undefined ? {} : { onEdit: props.onBaseEdit }), ...(props.onBaseExport === undefined ? {} : { onExport: props.onBaseExport }), source: snapshot.source }, `${snapshot.vault?.id}:${snapshot.vault?.generation}:${snapshot.path}`)) : snapshot.documentKind === 'markdown' ? (_jsx(RichReadingView, { declaredTypes: props.paneController?.getObsidianPropertyTypes(), embeds: snapshot.embeds, onAddProperty: key => props.onSetProperty?.(key, '') ?? false, ...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl }), ...(props.onOpenInternalLink === undefined ? {} : { onOpenInternalLink: props.onOpenInternalLink }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState, searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), onToggleTask: props.onToggleTask, source: snapshot.source, title: noteTitle(snapshot.path) }, snapshot.path)) : (_jsx(Alert, { unstyled: true, children: "Reading view is unavailable." })), snapshot.path !== null && snapshot.documentKind === 'markdown' && snapshot.settings?.backlinksInDocument && (_jsxs("section", { "aria-label": "Backlinks in Document", className: "mx-auto mt-6 w-[calc(100%-48px)] max-w-[700px] border-t border-[var(--tt-border)] py-6 text-[var(--tt-text)]", children: [_jsx("h2", { className: "mb-3 text-sm font-medium", children: "Backlinks" }), _jsx(NoteBacklinks, { links: snapshot.links?.path === snapshot.path && snapshot.links?.generation === snapshot.vault?.generation ? snapshot.links : null, loading: snapshot.linksLoading === true, onRetry: props.onLoadRelationships, onSelect: props.onSelect }, `${snapshot.vault?.id}:${snapshot.vault?.generation}:${snapshot.path}`)] }))] }), _jsxs("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar absolute right-0 bottom-0 z-10 flex h-[var(--tt-footer-height)] max-w-full min-w-0 items-center overflow-x-auto rounded-tl-md border-t border-l border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [_jsx("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }), props.nativeNoteActions != null && props.nativeNoteActions.message !== 'Ready.' && _jsx("output", { "aria-live": "polite", className: "mr-3 min-w-0 truncate", children: props.nativeNoteActions.message }), _jsxs("div", { className: "tocktutor-document-stats ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [snapshot.path !== null && (_jsxs(_Fragment, { children: [_jsx("span", { children: backlinkLabel }), _jsx("span", { children: snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source' })] })), _jsxs("span", { children: [String(words), " words"] }), _jsxs("span", { children: [String(characters), " characters"] }), snapshot.path !== null && (_jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Open Assistant", "aria-expanded": panel === 'assistant', onClick: () => { setPanel(current => current === 'assistant' ? null : 'assistant'); }, type: "button", className: "border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]", children: _jsx(WorkbenchGlyph, { kind: "chat" }) }) }), _jsx(TooltipContent, { children: "Open Assistant" })] }))] })] })] }));
+                }, children: [snapshot.mergeRecoveryPending && props.onListMergeRecovery && _jsxs(Alert, { children: [_jsx("p", { children: "Merge Recovery Needs Attention" }), _jsx(Button, { variant: "outline", onClick: () => setMergeRecoveryOpen(true), children: "Review Merge Recovery" })] }), snapshot.message.startsWith('This pane changed in another view.') && _jsx(Alert, { role: "alert", children: snapshot.message }), snapshot.path === null ? (_jsx(Empty, { unstyled: true, className: "tocktutor-empty absolute top-[45%] left-1/2 w-full max-w-[420px] -translate-1/2 p-8 text-center", children: _jsxs(EmptyHeader, { unstyled: true, children: [_jsx("p", { className: "tocktutor-kicker mb-0.5 text-[11px] font-[650] tracking-[.08em] text-[var(--tt-muted)] uppercase", children: "Ready When You Are" }), _jsx(EmptyTitle, { unstyled: true, "aria-level": 2, className: "text-xl font-bold", role: "heading", children: "Select a Note" }), _jsx(EmptyDescription, { unstyled: true, className: "text-[var(--tt-muted)]", children: "Choose a Markdown note from the vault to read or edit its exact source." })] }) })) : props.paneOnly && snapshot.revision === null ? _jsx(Alert, { unstyled: true, children: "Loading this note\u2026" }) : snapshot.mode === 'source' ? (_jsx("div", { className: "flex h-full min-h-0 flex-col", children: _jsx(SourceEditor, { ariaLabel: sourceLabel, className: "h-full", content: snapshot.source, localEditRevision: snapshot.localEditRevision, onContentChange: props.onEdit, ...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState }), onSelectionChange: selection => { props.onSelectionChange?.(selection.main.from, selection.main.to); }, ...(noteSearchMode === null ? {} : { searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), selectionRequest: snapshot.selectionRequest, ...(snapshot.embeds === undefined ? {} : { resolvedEmbeds: snapshot.embeds }), spellCheck: true, title: noteTitle(snapshot.path) }, `${snapshot.path}:${snapshot.editorReset ?? 0}`) })) : snapshot.mode === 'live-preview' && snapshot.documentKind === 'markdown' ? (_jsx(LivePreviewView, { documentKey: snapshot.path, commandRef: liveCommandRef, insertTextRef: liveInsertTextRef, ...(props.onUploadImage === undefined ? {} : { onUploadImage: props.onUploadImage }), slashLinks: props.paneController?.slashLinkContext(snapshot.focusedPaneId), onOpenInternalLink: (target, kind) => { void props.onOpenInternalLink?.(target, kind); }, localEditRevision: snapshot.localEditRevision, embeds: snapshot.embeds, declaredTypes: props.paneController?.getObsidianPropertyTypes(), onAddProperty: key => props.onSetProperty?.(key, '') ?? false, onRenameProperty: propertyActions?.rename, onRemoveProperty: propertyActions?.remove, propertyDrafts: props.paneController?.getPropertyDrafts(snapshot.focusedPaneId), suggestions: props.paneController?.getPropertySuggestions(), onChangePropertyType: propertyActions?.changeType, onEdit: props.onEdit, onEditSource: () => { props.onMode('source'); }, ...(props.onRenameTitle === undefined ? {} : { onRenameTitle: props.onRenameTitle }), ...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState }), onSelectionChange: selection => { props.onSelectionChange?.(selection.from, selection.to); }, ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), ...(noteSearchMode === null ? {} : { searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), onToggleTask: props.onToggleTask, source: snapshot.source, title: noteTitle(snapshot.path) }, `${snapshot.path}:${snapshot.editorReset ?? 0}`)) : snapshot.documentKind === 'canvas' ? (_jsx(CanvasBoard, { disabled: snapshot.revision === null || props.onCanvasChange === undefined, onChange: change => { props.onCanvasChange?.(change); }, revision: snapshot.revision ?? 'unavailable', source: snapshot.source })) : snapshot.documentKind === 'base' ? (_jsx(ExecutableBaseView, { activeView: baseView, ...(baseFile === undefined ? {} : { baseFile }), files: snapshot.baseFiles ?? [], loadStatus: snapshot.baseStatus, onRetry: props.onBaseRetry, onActiveViewChange: setBaseView, ...(props.onBaseSourceChange === undefined ? {} : { onSourceChange: props.onBaseSourceChange }), ...(props.onBaseNewNote === undefined ? {} : { onNewNote: () => setBaseNoteOpen(true) }), onSearchChange: (view, search) => { setBaseSearches(current => ({ ...current, [view]: search })); }, searches: baseSearches, ...(props.onBaseCopy === undefined ? {} : { onCopy: props.onBaseCopy }), ...(props.onBaseEdit === undefined ? {} : { onEdit: props.onBaseEdit }), ...(props.onBaseExport === undefined ? {} : { onExport: props.onBaseExport }), source: snapshot.source }, `${snapshot.vault?.id}:${snapshot.vault?.generation}:${snapshot.path}`)) : snapshot.documentKind === 'markdown' ? (_jsx(RichReadingView, { declaredTypes: props.paneController?.getObsidianPropertyTypes(), embeds: snapshot.embeds, onAddProperty: key => props.onSetProperty?.(key, '') ?? false, ...(props.onOpenExternalUrl === undefined ? {} : { onOpenExternalUrl: props.onOpenExternalUrl }), ...(props.onOpenInternalLink === undefined ? {} : { onOpenInternalLink: props.onOpenInternalLink }), ...(noteSearchMode === null ? {} : { onSearchState: onNoteSearchState, searchCurrentIndex: noteSearchState.current, searchQuery: noteSearchQuery, searchRequest: activeNoteSearchRequest }), ...(props.onSetProperty === undefined ? {} : { onSetProperty: props.onSetProperty }), onToggleTask: props.onToggleTask, source: snapshot.source, title: noteTitle(snapshot.path) }, snapshot.path)) : (_jsx(Alert, { unstyled: true, children: "Reading view is unavailable." })), snapshot.path !== null && snapshot.documentKind === 'markdown' && snapshot.settings?.backlinksInDocument && (_jsxs("section", { "aria-label": "Backlinks in Document", className: "mx-auto mt-6 w-[calc(100%-48px)] max-w-[700px] border-t border-[var(--tt-border)] py-6 text-[var(--tt-text)]", children: [_jsx("h2", { className: "mb-3 text-sm font-medium", children: "Backlinks" }), _jsx(NoteBacklinks, { links: snapshot.links?.path === snapshot.path && snapshot.links?.generation === snapshot.vault?.generation ? snapshot.links : null, loading: snapshot.linksLoading === true, onRetry: props.onLoadRelationships, onSelect: props.onSelect }, `${snapshot.vault?.id}:${snapshot.vault?.generation}:${snapshot.path}`)] }))] }), _jsxs("footer", { "aria-label": "TockTutor Status Bar", className: "tocktutor-statusbar absolute right-0 bottom-0 z-10 flex h-[var(--tt-footer-height)] max-w-full min-w-0 items-center overflow-x-auto rounded-tl-md border-t border-l border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2 text-xs text-[var(--tt-muted)]", role: "group", children: [_jsx("output", { "aria-live": "polite", className: "tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]", children: snapshot.message }), props.nativeNoteActions != null && props.nativeNoteActions.message !== 'Ready.' && _jsx("output", { "aria-live": "polite", className: "mr-3 min-w-0 truncate", children: props.nativeNoteActions.message }), _jsxs("div", { className: "tocktutor-document-stats ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2", children: [snapshot.path !== null && (_jsxs(_Fragment, { children: [_jsx("span", { children: backlinkLabel }), _jsx("span", { children: snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source' })] })), _jsxs("span", { children: [String(words), " words"] }), _jsxs("span", { children: [String(characters), " characters"] }), snapshot.path !== null && (_jsxs(Tooltip, { children: [_jsx(TooltipTrigger, { asChild: true, children: _jsx(Button, { unstyled: true, "aria-label": "Open Assistant", "aria-expanded": panel === 'assistant', onClick: () => { setPanel(current => current === 'assistant' ? null : 'assistant'); }, type: "button", className: "border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]", children: _jsx(WorkbenchGlyph, { kind: "chat" }) }) }), _jsx(TooltipContent, { children: "Open Assistant" })] }))] })] })] }));
     if (props.paneOnly)
         return _jsx(TooltipProvider, { children: _jsxs("div", { className: "flex h-full min-h-0 min-w-0 flex-col", "data-pane-id": snapshot.focusedPaneId, onPointerDownCapture: () => { props.onFocusPane?.(snapshot.focusedPaneId); }, onFocusCapture: () => { props.onFocusPane?.(snapshot.focusedPaneId); }, onKeyDown: event => {
                     const primary = /Mac|iPhone|iPad/u.test(globalThis.navigator?.platform ?? '') ? event.metaKey : event.ctrlKey;

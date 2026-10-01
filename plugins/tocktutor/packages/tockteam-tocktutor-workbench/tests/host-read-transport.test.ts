@@ -379,6 +379,8 @@ test('registers only the accepted read/tree Remote methods and delegates exact r
     assert.deepEqual(remoteMethods(state.gateway), [
       { invocation: { kind: 'direct' }, method: 'currentVault' },
       { invocation: { kind: 'direct' }, method: 'getObsidianPropertyTypes' },
+      { invocation: { kind: 'direct' }, method: 'getObsidianPropertyRegistry' },
+      { invocation: { kind: 'direct' }, method: 'setObsidianPropertyType' },
       { invocation: { kind: 'direct' }, method: 'createManagedVault' },
       { invocation: { kind: 'direct' }, method: 'openSandboxVault' },
       { invocation: { kind: 'direct' }, method: 'inspectAttachment' },

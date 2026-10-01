@@ -1,6 +1,10 @@
 export const MAX_FRONTMATTER_BYTES = 1_000_000;
 export const MAX_PROPERTIES = 1_000;
-const KEY = /^[A-Za-z_][A-Za-z0-9_-]{0,127}$/u;
+const KEY = /^[\p{L}\p{N}_][\p{L}\p{N}\p{M}_. -]*$/u;
+export function isValidPropertyName(key) {
+    return typeof key === 'string' && key.length <= 128 && key.trim() === key && KEY.test(key)
+        && !['__proto__', 'constructor', 'prototype'].includes(key);
+}
 function frontmatter(source) {
     if (new TextEncoder().encode(source).byteLength > MAX_FRONTMATTER_BYTES)
         return null;
@@ -96,6 +100,18 @@ function flowStringList(value) {
     }
     return items;
 }
+function decimalIdentity(raw) {
+    const match = /^(-?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/u.exec(raw);
+    let digits = `${match[2]}${match[3] ?? ''}`.replace(/^0+/u, '');
+    let power = Number(match[4] ?? 0) - (match[3]?.length ?? 0);
+    if (!digits)
+        return '0';
+    while (digits.endsWith('0')) {
+        digits = digits.slice(0, -1);
+        power++;
+    }
+    return `${match[1]}${digits}e${power}`;
+}
 function scalar(value) {
     const trimmed = value.trim();
     if (trimmed.startsWith('['))
@@ -113,6 +129,27 @@ function scalar(value) {
     }
     return decodeQuoted(trimmed);
 }
+function scalarComment(raw) {
+    let quote = '';
+    for (let index = 0; index < raw.length; index++) {
+        const char = raw[index];
+        if (quote === '"' && char === '\\') {
+            index++;
+            continue;
+        }
+        if (quote === "'" && char === "'" && raw[index + 1] === "'") {
+            index++;
+            continue;
+        }
+        if (quote && char === quote)
+            quote = '';
+        else if (!quote && (char === '"' || char === "'") && (index === 0 || /[\s\[,]/u.test(raw[index - 1])))
+            quote = char;
+        else if (!quote && char === '#' && (index === 0 || /\s/u.test(raw[index - 1])))
+            return { value: raw.slice(0, index).trimEnd(), comment: raw.slice(index) };
+    }
+    return { value: raw, comment: '' };
+}
 function ranges(source) {
     const block = frontmatter(source);
     if (block === null)
@@ -123,12 +160,13 @@ function ranges(source) {
     for (let index = 0; index < lines.length && properties.length < MAX_PROPERTIES; index += 1) {
         const line = lines[index][0];
         const content = line.replace(/(?:\r\n|\n|\r)$/u, '');
-        const match = content.match(/^([A-Za-z_][A-Za-z0-9_-]{0,127}):(?:\s*(.*))?$/u);
-        if (match === null) {
+        const match = content.match(/^([^:]+):(?:[ \t]*(.*))?$/u);
+        const rawKey = match?.[1]?.trimEnd() ?? '';
+        const key = /^(?:"(?:\\.|[^"\\])*"|'(?:[^']|'')*')$/u.test(rawKey) ? decodeQuoted(rawKey) : rawKey;
+        if (match === null || !isValidPropertyName(key)) {
             offset += line.length;
             continue;
         }
-        const key = match[1];
         let end = offset + line.length;
         const items = [];
         let editable = true;
@@ -144,13 +182,18 @@ function ranges(source) {
             end += lines[next][0].length;
             next += 1;
         }
-        const authored = (match[2] ?? '').trim();
+        const { value: authoredValue, comment } = scalarComment(match[2] ?? '');
+        const authored = authoredValue.trim();
         const value = items.length > 0 ? items : scalar(authored);
         editable &&= !(items.length > 0 && authored !== '')
             && !(authored.startsWith('[') && !Array.isArray(value))
             && !/^[|>{&*!]/u.test(authored)
+            && !(authored.startsWith('"') && !/^"(?:\\.|[^"\\])*"$/u.test(authored))
+            && !(authored.startsWith("'") && !/^'(?:[^']|'')*'$/u.test(authored))
+            && !(typeof value === 'number' && /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/u.test(authored)
+                && decimalIdentity(authored) !== decimalIdentity(String(value)))
             && !/^(?:[ \t]*(?:#[^\r\n]*)?(?:\r\n|\n|\r))*(?:[ \t]+\S|-[ \t])/u.test(source.slice(end));
-        properties.push({ editable, end, key, start: offset, type: editable ? inferPropertyType(value) : 'mixed', value: editable ? value : source.slice(offset, end).trimEnd() });
+        properties.push({ rawKey, comment, editable, end, key, start: offset, type: editable ? inferPropertyType(value) : 'mixed', value: editable ? value : source.slice(offset, end).trimEnd() });
         index = next - 1;
         offset = end;
     }
@@ -184,25 +227,27 @@ function quoteText(value) {
 function serializedProperty(key, value, eol) {
     if (Array.isArray(value))
         return value.length === 0 ? `${key}: []${eol}` : `${key}:${eol}${value.map(item => `  - ${quoteText(item)}`).join(eol)}${eol}`;
-    const encoded = value === null ? 'null' : typeof value === 'string' ? quoteText(value) : String(value);
+    const encoded = value === null ? 'null' : typeof value === 'string' ? quoteText(value) : Object.is(value, -0) ? '-0' : String(value);
     return `${key}: ${encoded}${eol}`;
 }
 export function setFrontmatterProperty(source, key, value) {
-    if (!KEY.test(key))
+    if (!isValidPropertyName(key))
         throw new Error('The property name is invalid.');
     if (new TextEncoder().encode(source).byteLength > MAX_FRONTMATTER_BYTES)
         throw new Error('This note is too large to edit properties. Use Source Mode.');
-    const eol = source.includes('\r\n') ? '\r\n' : '\n';
+    const eol = source.match(/\r\n|\n|\r/u)?.[0] ?? '\n';
     const properties = ranges(source);
+    if (properties.length >= MAX_PROPERTIES)
+        throw new Error('The property limit was reached. Use Source Mode.');
     const matches = properties.filter(property => property.key.toLocaleLowerCase() === key.toLocaleLowerCase());
     const existing = matches[0];
     if (matches.length > 1)
         throw new Error('Duplicate properties must be edited in Source Mode.');
-    if (!existing && properties.length >= MAX_PROPERTIES)
-        throw new Error('The property limit was reached. Use Source Mode.');
     if (existing && !existing.editable)
         throw new Error('Structured property values must be edited in Source Mode.');
-    const serialized = serializedProperty(key, value, eol);
+    let serialized = serializedProperty(existing?.rawKey ?? key, value, eol);
+    if (existing?.comment)
+        serialized = serialized.replace(eol, ` ${existing.comment}${eol}`);
     if (existing !== undefined)
         return `${source.slice(0, existing.start)}${serialized}${source.slice(existing.end)}`;
     const block = frontmatter(source);
@@ -212,17 +257,108 @@ export function setFrontmatterProperty(source, key, value) {
     return `${source.slice(0, insertion)}${serialized}${source.slice(insertion)}`;
 }
 export function renameFrontmatterProperty(source, from, to) {
-    if (!KEY.test(from) || !KEY.test(to))
+    if (!isValidPropertyName(from) || !isValidPropertyName(to))
         throw new Error('The property name is invalid.');
+    if (new TextEncoder().encode(source).byteLength > MAX_FRONTMATTER_BYTES)
+        throw new Error('This note is too large to edit properties. Use Source Mode.');
     const properties = ranges(source);
-    const sourceProperty = properties.find(property => property.key.toLocaleLowerCase() === from.toLocaleLowerCase());
+    if (properties.length >= MAX_PROPERTIES)
+        throw new Error('The property limit was reached. Use Source Mode.');
+    const matches = properties.filter(property => property.key.toLocaleLowerCase() === from.toLocaleLowerCase());
+    if (matches.length > 1)
+        throw new Error('Duplicate properties must be edited in Source Mode.');
+    const sourceProperty = matches[0];
     if (sourceProperty === undefined)
         return source;
     if (properties.some(property => property.key.toLocaleLowerCase() === to.toLocaleLowerCase() && property !== sourceProperty)) {
         throw new Error('The target property already exists.');
     }
-    const prefixLength = sourceProperty.key.length;
+    const prefixLength = sourceProperty.rawKey.length;
     return `${source.slice(0, sourceProperty.start)}${to}${source.slice(sourceProperty.start + prefixLength)}`;
+}
+export function removeFrontmatterProperty(source, key) {
+    if (!isValidPropertyName(key))
+        throw new Error('The property name is invalid.');
+    if (new TextEncoder().encode(source).byteLength > MAX_FRONTMATTER_BYTES)
+        throw new Error('This note is too large to edit properties. Use Source Mode.');
+    const properties = ranges(source);
+    if (properties.length >= MAX_PROPERTIES)
+        throw new Error('The property limit was reached. Use Source Mode.');
+    const matches = properties.filter(property => property.key.toLocaleLowerCase() === key.toLocaleLowerCase());
+    if (matches.length > 1)
+        throw new Error('Duplicate properties must be edited in Source Mode.');
+    const property = matches[0];
+    if (!property)
+        return source;
+    if (!property.editable)
+        throw new Error('Structured property values must be edited in Source Mode.');
+    return source.slice(0, property.start) + source.slice(property.end);
+}
+export function normalizePropertyListValue(key, value) {
+    return key.toLowerCase() === 'tags' || key.toLowerCase() === 'cssclasses' ? value.trim().replace(/^#+/u, '').replace(/\s+/gu, '-') : value;
+}
+export function preparePropertyTypeChange(source, key, target) {
+    const properties = ranges(source);
+    const found = properties.filter(property => property.key.toLowerCase() === key.toLowerCase());
+    const property = found[0];
+    const refuse = (message = 'This value cannot be converted safely. Use Source Mode.') => ({ ok: false, message });
+    if (properties.length >= MAX_PROPERTIES || found.length !== 1 || !property?.editable || property.type === 'datetime' && typeof property.value === 'string' && !validLocalDateTime(property.value))
+        return refuse();
+    let value = property.value, lossy = false;
+    if (value !== null && value !== '') {
+        if (target === 'list')
+            value = (Array.isArray(value) ? value : [String(value)]).map(item => normalizePropertyListValue(key, item));
+        else {
+            if (Array.isArray(value)) {
+                if (target !== 'text' && value.length > 1)
+                    return refuse();
+                lossy = value.length > 1;
+                value = target === 'text' ? value.join(', ') : value[0] ?? '';
+            }
+            if (target === 'text')
+                value = String(value);
+            if (target === 'number') {
+                const raw = String(value).trim();
+                if (!/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/u.test(raw) || !Number.isFinite(Number(raw)))
+                    return refuse();
+                if (decimalIdentity(raw) !== decimalIdentity(String(Number(raw))))
+                    return refuse('This number would lose precision. Use Source Mode to keep the original value.');
+                value = Number(raw);
+            }
+            if (target === 'checkbox') {
+                if (value !== true && value !== false && value !== 'true' && value !== 'false' && value !== 0 && value !== 1)
+                    return refuse();
+                value = value === true || value === 'true' || value === 1;
+            }
+            if (target === 'date') {
+                if (typeof value !== 'string')
+                    return refuse();
+                if (validLocalDateTime(value)) {
+                    lossy = !value.endsWith('T00:00');
+                    value = value.slice(0, 10);
+                }
+                if (!validIsoDate(value))
+                    return refuse();
+            }
+            if (target === 'datetime') {
+                if (typeof value !== 'string')
+                    return refuse();
+                if (validIsoDate(value))
+                    value += 'T00:00';
+                if (!validLocalDateTime(value))
+                    return refuse();
+            }
+        }
+    }
+    try {
+        return { ok: true, value, lossy, nextSource: setFrontmatterProperty(source, key, value) };
+    }
+    catch (error) {
+        return refuse(error instanceof Error ? error.message : undefined);
+    }
+}
+export function obsidianPropertyType(key, type) {
+    return type === 'list' ? key.toLowerCase() === 'tags' ? 'tags' : key.toLowerCase() === 'aliases' ? 'aliases' : 'multitext' : type;
 }
 export async function renamePropertiesRecoverably(files, from, to, operations) {
     const planned = files.map(file => ({ ...file, nextSource: renameFrontmatterProperty(file.source, from, to) }))

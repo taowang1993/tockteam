@@ -296,6 +296,8 @@ let TockTutorWorkbenchGateway = (() => {
     let _instanceExtraInitializers = [];
     let _currentVault_decorators;
     let _getObsidianPropertyTypes_decorators;
+    let _getObsidianPropertyRegistry_decorators;
+    let _setObsidianPropertyType_decorators;
     let _createManagedVault_decorators;
     let _openSandboxVault_decorators;
     let _inspectAttachment_decorators;
@@ -334,6 +336,8 @@ let TockTutorWorkbenchGateway = (() => {
             const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
             _currentVault_decorators = [Remote];
             _getObsidianPropertyTypes_decorators = [Remote];
+            _getObsidianPropertyRegistry_decorators = [Remote];
+            _setObsidianPropertyType_decorators = [Remote];
             _createManagedVault_decorators = [Remote];
             _openSandboxVault_decorators = [Remote];
             _inspectAttachment_decorators = [Remote];
@@ -369,6 +373,8 @@ let TockTutorWorkbenchGateway = (() => {
             _restoreTrash_decorators = [Remote];
             __esDecorate(this, null, _currentVault_decorators, { kind: "method", name: "currentVault", static: false, private: false, access: { has: obj => "currentVault" in obj, get: obj => obj.currentVault }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _getObsidianPropertyTypes_decorators, { kind: "method", name: "getObsidianPropertyTypes", static: false, private: false, access: { has: obj => "getObsidianPropertyTypes" in obj, get: obj => obj.getObsidianPropertyTypes }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _getObsidianPropertyRegistry_decorators, { kind: "method", name: "getObsidianPropertyRegistry", static: false, private: false, access: { has: obj => "getObsidianPropertyRegistry" in obj, get: obj => obj.getObsidianPropertyRegistry }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _setObsidianPropertyType_decorators, { kind: "method", name: "setObsidianPropertyType", static: false, private: false, access: { has: obj => "setObsidianPropertyType" in obj, get: obj => obj.setObsidianPropertyType }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _createManagedVault_decorators, { kind: "method", name: "createManagedVault", static: false, private: false, access: { has: obj => "createManagedVault" in obj, get: obj => obj.createManagedVault }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _openSandboxVault_decorators, { kind: "method", name: "openSandboxVault", static: false, private: false, access: { has: obj => "openSandboxVault" in obj, get: obj => obj.openSandboxVault }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _inspectAttachment_decorators, { kind: "method", name: "inspectAttachment", static: false, private: false, access: { has: obj => "inspectAttachment" in obj, get: obj => obj.inspectAttachment }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -457,6 +463,17 @@ let TockTutorWorkbenchGateway = (() => {
                     throw error;
                 return {};
             }
+        }
+        async getObsidianPropertyRegistry(expectedVault, signal) {
+            assertVaultReference(expectedVault);
+            signal.throwIfAborted();
+            return this.ctx.noteVault.getObsidianPropertyRegistry({ expectedVault }, signal);
+        }
+        async setObsidianPropertyType(request, signal) {
+            assertVaultReference(request.expectedVault);
+            signal.throwIfAborted();
+            // The Runtime owns fixed-path, revision, type, name, and filesystem validation.
+            return this.ctx.noteVault.setObsidianPropertyType(request, signal);
         }
         async createManagedVault(request, signal) {
             assertCreateManagedVaultRequest(request);

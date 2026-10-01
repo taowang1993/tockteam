@@ -3,7 +3,7 @@ import type {
   RemoteResult,
   TypertRemoteContribution,
 } from '@deepseek-ai/dsh-typert-protocol'
-import type { ActiveVaultResult, ApplyMergeRequest, AttachmentMetadataResult, AttachmentPreviewResult, CaptureSnapshotRequest, CreateDocumentRequest, CreateManagedVaultRequest, DraftMutationResult, DraftRequest, DraftResult, DuplicateDocumentResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, MergeLinkPreviewRequest, MergeLinkPreviewResult, MergeListRequest, MergeListResult, MergeRequest, MergeResult, ObsidianPropertyTypes, OpenDocumentResult, PreparedMergeResult, PrepareMergeRequest, ReadSnapshotRequest, RenameDocumentRequest, RenameDocumentResult, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotListResult, SnapshotMutationResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from '@tockteam/tocktutor-workbench/client'
+import type { ActiveVaultResult, ApplyMergeRequest, AttachmentMetadataResult, AttachmentPreviewResult, CaptureSnapshotRequest, CreateDocumentRequest, CreateManagedVaultRequest, DraftMutationResult, DraftRequest, DraftResult, DuplicateDocumentResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, MergeLinkPreviewRequest, MergeLinkPreviewResult, MergeListRequest, MergeListResult, MergeRequest, MergeResult, ObsidianPropertyRegistry, ObsidianPropertyTypes, OpenDocumentResult, PreparedMergeResult, PrepareMergeRequest, ReadSnapshotRequest, RenameDocumentRequest, RenameDocumentResult, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, RestoreTrashResult, SaveDocumentRequest, SaveDraftRequest, SetObsidianPropertyTypeRequest, SnapshotContentResult, SnapshotListResult, SnapshotMutationResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryRequest, TrashListResult, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchRequest, VaultSearchResult, VaultTreePage, WriteDocumentResult } from '@tockteam/tocktutor-workbench/client'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteNamespace$746f636b7475746f72576f726b62656e6368 {
@@ -16,6 +16,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     currentVault: (signal?: AbortSignal) => Promise<RemoteResult<ActiveVaultResult>>
     duplicateDocument: (request: RenameDocumentRequest, signal?: AbortSignal) => Promise<RemoteResult<DuplicateDocumentResult>>
     facets: (request: VaultFacetsRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultFacetsResult>>
+    getObsidianPropertyRegistry: (expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<ObsidianPropertyRegistry>>
     getObsidianPropertyTypes: (expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<ObsidianPropertyTypes>>
     graph: (request: VaultGraphRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultGraphResult>>
     inspectAttachment: (path: string, expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<AttachmentMetadataResult>>
@@ -40,6 +41,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     saveDocument: (request: SaveDocumentRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
     saveDraft: (request: SaveDraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftMutationResult>>
     search: (request: VaultSearchRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultSearchResult>>
+    setObsidianPropertyType: (request: SetObsidianPropertyTypeRequest, signal?: AbortSignal) => Promise<RemoteResult<ObsidianPropertyRegistry>>
     storeAttachment: (request: StoreAttachmentRequest, signal?: AbortSignal) => Promise<RemoteResult<StoreAttachmentResult>>
     trashEntry: (request: TrashEntryRequest, signal?: AbortSignal) => Promise<RemoteResult<TrashMutationResult>>
   }
@@ -53,6 +55,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'tocktutorWorkbench/currentVault': (signal?: AbortSignal) => Promise<RemoteResult<ActiveVaultResult>>
     'tocktutorWorkbench/duplicateDocument': (request: RenameDocumentRequest, signal?: AbortSignal) => Promise<RemoteResult<DuplicateDocumentResult>>
     'tocktutorWorkbench/facets': (request: VaultFacetsRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultFacetsResult>>
+    'tocktutorWorkbench/getObsidianPropertyRegistry': (expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<ObsidianPropertyRegistry>>
     'tocktutorWorkbench/getObsidianPropertyTypes': (expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<ObsidianPropertyTypes>>
     'tocktutorWorkbench/graph': (request: VaultGraphRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultGraphResult>>
     'tocktutorWorkbench/inspectAttachment': (path: string, expectedVault: VaultReference, signal?: AbortSignal) => Promise<RemoteResult<AttachmentMetadataResult>>
@@ -77,6 +80,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'tocktutorWorkbench/saveDocument': (request: SaveDocumentRequest, signal?: AbortSignal) => Promise<RemoteResult<WriteDocumentResult>>
     'tocktutorWorkbench/saveDraft': (request: SaveDraftRequest, signal?: AbortSignal) => Promise<RemoteResult<DraftMutationResult>>
     'tocktutorWorkbench/search': (request: VaultSearchRequest, signal?: AbortSignal) => Promise<RemoteResult<VaultSearchResult>>
+    'tocktutorWorkbench/setObsidianPropertyType': (request: SetObsidianPropertyTypeRequest, signal?: AbortSignal) => Promise<RemoteResult<ObsidianPropertyRegistry>>
     'tocktutorWorkbench/storeAttachment': (request: StoreAttachmentRequest, signal?: AbortSignal) => Promise<RemoteResult<StoreAttachmentResult>>
     'tocktutorWorkbench/trashEntry': (request: TrashEntryRequest, signal?: AbortSignal) => Promise<RemoteResult<TrashMutationResult>>
   }

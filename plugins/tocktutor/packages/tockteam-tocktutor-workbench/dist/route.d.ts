@@ -15,7 +15,7 @@ import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts';
 import { type ReadingLinkResult } from './editor-surface.tsx';
 import { type SourceEditorSelectionRequest } from './source-editor.tsx';
 import { type WorkbenchUtilityView } from './utility-panel.tsx';
-import { type PropertyValue } from './properties.ts';
+import { type EditablePropertyType, type PropertyValue } from './properties.ts';
 import { type Bookmark as TockTutorBookmark } from './bookmarks.ts';
 import { type GraphPosition } from './graph.ts';
 import { BUILTIN_TEMPLATES } from './capture.ts';
@@ -28,7 +28,7 @@ import { type EditorCommandId } from './editor-commands.ts';
 import { type EditorStatus } from './markdown.ts';
 import { type LinkedView, type LinkedViewKind, type PaneLayout } from './session.ts';
 import { type NoteVaultEventRemote } from './vault-events.ts';
-import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ObsidianPropertyTypes, ReadSnapshotRequest, RenameDocumentRequest, RenameDocumentResult, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, SnapshotMutationResult, RestoreTrashResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
+import type { ActiveVaultResult, AttachmentPreviewResult, CreateDocumentRequest, CreateManagedVaultRequest, CaptureSnapshotRequest, DraftMutationResult, DraftRequest, DraftResult, ListSnapshotsRequest, ListTrashRequest, ListTreeRequest, OpenDocumentResult, ObsidianPropertyTypes, ObsidianPropertyRegistry, SetObsidianPropertyTypeRequest, ReadSnapshotRequest, RenameDocumentRequest, RenameDocumentResult, RestoreSnapshotOverwriteRequest, RestoreSnapshotRequest, RestoreTrashRequest, SaveDocumentRequest, SaveDraftRequest, SnapshotContentResult, SnapshotInfo, SnapshotMutationResult, RestoreTrashResult, StoreAttachmentRequest, StoreAttachmentResult, TrashEntryInfo, TrashEntryRequest, TrashMutationResult, VaultFacetsRequest, VaultFacetsResult, VaultGenerationRequest, VaultGraphRequest, VaultGraphResult, VaultLinksRequest, VaultLinksResult, VaultOutlineRequest, VaultOutlineResult, VaultReference, VaultSearchMatch, VaultSearchRequest, VaultSearchResult, VaultTreeEntry, VaultTreePage, WriteDocumentResult } from './types.ts';
 export declare const MAX_ROUTE_SOURCE_BYTES = 2000000;
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
     tocktutorAssistant?: WorkbenchSearchIntelligenceRemote | undefined;
@@ -40,6 +40,8 @@ export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
         recoverMerge?(request: import('./types.ts').MergeRequest, signal?: AbortSignal): Promise<RemoteResult<import('./types.ts').MergeResult>>;
         currentVault(signal?: AbortSignal): Promise<RemoteResult<ActiveVaultResult>>;
         getObsidianPropertyTypes?(expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<ObsidianPropertyTypes>>;
+        getObsidianPropertyRegistry?(expectedVault: VaultReference, signal?: AbortSignal): Promise<RemoteResult<ObsidianPropertyRegistry>>;
+        setObsidianPropertyType?(request: SetObsidianPropertyTypeRequest, signal?: AbortSignal): Promise<RemoteResult<ObsidianPropertyRegistry>>;
         createManagedVault(request: CreateManagedVaultRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>;
         openSandboxVault(request: VaultGenerationRequest, signal?: AbortSignal): Promise<RemoteResult<VaultReference>>;
         listTree(request: ListTreeRequest, signal?: AbortSignal): Promise<RemoteResult<VaultTreePage>>;
@@ -131,6 +133,7 @@ export interface WorkbenchRouteSnapshot {
     embeds?: readonly ResolvedEmbed[];
     entries: readonly VaultTreeEntry[];
     facets?: VaultFacetsResult | null;
+    facetsStatus?: 'idle' | 'loading' | 'ready' | 'error';
     focusedPaneId: string;
     focusMode?: boolean;
     graph?: VaultGraphResult | null;
@@ -238,6 +241,10 @@ export declare class WorkbenchRouteController {
     private vaultGeneration;
     private propertyTypes;
     private propertyTypesAbort;
+    private propertyTypesRevision;
+    private propertyTypeWrite;
+    private facetsAbort;
+    private readonly propertyInputDrafts;
     private shellSession;
     private readonly recentlyClosed;
     private readonly historyBack;
@@ -302,6 +309,13 @@ export declare class WorkbenchRouteController {
     cancelQuickAnswer(): void;
     retryQuickAnswer(): Promise<boolean>;
     loadMoreSearch(): Promise<boolean>;
+    getPropertySuggestions: () => {
+        names: string[];
+        tags: string[];
+        status: "ready" | "loading" | "error" | "idle";
+        incomplete: boolean;
+        onRetry: () => void;
+    };
     loadFacets(): Promise<boolean>;
     loadGraph(mode: 'global' | 'local'): Promise<boolean>;
     openGraphNode(path: string, mode: 'local' | 'note'): Promise<boolean>;
@@ -336,6 +350,15 @@ export declare class WorkbenchRouteController {
     selectPropertiesPane(id: string): void;
     unlinkLinkedView(id: string): void;
     toggleLinkedPin(id: string): void;
+    getPropertyDrafts(id: string): Map<string, string>;
+    bindPropertyActions(id: string): {
+        set: (key: string, value: PropertyValue) => boolean;
+        rename: (from: string, to: string) => boolean;
+        remove: (key: string) => boolean;
+        changeType: ((key: string, target: EditablePropertyType, allowLossy: boolean) => Promise<boolean>) | undefined;
+    };
+    loadPropertyTypes(): Promise<boolean>;
+    changePropertyType(id: string, key: string, target: EditablePropertyType, allowLossy?: boolean): Promise<boolean>;
     bindLinkedProperty(id: string): (key: string, value: PropertyValue) => boolean;
     saveLinkedView(id: string): Promise<boolean>;
     navigateLinkedView(id: string, path: string): Promise<boolean>;

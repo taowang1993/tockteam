@@ -942,6 +942,7 @@ describe('TockTutor titlebar panel controls', () => {
       paneLifetimeFor: () => 1,
       getPaneSnapshot: (id: string) => id === 'right' ? other : root,
       bindPaneEdit: () => () => true,
+      bindPropertyActions: () => ({ set: () => true, rename: () => true, remove: () => true }),
     } as unknown as import('../src/route.tsx').WorkbenchRouteController
     render(<TockTutorRouteView snapshot={root} paneController={controller} />)
     const history = within(document.querySelector('[data-pane-id="right"]') as HTMLElement).getByRole('navigation', { name: 'Note History' })

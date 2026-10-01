@@ -40,6 +40,7 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
     'currentVault',
     'duplicateDocument',
     'facets',
+    'getObsidianPropertyRegistry',
     'getObsidianPropertyTypes',
     'graph',
     'inspectAttachment',
@@ -64,6 +65,7 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
     'saveDocument',
     'saveDraft',
     'search',
+    'setObsidianPropertyType',
     'storeAttachment',
     'trashEntry',
   ])
@@ -77,12 +79,22 @@ test('publishes deterministic strict read, tree, save, and recovery Remote artif
       descriptor.parameters.map(parameter => parameter.name),
       descriptor.method === 'currentVault'
         ? []
-        : descriptor.method === 'getObsidianPropertyTypes'
+        : descriptor.method === 'getObsidianPropertyTypes' || descriptor.method === 'getObsidianPropertyRegistry'
           ? ['expectedVault']
         : descriptor.method === 'openDocument' || descriptor.method === 'inspectAttachment' || descriptor.method === 'previewAttachment'
           ? ['path', 'expectedVault'] : ['request']
     )
   }
+
+  const setType = remote.descriptors.find(descriptor => descriptor.method === 'setObsidianPropertyType')!
+  const assignment = { expectedVault: { generation: 7, id: `vault:${'f'.repeat(64)}` }, expectedRevision: null, key: 'custom key', type: 'text' }
+  assert.equal(codecAccepts(setType.parameters[0]!.codec, assignment), true)
+  // The fixed-path Runtime rejects extra fields; no path is part of this generated request.
+  const assignmentCodec = setType.parameters[0]!.codec
+  if (assignmentCodec.mode !== 'strict') assert.fail('expected a strict assignment codec')
+  assert.deepEqual(assignmentCodec.schema.parse({ ...assignment, path: '../settings.json' }), assignment)
+  assert.equal(codecAccepts(setType.parameters[0]!.codec, { ...assignment, type: 'arbitrary' }), false)
+  assert.equal(codecAccepts(setType.result, { generation: 7, revision: null, types: { 'custom key': 'text' } }), true)
 
   const open = remote.descriptors.find(descriptor => descriptor.method === 'openDocument')!
   assert.equal(codecAccepts(open.parameters[0]!.codec, '../escape.md'), true)

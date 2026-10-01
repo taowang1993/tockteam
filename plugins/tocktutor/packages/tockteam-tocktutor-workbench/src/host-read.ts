@@ -20,6 +20,8 @@ import type {
   MergeLinkPreviewResult,
   OpenDocumentResult,
   ObsidianPropertyTypes,
+  ObsidianPropertyRegistry,
+  SetObsidianPropertyTypeRequest,
   ObsidianPropertyType,
   DuplicateDocumentResult,
   RenameDocumentRequest,
@@ -77,6 +79,8 @@ export type NoteVaultCapability = Pick<
   | 'listTrash'
   | 'links'
   | 'listTree'
+  | 'getObsidianPropertyRegistry'
+  | 'setObsidianPropertyType'
   | 'listPassiveBackupEntries'
   | 'readPassiveBackupEntry'
   | 'openDocument'
@@ -427,6 +431,21 @@ export class TockTutorWorkbenchGateway extends TypertRemoteService {
       if (error instanceof Error && error.name === 'AbortError') throw error
       return {}
     }
+  }
+
+  @Remote
+  async getObsidianPropertyRegistry(expectedVault: VaultReference, signal: AbortSignal): Promise<ObsidianPropertyRegistry> {
+    assertVaultReference(expectedVault)
+    signal.throwIfAborted()
+    return this.ctx.noteVault.getObsidianPropertyRegistry({ expectedVault }, signal)
+  }
+
+  @Remote
+  async setObsidianPropertyType(request: SetObsidianPropertyTypeRequest, signal: AbortSignal): Promise<ObsidianPropertyRegistry> {
+    assertVaultReference(request.expectedVault)
+    signal.throwIfAborted()
+    // The Runtime owns fixed-path, revision, type, name, and filesystem validation.
+    return this.ctx.noteVault.setObsidianPropertyType(request, signal)
   }
 
   @Remote

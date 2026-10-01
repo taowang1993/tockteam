@@ -1,4 +1,6 @@
 import type {
+  ObsidianPropertyRegistry as RuntimeObsidianPropertyRegistry,
+  SetObsidianPropertyTypeRequest as RuntimeSetObsidianPropertyTypeRequest,
   PrepareMergeRequest as RuntimePrepareMergeRequest,
   PreparedMergeResult as RuntimePreparedMergeResult,
   ApplyMergeRequest as RuntimeApplyMergeRequest,
@@ -11,6 +13,8 @@ import type {
 } from 'tockbot-note-runtime'
 
 // Local declarations let Typert emit client imports while preserving the Runtime contract.
+export interface ObsidianPropertyRegistry extends RuntimeObsidianPropertyRegistry {}
+export interface SetObsidianPropertyTypeRequest extends RuntimeSetObsidianPropertyTypeRequest {}
 export interface PrepareMergeRequest extends RuntimePrepareMergeRequest {}
 export interface PreparedMergeResult extends RuntimePreparedMergeResult {}
 export interface ApplyMergeRequest extends RuntimeApplyMergeRequest {}
@@ -26,7 +30,7 @@ export interface VaultReference {
   id: string
 }
 
-export type ObsidianPropertyType = 'text' | 'multitext' | 'number' | 'checkbox' | 'date' | 'datetime' | 'tags' | 'aliases'
+export type ObsidianPropertyType = import('tockbot-note-runtime').ObsidianPropertyType
 export type ObsidianPropertyTypes = Readonly<Record<string, ObsidianPropertyType>>
 
 export interface ActiveVaultResult {

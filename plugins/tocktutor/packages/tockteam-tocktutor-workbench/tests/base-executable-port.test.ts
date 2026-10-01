@@ -137,7 +137,7 @@ test('search excludes hidden rows before evaluating summaries', () => {
   const parsed = parseExecutableBase('views:\n  - name: Notes\n    order: [file.name]\n    summaries: [sum(note.score)]\n')
   assert.equal(parsed.status, 'ready')
   if (parsed.status !== 'ready') return
-  const inputs = ['A', 'B'].map(name => ({ path: `${name}.md`, revision: revision('a'), source: `---\nscore: ${'9'.repeat(308)}\n---\n` }))
+  const inputs = ['A', 'B'].map(name => ({ path: `${name}.md`, revision: revision('a'), source: '---\nscore: 1e308\n---\n' }))
   const all = createBaseViewModel(parsed, inputs)
   assert.equal(all.status, 'ready')
   if (all.status === 'ready') assert.deepEqual(all.unsupported.map(entry => entry.kind), ['summary'])
@@ -147,7 +147,7 @@ test('search excludes hidden rows before evaluating summaries', () => {
     if (model.status !== 'ready') continue
     assert.deepEqual(model.unsupported, [])
     assert.equal(model.rows.length, count)
-    assert.equal(model.summaries[0]?.value, count === 0 ? 0 : Number('9'.repeat(308)))
+    assert.equal(model.summaries[0]?.value, count === 0 ? 0 : 1e308)
   }
 })
 

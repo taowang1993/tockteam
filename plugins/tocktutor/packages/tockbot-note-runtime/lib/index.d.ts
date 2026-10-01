@@ -41,6 +41,18 @@ export interface VaultReference {
     generation: number;
     id: string;
 }
+export type ObsidianPropertyType = 'text' | 'multitext' | 'number' | 'checkbox' | 'date' | 'datetime' | 'tags' | 'aliases';
+export interface ObsidianPropertyRegistry {
+    generation: number;
+    revision: string | null;
+    types: Readonly<Record<string, ObsidianPropertyType>>;
+}
+export interface SetObsidianPropertyTypeRequest {
+    expectedVault: VaultReference;
+    expectedRevision: string | null;
+    key: string;
+    type: ObsidianPropertyType;
+}
 export interface TockTeamDesktopRevealIdentity {
     dev: string;
     ino: string;
@@ -639,6 +651,10 @@ export declare class NoteVaultRuntime extends Service {
     listTree(request: ListTreeRequest, signal: AbortSignal): Promise<VaultTreePage>;
     listPassiveBackupEntries(request: ListPassiveBackupEntriesRequest, signal: AbortSignal): Promise<PassiveBackupListResult>;
     readPassiveBackupEntry(request: ReadPassiveBackupEntryRequest, signal: AbortSignal): Promise<PassiveBackupContentResult>;
+    getObsidianPropertyRegistry(request: {
+        expectedVault: VaultReference;
+    }, signal: AbortSignal): Promise<ObsidianPropertyRegistry>;
+    setObsidianPropertyType(request: SetObsidianPropertyTypeRequest, signal: AbortSignal): Promise<ObsidianPropertyRegistry>;
     restorePassiveBackupEntry(request: RestorePassiveBackupEntryRequest, signal: AbortSignal): Promise<PassiveBackupMutationResult>;
     private moveAttachmentInternal;
     private moveFileInternal;

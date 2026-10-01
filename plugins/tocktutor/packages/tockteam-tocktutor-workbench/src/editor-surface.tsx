@@ -355,6 +355,8 @@ export function LivePreviewView(props: {
   onRenameProperty?: LivePreviewEditorProps['onRenameProperty']
   onRemoveProperty?: LivePreviewEditorProps['onRemoveProperty']
   propertyDrafts?: LivePreviewEditorProps['propertyDrafts']
+  suggestions?: LivePreviewEditorProps['suggestions']
+  onChangePropertyType?: LivePreviewEditorProps['onChangePropertyType']
   onToggleTask(index: number): void
   searchCurrentIndex?: number | null
   searchQuery?: string
@@ -385,6 +387,8 @@ export function LivePreviewView(props: {
         onRenameProperty={props.onRenameProperty}
         onRemoveProperty={props.onRemoveProperty}
         propertyDrafts={props.propertyDrafts}
+        suggestions={props.suggestions}
+        onChangePropertyType={props.onChangePropertyType}
         {...(props.embeds === undefined ? {} : { resolvedEmbeds: props.embeds })}
         {...(props.onSelectionChange === undefined ? {} : { onSelectionChange: props.onSelectionChange })}
         {...(props.searchCurrentIndex === undefined ? {} : { searchCurrentIndex: props.searchCurrentIndex })}
