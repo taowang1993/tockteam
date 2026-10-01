@@ -1,0 +1,1 @@
+[   -6087ms] [ERROR] The Content Security Policy directive 'frame-ancestors' is ignored when delivered via a <meta> element. @ file:///Users/taowang/projects/tockteam/dist/launcher.html:6

@@ -1,0 +1,545 @@
+{
+  "passed": true,
+  "realDesktop": true,
+  "firstPartyOfflineFixture": true,
+  "accountOrCredentialOperations": false,
+  "rootProduct": "dist/main.js",
+  "route": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+  "canonical": "dark app/light system with reduced motion and no skin",
+  "captures": [
+    {
+      "file": "basic-form-dark.png",
+      "state": "Basic native text/password/textarea/checkbox defaults in the real TockLauncher, dark app/light system, no skin",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true,
+      "formCount": 1
+    },
+    {
+      "file": "basic-form-error-dark.png",
+      "state": "Rejected empty-name submit, accessible inline error, other drafts preserved",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true,
+      "formCount": 1
+    },
+    {
+      "file": "basic-form-edited-dark.png",
+      "state": "Edited fake values, checked checkbox, preserved name focus and visible focus ring",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true,
+      "formCount": 1
+    },
+    {
+      "file": "basic-form-saved-dark.png",
+      "state": "Exact typed fake values submitted after pending edit using Control+Enter",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true,
+      "formCount": 0
+    }
+  ],
+  "widths": [
+    {
+      "name": "Name",
+      "type": "text",
+      "box": "border-box",
+      "width": 1478,
+      "parentWidth": 1478
+    },
+    {
+      "name": "Password",
+      "type": "password",
+      "box": "border-box",
+      "width": 1478,
+      "parentWidth": 1478
+    },
+    {
+      "name": "Notes",
+      "type": "textarea",
+      "box": "border-box",
+      "width": 1478,
+      "parentWidth": 1478
+    },
+    {
+      "name": "Include a Summary",
+      "type": "checkbox",
+      "box": "border-box",
+      "width": 16,
+      "parentWidth": 1478
+    }
+  ],
+  "visible": {
+    "text": "NameThis offline example waits for each edit before saving.PasswordFake text only. No account or sign-in is used.NotesSummaryInclude a SummarySave Fake EntryReset Name",
+    "controls": [
+      {
+        "label": "Name",
+        "type": "text",
+        "checked": null,
+        "value": "Ada"
+      },
+      {
+        "label": "Password",
+        "type": "password",
+        "checked": null,
+        "value": "[masked fake text]"
+      },
+      {
+        "label": "Notes",
+        "type": "textarea",
+        "checked": null,
+        "value": "Reviewed\nOffline Notes"
+      },
+      {
+        "label": "Include a Summary",
+        "type": "checkbox",
+        "checked": true,
+        "value": "on"
+      }
+    ],
+    "focus": "Name",
+    "focusRing": "solid"
+  },
+  "saved": {
+    "name": "Ada Final",
+    "password": "fake-edited",
+    "notes": "Reviewed\nOffline Notes",
+    "summary": true
+  },
+  "backpressure": {
+    "accepted": 32,
+    "disabled": true,
+    "lastDraft": "Draft 31"
+  },
+  "errors": [],
+  "consoleErrors": [],
+  "nonlocalRequests": [],
+  "knownBootConsoleDiagnostic": "Chromium ignores frame-ancestors when delivered through an HTML meta tag; existing launcher CSP diagnostic captured separately.",
+  "productSnapshot": {
+    "baseCommit": "c72aee6bc87cff2c6b5aef3ce69320223735a2fe",
+    "transportCommit": "05ad0dfa",
+    "sources": {
+      "src/main.ts": "b0003e37e5e1fff5abc4b1eabd95659b8f415b1250baa0f07bdfeae4d397dec7",
+      "src/trusted-raycast-compat-api.ts": "b0cdd24f1b78b9e91e2d88bfa260c7bc55f92f0bf32ba4323caf2385afb35de3",
+      "src/user-raycast-child.ts": "c1cec16721c3860f948f3ab730bff2419116770f662720218abe5db4497e186f",
+      "src/user-raycast-contract.ts": "34c57d88e1cbb4310d99a9f949d26a0256a10b769c45a120b92f1a63b0b1fe96",
+      "src/user-raycast-ipc.ts": "8cce819fd197796a48edc89bdcd21a70001f49e00e2a6ddd0ffc202fe0a0a2f7",
+      "src/user-raycast-manager.ts": "ff327a8ebd6feebb6ee4a56c8e0e7ba214f8bcd8ff41c922b0600993e347268c",
+      "src/user-raycast-renderer.ts": "fc0f77b8f2a8d4d27bd80e709f64d5aac911067facf5dcf0d812d7654e4cf512",
+      "plugins/skins/src/client/tailwind.css": "f2234b247801be8d04a18e62844055896486833c655f4c73ccfebaa334f5bf23",
+      "tests/user-raycast-form-editing.test.ts": "da83cf1cb9f3ddfb05ec55cb7fff631ecaca234ec700faedb50c77e2939f01fa",
+      "tests/user-raycast-form-ipc.test.ts": "237b2d65b491455378111694873b88686b90163835d53de0dd9465c2f752b016",
+      "tests/user-raycast-form-renderer.test.ts": "c654baeabdb63857d6f84ef16c3c987c8ad5c954b9084a93e83c003619f8bd30",
+      "tests/user-raycast-renderer.test.ts": "fb5b3066c9e3ceb50551dd942203221a9894bf17d7a6c7c5fdc95b4cfde663b6"
+    },
+    "products": {
+      "dist/main.js": "e3a1d56df6cd7369e20fec54f037b0f2a8386c0128bdbd16108683ee2b032b26",
+      "dist/launcher.js": "152aa0f75463ea8aee59d0fd23920d1a8f40b14ba26ed746d7c42668260ded27",
+      "dist/user-raycast/api.mjs": "2d8196a0249bbb732225b68358648c09015e542331c310562ab2780ea2747bcb",
+      "dist/user-raycast/child.mjs": "7e161932f28c8dfa03eb52f56c04e70ab2bc1b9dde8a91c47b48f87db5c43fef"
+    }
+  },
+  "display": {
+    "id": 17,
+    "main": false,
+    "label": "Sidecar Display (AirPlay)"
+  },
+  "cleanup": [
+    {
+      "id": "8ed6f9db-2daa-4281-83dc-4b3394bb5317",
+      "rootPid": 82211,
+      "recordedPids": [
+        82211,
+        82215,
+        82216,
+        82217,
+        82220,
+        82221,
+        82233,
+        82234,
+        82377,
+        82378,
+        82379,
+        82381,
+        82382,
+        82389,
+        82581,
+        82582,
+        82583,
+        82584,
+        82585,
+        82586,
+        82587,
+        82588,
+        83278,
+        83783,
+        83891,
+        84122,
+        84124
+      ],
+      "remaining": [],
+      "artifacts": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-201vjg",
+      "stopped": true,
+      "detachedBrowser": true,
+      "placement": {
+        "pid": 82211,
+        "events": [
+          {
+            "windowId": 1,
+            "displayId": 17,
+            "bounds": {
+              "x": 1512,
+              "y": 30,
+              "width": 1366,
+              "height": 994
+            },
+            "visible": true,
+            "focused": false
+          },
+          {
+            "windowId": 2,
+            "displayId": 17,
+            "bounds": {
+              "x": 1820,
+              "y": 289,
+              "width": 750,
+              "height": 475
+            },
+            "visible": true,
+            "focused": false
+          }
+        ],
+        "ready": true,
+        "display": {
+          "accelerometerSupport": "unknown",
+          "bounds": {
+            "x": 1512,
+            "y": 0,
+            "width": 1366,
+            "height": 1024
+          },
+          "colorDepth": 24,
+          "colorSpace": "{primaries:P3, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
+          "depthPerComponent": 8,
+          "detected": true,
+          "displayFrequency": 60,
+          "id": 17,
+          "internal": false,
+          "label": "Sidecar Display (AirPlay)",
+          "maximumCursorSize": {
+            "width": 0,
+            "height": 0
+          },
+          "monochrome": false,
+          "nativeOrigin": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scaleFactor": 2,
+          "size": {
+            "width": 1366,
+            "height": 1024
+          },
+          "workArea": {
+            "x": 1512,
+            "y": 30,
+            "width": 1366,
+            "height": 994
+          },
+          "workAreaSize": {
+            "width": 1366,
+            "height": 994
+          },
+          "touchSupport": "unknown"
+        },
+        "port": 49983
+      }
+    },
+    {
+      "id": "f2f4d7f7-d0a2-415c-9fe5-d7e521a98c2b",
+      "rootPid": 84753,
+      "recordedPids": [
+        84753,
+        84760,
+        84761,
+        84763,
+        84766,
+        84767,
+        84780,
+        84782,
+        84816,
+        84817,
+        84818,
+        84819,
+        84820,
+        84821,
+        84822,
+        84823,
+        84939,
+        85060,
+        85061,
+        85062,
+        85063,
+        85064,
+        85065,
+        85066,
+        85340,
+        85435,
+        85700,
+        85858,
+        86255,
+        86257,
+        86663
+      ],
+      "remaining": [],
+      "artifacts": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-DtSDLd",
+      "stopped": true,
+      "detachedBrowser": true,
+      "placement": {
+        "pid": 84753,
+        "events": [
+          {
+            "windowId": 1,
+            "displayId": 17,
+            "bounds": {
+              "x": 1512,
+              "y": 30,
+              "width": 1366,
+              "height": 994
+            },
+            "visible": true,
+            "focused": false
+          },
+          {
+            "windowId": 2,
+            "displayId": 17,
+            "bounds": {
+              "x": 1820,
+              "y": 289,
+              "width": 750,
+              "height": 475
+            },
+            "visible": true,
+            "focused": false
+          }
+        ],
+        "ready": true,
+        "display": {
+          "accelerometerSupport": "unknown",
+          "bounds": {
+            "x": 1512,
+            "y": 0,
+            "width": 1366,
+            "height": 1024
+          },
+          "colorDepth": 24,
+          "colorSpace": "{primaries:P3, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
+          "depthPerComponent": 8,
+          "detected": true,
+          "displayFrequency": 60,
+          "id": 17,
+          "internal": false,
+          "label": "Sidecar Display (AirPlay)",
+          "maximumCursorSize": {
+            "width": 0,
+            "height": 0
+          },
+          "monochrome": false,
+          "nativeOrigin": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scaleFactor": 2,
+          "size": {
+            "width": 1366,
+            "height": 1024
+          },
+          "workArea": {
+            "x": 1512,
+            "y": 30,
+            "width": 1366,
+            "height": 994
+          },
+          "workAreaSize": {
+            "width": 1366,
+            "height": 994
+          },
+          "touchSupport": "unknown"
+        },
+        "port": 50423
+      }
+    },
+    {
+      "id": "bb6ae9b2-3a92-4e9d-b4c0-2701edb13585",
+      "rootPid": 90499,
+      "recordedPids": [
+        90499,
+        90503,
+        90504,
+        90505,
+        90508,
+        90509,
+        90523,
+        90524,
+        90596,
+        90597,
+        90598,
+        90599,
+        90600,
+        90601,
+        90602,
+        90603,
+        90681,
+        90838,
+        90839,
+        90840,
+        91088,
+        91118
+      ],
+      "remaining": [],
+      "artifacts": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-MK7s1D",
+      "stopped": true,
+      "detachedBrowser": true,
+      "placement": {
+        "pid": 90499,
+        "events": [
+          {
+            "windowId": 1,
+            "displayId": 17,
+            "bounds": {
+              "x": 1512,
+              "y": 30,
+              "width": 1366,
+              "height": 994
+            },
+            "visible": true,
+            "focused": false
+          },
+          {
+            "windowId": 2,
+            "displayId": 17,
+            "bounds": {
+              "x": 1820,
+              "y": 289,
+              "width": 750,
+              "height": 475
+            },
+            "visible": true,
+            "focused": false
+          }
+        ],
+        "ready": true,
+        "display": {
+          "accelerometerSupport": "unknown",
+          "bounds": {
+            "x": 1512,
+            "y": 0,
+            "width": 1366,
+            "height": 1024
+          },
+          "colorDepth": 24,
+          "colorSpace": "{primaries:P3, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
+          "depthPerComponent": 8,
+          "detected": true,
+          "displayFrequency": 60,
+          "id": 17,
+          "internal": false,
+          "label": "Sidecar Display (AirPlay)",
+          "maximumCursorSize": {
+            "width": 0,
+            "height": 0
+          },
+          "monochrome": false,
+          "nativeOrigin": {
+            "x": 0,
+            "y": 0
+          },
+          "rotation": 0,
+          "scaleFactor": 2,
+          "size": {
+            "width": 1366,
+            "height": 1024
+          },
+          "workArea": {
+            "x": 1512,
+            "y": 30,
+            "width": 1366,
+            "height": 994
+          },
+          "workAreaSize": {
+            "width": 1366,
+            "height": 994
+          },
+          "touchSupport": "unknown"
+        },
+        "port": 51081
+      }
+    }
+  ],
+  "protectedPaths": {
+    "checked": 1142,
+    "changed": []
+  },
+  "fixtureGroupAudit": {
+    "checked": 290,
+    "passed": true,
+    "includesEarlierFormCheckpointLogs": true
+  },
+  "screenshots": {
+    "basic-form-dark.png": {
+      "sha256": "db1613a93ec47022c559ddad9d85e600b900bf807d0b715490d63387c4822d86",
+      "devicePixels": [
+        3024,
+        1898
+      ]
+    },
+    "basic-form-error-dark.png": {
+      "sha256": "be339d7bda56a6b099e866e8d51f10b78d8640c7d649e6a0ee796bc04b848a12",
+      "devicePixels": [
+        3024,
+        1898
+      ]
+    },
+    "basic-form-edited-dark.png": {
+      "sha256": "352617cd69eda9a1b1c3d4c2bee7f53b59255c5a63ff3237d9f9c36e16d95952",
+      "devicePixels": [
+        3024,
+        1898
+      ]
+    },
+    "basic-form-saved-dark.png": {
+      "sha256": "38d5cc340ec13644e2305859317f6b483a63f2961b50d6111a1bf5770eed89e4",
+      "devicePixels": [
+        3024,
+        1898
+      ]
+    }
+  }
+}

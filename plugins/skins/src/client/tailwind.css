@@ -8,6 +8,7 @@
 @source '../../../../src/desktop-onboarding.ts';
 @source '../../../../src/launcher.html';
 @source '../../../../src/launcher.ts';
+@source '../../../../src/user-raycast-renderer.ts';
 @source '../../../../src/launcher-settings.tsx';
 @source '../../../../src/launcher-settings-navigation.tsx';
 @source '../../../../src/launcher-workflow-settings.tsx';

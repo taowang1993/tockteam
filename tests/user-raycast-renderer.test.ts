@@ -124,7 +124,7 @@ test('a real List empty view and search input survive a projected patch', async 
   assert.equal(document.querySelector<HTMLInputElement>('input[aria-label="Search Extension"]')?.value, '#00ff00')
   assert.equal(document.activeElement?.getAttribute('aria-label'), 'Search Extension')
   assert.match(view.element.textContent ?? '', /lime/)
-  assert.deepEqual(events, [{ revision: 0, eventId: 'search', kind: 'searchChanged', value: '#00ff00' }])
+  assert.deepEqual(events, [{ sessionId: 'session', revision: 0, eventId: 'search', kind: 'searchChanged', value: '#00ff00' }])
   view.dispose(); dom.window.close()
 })
 
@@ -169,7 +169,7 @@ test('local extension approval shows account authority and does not run before s
   assert.equal(opened, 1)
   assert.match(view.element.textContent ?? '', /Pinned Item/)
   document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="action-0"]')!.click(); await flush()
-  assert.deepEqual(events, [{ revision: 0, eventId: 'action-0', kind: 'action' }])
+  assert.deepEqual(events, [{ sessionId: 'session', revision: 0, eventId: 'action-0', kind: 'action' }])
   view.dispose()
   dom.window.close()
 })

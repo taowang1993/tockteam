@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 3,
+  "mode": "diff",
+  "version": "0.9.14",
+  "ok": true,
+  "directory": "/Users/taowang/projects/tockteam",
+  "diff": {
+    "baseBranch": "pull request target",
+    "currentBranch": null,
+    "changedFileCount": 1,
+    "isCurrentChanges": false
+  },
+  "projects": [],
+  "diagnostics": [],
+  "summary": {
+    "errorCount": 0,
+    "warningCount": 0,
+    "affectedFileCount": 0,
+    "totalDiagnosticCount": 0,
+    "score": null,
+    "scoreLabel": null
+  },
+  "elapsedMilliseconds": 84.6945,
+  "error": null
+}
