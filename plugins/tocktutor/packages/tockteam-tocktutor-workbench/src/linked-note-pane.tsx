@@ -43,7 +43,7 @@ export function LinkedNotePane({ controller, id }: { controller: WorkbenchRouteC
                 {(linked.kind === 'backlinks' || linked.kind === 'outgoing-links' || linked.kind === 'graph') && snapshot.saveStatus !== 'saved' && <Alert unstyled role="status">Relationships reflect the saved note. Save to refresh.</Alert>}
                 {linked.kind === 'backlinks' && <NoteBacklinks links={snapshot.links} loading={snapshot.linksLoading === true} onSelect={onSelect} onRetry={retry} />}
                 {linked.kind === 'outgoing-links' && <NoteOutgoingLinks links={snapshot.links} loading={snapshot.linksLoading === true} onSelect={onSelect} onRetry={retry} />}
-                {linked.kind === 'properties' && <MarkdownDocumentHeader className="[&_dl]:grid-cols-1 [&_dt]:min-h-6 [&_dd]:pb-3" declaredTypes={controller.getObsidianPropertyTypes()} editableProperties source={snapshot.source} onAddProperty={key => property(key, '')} onSetProperty={property} />}
+                {linked.kind === 'properties' && <MarkdownDocumentHeader className="[&_dl]:grid-cols-1 [&_dt]:min-h-6 [&_dd]:pb-3 [&_dd_form]:basis-full" declaredTypes={controller.getObsidianPropertyTypes()} editableProperties source={snapshot.source} onAddProperty={key => property(key, '')} onSetProperty={property} />}
                 {linked.kind === 'outline' && <NoteOutlinePanel snapshot={snapshot} onJumpToLine={undefined} onNavigateHeading={async (headings, index) => {
                   if (!current() || !linked.path || !await controller.navigateLinkedView(id, linked.path)) return false
                   const editor = controller.getSnapshot()
