@@ -179,8 +179,8 @@ it('renders five real linked panes, edits represented Properties and navigates o
     await waitFor(() => expect(view.container.querySelectorAll('.ProseMirror[contenteditable="true"]')).toHaveLength(1))
     expect(controller.getPaneSnapshot(source).mode).toBe('live-preview')
     expect(view.container.querySelector('.ProseMirror')?.textContent).toContain('Two')
-    fireEvent.click(screen.getByRole('button', { name: 'Close Properties Linked View' }))
-    await waitFor(() => expect(screen.queryByRole('region', { name: 'Properties Linked View' })).toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle Right Sidebar' }))
+    await waitFor(() => expect(screen.getByLabelText('Right Sidebar').getAttribute('aria-hidden')).toBe('true'))
     expect(controller.getSnapshot().panes.some(pane => pane.id === source)).toBe(true)
   } finally { view.unmount(); await controller.dispose() }
 })
@@ -617,7 +617,7 @@ it('edits imported numbers, flat lists and local date-times with familiar contro
   fireEvent.change(screen.getByLabelText('New tags Value'), { target: { value: 'fresh tag' } })
   fireEvent.click(screen.getByRole('button', { name: 'Add tags Value' }))
   fireEvent.click(screen.getByRole('button', { name: 'Remove Old from aliases' }))
-  expect(changes).toEqual([['rating', 4.5], ['meeting', '2026-09-29T14:45'], ['tags', ['fresh tag']], ['aliases', []]])
+  expect(changes).toEqual([['rating', 4.5], ['meeting', '2026-09-29T14:45'], ['tags', ['fresh-tag']], ['aliases', []]])
 })
 
 it('offers Source Mode instead of a misleading control for incompatible imported YAML', () => {
@@ -669,7 +669,7 @@ it('isolates linked keyboard origins at the actual native route listener while e
       controller.setMode('source')
       controller.edit('# Two dirty\n')
     })
-    const input = await screen.findByLabelText('Property name')
+    const input = await within(screen.getByRole('region', { name: 'Properties Linked View' })).findByLabelText('Property name')
     input.focus()
     for (const [os, modifier] of [['MacIntel', { metaKey: true }], ['Linux', { ctrlKey: true }]] as const) {
       platform.mockReturnValue(os)
@@ -710,11 +710,12 @@ it('round-trips an empty linked string-list input through source and typed parsi
   }
   const view = render(<Harness />)
   try {
-    fireEvent.click(await screen.findByRole('button', { name: 'Remove one from aliases' }))
+    const properties = within(screen.getByRole('region', { name: 'Properties Linked View' }))
+    fireEvent.click(await properties.findByRole('button', { name: 'Remove one from aliases' }))
     expect(controller.getSnapshot().source).toContain('aliases: []\n')
     expect(parseFrontmatterProperties(controller.getSnapshot().source)).toEqual([{ key: 'aliases', type: 'list', value: [] }])
-    fireEvent.change(screen.getByLabelText('New aliases Value'), { target: { value: 'again' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add aliases Value' }))
+    fireEvent.change(properties.getByLabelText('New aliases Value'), { target: { value: 'again' } })
+    fireEvent.click(properties.getByRole('button', { name: 'Add aliases Value' }))
     expect(parseFrontmatterProperties(controller.getSnapshot().source)).toEqual([{ key: 'aliases', type: 'list', value: ['again'] }])
     expect(controller.getSnapshot().source).toContain('---\n# Body\n')
   } finally { view.unmount(); await controller.dispose() }
