@@ -187,6 +187,7 @@ export type LauncherLifecycleCommand =
 export class LauncherLifecycleController {
   private settings: LauncherLifecycleSettings | null = null
   private startupDecisionMade = false
+  private readinessPromise: Promise<void> | undefined
   private ready = false
   private disposed = false
   private updater: Readonly<{ start: () => void; dispose: () => void }> | undefined
@@ -233,6 +234,7 @@ export class LauncherLifecycleController {
     const settings = resolveLauncherLifecycleSettings(this.args.getSetting)
     this.settings = settings
     try { await this.args.setDockVisible(settings.showDockIcon) } catch { /* native effect is optional */ }
+    if (this.disposed) throw new Error('Launcher lifecycle controller is disposed')
     try { this.args.setTrayVisible(settings.showTrayIcon) } catch { /* native effect is optional */ }
     this.args.overlay.setShortcutEnabled(settings.hotkeyEnabled)
     this.args.overlay.applyWindowPreferences({
@@ -244,12 +246,20 @@ export class LauncherLifecycleController {
 
   async markReady(): Promise<void> {
     if (this.disposed || this.startupDecisionMade) return
-    const settings = this.settings ?? await this.sync()
-    this.ready = true
-    if (settings.showOnStartup) await this.args.overlay.show()
-    await this.args.queue.drain(() => this.args.overlay.toggle())
-    if (this.args.queue.hasPending()) return
-    this.startupDecisionMade = true
+    if (this.readinessPromise !== undefined) return await this.readinessPromise
+    const operation = (async (): Promise<void> => {
+      const settings = this.settings ?? await this.sync()
+      if (this.disposed) return
+      this.ready = true
+      if (settings.showOnStartup) await this.args.overlay.show()
+      if (this.disposed) return
+      await this.args.queue.drain(() => this.args.overlay.toggle())
+      if (this.args.queue.hasPending()) return
+      this.startupDecisionMade = true
+    })()
+    this.readinessPromise = operation
+    try { await operation }
+    finally { this.readinessPromise = undefined }
   }
 
   async handleSecondInstance(argv: readonly string[], activateWorkbench: () => void): Promise<void> {

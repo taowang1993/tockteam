@@ -284,3 +284,76 @@ test('lifecycle waits for workbench readiness before showing startup launcher', 
   assert.deepEqual(calls, ['dock:false', 'tray:true', 'shortcut:true', 'preferences:true', 'toggle'])
   assert.equal(settingsUpdates, 0)
 })
+
+test('shutdown during a Dock update cannot restore the tray or launcher controls', async () => {
+  for (const fails of [false, true]) {
+    let finishDock!: () => void
+    const dock = new Promise<void>((resolve, reject) => {
+      finishDock = () => fails ? reject(new Error('Dock unavailable')) : resolve()
+    })
+    let trayVisible = false
+    let shortcutEnabled = false
+    let preferencesApplied = false
+    const lifecycle = new LauncherLifecycleController({
+      getSetting: (_key, fallback) => fallback,
+      openWorkbenchSettings: () => {},
+      overlay: {
+        applyWindowPreferences: () => { preferencesApplied = true },
+        setShortcutEnabled: enabled => { shortcutEnabled = enabled },
+        show: async () => {},
+        toggle: async () => {},
+      },
+      queue: new LauncherToggleIntentQueue(),
+      requestSecureQuit: () => {},
+      rescan: async () => {},
+      setDockVisible: () => dock,
+      setTrayVisible: visible => { trayVisible = visible },
+      updateSetting: async () => {},
+    })
+    const applying = lifecycle.sync()
+    lifecycle.dispose()
+    finishDock()
+    await applying.catch(() => undefined)
+    assert.equal(trayVisible, false)
+    assert.equal(shortcutEnabled, false)
+    assert.equal(preferencesApplied, false)
+    await assert.rejects(applying, /disposed/u)
+  }
+})
+
+test('shutdown during startup display leaves queued launcher toggles unexecuted', async () => {
+  for (const initialized of [false, true]) {
+    let finishShow!: () => void
+    const showing = new Promise<void>(resolve => { finishShow = resolve })
+    let shows = 0
+    let toggles = 0
+    const queue = new LauncherToggleIntentQueue()
+    queue.capture(['app', '--toggle'])
+    const lifecycle = new LauncherLifecycleController({
+      getSetting: (key, fallback) => key === 'window.showOnStartup' ? true : fallback,
+      openWorkbenchSettings: () => {},
+      overlay: {
+        applyWindowPreferences: () => {},
+        setShortcutEnabled: () => {},
+        show: () => { shows += 1; return showing },
+        toggle: async () => { toggles += 1 },
+      },
+      queue,
+      requestSecureQuit: () => {},
+      rescan: async () => {},
+      setDockVisible: () => {},
+      setTrayVisible: () => {},
+      updateSetting: async () => {},
+    })
+    if (initialized) await lifecycle.sync()
+    const ready = lifecycle.markReady()
+    // Cold initialization settles before markReady resumes its startup work.
+    if (!initialized) await Promise.resolve()
+    lifecycle.dispose()
+    finishShow()
+    await ready
+    assert.equal(shows, initialized ? 1 : 0)
+    assert.equal(toggles, 0)
+    assert.equal(queue.hasPending(), true)
+  }
+})
