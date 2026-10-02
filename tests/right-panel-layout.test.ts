@@ -45,7 +45,7 @@ test('desktop shell rail switches between TockCoder and TockTutor', () => {
   assert.doesNotMatch(css, /html\[data-tockteam-tocktutor-active='true'\] #tockteam-rail-root/)
   assert.match(
     css,
-    /#tockteam-embedded-layout > #root \[data-phase\]\s*\{[^}]*--dsw-alias-bg-base: var\(--tockteam-main-pane\);[^}]*background: var\(--tockteam-main-pane\);/s,
+    /#tockteam-embedded-layout > #root \.wSkVaW_root\[data-phase\]\s*\{[^}]*--dsw-alias-bg-base: var\(--tockteam-main-pane\);[^}]*background: var\(--tockteam-main-pane\);/s,
   )
   assert.match(
     css,
