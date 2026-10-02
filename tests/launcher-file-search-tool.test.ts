@@ -16,6 +16,7 @@ class FakeElement {
   readonly listeners = new Map<string, Array<(event: unknown) => void>>()
   className = ''
   hidden = false
+  isConnected = true
   maxLength = 0
   textContent: string | null = null
   type = ''
@@ -147,4 +148,32 @@ test('non-hiding reveal rerender restores keyboard focus to the live action menu
   await flush()
   await flush()
   assert.equal(document.activeElement?.getAttribute('data-file-search-result-id'), item.id)
+})
+
+test('a File Search action finishing after Back preserves the current Results search and focus', async () => {
+  const queries: string[] = []
+  const invocation = Promise.withResolvers<{ ok: true }>()
+  const item: LauncherPublicResultItem = {
+    defaultAction: { actionId: 'launcher-action:open', description: 'Open file' },
+    description: 'File', id: 'file-search-result:report', name: 'report.txt', sourceExtension: 'FileSearch',
+  }
+  const bridge = {
+    invokeAction: () => invocation.promise,
+    search: async (term: string) => {
+      queries.push(term)
+      return { before: [], after: [item], resultSetId: 'launcher-results:1', status: { indexedItemCount: 1, rescanStatus: 'idle' as const } }
+    },
+  } as unknown as LauncherPreloadBridge
+  const document = new FakeDocument()
+  const rootInput = document.createElement('input')
+  const tool = createLauncherFileSearchTool({ bridge, document: document as unknown as Document, initialSearchTerm: 'report',
+    onClose: () => { tool.isConnected = false; rootInput.focus() }, searchOptions: options }) as unknown as FakeElement
+  await flush()
+  find(tool, element => element.getAttribute('aria-label') === 'report.txt — Open file')!.dispatch('click')
+  find(tool, element => element.textContent === 'Back to Results')!.dispatch('click')
+  await bridge.search('current Results', options)
+  invocation.resolve({ ok: true })
+  await flush()
+  assert.deepEqual(queries, ['tockteam:file-search:report', 'current Results'])
+  assert.equal(document.activeElement, rootInput)
 })

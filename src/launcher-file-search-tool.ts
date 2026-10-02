@@ -130,6 +130,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
     }
   }
   const search = async (focus?: RestoreFocus): Promise<void> => {
+    if (!tool.isConnected) return
     const revision = ++requestRevision
     const term = input.value.trim()
     if (term.length === 0) { render([]); status.textContent = text('enterFile', 'Enter a file name to search.'); return }
@@ -137,7 +138,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
     status.textContent = text('searching', 'Searching…'); status.setAttribute('data-tone', 'muted')
     try {
       const response = await bridge.search(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX}${term}`, options.searchOptions)
-      if (revision !== requestRevision) return
+      if (!tool.isConnected || revision !== requestRevision) return
       render([...response.before, ...response.after])
       status.textContent = response.status.lastError === undefined
         ? (currentItems.length === 0 ? text('noFiles', 'No files found.') : launcherCountText(options.locale, 'filesFound', currentItems.length, `${currentItems.length} files found.`))
@@ -145,7 +146,7 @@ export function createLauncherFileSearchTool(options: Readonly<{
       status.setAttribute('data-tone', response.status.lastError === undefined ? 'ready' : 'error')
       if (focus !== undefined) restoreFocus(focus)
     } catch {
-      if (revision !== requestRevision) return
+      if (!tool.isConnected || revision !== requestRevision) return
       render([]); status.textContent = text('fileUnavailable', 'File Search is unavailable.'); status.setAttribute('data-tone', 'error')
       if (focus !== undefined) restoreFocus(focus)
     }
@@ -185,6 +186,6 @@ export function createLauncherFileSearchTool(options: Readonly<{
     if (toggle !== undefined) setTimeout(() => { if (toggle.isConnected) toggle.focus() }, 0)
   }
   tool.addEventListener('tockteam-launcher-close-tool-menu', closeMenuAndRestoreFocus)
-  queueMicrotask(() => { input.focus(); if (searchOnOpen) void search() })
+  queueMicrotask(() => { if (tool.isConnected) { input.focus(); if (searchOnOpen) void search() } })
   return tool
 }

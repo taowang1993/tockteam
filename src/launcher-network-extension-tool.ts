@@ -200,6 +200,7 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
     input.focus()
   }
   const search = async (focusItemId?: string): Promise<void> => {
+    if (!tool.isConnected) return
     const term = input.value.trim()
     const revision = ++requestRevision
     if (term.length === 0) {
@@ -217,13 +218,13 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
     setStatus(isDeepL ? text('translating', 'Translating with DeepL…') : text('loadingSuggestions', 'Loading suggestions…'))
     try {
       const response = await bridge.search(`${prefix}${term}`, options.searchOptions)
-      if (revision !== requestRevision) return
+      if (!tool.isConnected || revision !== requestRevision) return
       currentItems = Object.freeze([...response.before, ...response.after].filter(item => item.sourceExtension === extensionId))
       render()
       setStatus(response.status.lastError === undefined ? launcherCountText(options.locale, 'resultsFound', currentItems.length, `${currentItems.length} result${currentItems.length === 1 ? '' : 's'}.`) : text('networkUnavailable', `${title} is unavailable.`), response.status.lastError === undefined ? 'ready' : 'error')
       restoreFocus(focusItemId)
     } catch {
-      if (revision !== requestRevision) return
+      if (!tool.isConnected || revision !== requestRevision) return
       currentItems = []
       render()
       setStatus(text('networkUnavailable', `${title} is unavailable.`), 'error')
@@ -292,6 +293,6 @@ export function createLauncherNetworkExtensionTool(options: Readonly<{
     if (restoreFocus) setTimeout(() => { if (toggle.isConnected) toggle.focus() }, 0)
   })
   tool.addEventListener('tockteam-launcher-close-tool-menu', closeMenuAndRestoreFocus)
-  queueMicrotask(() => input.focus())
+  queueMicrotask(() => { if (tool.isConnected) input.focus() })
   return tool
 }

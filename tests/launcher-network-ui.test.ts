@@ -22,6 +22,7 @@ class FakeElement {
   className = ''
   readonly dataset: Record<string, string> = {}
   hidden = false
+  isConnected = true
   maxLength = 0
   textContent: string | null = null
   type = ''
@@ -34,6 +35,12 @@ class FakeElement {
   dispatch(type: string, event: unknown = {}): void { for (const listener of this.listeners.get(type) ?? []) listener(event) }
   focus(): void { this.document.activeElement = this }
   getAttribute(name: string): string | null { return this.attributes.get(name) ?? null }
+  querySelectorAll<T extends FakeElement>(selector: string): T[] {
+    const matches = selector === '[data-network-result-id]'
+      ? this.children.filter(child => Object.hasOwn(child.dataset, 'networkResultId'))
+      : []
+    return [...matches, ...this.children.flatMap(child => child.querySelectorAll<T>(selector))] as T[]
+  }
   replaceChildren(...children: FakeElement[]): void { this.children.splice(0, this.children.length, ...children) }
   setAttribute(name: string, value: string): void { this.attributes.set(name, value) }
 }
@@ -119,6 +126,57 @@ test('network result buttons support roving arrow-key focus', async () => {
   assert.equal(document.activeElement, buttons[1])
   buttons[1]!.dispatch('keydown', { key: 'ArrowUp', preventDefault() {} })
   assert.equal(document.activeElement, buttons[0])
+})
+
+for (const extensionId of ['WebSearch', 'DeeplTranslator'] as const) {
+  test(`a ${extensionId} action finishing after Back preserves the current Results search and focus`, async () => {
+    const queries: string[] = []
+    const invocation = Promise.withResolvers<{ ok: true }>()
+    const item: LauncherPublicResultItem = {
+      defaultAction: { actionId: 'launcher-action:result', description: 'Open result' },
+      description: 'Result', id: 'network-result:one', name: 'Result', sourceExtension: extensionId,
+    }
+    const bridge = {
+      invokeAction: () => invocation.promise,
+      search: async (term: string) => {
+        queries.push(term)
+        return { before: [], after: [item], resultSetId: 'launcher-results:1', status: { indexedItemCount: 1, rescanStatus: 'idle' as const } }
+      },
+    } as unknown as LauncherPreloadBridge
+    const document = new FakeDocument()
+    const rootInput = document.createElement('input')
+    const options = { fuzziness: 0.5, maxSearchResultItems: 20, searchEngineId: 'fuzzysort' as const }
+    const rendered = createLauncherNetworkExtensionTool({ bridge, document: document as unknown as Document, extensionId,
+      onClose: () => { rendered.isConnected = false; rootInput.focus() }, searchOptions: options }) as unknown as FakeElement
+    const input = find(rendered, extensionId === 'WebSearch' ? 'input' : 'textarea')!
+    input.value = 'query'; input.dispatch('input')
+    await new Promise(resolve => setTimeout(resolve, 250))
+    findAll(rendered, element => element.getAttribute('aria-label') === 'Result — Open result')[0]!.dispatch('click')
+    findAll(rendered, element => element.textContent === 'Back to Results')[0]!.dispatch('click')
+    await bridge.search('current Results', options)
+    invocation.resolve({ ok: true })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.deepEqual(queries, [`tockteam:${extensionId === 'WebSearch' ? 'web-search' : 'deepl'}:query`, 'current Results'])
+    assert.equal(document.activeElement, rootInput)
+  })
+}
+
+test('removing a network tool before its debounce expires sends no hidden search', async () => {
+  const queries: string[] = []
+  const bridge = {
+    search: async (term: string) => {
+      queries.push(term)
+      return { before: [], after: [], resultSetId: 'launcher-results:1', status: { indexedItemCount: 0, rescanStatus: 'idle' as const } }
+    },
+  } as unknown as LauncherPreloadBridge
+  const document = new FakeDocument()
+  const rendered = createLauncherNetworkExtensionTool({ bridge, document: document as unknown as Document, extensionId: 'WebSearch',
+    onClose: () => undefined, searchOptions: { fuzziness: 0.5, maxSearchResultItems: 20, searchEngineId: 'fuzzysort' } }) as unknown as FakeElement
+  const input = find(rendered, 'input')!
+  input.value = 'query'; input.dispatch('input')
+  rendered.isConnected = false
+  await new Promise(resolve => setTimeout(resolve, 250))
+  assert.deepEqual(queries, [])
 })
 
 test('network tools consume Escape at the menu and tool-input layers', () => {
