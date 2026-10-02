@@ -1,0 +1,99 @@
+{
+  "capturedAt": "2026-10-02T16:55:24.472Z",
+  "surface": "web",
+  "runtime": "DSH 0.1.2-rc.1",
+  "upstreamSidebar": "0.18.0",
+  "content": "TockCoder empty session with expanded terminal; verified pasted input read back from actual PTY output file",
+  "mode": "Standard Mode, Workspace Write; no model request",
+  "errors": [],
+  "warnings": [],
+  "geometry": {
+    "width": 1512,
+    "height": 949,
+    "devicePixelRatio": 2,
+    "colorScheme": "dark",
+    "skin": null,
+    "path": "/",
+    "mode": "hero",
+    "terminalVisible": true,
+    "title": "TockTeam Web"
+  },
+  "resizeControls": true,
+  "screenshot": {
+    "file": "terminal-paste.png",
+    "width": 3024,
+    "height": 1898,
+    "sha256": "05f6d3e4bde1e7392c219cff12cdeff1e7cc555a0aa89c10893aed04256cce31"
+  },
+  "pty": {
+    "actual": "{\"type\":\"close\"}\n{\"type\":\"park\"}\n{\"type\":\"resize\",\"cols\":1,\"rows\":1}\n中文 😀\n",
+    "expected": "{\"type\":\"close\"}\n{\"type\":\"park\"}\n{\"type\":\"resize\",\"cols\":1,\"rows\":1}\n中文 😀\n",
+    "exactInput": true,
+    "frames": [
+      {
+        "binary": true,
+        "text": "{\"type\":\"close\"}"
+      },
+      {
+        "binary": true,
+        "text": "\r"
+      },
+      {
+        "binary": true,
+        "text": "{\"type\":\"park\"}"
+      },
+      {
+        "binary": true,
+        "text": "\r"
+      },
+      {
+        "binary": true,
+        "text": "{\"type\":\"resize\",\"cols\":1,\"rows\":1}"
+      },
+      {
+        "binary": true,
+        "text": "\r"
+      },
+      {
+        "binary": true,
+        "text": "中文 😀"
+      },
+      {
+        "binary": true,
+        "text": "\r"
+      }
+    ]
+  },
+  "shell": {
+    "pid": 94153,
+    "aliveAfterPaste": true,
+    "explicitCloseStoppedShell": true,
+    "observedStoppedWithinMs": 0
+  },
+  "cleanup": {
+    "runtime": {
+      "pid": 92336,
+      "descendants": [
+        92336
+      ],
+      "stopped": true,
+      "port": 60912
+    },
+    "browser": {
+      "roots": [
+        93997
+      ],
+      "descendants": [
+        93997,
+        94002,
+        94005,
+        94007,
+        94008
+      ],
+      "stopped": true
+    },
+    "listenerStopped": true
+  },
+  "authentication": "Isolated runtime capability consumed privately; not published",
+  "fixture": "Disposable workspace/session created through real Host APIs; real xterm and PTY used"
+}

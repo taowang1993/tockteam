@@ -1,6 +1,6 @@
 # TockCoder Implementation
 
-TockCoder is the coding workspace at `/tockcoder` in TockTeam Desktop and TockTeam Web. It composes the pinned DSH conversation, workspace, and session services with TockTeam's Files/Review panel, terminal dock, and pinned summary. It is not another agent loop, session database, or plugin loader. The legacy `/` entrance canonicalizes to `/tockcoder`.
+TockCoder is the coding workspace in TockTeam Desktop and TockTeam Web. Desktop uses `/tockcoder` and canonicalizes its legacy `/` entrance to that route. Web's pinned DSH HTTP app serves the coding workspace at `/`; `/tockcoder` is not a Web HTTP entry point. It composes the pinned DSH conversation, workspace, and session services with TockTeam's Files/Review panel, terminal dock, and pinned summary. It is not another agent loop, session database, or plugin loader.
 
 The runtime contract is the revision in `dsh-source.json` (`0.1.2-rc.1` at this review). Read that pin and its declarations before changing adapters; older DSH service shapes are not compatible merely because a local TypeScript interface accepts them.
 
@@ -28,7 +28,7 @@ The runtime contract is the revision in `dsh-source.json` (`0.1.2-rc.1` at this 
 
 Both Desktop and Web include Better Sidebar, sidebar, panel controls and pinned summary. They consume `plugins/shared/surface.ts`; DSH owns `ctx.web`. Only Desktop has `window.dshDesktop`, native menus, pickers, draggable titlebar/window controls, TockLauncher, marketplace, the embedded Browser tab and the TockTutor route implementation. Web does not register the Browser tab or intercept external links into a webview; it must not fabricate those capabilities. TUI retains its pinned renderer and does not mount TockCoder's browser plugins.
 
-TockCoder and TockTutor share route coordination through `plugins/sidebar/src/client/tocktutor-route.ts`. Route changes preserve remembered TockTutor locations and keep hidden terminal/conversation controls from taking editor focus.
+On Desktop, TockCoder and TockTutor share route coordination through `plugins/sidebar/src/client/tocktutor-route.ts`. Route changes preserve remembered TockTutor locations and keep hidden terminal/conversation controls from taking editor focus.
 
 ## Pinned Runtime Contracts
 
@@ -78,9 +78,9 @@ These checks do not sandbox trusted plugins or Git hooks. Plugins, configuration
 
 ## Terminal and Summary Lifecycle
 
-Terminal UI state is keyed by DSH session. The dock mounts xterm in the active conversation column; switching sessions parks sockets/PTYs instead of killing a shell, while closing a tab requests termination. Plugin unload releases mounts, listeners and sockets; Host disposal terminates its PTYs.
+Terminal UI state is keyed by DSH session. The dock mounts xterm in the active conversation column; switching sessions parks sockets/PTYs instead of killing a shell, while closing a tab requests immediate termination. A subsequent socket disconnect must not replace that explicit request with the reconnect grace timer. A socket that closes during asynchronous session lookup must not spawn a PTY when lookup finishes. Plugin unload releases mounts, listeners and sockets; Host disposal terminates its PTYs.
 
-The terminal endpoint carries the session and tab identity. Resize/park/close messages are controls, text frames are PTY output, and binary `tockteam-terminal-exit` frames carry validated exit codes. Shell output that looks like JSON must never be interpreted as a trusted exit notification.
+The terminal endpoint carries the session and tab identity. For UI-tab terminals, browser input travels as binary UTF-8 frames so typed or pasted JSON cannot trigger resize/park/close. Browser text frames retain those explicit controls. In the Host-to-browser direction, text frames are PTY output and binary `tockteam-terminal-exit` frames carry validated exit codes. Shell output that looks like JSON must never be interpreted as a trusted exit notification. The downstream adapter leaves the agent-owned terminal protocol unchanged.
 
 Pinned summary prefers the latest usable compaction summary, then assistant text. It exposes explicit loading/running/waiting/blank/error states, limits the collapsed preview, renders a restricted safe rich-text subset, and reserves content space instead of covering the conversation. It follows replaced bindings and releases old subscriptions.
 
@@ -101,12 +101,13 @@ Focused non-GUI checks:
 ```sh
 node --test tests/tockcoder-navigation.test.ts tests/sidebar*.test.ts tests/workspace*.test.ts tests/review*.test.ts tests/composer*.test.ts tests/input-history.test.ts tests/terminal*.test.ts tests/pinned-summary*.test.ts tests/right-panel-layout.test.ts
 node --test tests/better-sidebar-git-actions.test.mjs tests/better-sidebar-git-paths.test.mjs tests/better-sidebar-session-scope.test.mjs
+node --test tests/terminal-input.test.mjs tests/terminal-protocol.test.ts
 pnpm run typecheck
 pnpm test
 pnpm run build
 ```
 
-The root `pnpm test` glob includes `.test.ts`, not the Better Sidebar `.test.mjs` files; run the Host checks explicitly.
+The root `pnpm test` glob includes `.test.ts`, not the `.test.mjs` files; run the Host checks explicitly. `terminal-input.test.mjs` runs the adapted Host and browser socket adapter over real loopback WebSockets with a controlled PTY, checking exact pasted input, explicit resize/close, and disconnect during persisted-session lookup. A real Web terminal check uses the built/staged profile at `/`, isolated data and a disposable workspace, with the browser and runtime process trees stopped afterward.
 
 For the rendered component regression, launch a disposable generic Electron window through `extended_display` on a non-main display, then pass only its returned owned CDP endpoint:
 

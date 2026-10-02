@@ -1,0 +1,27 @@
+/tmp/tockcoder-tj4w-focused-final.log
+✔ workspace file navigation keeps Windows drive roots absolute and supports UNC paths (0.113667ms)
+ℹ tests 137
+ℹ suites 0
+ℹ pass 137
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2282.947834
+
+/tmp/tockcoder-tj4w-full-test-final.log
+✔ workspace file navigation keeps Windows drive roots absolute and supports UNC paths (0.119208ms)
+ℹ tests 1812
+ℹ suites 0
+ℹ pass 1794
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 18
+ℹ todo 0
+ℹ duration_ms 49064.456417
+
+Typecheck: PASS
+Build: PASS
+Pinned runtime stage refresh: PASS
+Real PTY exact paste, resize, explicit close: PASS
+Owned browser/runtime trees and listener stopped: PASS

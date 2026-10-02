@@ -22,6 +22,9 @@ for (const newline of ['\n', '\r\n']) test(`Better Sidebar adapter frames sessio
   const externalStart = source.indexOf('    // External open for the file tree')
   const sideChatStart = source.indexOf('    // Side Chat:', externalStart)
   const terminalStart = source.indexOf('const handle = ptyManager.open(sessionId, tabId, cwd, 80, 24')
+  const agentTerminalStart = source.indexOf('/**\n * Pump one agent terminal'.replaceAll('\n', newline))
+  assert.ok(agentTerminalStart > terminalStart)
+  assert.ok(adapted.endsWith(source.slice(agentTerminalStart)), 'the agent-owned terminal protocol must stay unchanged')
   assert.ok(adapted.includes(source.slice(sideChatStart, terminalStart)),
     'removing external-open must preserve the following host routes byte-for-byte')
   assert.doesNotMatch(adapted, /External open for the file tree/u)

@@ -2,7 +2,7 @@ const EXTERNAL_OPEN_IMPORT = "import { launchExternal } from './open-external.ts
 const EXTERNAL_OPEN_START = '    // External open for the file tree'
 const EXTERNAL_OPEN_END = '    // Side Chat:'
 const SESSION_TERMINAL_ANCHOR = 'const handle = ptyManager.open(sessionId, tabId, cwd, 80, 24'
-const SESSION_TERMINAL_END = 'const dataSub = handle.pty.onData(onData)'
+const SESSION_TERMINAL_END = '/**\n * Pump one agent terminal'
 const CLIENT_CWD_FALLBACK = `  if (clientCwd !== undefined && clientCwd !== '') {
     try {
       return requireAbsolute(clientCwd)
@@ -19,6 +19,18 @@ const BINARY_EXIT = `const onExit = ({ exitCode }: { exitCode: number; signal?: 
         ws.send(Buffer.from(JSON.stringify({ code: exitCode, type: 'tockteam-terminal-exit' })))
       }
     }`
+const TEXT_INPUT = `ws.on('message', (data) => {
+      const text = data.toString('utf8')`
+const EXPLICIT_CLOSE = 'ptyManager.scheduleClose(handle.key, 0)'
+const SOCKET_DROP_CLOSE = 'if (!ptyManager.isParked(handle.key))'
+const BINARY_INPUT = `let closeRequested = false
+    ws.on('message', (data, isBinary) => {
+      const text = data.toString('utf8')
+      // TockTeam sends typed/pasted input as bytes; only text frames are controls.
+      if (isBinary) {
+        if (!handle.exited) handle.pty.write(text)
+        return
+      }`
 
 export function adaptBetterSidebarGit(source) {
   const adapted = source.replaceAll('\r\n', '\n')
@@ -182,5 +194,17 @@ async function resolveGitPath(cwd: string, raw: string, selected?: string): Prom
   if (start < 0 || end < 0) throw new Error('Better Sidebar session terminal seam changed upstream')
   const section = adapted.slice(start, end)
   if (!section.includes(TEXT_EXIT)) throw new Error('Better Sidebar session exit seam changed upstream')
-  return `${adapted.slice(0, start)}${section.replace(TEXT_EXIT, BINARY_EXIT)}${adapted.slice(end)}`.replaceAll('\n', newline)
+  if (!section.includes(TEXT_INPUT)) throw new Error('Better Sidebar session input seam changed upstream')
+  if (!section.includes(EXPLICIT_CLOSE) || !section.includes(SOCKET_DROP_CLOSE)) {
+    throw new Error('Better Sidebar session close seam changed upstream')
+  }
+  const terminal = section.replace(SESSION_TERMINAL_ANCHOR, `// Session lookup can outlive the socket; do not spawn after disconnect.
+    if (ws.readyState !== WebSocket.OPEN) return
+    ${SESSION_TERMINAL_ANCHOR}`)
+    .replace(TEXT_EXIT, BINARY_EXIT)
+    .replace(TEXT_INPUT, BINARY_INPUT)
+    .replace(EXPLICIT_CLOSE, `closeRequested = true
+        ${EXPLICIT_CLOSE}`)
+    .replace(SOCKET_DROP_CLOSE, 'if (!closeRequested && !ptyManager.isParked(handle.key))')
+  return `${adapted.slice(0, start)}${terminal}${adapted.slice(end)}`.replaceAll('\n', newline)
 }

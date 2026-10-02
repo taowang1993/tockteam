@@ -79,7 +79,8 @@ export class TerminalSocket {
   }
 
   sendInput(data: string): void {
-    if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(data)
+    // Binary input cannot be mistaken for JSON resize/park/close controls.
+    if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(new TextEncoder().encode(data))
   }
 
   sendResize(cols: number, rows: number): void {
