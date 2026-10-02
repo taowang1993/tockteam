@@ -63,7 +63,8 @@ function boundedJson(value: unknown, maxBytes = MAX_LAUNCHER_SETTING_VALUE_BYTES
 }
 
 function absolutePath(value: unknown): value is string {
-  return boundedString(value, 4_096) && (value.startsWith('/') || /^[A-Za-z]:[\\/]/u.test(value))
+  return boundedString(value, 4_096) && (value.startsWith('/') || /^[A-Za-z]:[\\/]/u.test(value)
+    || /^\\\\(?![.?]\\)[^\\/]+\\[^\\/]+(?:\\|$)/u.test(value))
 }
 
 function discoveryPaths(value: unknown): value is string[] {

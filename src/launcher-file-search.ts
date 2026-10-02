@@ -98,7 +98,7 @@ function isWithinHome(platform: LauncherFileSearchPlatform, homePath: string, ca
   const api = pathApi(platform)
   if (!bounded(homePath, 4_096) || !bounded(candidate) || !api.isAbsolute(homePath) || !api.isAbsolute(candidate)) return false
   const relative = api.relative(api.resolve(homePath), api.resolve(candidate))
-  return (!strict && relative === '') || (relative !== '' && !relative.startsWith('..') && !api.isAbsolute(relative))
+  return (!strict && relative === '') || (relative !== '' && relative !== '..' && !relative.startsWith(`..${api.sep}`) && !api.isAbsolute(relative))
 }
 
 function sameIdentity(left: LauncherFileSearchIdentity, right: LauncherFileSearchIdentity): boolean {
@@ -303,6 +303,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
     root?: string,
   ): LauncherInternalResultItem | undefined => {
     if (!bounded(entry.path) || !isWithinHome(options.platform, options.homePath, entry.path, true)
+      || (root !== undefined && !isWithinHome(options.platform, root, entry.path))
       || (entry.type !== 'file' && entry.type !== 'folder')
       || !bounded(entry.identity?.dev, 128) || !bounded(entry.identity?.ino, 128)
       || !/^[0-9]+$/u.test(entry.identity.dev) || !/^[0-9]+$/u.test(entry.identity.ino)) return undefined
@@ -373,6 +374,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
       }
       const folders = asFolderSettings(options.getSetting('extension[SimpleFileSearch].folders', []))
       const scanDeadline = Date.now() + scanTimeoutMs
+      let scanTimedOut = false
       let count = 0
       const seen = new Set<string>()
       for (const folder of folders) {
@@ -394,7 +396,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
               scanTimeoutMs: remainingScanMs,
               signal: scanSignal,
             }))
-          }, scanController.signal, remainingScanMs, `Simple File Search root timed out: ${folder.path}`)
+          }, scanController.signal, remainingScanMs, `Simple File Search root timed out: ${folder.path}`, () => { scanTimedOut = true })
           throwIfNotCurrent(scanController.signal, generation, scanGeneration)
           for (const entry of entries) {
             throwIfNotCurrent(scanController.signal, generation, scanGeneration)
@@ -409,7 +411,7 @@ export function createLauncherFileSearchExtensions(options: FileSearchOptions): 
           if (signal.aborted || generation !== scanGeneration || closed) throw error(signal.reason, 'TockLauncher file search canceled')
           reportProviderError('SimpleFileSearch', reason)
         }
-        if (count >= MAX_SIMPLE_RESULTS) break
+        if (scanTimedOut || count >= MAX_SIMPLE_RESULTS) break
       }
       throwIfNotCurrent(scanController.signal, generation, scanGeneration)
       if (closed) throw new Error('TockLauncher file search is closed')

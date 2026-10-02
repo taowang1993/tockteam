@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import type { Dir } from 'node:fs'
-import { lstat, mkdtemp, mkdir, opendir, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import fsPromises, { lstat, mkdtemp, mkdir, opendir, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, win32 } from 'node:path'
 import { test } from 'node:test'
 import {
   createLauncherFileSearchScanners,
@@ -13,6 +14,60 @@ import {
 } from '../src/launcher-file-search-scanners.ts'
 
 const signal = () => new AbortController().signal
+
+test('Windows drive and UNC homes search and revalidate dot-prefixed children inside their scope', async t => {
+  for (const homePath of ['C:\\Users\\max', '\\\\server\\homes\\max']) {
+    const root = win32.join(homePath, '..notes')
+    const target = win32.join(root, '..draft.md')
+    const outside = win32.join(homePath, '..', 'escape.md')
+    const stats = new Map([homePath, root, target].map((name, index) => [name, {
+      dev: 1n, ino: BigInt(index + 1),
+      isSymbolicLink: () => false,
+      isDirectory: () => name !== target,
+      isFile: () => name === target,
+    }]))
+    const statFixture = t.mock.method(fsPromises, 'lstat', async (name: Parameters<typeof fsPromises.lstat>[0]) => {
+      const result = stats.get(String(name))
+      assert.ok(result, `Unexpected fixture path: ${String(name)}`)
+      return result as any
+    })
+    const realpathFixture = t.mock.method(fsPromises, 'realpath', async (name: Parameters<typeof fsPromises.realpath>[0]) => {
+      assert.ok(stats.has(String(name)), `Unexpected fixture path: ${String(name)}`)
+      return String(name)
+    })
+    syncBuiltinESMExports()
+    try {
+      let read = false, closes = 0
+      const indexed = await scanSimpleFileSearchFolder({
+        folder: { id: 'notes', path: root, recursive: false, searchFor: 'files' },
+        homePath, maxResults: 20, maxVisitedEntries: 100, signal: signal(),
+        openDirectory: async () => ({
+          read: async () => {
+            if (read) return null
+            read = true
+            return { name: '..draft.md', isSymbolicLink: () => false, isFile: () => true, isDirectory: () => false }
+          },
+          close: async () => { closes += 1 },
+        }) as unknown as Dir,
+      })
+      const expected = [{ path: target, type: 'file', identity: { dev: '1', ino: '3' } }]
+      assert.deepEqual(indexed, expected)
+      assert.equal(closes, 1)
+      const scanners = createLauncherFileSearchScanners({
+        runFile: async () => ({ stdout: `${outside}\n${target}` }),
+        validateEverythingCliPath: async () => ({ dev: '4', ino: '5' }),
+      })
+      assert.deepEqual(await scanners.queryFileSearch({
+        everythingCliFilePath: 'C:\\Program Files\\Everything\\es.exe', homePath,
+        platform: 'Windows', maxResults: 20, searchTerm: 'draft', signal: signal(),
+      }), expected)
+      assert.equal(await scanners.validatePath({ homePath, path: target, root, platform: 'Windows', identity: { dev: '1', ino: '3' }, expectedKind: 'file', signal: signal() }), true)
+      assert.equal(await scanners.validatePath({ homePath, path: outside, root, platform: 'Windows', identity: { dev: '1', ino: '3' }, expectedKind: 'file', signal: signal() }), false)
+    } finally {
+      statFixture.mock.restore(); realpathFixture.mock.restore(); syncBuiltinESMExports()
+    }
+  }
+})
 
 test('file-search adapters preserve hostile terms as direct argv data', () => {
   const term = 'report" & | > < ^ ; ` spaces'

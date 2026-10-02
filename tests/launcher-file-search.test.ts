@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict'
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { test } from 'node:test'
 import { LAUNCHER_FILE_SEARCH_QUERY_PREFIX } from '../src/launcher-contract.ts'
 import { createLauncherFileSearchExtensions, launcherFileSearchQuery, type LauncherFileSearchScanners } from '../src/launcher-file-search.ts'
 import type { LauncherActionRecord, LauncherInternalResultItem } from '../src/launcher-actions.ts'
+import { createLauncherFileSearchScanners } from '../src/launcher-file-search-scanners.ts'
 
 function record(item: LauncherInternalResultItem, action = item.defaultAction): LauncherActionRecord {
   return {
@@ -20,10 +24,92 @@ function settings<T>(key: string, fallback: T): T {
   return fallback
 }
 
+test('home-contained folders beginning with two dots remain searchable and openable', async () => {
+  const home = await realpath(await mkdtemp(join(tmpdir(), 'tockteam-dot-file-search-')))
+  const folder = join(home, '..notes')
+  const target = join(folder, '..draft.md')
+  const opened: string[] = []
+  await mkdir(folder)
+  await writeFile(target, 'draft')
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: path => { opened.push(path) }, revealPath: () => undefined },
+    enabledExtensionIds: () => ['FileSearch', 'SimpleFileSearch'],
+    getSetting: <T>(key: string, fallback: T): T => key === 'extension[SimpleFileSearch].folders'
+      ? [{ id: 'notes', path: folder, recursive: false, excludeHiddenFiles: false, searchFor: 'files' }] as T
+      : fallback,
+    homePath: home, platform: 'macOS',
+    scanners: createLauncherFileSearchScanners({
+      runFile: async () => ({ stdout: [target, home, join(home, '..', 'outside.md')].join('\n') }),
+    }),
+  })
+  try {
+    const indexed = await provider.loadIndexedItems(new AbortController().signal)
+    const simple = indexed.find(item => item.sourceExtension === 'SimpleFileSearch')
+    assert.equal(simple?.name, '..draft.md')
+    assert.equal(await provider.executeAction(record(simple!)), true)
+    const result = await provider.searchInstant(`${LAUNCHER_FILE_SEARCH_QUERY_PREFIX} draft`)
+    assert.deepEqual(result.after.map(item => item.name), ['..draft.md'])
+    assert.equal(await provider.executeAction(record(result.after[0]!)), true)
+    assert.deepEqual(opened, [target, target])
+  } finally {
+    await provider.close()
+    await rm(home, { recursive: true, force: true })
+  }
+})
+
 test('calculator file lookup ignores math symbols while ordinary terms stay literal', () => {
   assert.equal(launcherFileSearchQuery('5+10', true), `${LAUNCHER_FILE_SEARCH_QUERY_PREFIX}510`)
   assert.equal(launcherFileSearchQuery('2 × 3', true), `${LAUNCHER_FILE_SEARCH_QUERY_PREFIX}23`)
   assert.equal(launcherFileSearchQuery('5+10', false), '5+10')
+})
+
+test('Simple File Search indexes and opens files under a Windows network home', async () => {
+  const homePath = '\\\\server\\homes\\max'
+  const folder = `${homePath}\\Documents`
+  const target = `${folder}\\report.md`
+  const opened: string[] = []
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: path => { opened.push(path) }, revealPath: () => undefined },
+    enabledExtensionIds: () => ['SimpleFileSearch'],
+    getSetting: <T>(key: string, fallback: T): T => key === 'extension[SimpleFileSearch].folders'
+      ? [{ id: 'docs', path: folder, recursive: true, searchFor: 'files' }] as T : fallback,
+    homePath, platform: 'Windows',
+    scanners: {
+      queryFileSearch: async () => [],
+      scanSimpleFolder: async () => [target, homePath + '\\outside.md', '\\\\other\\homes\\max\\report.md'].map(path => ({
+        path, type: 'file', identity: { dev: '1', ino: '2' },
+      })),
+      validatePath: async () => true,
+    },
+  })
+  try {
+    const indexed = await provider.loadIndexedItems(new AbortController().signal)
+    assert.deepEqual(indexed.map(item => item.name), ['report.md'])
+    assert.equal(await provider.executeAction(record(indexed[0]!)), true)
+    assert.deepEqual(opened, [target])
+  } finally { await provider.close() }
+})
+
+test('Simple File Search excludes sibling and parent paths while retaining dot-prefixed children', async () => {
+  const provider = createLauncherFileSearchExtensions({
+    effects: { openPath: () => undefined, revealPath: () => undefined },
+    enabledExtensionIds: () => ['SimpleFileSearch'], getSetting: settings,
+    homePath: '/home/max', platform: 'macOS',
+    scanners: {
+      queryFileSearch: async () => [],
+      scanSimpleFolder: async () => [
+        '/home/max/docs/report.md',
+        '/home/max/docs/..notes/draft.md',
+        '/home/max/docs-other/outside.md',
+        '/home/max/docs/../outside.md',
+      ].map(path => ({ path, type: 'file', identity: { dev: '1', ino: '2' } })),
+      validatePath: async () => true,
+    },
+  })
+  try {
+    const indexed = await provider.loadIndexedItems(new AbortController().signal)
+    assert.deepEqual(indexed.map(item => item.name), ['report.md', 'draft.md'])
+  } finally { await provider.close() }
 })
 
 test('calculator filename lookup reaches enabled native file search without changing the disabled state', async () => {
@@ -192,9 +278,9 @@ test('file providers require identity and revoke replaced path actions', async (
   const scanners: LauncherFileSearchScanners = {
     queryFileSearch: async () => [{ path: resultPath, type: 'file', identity: { dev: '1', ino: resultPath.endsWith('one.txt') ? '1' : '2' } }],
     scanSimpleFolder: async () => [
-      { path: '/home/max/missing.txt', type: 'file', identity: { dev: '', ino: '' } },
-      { path: '/home/max/malformed.txt', type: 'file', identity: { dev: 'not-a-device', ino: '3' } },
-      { path: '/home/max/valid.txt', type: 'file', identity: { dev: '1', ino: '3' } },
+      { path: '/home/max/docs/missing.txt', type: 'file', identity: { dev: '', ino: '' } },
+      { path: '/home/max/docs/malformed.txt', type: 'file', identity: { dev: 'not-a-device', ino: '3' } },
+      { path: '/home/max/docs/valid.txt', type: 'file', identity: { dev: '1', ino: '3' } },
     ],
     validatePath: async () => true,
   }

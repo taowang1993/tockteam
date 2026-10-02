@@ -97,7 +97,7 @@ function isWithinHome(platform: LauncherFileSearchPlatform, homePath: string, ca
   const api = pathApi(platform)
   if (!boundedText(homePath, 4_096) || !boundedText(candidate) || !api.isAbsolute(homePath) || !api.isAbsolute(candidate)) return false
   const relative = api.relative(api.resolve(homePath), api.resolve(candidate))
-  return (!strict && relative === '') || (relative !== '' && !relative.startsWith('..') && !api.isAbsolute(relative))
+  return (!strict && relative === '') || (relative !== '' && relative !== '..' && !relative.startsWith(`..${api.sep}`) && !api.isAbsolute(relative))
 }
 
 function identityPart(value: unknown): string | undefined {
@@ -258,7 +258,7 @@ export async function scanSimpleFileSearchFolder(input: Readonly<{
   signal: AbortSignal
 }>): Promise<readonly LauncherFileSearchEntry[]> {
   throwIfAborted(input.signal)
-  const platform: LauncherFileSearchPlatform = /^[A-Za-z]:[\\/]/u.test(input.homePath) ? 'Windows' : 'macOS'
+  const platform: LauncherFileSearchPlatform = /^(?:[A-Za-z]:[\\/]|\\\\)/u.test(input.homePath) ? 'Windows' : 'macOS'
   const api = pathApi(platform)
   const timeoutMs = clamp(input.scanTimeoutMs ?? DEFAULT_SCAN_TIMEOUT_MS, 1, MAX_SCAN_TIMEOUT_MS)
   const deadline = Date.now() + timeoutMs
@@ -470,7 +470,7 @@ async function remainsWithinRoot(input: Readonly<{
     const [canonicalRoot, canonicalPath] = await awaitFileSystem(Promise.all([realpath(input.root), realpath(input.path)]), input.signal)
     const requested = requestedRelative(input.platform, input.root, input.path)
     const canonical = requestedRelative(input.platform, canonicalRoot, canonicalPath)
-    return requested === canonical && canonical !== '' && !canonical.startsWith('..') && !api.isAbsolute(canonical)
+    return requested === canonical && canonical !== '' && canonical !== '..' && !canonical.startsWith(`..${api.sep}`) && !api.isAbsolute(canonical)
   } catch (reason) {
     if (input.signal.aborted) throwIfAborted(input.signal)
     return false

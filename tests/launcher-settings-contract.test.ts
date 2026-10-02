@@ -9,6 +9,7 @@ import {
   LAUNCHER_SENSITIVE_SETTING_KEYS,
   isLauncherRendererSettingValue,
   parseLauncherSettingUpdateArgs,
+  parseLauncherSettingsRecord,
   parseLauncherSettingsSnapshot,
 } from '../src/launcher-settings-contract.ts'
 
@@ -189,4 +190,25 @@ test('snapshot parser rejects secret, browser identity, invalid values, and muta
   assert.throws(() => parseLauncherSettingsSnapshot({ ...snapshot, values: { 'extension[DeeplTranslator].apiKey': 'secret' } }))
   assert.throws(() => parseLauncherSettingsSnapshot({ ...snapshot, values: { 'general.language': 42 } }))
   assert.throws(() => parseLauncherSettingsSnapshot({ ...snapshot, missingSensitiveKeys: ['extension[DeeplTranslator].apiKey', 'extension[DeeplTranslator].apiKey'] }))
+})
+
+test('Windows network folder settings survive updates, disk parsing and snapshots', () => {
+  const folder = '\\\\server\\homes\\max\\Documents'
+  const values = {
+    'extension[ApplicationSearch].windowsFolders': ['\\\\server\\homes', folder],
+    'extension[SimpleFileSearch].folders': [{ id: 'docs', path: folder, recursive: true, searchFor: 'files' }],
+  }
+  for (const [key, value] of Object.entries(values)) {
+    assert.deepEqual(parseLauncherSettingUpdateArgs({ key, value }), { key, value })
+  }
+  assert.deepEqual(parseLauncherSettingsRecord(values), values)
+  assert.deepEqual(parseLauncherSettingsSnapshot({
+    externalGrantStatus: 'none', logs: [], missingSensitiveKeys: [],
+    recoveredSettings: false, settingsSource: 'managed', values,
+  }).values, values)
+  for (const path of ['relative', 'C:relative', '\\relative', '\\\\server', '\\\\server\\', '\\\\?\\C:\\Windows', '\\\\.\\pipe\\test', folder + '\0', '\\\\server\\' + 'x'.repeat(4096)]) {
+    assert.throws(() => parseLauncherSettingUpdateArgs({
+      key: 'extension[ApplicationSearch].windowsFolders', value: [path],
+    }), path)
+  }
 })
