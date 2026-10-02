@@ -14,6 +14,13 @@ export type LauncherWorkflowCommandRequest = Readonly<{
   workingDirectory: string
 }>
 
+export class LauncherWorkflowCleanupError extends Error {
+  constructor(cause?: unknown) {
+    super('Workflow command cleanup failed', { cause })
+    this.name = 'LauncherWorkflowCleanupError'
+  }
+}
+
 export type LauncherWorkflowCommandResult = Readonly<{
   stderrBytes: number
   stdoutBytes: number
@@ -223,15 +230,21 @@ async function terminateChild(
   killProcess: (pid: number, signal: NodeJS.Signals) => void,
   closed: Promise<void>,
 ): Promise<void> {
+  let groupError: LauncherWorkflowCleanupError | undefined
   const waitForTermination = async (): Promise<void> => {
     if (await waitForChildClose(closed, PROCESS_DRAIN_TIMEOUT_MS)) return
     hardKillChild(child)
     if (!await waitForChildClose(closed, PROCESS_DRAIN_TIMEOUT_MS)) throw new Error('Workflow command cleanup failed')
   }
   if (child.pid !== undefined && Number.isSafeInteger(child.pid) && child.pid > 0) {
-    try { killProcess(-child.pid, 'SIGKILL') } catch { hardKillChild(child) }
+    try { killProcess(-child.pid, 'SIGKILL') } catch (error) {
+      if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ESRCH')) groupError = new LauncherWorkflowCleanupError(error)
+      hardKillChild(child)
+    }
   }
   await waitForTermination()
+  // Closing the shell's pipes alone cannot prove that a failed group stop succeeded.
+  if (groupError !== undefined) throw groupError
 }
 
 function finiteBound(value: number | undefined, fallback: number, maximum: number): number {
@@ -271,7 +284,7 @@ async function runOwnedWindowsWorkflow(
     clearTimeout(timer); request.signal.removeEventListener('abort', cancel)
   }
   // Cleanup uncertainty outranks cancellation/timeout. Never race away ownership.
-  if (cleanupError || (failure instanceof Error && /cleanup could not be verified/u.test(failure.message))) throw new Error('Workflow command cleanup failed', { cause: cleanupError ?? failure })
+  if (cleanupError || (failure instanceof Error && /cleanup could not be verified/u.test(failure.message))) throw new LauncherWorkflowCleanupError(cleanupError ?? failure)
   if (stopError) throw stopError
   if (failure) {
     if (failure instanceof Error && /output limit/u.test(failure.message)) throw new Error('Workflow command output limit exceeded')
@@ -352,7 +365,7 @@ export async function runBoundedWorkflowCommand(
         child,
         options.killProcess ?? ((pid, signal) => process.kill(pid, signal)),
         closed,
-      ).then(() => finish(stopError), () => finish(stopError ?? new Error('Workflow command cleanup failed')))
+      ).then(() => finish(stopError), error => finish(error instanceof LauncherWorkflowCleanupError ? error : new LauncherWorkflowCleanupError(error)))
     }
     const cancel = (): void => stop(new Error('Workflow command cancelled'))
     const count = (stream: 'stdout' | 'stderr', chunk: Uint8Array | string): void => {

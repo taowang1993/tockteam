@@ -82,6 +82,18 @@ test('POSIX shell exit drains its process group before publishing success or fai
   }
 })
 
+test('a failed POSIX group stop cannot report completion when only the shell closes', async () => {
+  for (const code of [0, 1]) {
+    const child = childProcess()
+    const pending = runBoundedWorkflowCommand({ command: 'sleep 30 >/dev/null 2>&1 &', platform: 'Linux', signal: new AbortController().signal, workingDirectory: '/tmp' }, {
+      spawnProcess: () => child,
+      killProcess: () => { throw Object.assign(new Error('Fixture group stop failure'), { code: 'EIO' }) },
+    })
+    child.emit('exit', code, null)
+    await assert.rejects(pending, /cleanup failed/u)
+  }
+})
+
 test('cancellation or late output overflow during normal-exit draining cannot become success', async () => {
   for (const cancel of [true, false]) {
     const child = childProcess()
@@ -215,7 +227,7 @@ test('Workflow process kill failure has a bounded rejection and never reports cl
     killProcess: () => { throw new Error('group kill failed') }, maxOutputBytes: 1, spawnProcess: () => child,
   })
   child.stdout.write('xx')
-  await assert.rejects(pending, /output limit/u)
+  await assert.rejects(pending, /cleanup failed/u)
 })
 
 test('a zero-exit workflow cannot succeed when descendants never close their pipes', async () => {

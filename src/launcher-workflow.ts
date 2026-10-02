@@ -17,7 +17,7 @@ import {
   type LauncherTerminalId,
   type LauncherTerminalPlatform,
 } from './launcher-terminal-config.ts'
-import { runBoundedWorkflowCommand, type LauncherWorkflowCommandResult } from './launcher-workflow-process.ts'
+import { LauncherWorkflowCleanupError, runBoundedWorkflowCommand, type LauncherWorkflowCommandResult } from './launcher-workflow-process.ts'
 
 export { parseLauncherWorkflows, type LauncherWorkflow } from './launcher-workflow-contract.ts'
 
@@ -634,7 +634,11 @@ export function createLauncherWorkflow(options: WorkflowOptions): Readonly<{
       }
       await audit('completed')
       return true
-    } catch {
+    } catch (error) {
+      if (error instanceof LauncherWorkflowCleanupError) {
+        await audit('failed')
+        throw new Error('TockLauncher Workflow command cleanup failed')
+      }
       if (controller.signal.aborted) {
         await audit('cancelled')
         throw new Error('TockLauncher Workflow was canceled')

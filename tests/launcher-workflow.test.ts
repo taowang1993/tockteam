@@ -3,9 +3,12 @@ import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
+import { EventEmitter } from 'node:events'
+import { PassThrough } from 'node:stream'
 import { captureLauncherWorkflowPath, createLauncherWorkflow, normalizeLauncherWorkflowUrl, type LauncherWorkflow, type LauncherWorkflowEffects } from '../src/launcher-workflow.ts'
 import { LauncherActionStore, normalizeLauncherActionResult, type LauncherActionRecord } from '../src/launcher-actions.ts'
 import { createLauncherCoreSearch } from '../src/launcher-core-search.ts'
+import { runBoundedWorkflowCommand } from '../src/launcher-workflow-process.ts'
 
 const OWNER = Object.freeze({ role: 'launcher' as const, webContentsId: 41 })
 const HOME = Object.freeze({ dev: '1', ino: '2' })
@@ -290,6 +293,36 @@ test('Workflow confirmation includes the canonical file kind', async () => {
     kind: 'directory',
     workflowName: 'Directory',
   })
+})
+
+test('Workflow cancellation reports failed cleanup instead of successful cancellation', async () => {
+  const child = Object.assign(new EventEmitter(), {
+    pid: 4242,
+    stdout: new PassThrough(),
+    stderr: new PassThrough(),
+    kill: () => { queueMicrotask(() => child.emit('close', null, 'SIGKILL')); return true },
+  })
+  const started = Promise.withResolvers<void>()
+  const { provider, events } = harness([{ ...WORKFLOW, actions: [WORKFLOW.actions[3]!] }], {
+    confirmAction: () => true,
+    executeCommand: request => {
+      const pending = runBoundedWorkflowCommand({ ...request, platform: 'macOS' }, {
+        spawnProcess: () => child,
+        killProcess: () => { throw Object.assign(new Error('Fixture group stop failure'), { code: 'EIO' }) },
+      })
+      started.resolve()
+      return pending
+    },
+  })
+  try {
+    const item = (await provider.loadIndexedItems())[0]!
+    const execution = record(item.defaultAction.argument)
+    const rejected = assert.rejects(provider.executeAction(execution), /cleanup failed/u)
+    await started.promise
+    assert.equal(await provider.cancelAction(execution), true)
+    await rejected
+    assert.deepEqual(events, ['audit:failed'])
+  } finally { await provider.close() }
 })
 
 test('Workflow cancellation waits for the command effect and records cancellation', async () => {
