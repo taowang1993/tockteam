@@ -1,0 +1,367 @@
+{
+  "passed": true,
+  "realDesktop": true,
+  "firstParty": true,
+  "nativeEffects": false,
+  "accountOperations": false,
+  "initial": {
+    "locale": "en",
+    "tags": [
+      "red"
+    ],
+    "notes": "Fake values only. This note is not remembered.",
+    "preview": false
+  },
+  "cancelled": {
+    "locale": "en",
+    "tags": [
+      "red"
+    ],
+    "notes": "Fake values only. This note is not remembered.",
+    "preview": false
+  },
+  "saved": {
+    "locale": "fr",
+    "tags": [
+      "blue",
+      "red"
+    ],
+    "notes": "Temporary fake draft.",
+    "preview": true
+  },
+  "restored": {
+    "locale": "fr",
+    "tags": [
+      "blue",
+      "red"
+    ],
+    "notes": "Fake values only. This note is not remembered.",
+    "preview": false
+  },
+  "afterCancel": {
+    "locale": "fr",
+    "tags": [
+      "blue",
+      "red"
+    ],
+    "notes": "Fake values only. This note is not remembered.",
+    "preview": false
+  },
+  "focus": {
+    "active": true,
+    "outline": "solid"
+  },
+  "narrow": {
+    "viewport": 640,
+    "form": 591,
+    "fields": [
+      {
+        "label": "Search Language",
+        "width": 591,
+        "parent": 591
+      },
+      {
+        "label": "Language",
+        "width": 591,
+        "parent": 591
+      },
+      {
+        "label": "Search Colors",
+        "width": 591,
+        "parent": 591
+      },
+      {
+        "label": "Colors",
+        "width": 591,
+        "parent": 591
+      },
+      {
+        "label": "Temporary Note",
+        "width": 591,
+        "parent": 591
+      },
+      {
+        "label": "Enable the Fake Preview",
+        "width": 16,
+        "parent": 591
+      }
+    ],
+    "scrollWidth": 591,
+    "clientWidth": 591
+  },
+  "captures": [
+    {
+      "file": "remembered-choices-default-dark.png",
+      "state": "Declared defaults before any accepted submission",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true
+    },
+    {
+      "file": "remembered-choices-saved-dark.png",
+      "state": "Exact typed selections submitted after pending edits; Form unmounted by callback",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true
+    },
+    {
+      "file": "remembered-choices-restored-dark.png",
+      "state": "French and ordered Blue/Red restored in a fresh command child; unmarked note/checkbox retain defaults",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true
+    }
+  ],
+  "errors": [],
+  "consoleErrors": [],
+  "nonlocalRequests": [],
+  "restart": {
+    "passed": true,
+    "realRestartedDesktop": true,
+    "seed": "Only exact saved fake-extension state copied between owned isolated roots",
+    "restored": {
+      "locale": "fr",
+      "tags": [
+        "blue",
+        "red"
+      ],
+      "notes": "Fake values only. This note is not remembered.",
+      "preview": false
+    },
+    "capture": {
+      "file": "remembered-choices-restarted-dark.png",
+      "state": "Restored values after complete owned app shutdown and a fresh guard-owned launch",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true
+    },
+    "errors": [],
+    "consoleErrors": [],
+    "nonlocalRequests": []
+  },
+  "images": [
+    {
+      "file": "remembered-choices-default-dark.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "0b572b6a2ad497e6f239305c0ed91ae96057e2f7648b9ddf63b869e7cc102a44"
+    },
+    {
+      "file": "remembered-choices-saved-dark.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "dddff21f99e220cac209176ff4d4d2d8358ddf37ce9561ece2bc0b62e3ca357b"
+    },
+    {
+      "file": "remembered-choices-restored-dark.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "424c4fdf01e8d0726ae382440c59df5d948d5dd8c03dce1c3273d680c4f57333"
+    },
+    {
+      "file": "remembered-choices-restarted-dark.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "aec84294088b33454c46cc0833a0b23d05cc101165f9f6734911845dd03de236"
+    }
+  ],
+  "sourceAndBuildHashes": {
+    "src/trusted-raycast-compat-api.ts": "215faa4c25a3e0b2d16e77229e3d3b670a874f510a41293635887f58d94ddef0",
+    "src/user-raycast-child.ts": "011443446b27954423f7c8d3e57594ea813c23acc9773a868a18a1106d00a1c5",
+    "src/user-raycast-storage.ts": "27229d900ea9448c574367b200d9738ad23603cab7926871a64288a233580f80",
+    "tests/user-raycast-form-persistence.test.ts": "1887a40702efa17b149d1cd08fab0488a7150d848fb64966cfb3f4ec0aea436a",
+    "dist/main.js": "c357f9a85fbea5a199026c1ac07a3ca06d5fdfacdbc977c740441eca272bc22f",
+    "dist/launcher.js": "13983998ca3411809b77e4dae195111464ad4dbf8903c55f0a1d92bc61191cf3",
+    "dist/user-raycast/api.mjs": "1a408fb1d2bdb7e4516ab8f22077d8eaaee41a3f0bbb043157edf79785ab72eb"
+  },
+  "sourceCheckpoint": "ec78ac6c",
+  "checks": {
+    "api": {
+      "pass": 11,
+      "fail": 0
+    },
+    "scoped": {
+      "pass": 448,
+      "skip": 6,
+      "fail": 0
+    },
+    "root": {
+      "pass": 1681,
+      "skip": 18,
+      "fail": 0
+    },
+    "typecheck": true,
+    "build": true,
+    "quickStage": true
+  },
+  "placement": {
+    "displayId": 17,
+    "focused": false,
+    "windows": [
+      {
+        "windowId": 1,
+        "bounds": {
+          "x": 1512,
+          "y": 30,
+          "width": 1366,
+          "height": 994
+        }
+      },
+      {
+        "windowId": 2,
+        "bounds": {
+          "x": 1820,
+          "y": 289,
+          "width": 750,
+          "height": 475
+        }
+      }
+    ]
+  },
+  "restartSeed": {
+    "owned": true,
+    "firstParty": true,
+    "homePreserved": true,
+    "mockKeychain": true,
+    "bytes": 220,
+    "sha256": "c70ff4ece3c4e57ebc2521cf023239bcc97390fd364d0b56c7d4456fc16dc078",
+    "fields": [
+      "locale",
+      "tags"
+    ],
+    "copied": "Only owned fake-extension state, not a user profile"
+  },
+  "ownedDataRoots": [
+    {
+      "userData": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-nI5Gyy/user-data",
+      "homePreserved": true,
+      "mockKeychain": true
+    },
+    {
+      "userData": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-D3bNgL/user-data",
+      "homePreserved": true,
+      "mockKeychain": true
+    }
+  ],
+  "cleanup": {
+    "roots": [
+      {
+        "id": "f3434bbc-edb5-40fe-a8f5-8a48fc2732a4",
+        "rootPid": 69507,
+        "recordedPids": [
+          69507,
+          69509,
+          69510,
+          69514,
+          69518,
+          69521,
+          69533,
+          69534,
+          69544,
+          69545,
+          69546,
+          69547,
+          69548,
+          69549,
+          69550,
+          69551,
+          69695,
+          69789,
+          69790,
+          69791,
+          69792,
+          69793,
+          69794,
+          70024,
+          70025,
+          70026,
+          70027,
+          70028,
+          70029,
+          70030,
+          70031,
+          70112,
+          70115,
+          70120,
+          70124
+        ],
+        "remaining": []
+      },
+      {
+        "id": "a2eb4dd6-fdbe-445e-892e-117db11c91ad",
+        "rootPid": 70285,
+        "recordedPids": [
+          70285,
+          70287,
+          70288,
+          70291,
+          70295,
+          70297,
+          70302,
+          70303,
+          70395,
+          70462,
+          70628,
+          70629,
+          70630,
+          70631,
+          70873
+        ],
+        "remaining": []
+      }
+    ],
+    "allPidsESRCH": true,
+    "closedPorts": [
+      65074,
+      65162,
+      65090,
+      65178
+    ],
+    "playwrightDetached": true,
+    "fixtureGroups": 454,
+    "fixtureGroupsESRCH": true,
+    "inspection": {
+      "rootPid": 66264,
+      "stopped": true,
+      "remaining": []
+    }
+  },
+  "limits": {
+    "snapshotBytes": 4096,
+    "fieldRecords": 64,
+    "extensionBytes": 65536,
+    "extensionEntries": 256,
+    "formIdentityRequiresStableMountedOrder": true,
+    "notCredentialStorage": true
+  },
+  "warnings": [
+    "Existing unpackaged Electron CSP warning; zero console errors",
+    "Image reader cannot show an inline preview; no pixel-level visual approval",
+    "React Doctor selected no projects; no effective audit/score claimed",
+    "No real credentials, third-party extension, native effect or installed-release proof"
+  ]
+}

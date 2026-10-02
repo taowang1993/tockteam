@@ -2,12 +2,12 @@
 audience: agent
 canonical: .agents/references/tocklauncher.md
 owner: TockTeam
-last_reviewed: 2026-09-28
+last_reviewed: 2026-10-02
 ---
 
 # TockLauncher
 
-_Last reviewed: 2026-09-28_
+_Last reviewed: 2026-10-02_
 
 TockLauncher is TockTeam Desktop's native keystroke launcher. It selectively ports the reviewed Ueli `v9.29.0` behavior while keeping the Electron lifecycle, renderer, persistence, security boundary, platform effects, and product routing under TockTeam ownership.
 
@@ -330,6 +330,10 @@ Persistence rules:
 Node has no portable descriptor-relative compare-and-replace primitive. External publication is therefore not an atomic replacement with uninterrupted destination availability: displacement plus no-overwrite publication preserves conflicting versions rather than claiming a race-free save. Keep this confined to the user-selected file in its user-writable parent; never widen it to privileged/shared-directory mutation.
 
 Preferences for all three compatibility features are validated and saved through main. Translate/Kaomoji cached state is different: the trusted child writes a main-selected state path through `useCachedState`. Both use bounded regular-file reads and validated atomic writes. Translate uses its dedicated compatibility module, a 512 KiB serialized limit, and at most 128 saved language sets validated against the pinned language catalog; invalid cached files are ignored without being rewritten on load.
+
+User-installed Form fields support explicit `storeValue={true}` for the currently supported text/password/textarea/checkbox/Dropdown/TagPicker types. The child captures typed immutable values before `Action.SubmitForm`, preflights the saved snapshot, and writes only after the callback accepts; edits, blur, cancellation, false returns and rejected promises do not change the remembered values. Controlled props still win, and refs reset to the declared default rather than the remembered value. Restoration is lazy and does not invoke change callbacks. A typed field change does not inherit a different kind's saved value.
+
+This uses the existing private extension state file and atomic named-cache writer, with a command namespace and React Form identity; LocalStorage/default-cache clearing and another extension/command/Form do not erase or inherit it. A stable mounted Form order is required across cold opens; persistence identity for dynamic navigation/reordering remains unverified. Snapshots are bounded to 64 field records / 4 KiB, within the existing 64 KiB / 256-entry extension file. Oversized or invalid records fail without truncation, partial replacement or rewriting on load. Old absent fields remain recoverable; known overflow rejects before the callback. A later storage failure still reports failed persistence, but cannot roll back effects an extension already performed inside its submit callback. Private files are mode `0600`, not encrypted or Keychain-backed; extensions must not mistake form persistence for credential storage. The real owned-Desktop fake-only save/close/reopen and exact-state-seeded app-restart proof is in `.beads/reports/2026-10-02-raycast-form-persistence/README.md`. No full API, dynamic navigation, installed-release or real-credential claim follows from this checkpoint.
 
 ## Lifecycle
 

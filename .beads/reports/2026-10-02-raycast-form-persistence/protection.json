@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "count": 2098,
+  "changed": [],
+  "protected": [
+    "AGENTS.md",
+    "tests/right-panel-layout.test.ts",
+    "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route-linked-panes.test.tsx"
+  ],
+  "peerTockTutorSourceGeneratedGalleryFrozen": true,
+  "referenceExcludedForOwnedUpdate": ".agents/references/tocklauncher.md"
+}
