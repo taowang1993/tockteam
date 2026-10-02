@@ -4,6 +4,10 @@ favorite: true
 area: markdown
 tags: [comparison, typography]
 difficulty: medium
+due: "2026-10-01"
+meeting: "2026-10-01T14:45"
+rating: 1e+21
+unsupported: {nested: value}
 ---
 
 # Markdown Rendering Lab

@@ -35,7 +35,7 @@ test('compares matching content and includes the installed Claudian assistant', 
       assert.equal(pair.referenceStatus, 'historical-filename')
       assert.equal(left.captureScope, 'real-desktop')
       assert.equal(left.route, '/tocktutor/comparison.md')
-      assert.equal(left.contentSha256, createHash('sha256').update(readFileSync(`${root}/comparison.md`)).digest('hex'))
+      assert.equal(left.contentSha256, proof.comparisonNoteRevision.previous.contentSha256)
       assert.equal(proof.menuRefresh.cleanup.verified, true)
       assert.deepEqual(proof.menuRefresh.cleanup.remaining, [])
       assert.match(html, /Obsidian · Note Actions<\/span><span class="badge">Earlier Reference/u)

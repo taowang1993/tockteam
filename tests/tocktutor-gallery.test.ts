@@ -175,17 +175,17 @@ test('pairs Imported Property Controls with genuine Obsidian and the identical s
   assert.equal(native.visibleState.frontmatterCollapsed, true)
   assert.equal(native.visibleState.structuredValueWarning, 'Type mismatch, expected Text')
   assert.deepEqual(native.visibleState.values, {
-    due: '2026-10-01', finished: true, rating: '1e+21', meeting: '2026-09-29T14:45',
-    labels: ['research', 'next steps'], tags: ['migration', 'notes'], aliases: ['Migration Guide'],
+    status: 'review', favorite: true, area: 'markdown', tags: ['comparison', 'typography'],
+    difficulty: 'medium', due: '2026-10-01', meeting: '2026-10-01T14:45', rating: '1e+21',
     unsupported: '{"nested":"value"}',
   })
-  const registry = readFileSync(resolve(root, 'migration-fixtures/types.json'))
-  assert.deepEqual(native.visibleState.propertyTypes, JSON.parse(registry.toString()).types)
+  const registry = JSON.stringify(proof.comparisonPropertiesRefresh.registryContent)
+  assert.deepEqual(native.visibleState.propertyTypes, JSON.parse(registry).types)
   assert.equal(native.registrySha256, sha256(registry))
   assert.equal(native.registryUnchanged, true)
   assert.equal(native.userStateUnchanged, true)
   const pair = proof.pairs.find((p: { surface: string }) => p.surface === 'imported-properties')
-  assert.equal(pair.tocktutor.path, 'Properties.md')
+  assert.equal(pair.tocktutor.path, 'comparison.md')
   assert.equal(pair.tocktutor.contentSha256, pair.obsidian.contentSha256)
   const reference = proof.migrationReview.importedPropertiesReference
   assert.equal(reference.samePropertyTypes, true)
@@ -205,8 +205,8 @@ test('pairs Imported Property Controls with genuine Obsidian and the identical s
   assert.equal(refresh.samePropertyTypes, true)
   assert.equal(refresh.reusesExistingBuild, true)
   const current = proof.captures['tocktutor-imported-properties.png']
-  assert.equal(current.sourceCommit, proof.propertiesEditingRefresh.sourceCommit)
-  assert.equal(current.sha256, proof.propertiesEditingRefresh.screenshotSha256s['tocktutor-imported-properties.png'])
+  assert.equal(current.sourceCommit, proof.comparisonPropertiesRefresh.sourceCommit)
+  assert.equal(current.sha256, proof.comparisonPropertiesRefresh.screenshotSha256s['tocktutor-imported-properties.png'])
   assert.equal(current.visibleState.rightSidebar, true)
   assert.equal(current.visibleState.fullHeightNote, true)
   assert.equal(current.visibleState.rootColorScheme, 'dark')
@@ -233,9 +233,36 @@ test('pairs Imported Property Controls with genuine Obsidian and the identical s
   assert.deepEqual(refresh.galleryCleanup.remaining, [])
 })
 
+test('uses the expanded shared comparison note for the Properties screenshot pair', () => {
+  const source = readFileSync(resolve(root, 'comparison.md'), 'utf8')
+  assert.match(source, /^due: "2026-10-01"$/mu)
+  assert.match(source, /^meeting: "2026-10-01T14:45"$/mu)
+  assert.match(source, /^rating: 1e\+21$/mu)
+  assert.match(source, /^unsupported: \{nested: value\}$/mu)
+  const refresh = proof.comparisonPropertiesRefresh
+  assert.equal(refresh.path, 'comparison.md')
+  assert.equal(refresh.contentSha256, sha256(source))
+  const pair = proof.pairs.find((pair: { surface: string }) => pair.surface === 'imported-properties')
+  for (const side of [pair.tocktutor, pair.obsidian]) {
+    assert.equal(side.path, 'comparison.md')
+    assert.equal(side.contentSha256, sha256(source))
+  }
+  assert.equal(proof.captures[pair.tocktutor.screenshot].visibleState.noteHeading, 'Markdown Rendering Lab')
+  assert.equal(proof.captures[pair.obsidian.screenshot].visibleState.noteHeading, 'Markdown Rendering Lab')
+  const revision = proof.comparisonNoteRevision
+  const body = source.slice(source.indexOf('\n---\n') + 5)
+  assert.equal(revision.changedFrontmatterOnly, true)
+  assert.equal(sha256(body), revision.previous.bodySha256)
+  assert.equal(sha256(revision.previous.frontmatter + body), revision.previous.contentSha256)
+  assert.equal(revision.current.contentSha256, sha256(source))
+  assert.equal(revision.previous.bytes, 1324)
+  assert.equal(refresh.noteBytes, Buffer.byteLength(source))
+  assert.equal(refresh.visibleRows, 9)
+})
+
 test('publishes the current Properties comparison in the canonical gallery from installed Obsidian', () => {
-  const refresh = proof.propertiesEditingRefresh
-  assert.ok(refresh, 'Current Properties editing has fresh installed Obsidian comparison evidence')
+  const refresh = proof.comparisonPropertiesRefresh
+  assert.ok(refresh, 'Current shared-note Properties has installed Obsidian comparison evidence')
   assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-imported-properties.png', 'obsidian-imported-properties.png'])
   assert.equal(refresh.reusesExistingBuild, true)
   assert.equal(refresh.unrelatedExistingCapturesUnchanged, 71)
@@ -254,6 +281,10 @@ test('publishes the current Properties comparison in the canonical gallery from 
   assert.ok(refresh.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
   assert.equal(refresh.galleryVerification.bothImagesDecoded, true)
   assert.deepEqual(refresh.galleryVerification.runtimeErrors, [])
+  assert.equal(refresh.galleryCleanup.serverStopped, true)
+  assert.equal(refresh.galleryCleanup.stopped, true)
+  assert.deepEqual(refresh.galleryCleanup.remaining, [])
+  assert.equal(refresh.reference.installationUnchanged, true)
   assert.match(html, /Properties Editing Refresh/u)
   assert.doesNotMatch(html, /tocktutor-properties-proof\/index\.html|(?:href|src)="[^"]*webobsidian/iu)
   assert.equal(existsSync(resolve('.beads/reports/2026-10-01-tocktutor-properties-proof/index.html')), false)
@@ -275,7 +306,7 @@ test('keeps unmatched migration surfaces distinct from the four focused comparis
     assert.equal(proof.captures[name].captureScope, 'real-desktop')
     const expectedCommit = name === 'tocktutor-image-viewer.png' ? additions.imageViewerRefresh.sourceCommit
       : name === 'tocktutor-image-resizing.png' ? additions.imageLayoutRefresh.sourceCommit
-        : name === 'tocktutor-imported-properties.png' ? proof.propertiesEditingRefresh.sourceCommit : additions.sourceCommit
+        : name === 'tocktutor-imported-properties.png' ? proof.comparisonPropertiesRefresh.sourceCommit : additions.sourceCommit
     assert.equal(proof.captures[name].sourceCommit, expectedCommit)
   }
   const fixtures = resolve(root, additions.fixtures)
@@ -289,11 +320,12 @@ test('keeps unmatched migration surfaces distinct from the four focused comparis
   assert.equal((source('Images.md').match(/Potala_palace23\.jpg/gu) ?? []).length, 3)
   const afterImages = source('Images.md').replace('Potala_palace23.jpg|200', 'Potala_palace23.jpg|240')
   const afterProperties = source('Properties.md').replace('due: null', 'due: "2026-10-01"').replace('finished: null', 'finished: true').replace('rating: 1e-7', 'rating: 1e+21')
+  assert.equal(proof.propertiesEditingRefresh.contentSha256, sha256(afterProperties), 'Earlier separate Properties note retains its actual historical content hash')
   const afterDiagrams = source('Diagrams.md').replace('  A[Start] --> B[Finish]', '  A[Start] --> B[Finish]\n    B --> C[Reviewed]')
   for (const [name, content] of Object.entries({
     'tocktutor-image-viewer.png': source('Viewer.md'),
     'tocktutor-image-resizing.png': afterImages,
-    'tocktutor-imported-properties.png': afterProperties,
+    'tocktutor-imported-properties.png': readFileSync(resolve(root, 'comparison.md'), 'utf8'),
     'tocktutor-mermaid-reading.png': source('Diagrams.md'),
     'tocktutor-mermaid-live-preview.png': source('Diagrams.md'),
     'tocktutor-mermaid-editing.png': afterDiagrams,
@@ -372,7 +404,7 @@ test('records corrected Live Preview text and a loaded current Reader View captu
   const refresh = proof.readerViewRefresh
   assert.equal(refresh.status, 'verified-current')
   assert.equal(reader.sourceCommit, refresh.sourceCommit)
-  assert.equal(reader.contentSha256, sha256(readFileSync(resolve(root, 'comparison.md'))))
+  assert.equal(reader.contentSha256, proof.comparisonNoteRevision.previous.contentSha256)
   assert.equal(reader.visibleState.renderedParagraph, expected)
   assert.equal(reader.visibleState.readerArticleVisible, true)
   assert.equal(reader.visibleState.pageViewEnabled, true)
@@ -415,9 +447,11 @@ test('binds refreshed Live Preview colors and checkbox size to visible capture e
 
 test('binds shared Markdown and structured documents to the captured content', () => {
   const sharedHash = sha256(readFileSync(resolve(root, 'comparison.md')))
-  assert.equal(proof.fixtures['comparison.md'].tocktutor.sha256, sharedHash)
-  assert.equal(proof.fixtures['UIUX Comparison.md'].tocktutor.sha256, sharedHash)
-  assert.equal(proof.fixtures['UIUX Comparison.md'].obsidian.sha256, sharedHash)
+  const historicalHash = proof.comparisonNoteRevision.previous.contentSha256
+  assert.equal(proof.fixtures['comparison.md'].tocktutor.sha256, historicalHash)
+  assert.equal(proof.fixtures['UIUX Comparison.md'].tocktutor.sha256, historicalHash)
+  assert.equal(proof.fixtures['UIUX Comparison.md'].obsidian.sha256, historicalHash)
+  assert.equal(proof.fixtures['comparison.md'].status, 'historical-before-properties-expansion')
   for (const [name, value] of Object.entries(proof.fixtures)) {
     const fixture = value as { sameBytes: boolean; tocktutor: { sha256: string }; obsidian: { sha256: string } }
     if (name.endsWith('.md') || name.endsWith('.png')) {
@@ -440,6 +474,6 @@ test('binds shared Markdown and structured documents to the captured content', (
   assert.equal(proof.graphAlignment.obsidianSettings.globalSearch, '-file:Lessons.base')
   assert.ok(proof.pairs.length >= 23)
   for (const pair of proof.pairs) {
-    if (['comparison.md', 'UIUX Comparison.md'].includes(pair.tocktutor.path)) assert.equal(pair.tocktutor.contentSha256, sharedHash, pair.surface)
+    if (['comparison.md', 'UIUX Comparison.md'].includes(pair.tocktutor.path)) assert.equal(pair.tocktutor.contentSha256, pair.surface === 'imported-properties' ? sharedHash : historicalHash, pair.surface)
   }
 })

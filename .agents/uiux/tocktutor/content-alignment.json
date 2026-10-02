@@ -1,6 +1,44 @@
 {
+  "comparisonNoteRevision": {"changedFrontmatterOnly":true,"current":{"bytes":1413,"contentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2","bodySha256":"cce1af0f82e43be949bc0c9c1f6a5b2740f5096aa334879904321f46f1118aed"},"previous":{"bytes":1324,"contentSha256":"3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5","frontmatter":"---\nstatus: review\nfavorite: true\narea: markdown\ntags: [comparison, typography]\ndifficulty: medium\n---\n","bodySha256":"cce1af0f82e43be949bc0c9c1f6a5b2740f5096aa334879904321f46f1118aed"},"unchangedCaptures":71},
+  "comparisonPropertiesRefresh": {
+    "status":"verified-current",
+    "path":"comparison.md",
+    "sharedNote":".agents/uiux/tocktutor/comparison.md",
+    "sourceCommit":"9b1fccbf",
+    "productSourceCommit":"e193bf3f",
+    "capturedAt":"2026-10-02T00:23:54.585Z",
+    "reusesExistingBuild":true,
+    "publicationAllowlist":["tocktutor-imported-properties.png","obsidian-imported-properties.png"],
+    "unrelatedExistingCapturesUnchanged":71,
+    "sameSavedBytes":true,
+    "samePropertyTypes":true,
+    "registryUnchanged":true,
+    "noteBytes":1413,
+    "contentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+    "registryBytes":170,
+    "registrySha256":"2a9367198f8ac89fc22fbc76c6a8d4372803559a3c0d9306bed8bac7d65c8fb2",
+    "registryContent":{"types":{"status":"text","favorite":"checkbox","area":"text","tags":"tags","difficulty":"text","due":"date","meeting":"datetime","rating":"number","unsupported":"text"}},
+    "geometry":[1512,949,2],
+    "pixels":[3024,1898],
+    "theme":"dark",
+    "skin":null,
+    "sidebarWidths":[470,470],
+    "frontmatterCollapsed":true,
+    "visibleRows":9,
+    "reference":{"product":"Obsidian 1.13.7","entry":"/Applications/Obsidian.app/Contents/Resources/app.asar","runtime":"Electron 42.3.0","adapter":"isolated-installed-obsidian","installationUnchanged":true},
+    "screenshotSha256s":{"tocktutor-imported-properties.png":"122b65c7aca808dd5c84ae125e0bb2d911fb30b1be24379f7ef6a8557464191d","obsidian-imported-properties.png":"22c5efa5ffe4dfa97c1a0f29b23dca62f3757c1dc0b9e1c64e3799c7044fa236"},
+    "builtArtifactHashes":{"dist/main.js":"5e65d51fd00054b8fe67df756edcd6e4948be4def1d88a663eec2f917b625bc8","dist/client.js":"713b7ba358a3866023ef44c9318d5f1e7ee7083546e7e87e06d9bcd156dacf92","plugins/tocktutor/build-manifest.json":"2a5e8682a77404f0a9ce32f9dc31d823dbe4acd76e7081f79abc4e552ff5de44","plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/client.js":"a65350170ffd1525229da6bc3246c22cc1fa99a3e4e9c45d94df5345d50ecdb0","plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/route.js":"07f8a43cb47a95777c9101a5df3ffc767a761ef2f4b74ed8494d04db86e33eb6"},
+    "sourceOwnership":"Frozen existing peer build at 9b1fccbf plus native-choice working-tree changes; actual built artifacts fingerprinted. Peer granted display/build/stage reservation. No app source edits, rebuild, staging or semantic-index mutation for this retake.",
+    "captureMethod":"New screenshots from the existing installed Obsidian archive and existing TockTutor build in isolated guarded sessions on display17; only owned CDP, real sidebar resizing and app folding/menus. Same expanded comparison.md in both. No user app/profile/vault access, install/update, DOM styling, clipboard, save or restore test.",
+    "runtimeErrors":[],
+    "externalRequests":[],
+    "cleanup":[{"id":"cf1c6f31-a058-41bf-980c-e50fb7f61e8b","stopped":true,"rootPid":18672,"recordedPids":[18672,18674,18675,18676,18677,18681,18687,18871,18875,19134,19135,19136,19137,19138,19139,19140,19141],"remaining":[]},{"id":"8fc2639a-8dcc-485c-a688-c92456573d78","stopped":true,"rootPid":19375,"recordedPids":[19375,19377,19378,19379,19642,19643],"remaining":[]}],
+    "galleryVerification":{"status":"verified","geometry":[1512,949,2],"surface":"imported-properties","bothImagesDecoded":true,"surface30Absent":true,"surfaceCount":29,"imageCount":66,"oldGalleryLink":false,"runtimeErrors":[],"failedRequests":[],"httpErrors":[]},
+    "galleryCleanup":{"id":"8969d9c6-2354-4533-a71e-d03075903262","stopped":true,"rootPid":20272,"recordedPids":[20272,20275,20276,20277],"remaining":[],"serverPid":20248,"serverStopped":true,"portClosed":true},
+    "limits":["Only this Properties pair uses the expanded frontmatter. All other screenshots retain their original content hashes; earlier comparison-note images retain the five-property revision.","Screenshot/content/control check, not exhaustive installed-Obsidian parity or a new save/restoration test.","Native body owns dark color scheme; empty document inline scheme was not overridden."]
+  },
   "propertiesEditingRefresh": {
-    "status":"verified-current","sourceCommit":"c35bf8f8","productSourceCommit":"e193bf3f","capturedAt":"2026-10-01T23:26:46.693Z",
+    "status":"verified-historical","sourceCommit":"c35bf8f8","productSourceCommit":"e193bf3f","capturedAt":"2026-10-01T23:26:46.693Z",
     "reusesExistingBuild":true,"publicationAllowlist":["tocktutor-imported-properties.png","obsidian-imported-properties.png"],"unrelatedExistingCapturesUnchanged":71,
     "sameSavedBytes":true,"samePropertyTypes":true,"registryUnchanged":true,"noteBytes":447,"contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478","registryBytes":162,"registrySha256":"5672e9e6ab76279528ce46c6239771225aed672d969af4688305761e6f4e6798",
     "geometry":[1512,949,2],"pixels":[3024,1898],"theme":"dark","skin":null,"sidebarWidths":[470,470],"frontmatterCollapsed":true,
@@ -263,17 +301,7 @@
       },
       "sameBytes": true
     },
-    "UIUX Comparison.md": {
-      "tocktutor": {
-        "bytes": 1324,
-        "sha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
-      },
-      "obsidian": {
-        "bytes": 1324,
-        "sha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
-      },
-      "sameBytes": true
-    },
+    "UIUX Comparison.md": {"tocktutor":{"bytes":1324,"sha256":"3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"},"obsidian":{"bytes":1324,"sha256":"3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"},"sameBytes":true,"status":"historical-before-properties-expansion","note":"Five-property 1324-byte revision, preserved for unchanged screenshots. Current comparison.md and the new Properties pair are recorded in comparisonNoteRevision/comparisonPropertiesRefresh."},
     "Untitled.md": {
       "tocktutor": {
         "bytes": 0,
@@ -285,18 +313,7 @@
       },
       "sameBytes": true
     },
-    "comparison.md": {
-      "tocktutor": {
-        "bytes": 1324,
-        "sha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
-      },
-      "obsidian": {
-        "bytes": 1324,
-        "sha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
-      },
-      "sameBytes": true,
-      "note": "Both new isolated vault copies contain comparison.md. Only TockTutor was captured; the published Obsidian reference retains its historical filename."
-    }
+    "comparison.md": {"tocktutor":{"bytes":1324,"sha256":"3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"},"obsidian":{"bytes":1324,"sha256":"3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"},"sameBytes":true,"note":"Five-property 1324-byte revision, preserved for unchanged screenshots. Current comparison.md and the new Properties pair are recorded in comparisonNoteRevision/comparisonPropertiesRefresh.","status":"historical-before-properties-expansion"}
   },
   "structuredPairs": [
     {
@@ -547,7 +564,7 @@
     {
       "surface":"imported-properties",
       "screenshots":["tocktutor-imported-properties.png","obsidian-imported-properties.png"],
-      "contentComparison":"byte-identical saved Properties.md and the same declared property types; native controls and structured-value presentation differ"
+      "contentComparison":"byte-identical expanded comparison.md with the same nine property types; original Markdown body unchanged, native controls and structured-value presentation differ"
     }
   ],
   "pairs": [
@@ -926,8 +943,8 @@
     },
     {
       "surface":"imported-properties",
-      "tocktutor":{"screenshot":"tocktutor-imported-properties.png","path":"Properties.md","mode":"live-preview","contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478"},
-      "obsidian":{"screenshot":"obsidian-imported-properties.png","path":"Properties.md","mode":"live-preview","contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478"}
+      "tocktutor":{"screenshot":"tocktutor-imported-properties.png","path":"comparison.md","mode":"live-preview","contentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2"},
+      "obsidian":{"screenshot":"obsidian-imported-properties.png","path":"comparison.md","mode":"live-preview","contentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2"}
     }
   ],
   "migrationReview": {
@@ -1079,27 +1096,45 @@
       "captureScope":"real-desktop","bytes":552773,"sha256":"0f6facd1f69a7de6a9b9b6c3bc003122fb8982c200a11ddea028eae289136a35"
     },
     "obsidian-imported-properties.png": {
-      "geometry":{"width":1512,"height":949,"deviceScaleFactor":2},"theme":"dark","skin":null,"route":"app://obsidian.md/index.html","path":"Properties.md","mode":"live-preview",
-      "contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478","registrySha256":"5672e9e6ab76279528ce46c6239771225aed672d969af4688305761e6f4e6798",
-      "product":"Obsidian 1.13.7","entry":"/Applications/Obsidian.app/Contents/Resources/app.asar","runtime":"Electron 42.3.0","capturedAt":"2026-10-01T23:27:13.077Z",
-      "visibleState":{"fileProperties":true,"frontmatterCollapsed":true,"propertyTypes":{"due":"date","finished":"checkbox","rating":"number","meeting":"datetime","labels":"multitext","tags":"tags","aliases":"aliases","unsupported":"text"},"values":{"due":"2026-10-01","finished":true,"rating":"1e+21","meeting":"2026-09-29T14:45","labels":["research","next steps"],"tags":["migration","notes"],"aliases":["Migration Guide"],"unsupported":"{\"nested\":\"value\"}"},"structuredValueType":"unknown","structuredValueWarning":"Type mismatch, expected Text","panel":{"x":1042,"y":40,"width":470,"height":909},"propertyRows":[{"key":"due","y":52,"height":29},{"key":"finished","y":81,"height":29},{"key":"rating","y":110,"height":29},{"key":"meeting","y":139,"height":29},{"key":"labels","y":168,"height":29},{"key":"tags","y":197,"height":29.5},{"key":"aliases","y":226.5,"height":29},{"key":"unsupported","y":255.5,"height":29}],"builtInDark":true,"configuredTheme":"obsidian","bodyColorScheme":"dark","rootColorScheme":""},
-      "registryUnchanged":true,"userStateUnchanged":true,"runtimeErrors":[],"runtimeErrorMonitoring":"Fresh installed Obsidian 1.13.7 archive through the guarded isolated adapter and owned Electron/CDP. Console/page errors and external requests monitored; final console Errors:0. Exact fixture note/type bytes unchanged; user profiles never accessed; entire owned process tree stopped.","captureScope":"real-desktop","bytes":171085,"sha256":"2f09e2a81e579de253cba4b8537ea8866ba60890bf3fe92aeefb696cb618c9ff"
+      "geometry":{"width":1512,"height":949,"deviceScaleFactor":2},
+      "theme":"dark",
+      "skin":null,
+      "route":"app://obsidian.md/index.html",
+      "path":"comparison.md",
+      "mode":"live-preview",
+      "contentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "registrySha256":"2a9367198f8ac89fc22fbc76c6a8d4372803559a3c0d9306bed8bac7d65c8fb2",
+      "product":"Obsidian 1.13.7",
+      "entry":"/Applications/Obsidian.app/Contents/Resources/app.asar",
+      "runtime":"Electron 42.3.0",
+      "capturedAt":"2026-10-02T00:25:05.523Z",
+      "visibleState":{"fileProperties":true,"noteHeading":"Markdown Rendering Lab","frontmatterCollapsed":true,"propertyTypes":{"status":"text","favorite":"checkbox","area":"text","tags":"tags","difficulty":"text","due":"date","meeting":"datetime","rating":"number","unsupported":"text"},"values":{"status":"review","favorite":true,"area":"markdown","tags":["comparison","typography"],"difficulty":"medium","due":"2026-10-01","meeting":"2026-10-01T14:45","rating":"1e+21","unsupported":"{\"nested\":\"value\"}"},"structuredValueType":"unknown","structuredValueWarning":"Type mismatch, expected Text","panel":{"x":1042,"y":40,"width":470,"height":909},"propertyRows":[{"key":"status","y":52,"height":29},{"key":"favorite","y":81,"height":29},{"key":"area","y":110,"height":29},{"key":"tags","y":139,"height":29.5},{"key":"difficulty","y":168.5,"height":29},{"key":"due","y":197.5,"height":29},{"key":"meeting","y":226.5,"height":29},{"key":"rating","y":255.5,"height":29},{"key":"unsupported","y":284.5,"height":29}],"builtInDark":true,"configuredTheme":"obsidian","bodyColorScheme":"dark","rootColorScheme":""},
+      "registryUnchanged":true,
+      "userStateUnchanged":true,
+      "runtimeErrors":[],
+      "runtimeErrorMonitoring":"Already installed Obsidian archive via guarded isolated adapter/owned CDP; monitored zero capture-time errors/external requests, final console Errors:0. Exact shared note/registry unchanged; owned tree stopped; user app/profile/vault never opened. See comparisonPropertiesRefresh.",
+      "captureScope":"real-desktop",
+      "bytes":244264,
+      "sha256":"22c5efa5ffe4dfa97c1a0f29b23dca62f3757c1dc0b9e1c64e3799c7044fa236"
     },
     "tocktutor-imported-properties.png": {
-      "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
-      "route":"/tocktutor/Properties.md", "path":"Properties.md", "mode":"live-preview",
-      "contentSha256":"d0809aa41552429f25d34684faf6cbdefe748468514c204b01b7d1df9c13b478","registrySha256":"5672e9e6ab76279528ce46c6239771225aed672d969af4688305761e6f4e6798","registryUnchanged":true,
-      "bytes":208849, "sha256":"93cee04c67c65cb788469d1c3f13a131376a12ece8fb285641c411bf24b1642b",
-      "sourceCommit":"c35bf8f8", "capturedAt":"2026-10-01T23:26:46.693Z",
-      "visibleState":{"linkedProperties":true,"rightSidebar":true,"fullHeightNote":true,"frontmatterCollapsed":true,"rootColorScheme":"dark","rootSkin":null,"bodySkin":null,"exponentNumber":true,"reopened":true,"unsupportedSourceFallback":true,
-        "extraToolbar":false,"rowMenuEntries":["Rename Property","Copy Value","Remove Property"],"typeMenuEntries":["Text","List","Number","Checkbox","Date","Date & Time"],"chipEditCancelled":true,
-        "segmentedToggle":true,"selector":[{"label":"Properties","selected":"true"},{"label":"Assistant","selected":"false"}],"toggle":{"x":1054,"y":44.5,"width":86,"height":38},
-        "values":{"due":"2026-10-01","finished":true,"rating":"1e+21","meeting":"2026-09-29T14:45","labels":["research","next steps"],"tags":["migration","notes"],"aliases":["Migration Guide"]},
-        "propertyTypes":{"due":"date","finished":"checkbox","rating":"number","meeting":"datetime","labels":"multitext","tags":"tags","aliases":"aliases","unsupported":"text"},
-        "controlTypes":["date","checkbox","number","datetime-local","list","list","list","source"],
-        "panel":{"x":1042,"y":40,"width":470,"height":909},"editor":{"x":320,"y":40,"width":722,"height":909},
-        "propertyRows":[{"key":"due","y":144,"bottom":216},{"key":"finished","y":216,"bottom":272},{"key":"rating","y":272,"bottom":344},{"key":"meeting","y":344,"bottom":416},{"key":"labels","y":416,"bottom":516},{"key":"tags","y":516,"bottom":616},{"key":"aliases","y":616,"bottom":716},{"key":"unsupported","y":716,"bottom":780}]},
-      "runtimeErrors":[], "runtimeErrorMonitoring":"Fresh existing-build Desktop through owned guarded Electron/CDP; console/page errors and external requests monitored. Final console Errors:0. Exact note/type bytes unchanged; entire owned process tree stopped. See propertiesEditingRefresh.", "captureScope":"real-desktop"
+      "geometry":{"width":1512,"height":949,"deviceScaleFactor":2},
+      "theme":"dark",
+      "skin":null,
+      "route":"/tocktutor/comparison.md",
+      "path":"comparison.md",
+      "mode":"live-preview",
+      "contentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "registrySha256":"2a9367198f8ac89fc22fbc76c6a8d4372803559a3c0d9306bed8bac7d65c8fb2",
+      "registryUnchanged":true,
+      "bytes":310626,
+      "sha256":"122b65c7aca808dd5c84ae125e0bb2d911fb30b1be24379f7ef6a8557464191d",
+      "sourceCommit":"9b1fccbf",
+      "capturedAt":"2026-10-02T00:23:54.585Z",
+      "visibleState":{"linkedProperties":true,"rightSidebar":true,"fullHeightNote":true,"noteHeading":"Markdown Rendering Lab","frontmatterCollapsed":true,"rootColorScheme":"dark","rootSkin":null,"bodySkin":null,"exponentNumber":true,"reopened":true,"unsupportedSourceFallback":true,"extraToolbar":false,"rowMenuEntries":["Rename Property","Copy Value","Remove Property"],"typeMenuEntries":["Text","List","Number","Checkbox","Date","Date & Time"],"chipEditCancelled":true,"segmentedToggle":true,"selector":[{"label":"Properties","selected":"true"},{"label":"Assistant","selected":"false"}],"toggle":{"x":1054,"y":44.5,"width":86,"height":38},"values":{"status":"review","favorite":true,"area":"markdown","tags":["comparison","typography"],"difficulty":"medium","due":"2026-10-01","meeting":"2026-10-01T14:45","rating":"1e+21"},"propertyTypes":{"status":"text","favorite":"checkbox","area":"text","tags":"tags","difficulty":"text","due":"date","meeting":"datetime","rating":"number","unsupported":"text"},"controlTypes":["text","checkbox","text","list","text","date","datetime-local","number","source"],"panel":{"x":1042,"y":40,"width":470,"height":909},"editor":{"x":320,"y":40,"width":722,"height":909},"propertyRows":[{"key":"status","y":144,"bottom":216},{"key":"favorite","y":216,"bottom":272},{"key":"area","y":272,"bottom":344},{"key":"tags","y":344,"bottom":444},{"key":"difficulty","y":444,"bottom":516},{"key":"due","y":516,"bottom":588},{"key":"meeting","y":588,"bottom":660},{"key":"rating","y":660,"bottom":732},{"key":"unsupported","y":732,"bottom":796}]},
+      "runtimeErrors":[],
+      "runtimeErrorMonitoring":"Frozen existing Desktop via guarded isolated Electron/owned CDP; monitored zero capture-time errors/external requests, final console Errors:0. Exact shared note/registry unchanged; owned tree stopped. See comparisonPropertiesRefresh.",
+      "captureScope":"real-desktop"
     },
     "tocktutor-mermaid-live-preview.png": {
       "geometry": {"width":1512,"height":949,"deviceScaleFactor":2}, "theme":"dark", "skin":null,
