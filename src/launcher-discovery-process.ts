@@ -149,7 +149,7 @@ export function isLauncherPathWithin(root: string, candidate: string): boolean {
   if (!bounded(root) || !bounded(candidate) || !isAbsolute(root) || !isAbsolute(candidate)) return false
   const implementation = isWindowsAbsolute(root) || isWindowsAbsolute(candidate) ? path.win32 : path
   const relative = implementation.relative(implementation.resolve(root), implementation.resolve(candidate))
-  return relative === '' || (!relative.startsWith('..') && !implementation.isAbsolute(relative))
+  return relative !== '..' && !relative.startsWith(`..${implementation.sep}`) && !implementation.isAbsolute(relative)
 }
 
 /** Revalidate an identity-bound native path immediately before its effect. */

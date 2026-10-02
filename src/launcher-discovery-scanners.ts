@@ -6,7 +6,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { Worker } from 'node:worker_threads'
-import { launcherPowerShellDataScript, resolveWindowsSystemExecutable } from './launcher-discovery-process.ts'
+import { isLauncherPathWithin, launcherPowerShellDataScript, resolveWindowsSystemExecutable } from './launcher-discovery-process.ts'
 import type {
   LauncherDiscoveryEntry,
   LauncherDiscoveryExtensionId,
@@ -140,12 +140,6 @@ function isWindowsAbsolute(value: string): boolean {
 
 function isAbsolute(value: string): boolean {
   return path.isAbsolute(value) || isWindowsAbsolute(value)
-}
-
-function isWithin(root: string, candidate: string): boolean {
-  const implementation = isWindowsAbsolute(root) || isWindowsAbsolute(candidate) ? path.win32 : path
-  const relative = implementation.relative(implementation.resolve(root), implementation.resolve(candidate))
-  return relative === '' || (!relative.startsWith('..') && !implementation.isAbsolute(relative))
 }
 
 function isNestedMacApplication(value: string): boolean {
@@ -351,7 +345,7 @@ function parseProfilesIni(contents: string, root: string): readonly string[] {
         ? current.Path
         : path.join(root, current.Path)
       const implementation = isWindowsAbsolute(root) || isWindowsAbsolute(candidate) ? path.win32 : path
-      if (isAbsolute(candidate) && (current.IsRelative === '0' || isWithin(root, candidate))) results.push(implementation.normalize(candidate))
+      if (isAbsolute(candidate) && (current.IsRelative === '0' || isLauncherPathWithin(root, candidate))) results.push(implementation.normalize(candidate))
     }
     current = undefined
   }
@@ -470,7 +464,7 @@ async function scanApplications(context: LauncherDiscoveryScanContext, execFile:
     const folders = boundedStringArray(context.getSetting('extension[ApplicationSearch].macOsFolders', defaults.macOsFolders), defaults.macOsFolders)
     const invocation = filters[configuredFilter] ?? filters[defaults.mdfindFilterOption]!
     const { stdout } = await execFile('/usr/bin/mdfind', [invocation], { maxBuffer: MAX_DISCOVERY_EXEC_BUFFER, signal: context.signal, timeout: 10_000 })
-    const paths = stdout.split(/\r?\n/u).map(value => value.trim()).filter(value => boundedDiscoveryString(value, 4_096) && isAbsolute(value) && value.toLocaleLowerCase('en-US').endsWith('.app') && folders.some(folder => isWithin(folder, value)) && !isNestedMacApplication(value)).slice(0, MAX_DISCOVERED_ITEMS)
+    const paths = stdout.split(/\r?\n/u).map(value => value.trim()).filter(value => boundedDiscoveryString(value, 4_096) && isAbsolute(value) && value.toLocaleLowerCase('en-US').endsWith('.app') && folders.some(folder => isLauncherPathWithin(folder, value)) && !isNestedMacApplication(value)).slice(0, MAX_DISCOVERED_ITEMS)
     if (paths.length === 0) {
       let visits = 0
       for (const folder of folders) {
@@ -578,7 +572,7 @@ async function scanJetBrains(context: LauncherDiscoveryScanContext): Promise<rea
     try { projects = parseJetBrainsRecentProjectPaths(await readBoundedText(implementation.join(configRoot, product.dataDirectoryName, 'options', 'recentProjects.xml')), context.homePath) }
     catch { continue }
     const executable = implementation.resolve(tool.installLocation, tool.launchCommand)
-    if (!isWithin(tool.installLocation, executable)) continue
+    if (!isLauncherPathWithin(tool.installLocation, executable)) continue
     for (const projectPath of projects) {
       throwIfAborted(context.signal)
       if (results.length >= MAX_DISCOVERED_ITEMS) return Object.freeze(results)

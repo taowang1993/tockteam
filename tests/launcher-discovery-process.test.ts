@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import {
   digestLauncherElevationTarget,
+  isLauncherPathWithin,
   launchDetachedLauncherExecutable,
   resolveLinuxDesktopEntryInvocation,
   resolveWindowsApplicationElevationInvocation,
@@ -14,6 +15,18 @@ import {
   revalidateLauncherWindowsStoreId,
   revalidateLauncherVscodeUri,
 } from '../src/launcher-discovery-process.ts'
+
+test('path scopes accept dot-prefixed children and reject parent components on both platforms', () => {
+  for (const [root, child, outside] of [
+    ['/home/user', '/home/user/..notes/file.txt', '/home/user/../outside/file.txt'],
+    ['C:\\Users\\user', 'C:\\Users\\user\\..notes\\file.txt', 'C:\\Users\\user\\..\\outside\\file.txt'],
+    ['\\\\server\\share\\user', '\\\\server\\share\\user\\..notes\\file.txt', '\\\\server\\share\\user\\..\\outside\\file.txt'],
+  ]) {
+    assert.equal(isLauncherPathWithin(root!, child!), true)
+    assert.equal(isLauncherPathWithin(root!, outside!), false)
+    assert.equal(isLauncherPathWithin(root!, root!), true)
+  }
+})
 
 test('fixed process adapters reject generic or malformed targets', () => {
   assert.deepEqual(resolveLinuxDesktopEntryInvocation('/usr/share/applications/tockteam.desktop'), { executable: '/usr/bin/gio', args: ['launch', '/usr/share/applications/tockteam.desktop'] })

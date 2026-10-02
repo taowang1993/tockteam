@@ -43,6 +43,22 @@ function context(overrides: Partial<LauncherDiscoveryScanContext> = {}): Launche
   }
 }
 
+test('macOS discovery retains dot-prefixed applications while filtering outside folders', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tockteam-dot-apps-'))
+  const ordinary = join(root, 'Visible.app')
+  const dotted = join(root, '..Hidden.app')
+  try {
+    const scanner = createLauncherDiscoveryScanners({
+      execFile: async () => ({ stdout: [ordinary, dotted, join(root, '..', 'Outside.app')].join('\n') }),
+    })
+    const apps = await scanner.ApplicationSearch(context({
+      platform: 'macOS',
+      getSetting: <T>(key: string, fallback: T): T => key.endsWith('.macOsFolders') ? [root] as T : fallback,
+    }))
+    assert.deepEqual(apps.map(app => 'path' in app ? app.path : undefined), [ordinary, dotted])
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
 test('bounded discovery reads reject links and do not block on special files', () => {
   assert.match(scannerSource, /constants\.O_NOFOLLOW/u)
   assert.match(scannerSource, /constants\.O_NONBLOCK/u)
