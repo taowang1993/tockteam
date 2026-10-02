@@ -92,10 +92,13 @@ const TARGET_LANGUAGES = new Set([
 const WEB_LOCALE_MAP = new Map<string, string>([
   ['de-CH', 'ch-de'],
   ['en-US', 'us-en'],
+  ['fr-FR', 'fr-fr'],
   ['ja-JP', 'jp-jp'],
   ['ko-KR', 'kr-kr'],
+  ['zh-CN', 'cn-zh'],
+  ['zh-TW', 'tw-tzh'],
 ])
-const SUPPORTED_WEB_LOCALES = new Set(['en-US', 'de-CH', 'fr-FR', 'ja-JP', 'ko-KR', 'zh-CN', 'zh-TW'])
+const SUPPORTED_WEB_LOCALES = new Set(WEB_LOCALE_MAP.keys())
 
 function emptyResult(lastError?: string): InstantResult {
   return Object.freeze({

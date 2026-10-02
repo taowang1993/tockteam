@@ -137,6 +137,35 @@ test('network provider uses fixed custom URL and web search shapes', async () =>
   assert.equal(result.after.length, 3)
 })
 
+test('DuckDuckGo suggestions and browser actions honor every offered search locale', async () => {
+  const locales = [
+    ['en-US', 'us-en'], ['de-CH', 'ch-de'], ['fr-FR', 'fr-fr'], ['ja-JP', 'jp-jp'],
+    ['ko-KR', 'kr-kr'], ['zh-CN', 'cn-zh'], ['zh-TW', 'tw-tzh'],
+  ] as const
+  for (const [locale, region] of locales) {
+    const requests: string[] = []
+    const opened: string[] = []
+    const provider = createLauncherNetworkExtensions({
+      copyText: () => undefined,
+      enabledExtensionIds: () => ['WebSearch'],
+      fetch: async url => { requests.push(url); return response(JSON.stringify([{ phrase: 'suggestion' }])) },
+      getSetting: <T>(key: string, fallback: T): T => key === 'extension[WebSearch].searchEngine' ? 'DuckDuckGo' as T
+        : key === 'extension[WebSearch].locale' ? locale as T : fallback,
+      openExternal: url => { opened.push(url) },
+      resolveAddresses: publicResolver,
+    })
+    try {
+      const result = await provider.searchInstant(`${LAUNCHER_WEB_SEARCH_QUERY_PREFIX} hello world`)
+      assert.equal(new URL(requests[0]!).searchParams.get('kl'), region, `${locale} suggestions`)
+      assert.equal(result.after.length, 2)
+      for (const item of result.after) {
+        await provider.executeAction(record(item))
+        assert.equal(new URL(opened.at(-1)!).searchParams.get('kl'), region, `${locale} navigation`)
+      }
+    } finally { await provider.close() }
+  }
+})
+
 test('a complete typed HTTP(S) address opens in the selected browser without web search or Host fetching', async () => {
   const opened: string[] = []
   let fetches = 0
