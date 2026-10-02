@@ -19,7 +19,7 @@ const mode = process.env.TOCKTEAM_USER_RAYCAST_MODE
 let revision = -1
 let ready = false
 let handles = new Map<string, () => unknown>()
-let fields = new Map<string, { kind: unknown; change: ((value: UserRaycastFieldValue) => unknown) | undefined; focus: ((value: UserRaycastFieldValue) => unknown) | undefined; blur: ((value: UserRaycastFieldValue) => unknown) | undefined }>()
+let fields = new Map<string, { kind: unknown; change: ((value: UserRaycastFieldValue) => unknown) | undefined; focus: ((value: UserRaycastFieldValue) => unknown) | undefined; blur: ((value: UserRaycastFieldValue) => unknown) | undefined; search: ((value: string) => unknown) | undefined }>()
 let activeField = false
 let activeAction: { eventId: string; revision: number } | undefined
 let nativeSequence = 0
@@ -30,7 +30,10 @@ const serialize = (value: Node | string): unknown => {
   if (typeof value === 'string') return value
   const props: Record<string, string | number | boolean | null | readonly string[]> = {}
   for (const [key, entry] of Object.entries(value.props)) {
-    if (key === 'value' && value.type === 'raycast-text-field' && value.props.fieldKind === 'tagpicker' && isUserRaycastFieldValue('tagpicker', entry)) props[key] = entry
+    if (key === 'keywords' && value.type === 'raycast-form-dropdown-item' && entry !== undefined) {
+      if (!Array.isArray(entry) || entry.length > 128 || Object.keys(entry).length !== entry.length || !Array.from(entry).every(word => typeof word === 'string') || !isUserRaycastFieldValue('text', JSON.stringify([...entry]))) throw new Error('Invalid dropdown keywords')
+      props[key] = JSON.stringify([...entry])
+    } else if (key === 'value' && value.type === 'raycast-text-field' && value.props.fieldKind === 'tagpicker' && isUserRaycastFieldValue('tagpicker', entry)) props[key] = entry
     else if (key !== 'children' && (entry === null || typeof entry === 'string' || typeof entry === 'boolean' || typeof entry === 'number' && Number.isFinite(entry))) props[key] = entry
   }
   if ((value.type === 'raycast-action' || value.type === 'raycast-menu-item') && typeof value.props.onAction === 'function') {
@@ -44,6 +47,7 @@ const serialize = (value: Node | string): unknown => {
     change: typeof value.props.onChange === 'function' ? value.props.onChange as (next: UserRaycastFieldValue) => unknown : undefined,
     focus: typeof value.props.onFocus === 'function' ? value.props.onFocus as (next: UserRaycastFieldValue) => unknown : undefined,
     blur: typeof value.props.onBlur === 'function' ? value.props.onBlur as (next: UserRaycastFieldValue) => unknown : undefined,
+    search: value.props.fieldKind === 'dropdown' && typeof value.props.onSearchTextChange === 'function' ? value.props.onSearchTextChange as (query: string) => unknown : undefined,
   })
   return { type: value.type, props, children: value.children.map(serialize) }
 }
@@ -140,16 +144,16 @@ process.stdin.on('data', (chunk: string) => {
       continue
     }
     if (event.type !== 'event') throw new Error('Invalid user extension event')
-    if (event.kind === 'fieldChanged' || event.kind === 'fieldFocused' || event.kind === 'fieldBlurred') {
+    if (event.kind === 'fieldChanged' || event.kind === 'fieldFocused' || event.kind === 'fieldBlurred' || event.kind === 'fieldSearchChanged') {
       const { type: _type, ...input } = event
       const field = typeof event.eventId === 'string' ? fields.get(event.eventId) : undefined
       const respond = (succeeded: boolean, message = ''): void => send({ type: 'field-outcome', extensionId, sessionId, revision, eventId: event.eventId, requestId: event.requestId, succeeded, message })
-      if (!isUserRaycastEvent(input) || input.sessionId !== sessionId || input.revision !== revision || !field || !isUserRaycastFieldValue(field.kind, event.value) || activeAction || activeField) {
+      if (!isUserRaycastEvent(input) || input.sessionId !== sessionId || input.revision !== revision || !field || !(event.kind === 'fieldSearchChanged' ? field.search && isUserRaycastFieldValue('text', event.value) : isUserRaycastFieldValue(field.kind, event.value)) || activeAction || activeField) {
         respond(false, 'Field event is stale or busy'); continue
       }
       activeField = true
       const callback = event.kind === 'fieldChanged' ? field.change : event.kind === 'fieldFocused' ? field.focus : field.blur
-      Promise.resolve().then(() => callback?.(event.value as UserRaycastFieldValue)).then(() => {
+      Promise.resolve().then(() => event.kind === 'fieldSearchChanged' ? field.search!(event.value as string) : callback?.(event.value as UserRaycastFieldValue)).then(() => {
         renderer.flushSyncWork()
         respond(true)
       }, error => respond(false, String(error).slice(0, 512))).finally(() => { activeField = false })

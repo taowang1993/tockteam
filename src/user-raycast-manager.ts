@@ -15,7 +15,7 @@ import type { UserRaycastCandidate, UserRaycastInstall } from './user-raycast-in
 export type UserRaycastOwner = Readonly<{ webContentsId: number }>
 export type UserRaycastMessage = Readonly<{ extensionId: string; sessionId: string; revision: number; type: 'ready' | 'patch' | 'error' | 'outcome' | 'toast' | 'auth-url'; root?: unknown; message?: string; eventId?: string; succeeded?: boolean; title?: string; style?: string; url?: string }>
 type PendingField = { requestId: string; eventId: string; resolve: () => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }
-type Session = { child: ChildProcessWithoutNullStreams; workspace: string; owner: UserRaycastOwner; candidate: UserRaycastCandidate; id: string; revision: number; actions: Set<string>; fields: Map<string, UserRaycastFieldKind>; field?: PendingField; action?: { eventId: string; revision: number; nativeUsed: boolean }; resolve: () => void; reject: (error: Error) => void; settled: boolean; cleanupReasons?: readonly UserRaycastOAuthCleanupReason[]; cleanupCounts?: UserRaycastOAuthCleanupCounts }
+type Session = { child: ChildProcessWithoutNullStreams; workspace: string; owner: UserRaycastOwner; candidate: UserRaycastCandidate; id: string; revision: number; actions: Set<string>; fields: Map<string, { kind: UserRaycastFieldKind; searchable: boolean }>; field?: PendingField; action?: { eventId: string; revision: number; nativeUsed: boolean }; resolve: () => void; reject: (error: Error) => void; settled: boolean; cleanupReasons?: readonly UserRaycastOAuthCleanupReason[]; cleanupCounts?: UserRaycastOAuthCleanupCounts }
 type FieldOutcome = { type: 'field-outcome'; extensionId: string; sessionId: string; revision: number; eventId: string; requestId: string; succeeded: boolean; message: string }
 type NativeRequest = { type: 'native'; extensionId: string; sessionId: string; revision: number; eventId: string; requestId: string; kind: 'copy'; text: string }
 const frameBytes = 1024 * 1024
@@ -130,7 +130,7 @@ export class UserRaycastManager {
               session.fields = new Map()
               const collect = (node: any): void => {
                 if (typeof node.props.actionEventId === 'string') session.actions.add(node.props.actionEventId)
-                if (node.type === 'raycast-text-field' && typeof node.props.fieldEventId === 'string') session.fields.set(node.props.fieldEventId, node.props.fieldKind)
+                if (node.type === 'raycast-text-field' && typeof node.props.fieldEventId === 'string') session.fields.set(node.props.fieldEventId, { kind: node.props.fieldKind, searchable: node.props.fieldKind === 'dropdown' && node.props.searchable === true })
                 for (const entry of node.children) if (typeof entry !== 'string') collect(entry)
               }
               collect(message.root)
@@ -187,8 +187,9 @@ export class UserRaycastManager {
     if (!session || owner.webContentsId !== session.owner.webContentsId || event.sessionId !== undefined && event.sessionId !== session.id) throw new Error('Extension owner is stale')
     if (!isUserRaycastEvent(event) || event.revision !== session.revision || session.action || session.field) throw new Error('Extension event is stale or busy')
     if (session.child.stdin.writableLength > 32768) throw new Error('Extension input is busy')
-    if (event.kind === 'fieldChanged' || event.kind === 'fieldFocused' || event.kind === 'fieldBlurred') {
-      if (event.sessionId !== session.id || !session.fields.has(event.eventId) || !isUserRaycastFieldValue(session.fields.get(event.eventId), event.value)) throw new Error('Extension field is stale or invalid')
+    if (event.kind === 'fieldChanged' || event.kind === 'fieldFocused' || event.kind === 'fieldBlurred' || event.kind === 'fieldSearchChanged') {
+      const field = session.fields.get(event.eventId)
+      if (event.sessionId !== session.id || !field || !(event.kind === 'fieldSearchChanged' ? field.searchable && isUserRaycastFieldValue('text', event.value) : isUserRaycastFieldValue(field.kind, event.value))) throw new Error('Extension field is stale or invalid')
       const completion = new Promise<void>((resolve, reject) => {
         const timer = setTimeout(() => {
           delete session.field; reject(new Error('Field callback timed out'))

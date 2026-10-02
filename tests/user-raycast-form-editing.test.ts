@@ -69,6 +69,35 @@ test('sectioned dropdown and tag picker submit declared defaults and exact edite
  assert.deepEqual(f.errors,[])
 })
 
+test('dropdown search requests await the owned callback without changing submitted selection values', async t => {
+ const f = await fixture(t, shell("React.createElement(Form.Dropdown,{id:'locale',title:'Language',defaultValue:'en',onSearchTextChange:async query=>{await new Promise(r=>setTimeout(r,20));setQuery(query);setAnswer(JSON.stringify({query}))}},React.createElement(Form.Dropdown.Section,{title:'Languages'},React.createElement(Form.Dropdown.Item,{value:'en',title:'English',keywords:['United Kingdom','British']}),query?React.createElement(Form.Dropdown.Item,{value:'fr',title:'French'}):null))", "const [query,setQuery]=React.useState('')"))
+ await f.edit(f.field('locale'),'French','fieldSearchChanged')
+ assert.deepEqual(JSON.parse(f.nodes('raycast-list-item')[0].props.title),{query:'French'})
+ assert.equal(f.field('locale').props.filtering,false,'A custom search callback disables built-in filtering by default')
+ assert.equal(f.field('locale').props.searchable,true)
+ assert.equal(f.nodes('raycast-form-dropdown-item').length,2)
+ assert.deepEqual(JSON.parse(f.nodes('raycast-form-dropdown-item')[0].props.keywords),['United Kingdom','British'])
+ assert.deepEqual(await f.submit(),{locale:'en'})
+ assert.deepEqual(f.errors,[])
+})
+
+test('search ownership is limited to declared dropdown callbacks, with opt-in native filtering and no effects', async t => {
+ const f = await fixture(t, shell("React.createElement(React.Fragment,null,React.createElement(Form.Dropdown,{id:'custom',defaultValue:'en',filtering:{keepSectionOrder:true},onSearchTextChange:query=>require('@raycast/api').Clipboard.copy(query)},React.createElement(Form.Dropdown.Item,{value:'en',title:'English'})),React.createElement(Form.Dropdown,{id:'local',defaultValue:'en'},React.createElement(Form.Dropdown.Item,{value:'en',title:'English'})),React.createElement(Form.TagPicker,{id:'tags',defaultValue:['red']}),React.createElement(Form.TextField,{id:'text',defaultValue:'keep'}))",''))
+ assert.equal(f.field('custom').props.filtering,true);assert.equal(f.field('custom').props.keepSectionOrder,true)
+ assert.equal(f.field('local').props.filtering,true);assert.equal(f.field('local').props.searchable,false)
+ for(const id of ['local','tags','text'])await assert.rejects(async()=>await f.edit(f.field(id),'query','fieldSearchChanged'),/stale or invalid/)
+ const current=f.latest(),node=f.field('custom')
+ for(const changed of [{sessionId:'wrong'},{revision:current.revision+1},{eventId:'missing'},{value:[]},{value:false},{value:'x'.repeat(16385)}])await assert.rejects(async()=>await f.manager.send(owner,{sessionId:current.sessionId,revision:current.revision,eventId:node.props.fieldEventId,requestId:'bad-search',kind:'fieldSearchChanged',value:'query',...changed} as any))
+ await assert.rejects(async()=>await f.edit(node,'fake-only','fieldSearchChanged'),/current approved action/)
+ assert.equal(f.copyCalls(),0);assert.deepEqual(await f.submit(),{custom:'en',local:'en',tags:['red'],text:'keep'})
+})
+
+test('closing a pending dropdown search rejects its request and stops the owned process group', async t => {
+ const f = await fixture(t, shell("React.createElement(Form.Dropdown,{id:'locale',defaultValue:'en',onSearchTextChange:()=>new Promise(()=>{})},React.createElement(Form.Dropdown.Item,{value:'en',title:'English'}))",''))
+ const pending=f.edit(f.field('locale'),'hang','fieldSearchChanged'),observed=assert.rejects(Promise.resolve(pending))
+ await f.manager.close();await observed;assert.equal(f.manager.childPid,undefined)
+})
+
 test('documented legacy choice aliases use the same owned form values', async t => {
  const f = await fixture(t, shell("React.createElement(React.Fragment,null,React.createElement(require('@raycast/api').FormDropdown,{id:'locale'},React.createElement(Form.DropdownSection,{title:'Languages'},React.createElement(Form.DropdownItem,{value:'en',title:'English'}))),React.createElement(require('@raycast/api').FormTagPicker,{id:'tags',defaultValue:['red']},React.createElement(Form.TagPickerItem,{value:'red',title:'Red'})))",''))
  assert.deepEqual(await f.submit(),{locale:'en',tags:['red']})

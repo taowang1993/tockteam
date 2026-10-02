@@ -115,6 +115,11 @@ const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFi
   // The reviewed bundled projection remains unchanged; callbacks stay in the private child.
   return element('raycast-text-field', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? props : {
     ...props, ref: undefined, fieldKind, value, fieldEventId, focusRequest, onChange: change,
+    ...(fieldKind === 'dropdown' ? {
+      searchable: typeof props.onSearchTextChange === 'function',
+      filtering: props.filtering === undefined ? typeof props.onSearchTextChange !== 'function' : props.filtering !== false,
+      keepSectionOrder: typeof props.filtering === 'object' && props.filtering !== null && (props.filtering as { keepSectionOrder?: unknown }).keepSectionOrder === true,
+    } : {}),
     onFocus: (next: UserRaycastFieldValue) => typeof props.onFocus === 'function' ? props.onFocus({ target: { id, value: copyFormValue(next) }, type: 'focus' }) : undefined,
     onBlur: (next: UserRaycastFieldValue) => typeof props.onBlur === 'function' ? props.onBlur({ target: { id, value: copyFormValue(next) }, type: 'blur' }) : undefined,
   }, React.Children.toArray(props.children as React.ReactNode))
