@@ -340,7 +340,7 @@ function MarkdownDocumentProperty(props) {
         if (props.editable && list)
             return _jsx(PropertyListEditor, { compact: props.compact, name: property.key, onSet: values => props.onSetProperty?.(property.key, values), propertyDrafts: props.propertyDrafts, suggestions: props.suggestions, values: Array.isArray(property.value) ? property.value : [] });
         if (props.editable && !checkbox)
-            return _jsx(Input, { unstyled: props.compact === true, className: props.compact ? 'h-6 min-w-0 w-full rounded border-0 bg-transparent px-1 py-0 text-inherit shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring' : undefined, "aria-describedby": props.error === '' ? undefined : props.errorId, "aria-invalid": props.error === '' ? undefined : true, "aria-label": `Property ${property.key}`, onBlur: event => {
+            return _jsx(Input, { unstyled: props.compact === true, className: cn(props.compact ? 'h-6 min-w-0 w-full rounded border-0 bg-transparent px-1 py-0 text-inherit shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring' : undefined, (property.type === 'date' || property.type === 'datetime') && '[&::-webkit-calendar-picker-indicator]:order-first [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-1'), "aria-describedby": props.error === '' ? undefined : props.errorId, "aria-invalid": props.error === '' ? undefined : true, "aria-label": `Property ${property.key}`, onBlur: event => {
                     try {
                         const text = event.currentTarget.value;
                         if (text === originalScalar) {

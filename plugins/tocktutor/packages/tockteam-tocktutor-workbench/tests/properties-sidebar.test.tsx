@@ -111,6 +111,22 @@ it('offers compact property values and icon-only list actions without an extra c
   expect(screen.queryByLabelText('Property rating')).toBeNull()
 })
 
+it.each([true, false])('keeps date and date-time values natively editable with compact=%s', compact => {
+  const changes: unknown[] = []
+  render(<MarkdownDocumentHeader compact={compact} editableProperties declaredTypes={{ due: 'date', meeting: 'datetime' }} source={'---\ndue: "2026-10-01"\nmeeting: "2026-10-01T14:45"\n---\n'} onSetProperty={(key, value) => { changes.push([key, value]); return true }} />)
+  const due = screen.getByLabelText('Property due') as HTMLInputElement
+  const meeting = screen.getByLabelText('Property meeting') as HTMLInputElement
+  expect(due.type).toBe('date')
+  expect(meeting.type).toBe('datetime-local')
+  expect(due.value).toBe('2026-10-01')
+  expect(meeting.value).toBe('2026-10-01T14:45')
+  fireEvent.change(due, { target: { value: '2026-10-02' } })
+  fireEvent.blur(due)
+  fireEvent.change(meeting, { target: { value: '2026-10-02T16:30' } })
+  fireEvent.blur(meeting)
+  expect(changes).toEqual([['due', '2026-10-02'], ['meeting', '2026-10-02T16:30']])
+})
+
 it('retains relationship controls on other linked panes', async () => {
   const { controller, owner } = await fixture()
   await controller.openLinkedView(owner, 'backlinks')
