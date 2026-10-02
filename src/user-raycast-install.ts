@@ -197,9 +197,10 @@ export class UserRaycastInstall {
   recoverPrevious(): void {
     const previous = this.inspect('previous')
     if (!previous) throw new Error('No previous extension to recover')
+    // Publish the recovered approval before consuming the retryable previous copy.
+    save(this.path('trust.json'), { digest: previous.digest, enabled: false })
     rmSync(this.path('current'), { recursive: true, force: true })
     renameSync(this.path('previous'), this.path('current'))
-    save(this.path('trust.json'), { digest: previous.digest, enabled: false })
   }
   remove(): void {
     this.ensureRoot()

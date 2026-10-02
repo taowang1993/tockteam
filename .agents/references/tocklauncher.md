@@ -178,6 +178,8 @@ Production compatibility invocation is currently macOS-only; the runtime depends
 
 One Desktop-only `@tockteam/trusted-raycast` Cordis plugin holds a bearer-authenticated loopback activation stream. Its disconnect removes discovery authority and closes the active child. This is a lifecycle lease, not generic RPC or another composition system; generated endpoint/token values stay Host/main-owned.
 
+Both bundled and user-selected recovery save the validated previous version's approval before removing current bytes or promoting the backup. A failed approval save leaves the previous copy available for retry. A failure during promotion remains recoverable; after promotion, a restarted Desktop already has the restored version's approval instead of consuming or discarding its only backup on another recovery attempt. Bundled recovery preserves saved enablement, while user-selected recovery remains disabled until separately enabled.
+
 Unsupported behavior is isolated rather than emulated:
 
 - Browser Bookmarks and File Search are unavailable on Linux; Simple File Search remains available.

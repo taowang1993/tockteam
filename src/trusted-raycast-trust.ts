@@ -251,8 +251,9 @@ export class TrustedRaycastTrustStore {
       rmSync(this.journalPath(), { force: true }); return this.status()
     }
     if (previous !== undefined) {
+      // Keep both approval and the backup binding durable while promotion can still fail.
+      writeAtomic(this.options.stateFile, Buffer.from(JSON.stringify({ extensionId: this.descriptor.extensionId, enabled: trust.enabled, approvedSha256: previous.artifactSha256, installedSha256: previous.artifactSha256, approvedIdentity: previous, previousApprovedSha256: previous.artifactSha256, previousIdentity: previous })))
       rmSync(this.currentDir(), { recursive: true, force: true }); renameSync(this.previousDir(), this.currentDir())
-      writeAtomic(this.options.stateFile, Buffer.from(JSON.stringify({ extensionId: this.descriptor.extensionId, enabled: trust.enabled, approvedSha256: previous.artifactSha256, installedSha256: previous.artifactSha256, approvedIdentity: previous })))
       rmSync(this.journalPath(), { force: true }); return this.status()
     }
     rmSync(this.currentDir(), { recursive: true, force: true }); rmSync(this.stageTmpDir(), { recursive: true, force: true }); rmSync(this.journalPath(), { force: true })
