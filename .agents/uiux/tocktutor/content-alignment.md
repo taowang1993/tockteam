@@ -1,6 +1,12 @@
 # TockTutor and Obsidian Content Alignment
 
-## Current Footer and Composer — 2026-10-02
+## Current Composer Gap — 2026-10-02
+
+Source checkpoint `a3568fad` changes the Assistant's existing bottom padding from 17px to 2px. Real Desktop measurement confirms exactly 2 CSS pixels between the composer border and the footer, with the footer still at right=1512/bottom=949 and its existing 28px safe area unchanged. This is the requested spacing preference, not an additional confirmed bug.
+
+Default Dark/Light and Navy/Jade/Ember in both modes pass with opposite system appearance. Keyboard Send focus/hit, Add Context Escape/outside dismissal and draft retention, 240px panel/long-message overflow, and closed-panel footer placement pass. The canonical Assistant alone is refreshed at 1512 × 949 CSS pixels, DPR 2, built-in dark/no skin; original 1,324-byte note and 170-byte registry remain unchanged. All 72 other captures, including Properties and both references, are byte-identical. No prompt sent, runtime errors or external requests. Current proof is `composerGapRefresh`; the earlier 17px spacing proof below is historical. Restart Electron to load the change.
+
+## Historical Footer and Composer — 2026-10-02
 
 Source checkpoint `c87ad048` keeps one status bar at the whole workspace's bottom-right edge, not inside each editor. Counts follow the focused note through splits. Shared right-panel siblings reserve the existing 28px footer height without shortening the note editor; the Assistant composer's bottom padding increases from 12px to 17px, an independently measured extra 5px lift above that footer-safe area.
 
@@ -11,7 +17,7 @@ Source checkpoint `c87ad048` keeps one status bar at the whole workspace's botto
 
 Both current screenshots use 1512 × 949 CSS at DPR 2, unscaled 3024 × 1898 PNGs, built-in dark/no skin, Live Preview and empty/unchanged saved state. Properties preserves the expanded 1,413-byte note (`6792ccbb…`); Assistant preserves the original 1,324-byte note (`3a55316a…`) matching its retained reference. Its original frontmatter was reconstructed only in the temporary fixture, not rewritten in the repository. Registry170 bytes remains unchanged. Only `tocktutor-imported-properties.png` and `tocktutor-assistant.png` are allowlisted; all 71 other captures, including the installed Properties and historical Assistant/Claudian references, remain unchanged. No new reference/backend/native-certification claim.
 
-Default Dark/Light and Navy/Jade/Ember in both modes pass with opposite system appearance: one right-edge footer, 5px additional composer lift, 17px gap, no 240px overflow, native leading calendars preserved, keyboard/drafts/closed focus preserved, and footer-text contrast at least 5.32:1. Current provenance is `footerComposerRefresh`; prior calendar/layout metadata remains historical.
+Default Dark/Light and Navy/Jade/Ember in both modes pass with opposite system appearance: one right-edge footer, 5px additional composer lift, 17px gap, no 240px overflow, native leading calendars preserved, keyboard/drafts/closed focus preserved, and footer-text contrast at least 5.32:1. Historical provenance is `footerComposerRefresh`; current Assistant spacing is recorded separately in `composerGapRefresh`.
 
 Focused Workbench checks pass164/164 and Assistant13/13; nested Node99+216+15+429 and bounded full Workbench790/790 pass. The unchanged 5s capped Replace All test timed out in the unbounded nested run, then passed focused and full four-worker retries. Root1698 pass/0 fail/18 optional skips, root/nested typechecks, builds, quick stage and manifest pass. The first root run had an unrelated Native persistence projected-frame race; unchanged focused11 and full-root retries pass, with its owner retaining the separate test correction. React Doctor reports two complexity warnings in existing large functions; no new branches or refactor, numerical score unavailable. The empty unowned save lock was removed only after explicit user approval and unchanged-empty-file checks.
 

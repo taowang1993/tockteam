@@ -375,48 +375,49 @@ test('places native calendar controls before both property dates in all eight ap
   assert.match(html, /calendar button before the date/u)
 })
 
-test('keeps one footer at the workspace right edge and lifts the composer without changing comparison content', () => {
-  const refresh = proof.footerComposerRefresh
+test('keeps a two-pixel composer gap and right-edge footer without changing comparison content', () => {
+  const refresh = proof.composerGapRefresh
   assert.equal(refresh.status, 'verified-current')
-  assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-imported-properties.png', 'tocktutor-assistant.png'])
-  assert.equal(refresh.unrelatedExistingCapturesUnchanged, 71)
+  assert.equal(proof.footerComposerRefresh.status, 'verified-historical')
+  assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-assistant.png'])
+  assert.equal(refresh.unrelatedExistingCapturesUnchanged, 72)
   assert.equal(refresh.installedReferencesUnchanged, true)
-  assert.equal(refresh.composerLift, 5)
-  assert.equal(refresh.composerPadding, 17)
+  assert.equal(refresh.composerPadding, 2)
+  assert.equal(refresh.composerGap, 2)
   assert.equal(refresh.footerSafeArea, 28)
   assert.equal(refresh.noPromptSent, true)
-  for (const name of refresh.publicationAllowlist) {
-    const current = proof.captures[name]
-    assert.equal(current.sourceCommit, refresh.sourceCommit)
-    assert.equal(current.sha256, refresh.screenshotSha256s[name])
-    assert.equal(current.visibleState.footer.x + current.visibleState.footer.width, 1512)
-    assert.equal(current.visibleState.footer.y + current.visibleState.footer.height, 949)
-    assert.equal(current.theme, 'dark')
-    assert.equal(current.skin, null)
-  }
-  assert.equal(proof.captures['tocktutor-assistant.png'].contentSha256, proof.captures['obsidian-assistant.png'].contentSha256)
-  assert.equal(proof.captures['tocktutor-assistant.png'].visibleState.composer.bottom + refresh.composerPadding, 921)
+  const current = proof.captures['tocktutor-assistant.png']
+  assert.equal(current.sourceCommit, refresh.sourceCommit)
+  assert.equal(current.sha256, refresh.screenshotSha256)
+  assert.equal(current.visibleState.footer.right, 1512)
+  assert.equal(current.visibleState.footer.bottom, 949)
+  assert.equal(current.theme, 'dark')
+  assert.equal(current.skin, null)
+  assert.equal(current.contentSha256, proof.captures['obsidian-assistant.png'].contentSha256)
+  assert.equal(current.visibleState.composer.bottom + refresh.composerPadding, 921)
+  assert.equal(current.visibleState.composerGap, 2)
   assert.equal(refresh.appearanceChecks.length, 8)
   for (const check of refresh.appearanceChecks) {
     assert.equal(check.footerRight, 1512)
     assert.equal(check.footerBottom, 949)
     assert.equal(check.footerCount, 1)
-    assert.equal(check.composerLift, 5)
-    assert.ok(check.composerGap >= 5)
-    assert.ok(check.footerContrast >= 4.5)
+    assert.equal(check.gap, 2)
+    assert.ok(check.ratio >= 4.5)
     assert.notEqual(check.mode.toLowerCase(), check.system)
   }
   assert.equal(refresh.narrow.width, 240)
+  assert.equal(refresh.narrow.gap, 2)
   assert.deepEqual(refresh.narrow.overflow, [])
   assert.equal(refresh.keyboardFocus.outline, '2px')
   assert.equal(refresh.keyboardFocus.hit, true)
   assert.equal(refresh.escapeRestored, true)
+  assert.equal(refresh.outsideDismissed, true)
   assert.deepEqual(refresh.runtimeErrors, [])
   assert.equal(refresh.cleanup.stopped, true)
   assert.deepEqual(refresh.cleanup.remaining, [])
   assert.equal(refresh.galleryCleanup.serverStopped, true)
   assert.deepEqual(refresh.galleryCleanup.remaining, [])
-  assert.match(html, /composer has an extra 5 CSS pixels/u)
+  assert.match(html, /2 CSS pixels/u)
 })
 
 test('keeps unmatched migration surfaces distinct from the four focused comparisons', () => {

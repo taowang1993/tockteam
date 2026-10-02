@@ -1,6 +1,32 @@
 {
+  "composerGapRefresh": {
+    "status":"verified-current","sourceCommit":"a3568fad","capturedAt":"2026-10-02T04:48:11.415Z","nativeSourceCheckpointPreserved":"a88ab875",
+    "publicationAllowlist":["tocktutor-assistant.png"],"unrelatedExistingCapturesUnchanged":72,"installedReferencesUnchanged":true,"propertiesCaptureUnchanged":true,
+    "screenshotSha256":"6ef1bebf24098e9cb32fff847dd5ab1c934325dc34656040c11e4a5cb41118e1","geometry":[1512,949,2],"pixels":[3024,1898],"theme":"dark","skin":null,
+    "composerPadding":2,"composerGap":2,"previousGap":17,"composerMovedDown":15,"footerSafeArea":28,"footerUnchanged":true,"footerOutsideEditor":true,"footerCount":1,"noPromptSent":true,
+    "path":"UIUX Comparison.md","mode":"live-preview","noteBytes":1324,"contentSha256":"3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5","registryBytes":170,"registrySha256":"2a9367198f8ac89fc22fbc76c6a8d4372803559a3c0d9306bed8bac7d65c8fb2","sameSavedBytes":true,"registryUnchanged":true,
+    "appearanceChecks":[
+      {"skin":null,"mode":"Dark","system":"light","geometry":[1512,949,2],"footerRight":1512,"footerBottom":949,"footerCount":1,"gap":2,"composerPadding":2,"ratio":11.067896561378452},
+      {"skin":null,"mode":"Light","system":"dark","geometry":[1512,949,2],"footerRight":1512,"footerBottom":949,"footerCount":1,"gap":2,"composerPadding":2,"ratio":5.322704663147297},
+      {"skin":"tockteam-skin-navy","mode":"Dark","system":"light","geometry":[1512,949,2],"footerRight":1512,"footerBottom":949,"footerCount":1,"gap":2,"composerPadding":2,"ratio":11.134419781813875},
+      {"skin":"tockteam-skin-navy","mode":"Light","system":"dark","geometry":[1512,949,2],"footerRight":1512,"footerBottom":949,"footerCount":1,"gap":2,"composerPadding":2,"ratio":6.877599363661155},
+      {"skin":"tockteam-skin-jade","mode":"Dark","system":"light","geometry":[1512,949,2],"footerRight":1512,"footerBottom":949,"footerCount":1,"gap":2,"composerPadding":2,"ratio":11.122989699986702},
+      {"skin":"tockteam-skin-jade","mode":"Light","system":"dark","geometry":[1512,949,2],"footerRight":1512,"footerBottom":949,"footerCount":1,"gap":2,"composerPadding":2,"ratio":7.115238024291395},
+      {"skin":"tockteam-skin-ember","mode":"Dark","system":"light","geometry":[1512,949,2],"footerRight":1512,"footerBottom":949,"footerCount":1,"gap":2,"composerPadding":2,"ratio":7.949428151220386},
+      {"skin":"tockteam-skin-ember","mode":"Light","system":"dark","geometry":[1512,949,2],"footerRight":1512,"footerBottom":949,"footerCount":1,"gap":2,"composerPadding":2,"ratio":7.9794265906464865}
+    ],
+    "narrow":{"width":240,"scrollWidth":240,"clientWidth":240,"gap":2,"overflow":[]},"closedFooter":{"right":1512,"bottom":949,"hidden":"true"},
+    "keyboardFocus":{"focused":true,"outline":"2px","hit":true},"escapeRestored":true,"outsideDismissed":true,"draftRetained":true,"baselineRestored":{"scheme":"dark","rootSkin":null,"bodySkin":null},"runtimeErrors":[],"externalRequests":[],
+    "builtArtifactHashes":{"dist/main.js":"779c8529d9f3376c671a4446939d3122cab44e760b210b6242f455ac55559a65","dist/client.js":"713b7ba358a3866023ef44c9318d5f1e7ee7083546e7e87e06d9bcd156dacf92","dist/plugins/skins/client.js":"330f3d406aef5ed532b175560abc89fdac3a7d14440b9889a7bdf52071610431","plugins/tocktutor/build-manifest.json":"eb7b8dead07d063d70bedb5d0724e2d090da07b8369ab3295312efe0ee48dc2c","plugins/tocktutor/packages/tockteam-tocktutor-assistant/lib/client-bundle.js":"547aaa7479296151d3dcc1bb04171db99b1c137f76aa14969ddcfe5926aa7f29","plugins/tocktutor/packages/tockteam-tocktutor-assistant/src/assistant-panel.tsx":"63ce2f7bf3790789e5ca410c7f8647e69b1c37a5794c1ad264685a2339eb199b","plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx":"9cc67f36e0070dd36b07668d52868c35d03821b2337b7c40c87b9db8e4f8f3ba"},
+    "captureMethod":"One existing Tailwind padding changes17→2. Real rebuilt/staged isolated Desktop on guarded display17 through owned Playwright CDP; no style injection. Original empty Assistant note and470px panel retained. Border-to-footer distance measures2px; footer right1512/bottom949 and existing28px safe area remain unchanged. No prompt or new reference capture.",
+    "checkScript":"../../../.beads/reports/2026-10-02-tocktutor-composer-gap-check.js","report":"../../../.beads/reports/2026-10-02-tocktutor-footer-composer.md",
+    "cleanup":{"id":"f2474210-946c-4296-b32c-0530255aea89","stopped":true,"rootPid":27471,"recordedPids":[27471,27473,27474,27476,27477,27480,27489,27503,27504,27505,27698,27731,27732,27733,27734,27735,27736,27737,27999,28000,28001,28002,28003,28005,28006,28007],"remaining":[],"interactionRun":{"id":"092a29a1-ebba-4310-99a9-06841c2a233b","stopped":true,"rootPid":25683,"recordedPids":[25683,25687,25688,25690,25691,25694,25705,25859,25860,25861,25893,26063,26064,26065,26066,26067,26068,26069,26070],"remaining":[]}},
+    "galleryVerification":{"status":"verified","geometry":[1512,949,2],"surfaces":["imported-properties","assistant"],"bothPairsDecoded":true,"surfaceCount":29,"imageCount":66,"runtimeErrors":[],"failedRequests":[],"httpErrors":[]},
+    "galleryCleanup":{"id":"ba74bcfe-a95f-49c8-a089-e8cc6dd805d6","stopped":true,"rootPid":28465,"recordedPids":[28465,28467,28468,28469],"remaining":[],"serverPid":28448,"serverPort":63148,"serverStopped":true,"portClosed":true},"protectedUserBytesPreserved":true,"nativeSourceHashesPreserved":true,
+    "limits":["Only the Assistant capture is refreshed; prior Properties/installed Obsidian/Claudian references remain historical and byte-identical. No new native certification.","Unchanged five-second capped Replace All timeout passed focused and full four-worker790-case retries; remaining nested suites also passed, no timeout or source weakening.","React Doctor reports one existing function-complexity warning, no new branch or architecture change; numerical score unavailable.","Console has the existing unpackaged Electron CSP and Vue warnings plus eight Canvas readback hints from contrast measurement; no runtime errors."]
+  },
   "footerComposerRefresh": {
-    "status":"verified-current","sourceCommit":"c87ad048","capturedFromFrozenWorkingTreeBeforeCheckpoint":true,
+    "status":"verified-historical","sourceCommit":"c87ad048","capturedFromFrozenWorkingTreeBeforeCheckpoint":true,
     "publicationAllowlist":["tocktutor-imported-properties.png","tocktutor-assistant.png"],"unrelatedExistingCapturesUnchanged":71,"installedReferencesUnchanged":true,
     "screenshotSha256s":{"tocktutor-imported-properties.png":"a52076aaa924b76af45481098f0256e66cd7e62017d69a5235da3afbb300472e","tocktutor-assistant.png":"4c9b6eb2a1c66faea0a636e601745c1c4dcf41bcd989978ba58ea60098c343ab"},
     "geometry":[1512,949,2],"pixels":[3024,1898],"theme":"dark","skin":null,"composerLift":5,"composerPadding":17,"footerSafeArea":28,"noPromptSent":true,
@@ -1856,19 +1882,19 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 291005,
-      "sha256": "4c9b6eb2a1c66faea0a636e601745c1c4dcf41bcd989978ba58ea60098c343ab",
-      "capturedAt": "2026-10-02T03:39:18.001Z",
+      "bytes": 290798,
+      "sha256": "6ef1bebf24098e9cb32fff847dd5ab1c934325dc34656040c11e4a5cb41118e1",
+      "capturedAt": "2026-10-02T04:48:11.415Z",
       "visibleState": {
         "assertedText": "What can I help you with?",
         "assertionPassed": true,
         "textExcerpt": "What can I help you with?",
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
         "footer":{"x":1124.84375,"y":921,"width":387.15625,"height":28,"right":1512,"bottom":949},"footerCount":1,"footerText":"UIUX Comparison.md opened.0 backlinksLive Preview171 words1322 characters",
-        "composer":{"x":1054,"y":792,"width":446,"height":112,"right":1500,"bottom":904},"composerGap":17,"composerLift":5,"composerPadding":17,"panelFooterSpace":28,"emptyComposer":true,"sendDisabled":true,"noPromptSent":true
+        "composer":{"x":1054,"y":807,"width":446,"height":112,"right":1500,"bottom":919},"composerGap":2,"composerPadding":2,"panelFooterSpace":28,"emptyComposer":true,"sendDisabled":true,"noPromptSent":true,"rootColorScheme":"dark","rootSkin":null,"bodySkin":null
       },
-      "runtimeErrorMonitoring": "Guarded real rebuilt Desktop via owned CDP; empty Assistant, original note bytes unchanged; keyboard focus, Escape restoration, 5px composer lift, footer-safe gap, eight appearances and contrast verified. Zero errors/external requests, no prompt sent, all owned trees stopped. Historical reference retained. See footerComposerRefresh.",
-      "sourceCommit": "c87ad048"
+      "runtimeErrorMonitoring": "Guarded real rebuilt Desktop via owned CDP; empty Assistant and original note bytes unchanged. Exact2px composer gap, unchanged28px footer-safe area and right-edge footer verified in eight appearances, keyboard focus/hit, Escape/outside dismissal and narrow/long content. Zero errors/external requests, no prompt sent, all owned trees stopped. Historical reference retained. See composerGapRefresh.",
+      "sourceCommit": "a3568fad"
     },
     "obsidian-assistant.png": {
       "geometry": {
