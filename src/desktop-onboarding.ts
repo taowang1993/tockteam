@@ -10,7 +10,7 @@ export interface DesktopOnboardingCredentials {
 }
 
 type SetupOptions = Readonly<{
-  bridge: Pick<DesktopBridge, 'chooseWorkspace' | 'onboarding'>
+  bridge: Pick<DesktopBridge, 'chooseWorkspace' | 'onboarding'> & Partial<Pick<DesktopBridge, 'windowKind'>>
   credentials: DesktopOnboardingCredentials
   openPaths(paths: readonly string[]): Promise<void>
 }>
@@ -23,6 +23,7 @@ const option = 'w-full cursor-pointer rounded-xl border border-border bg-surface
 
 /** Desktop-only setup; DSH still owns model credentials, sessions, and workspaces. */
 export function installDesktopOnboarding({ bridge, credentials, openPaths }: SetupOptions): () => void {
+  if (bridge.windowKind === 'note-popout') return () => {}
   const dialog = document.createElement('dialog')
   dialog.className = 'box-border w-[min(800px,calc(100%-48px))] max-h-[calc(100dvh-64px)] overflow-y-auto rounded-2xl border border-border bg-background p-0 text-foreground shadow-2xl backdrop:bg-[rgba(0,0,0,0.85)] [-webkit-app-region:no-drag]'
   dialog.setAttribute('aria-labelledby', 'tockteam-onboarding-title')

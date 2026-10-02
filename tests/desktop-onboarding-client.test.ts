@@ -12,6 +12,40 @@ function button(document: Document, label: string): HTMLButtonElement {
   return found
 }
 
+test('a note pop-out keeps setup in the main window without requesting its authority', async () => {
+  const dom = new JSDOM('<!doctype html><body></body>')
+  const originalDocument = globalThis.document
+  Object.assign(globalThis, { document: dom.window.document })
+  dom.window.HTMLDialogElement.prototype.showModal = function () { this.open = true }
+  dom.window.HTMLDialogElement.prototype.close = function () { this.open = false }
+  let statusCalls = 0
+  let dispose: (() => void) | undefined
+  try {
+    dispose = installDesktopOnboarding({
+      bridge: {
+        windowKind: 'note-popout',
+        onboarding: {
+          status: async () => { statusCalls++; throw new Error('Desktop IPC sender is unavailable') },
+          complete: async () => { assert.fail('a note window cannot complete main-window setup') },
+        },
+        chooseWorkspace: async () => { assert.fail('a note window cannot choose the main workspace') },
+      },
+      credentials: {
+        describe: async () => { assert.fail('a note window does not request setup credentials') },
+        set: async () => { assert.fail('a note window does not save setup credentials') },
+      },
+      openPaths: async () => { assert.fail('a note window does not start setup sessions') },
+    })
+    await tick()
+    assert.equal(statusCalls, 0)
+    assert.equal(dom.window.document.querySelector('dialog'), null)
+  } finally {
+    dispose?.()
+    Object.assign(globalThis, { document: originalDocument })
+    dom.window.close()
+  }
+})
+
 test('Desktop shows workspace then recognizes a saved model key without revealing or replacing it', async () => {
   const dom = new JSDOM('<!doctype html><body></body>')
   const originalDocument = globalThis.document

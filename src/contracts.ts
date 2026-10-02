@@ -137,6 +137,7 @@ export interface WebClipDesktopBridge {
 
 /** Browser-safe desktop bridge made available through contextBridge. */
 export interface DesktopBridge {
+  readonly windowKind: 'workbench' | 'note-popout'
   chooseWorkspace(): Promise<string[]>
   launcher: DesktopLauncherBridge
   appUpdate: DesktopAppUpdateBridge

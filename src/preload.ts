@@ -110,6 +110,7 @@ const workbenchReady = window.location.protocol === 'http:' || window.location.p
 void workbenchReady.catch(() => {})
 
 const bridge: DesktopBridge = Object.freeze({
+  windowKind: process.argv.includes('--tockteam-note-popout') ? 'note-popout' : 'workbench',
   chooseWorkspace: async (): Promise<string[]> => {
     return await ipcRenderer.invoke('desktop:choose-workspace') as string[]
   },

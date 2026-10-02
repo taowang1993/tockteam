@@ -14,11 +14,31 @@ const module = { exports: {} as { parseDesktopCommand?: (value: unknown) => { pa
 const require = createRequire(import.meta.url)
 runInNewContext(bundled, {
   module, exports: module.exports, window: { location: { protocol: 'file:' } },
+  process: { argv: [] },
   require: (name: string) => name === 'electron'
     ? { contextBridge: { exposeInMainWorld() {} }, ipcRenderer: { on() {} } }
     : require(name),
 })
 const parse = module.exports.parseDesktopCommand!
+
+test('the frozen preload bridge identifies main and note-window presentation', () => {
+  for (const [argv, expected] of [[[], 'workbench'], [['--tockteam-note-popout'], 'note-popout']] as const) {
+    const localModule = { exports: {} }
+    let bridge: { windowKind: string } | undefined
+    runInNewContext(bundled, {
+      module: localModule, exports: localModule.exports,
+      window: { location: { protocol: 'file:' } }, process: { argv },
+      require: (name: string) => name === 'electron'
+        ? {
+          contextBridge: { exposeInMainWorld(_name: string, value: { windowKind: string }) { bridge = value } },
+          ipcRenderer: { on() {} },
+        }
+        : require(name),
+    })
+    assert.equal(bridge?.windowKind, expected)
+    assert.equal(Object.isFrozen(bridge), true)
+  }
+})
 
 test('desktop open-paths admits ordinary POSIX and Windows paths without sharing the input array', () => {
   const paths = ['/Users/person/Documents/notes0.md', 'C:\\Users\\person\\notes0.md']

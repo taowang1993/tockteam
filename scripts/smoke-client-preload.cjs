@@ -41,6 +41,10 @@ contextBridge.exposeInMainWorld('dshDesktop', Object.freeze({
   onCommand: () => () => {},
   onRoute: () => () => {},
   openExternal: async () => {},
+  onboarding: Object.freeze({
+    status: async () => true,
+    complete: async () => {},
+  }),
   syncLauncherLocale: async () => {},
   syncLauncherTheme: async () => {},
   syncWorkbenchDestination: async () => {},

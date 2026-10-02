@@ -1098,6 +1098,7 @@ function initializeDesktopPicker(): void {
           show: false,
           title: relativePath,
           webPreferences: {
+            additionalArguments: ['--tockteam-note-popout'],
             contextIsolation: true,
             nodeIntegration: false,
             preload: preloadPath,
