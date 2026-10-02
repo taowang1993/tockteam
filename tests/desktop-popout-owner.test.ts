@@ -57,6 +57,139 @@ test('pop-out owner opens, focuses, and closes one bounded relative note route',
   owner.dispose()
 })
 
+test('overlapping opens for the same note share one pop-out window', async () => {
+  const started = Promise.withResolvers<void>()
+  const loading = Promise.withResolvers<void>()
+  const windows = new Set<string>()
+  const focused: string[] = []
+  let opens = 0
+  const owner = new DesktopPopOutOwner({
+    isAvailable: () => true,
+    isCurrent: () => true,
+    native: {
+      close: windowId => { windows.delete(windowId) },
+      focus: windowId => { focused.push(windowId); return windows.has(windowId) },
+      isOpen: windowId => windows.has(windowId),
+      async open() {
+        const windowId = `popout-${++opens}`
+        if (opens === 1) {
+          started.resolve()
+          await loading.promise
+        }
+        windows.add(windowId)
+        return windowId
+      },
+    },
+  })
+  try {
+    const first = owner.open({ identity, relativePath: 'Notes/Plan.md' }, new AbortController().signal)
+    await started.promise
+    const second = owner.open({ identity: { ...identity, operationId: 'second' }, relativePath: 'Notes/Plan.md' }, new AbortController().signal)
+    loading.resolve()
+    const results = await Promise.all([first, second])
+    assert.deepEqual(results, [
+      { operationId: identity.operationId, status: 'opened', windowId: 'popout-1' },
+      { operationId: 'second', status: 'focused', windowId: 'popout-1' },
+    ])
+    assert.equal(opens, 1)
+    assert.deepEqual(focused, ['popout-1'])
+    assert.deepEqual([...windows], ['popout-1'])
+    await owner.close({ identity, windowId: 'popout-1' }, new AbortController().signal)
+    assert.deepEqual([...windows], [])
+  } finally {
+    loading.resolve()
+    owner.dispose()
+  }
+})
+
+for (const interruption of ['cancel', 'dispose', 'vault-change'] as const) {
+  test(`waiting same-note pop-out honors ${interruption} without opening another window`, async () => {
+    const started = Promise.withResolvers<void>()
+    const loading = Promise.withResolvers<void>()
+    const windows = new Set<string>()
+    let current = true
+    let opens = 0
+    const owner = new DesktopPopOutOwner({
+      isAvailable: () => true,
+      isCurrent: () => current,
+      native: {
+        close: windowId => { windows.delete(windowId) },
+        focus: windowId => windows.has(windowId),
+        isOpen: windowId => windows.has(windowId),
+        async open() {
+          const windowId = `popout-${++opens}`
+          started.resolve()
+          await loading.promise
+          windows.add(windowId)
+          return windowId
+        },
+      },
+    })
+    try {
+      const first = owner.open({ identity, relativePath: 'Plan.md' }, new AbortController().signal)
+      await started.promise
+      const controller = new AbortController()
+      const second = owner.open({ identity: { ...identity, operationId: 'second' }, relativePath: 'Plan.md' }, controller.signal)
+      let waitingResult: Awaited<typeof second> | undefined
+      void second.then(result => { waitingResult = result })
+      if (interruption === 'cancel') controller.abort()
+      if (interruption === 'dispose') owner.dispose()
+      if (interruption === 'vault-change') current = false
+      if (interruption !== 'vault-change') {
+        await new Promise<void>(resolve => { setImmediate(resolve) })
+        assert.deepEqual(waitingResult, { operationId: 'second', status: 'cancelled' })
+      }
+      loading.resolve()
+      const results = await Promise.all([first, second])
+      assert.equal(results[1].status, interruption === 'vault-change' ? 'stale' : 'cancelled')
+      assert.equal(results[0].status, interruption === 'cancel' ? 'opened' : interruption === 'dispose' ? 'cancelled' : 'stale')
+      assert.equal(opens, 1)
+      assert.deepEqual([...windows], interruption === 'cancel' ? ['popout-1'] : [])
+    } finally {
+      loading.resolve()
+      owner.dispose()
+    }
+  })
+}
+
+test('failed pop-out loading releases waiting requests and other notes open independently', async () => {
+  const started = Promise.withResolvers<void>()
+  const loading = Promise.withResolvers<void>()
+  const windows = new Set<string>()
+  let attempts = 0
+  const owner = new DesktopPopOutOwner({
+    isAvailable: () => true,
+    isCurrent: () => true,
+    native: {
+      close: windowId => { windows.delete(windowId) },
+      focus: windowId => windows.has(windowId),
+      isOpen: windowId => windows.has(windowId),
+      async open(relativePath) {
+        if (++attempts === 1) {
+          started.resolve()
+          await loading.promise
+          throw new Error('window load failed')
+        }
+        windows.add(relativePath)
+        return relativePath
+      },
+    },
+  })
+  try {
+    const first = owner.open({ identity, relativePath: 'Plan.md' }, new AbortController().signal)
+    await started.promise
+    const second = owner.open({ identity: { ...identity, operationId: 'second' }, relativePath: 'Plan.md' }, new AbortController().signal)
+    assert.equal((await owner.open({ identity: { ...identity, operationId: 'other' }, relativePath: 'Other.md' }, new AbortController().signal)).status, 'opened')
+    loading.resolve()
+    assert.equal((await first).status, 'unavailable')
+    assert.deepEqual(await second, { operationId: 'second', status: 'opened', windowId: 'Plan.md' })
+    assert.deepEqual([...windows].sort(), ['Other.md', 'Plan.md'])
+  } finally {
+    loading.resolve()
+    owner.dispose()
+  }
+})
+
 test('same-path pop-out never focuses a window from an older vault boundary', async () => {
   let active = { generation: 1, id: 'vault' }
   let opens = 0

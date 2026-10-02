@@ -54,6 +54,7 @@ export class DesktopPopOutOwner {
   private readonly options: DesktopPopOutOwnerOptions & { randomId: () => string }
   private readonly byPath = new Map<string, WindowRecord>()
   private readonly byWindow = new Map<string, WindowRecord>()
+  private readonly openings = new Map<string, Promise<void>>()
   private lifetime = new AbortController()
   private disposed = false
 
@@ -71,6 +72,32 @@ export class DesktopPopOutOwner {
     if (typeof request !== 'object' || request === null || Object.keys(request).some(key => key !== 'identity' && key !== 'relativePath')
       || !validIdentity(request.identity) || !safeRelativePath(request.relativePath)) return { operationId, status: 'denied' }
     if (!this.options.isCurrent(request.identity)) return { operationId, status: 'stale' }
+    const combined = AbortSignal.any([signal, this.lifetime.signal])
+    if (combined.aborted) return { operationId, status: 'cancelled' }
+    const opening = this.openings.get(request.relativePath)
+    if (opening !== undefined) {
+      const cancelled = Promise.withResolvers<void>()
+      const onAbort = (): void => { cancelled.resolve() }
+      combined.addEventListener('abort', onAbort, { once: true })
+      try {
+        await Promise.race([opening, cancelled.promise])
+      } finally {
+        combined.removeEventListener('abort', onAbort)
+      }
+      return await this.open(request, combined)
+    }
+    const completion = Promise.withResolvers<void>()
+    this.openings.set(request.relativePath, completion.promise)
+    try {
+      return await this.openOnce(request, combined)
+    } finally {
+      this.openings.delete(request.relativePath)
+      completion.resolve()
+    }
+  }
+
+  private async openOnce(request: DesktopPopOutOpenRequest, combined: AbortSignal): Promise<DesktopPopOutOpenResult> {
+    const operationId = request.identity.operationId
     const existing = this.byPath.get(request.relativePath)
     if (existing !== undefined && !sameOwner(existing.identity, request.identity)) {
       if (!this.closeWindow(existing.windowId)) return { operationId, status: 'unavailable' }
@@ -79,7 +106,6 @@ export class DesktopPopOutOwner {
       return { operationId, status: 'focused', windowId: existing.windowId }
     }
     if (existing !== undefined) this.remove(existing.windowId)
-    const combined = AbortSignal.any([signal, this.lifetime.signal])
     try {
       const token = this.options.randomId()
       let windowId = ''
