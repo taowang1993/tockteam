@@ -13,11 +13,12 @@ const links = [...html.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].
 const sha256 = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex')
 
 test('accounts for every gallery and supplemental capture without stale links', () => {
-  assert.match(html, /Visual Design Audit · 66 Captures/u)
+  assert.match(html, /Visual Design Audit · 61 Captures/u)
   assert.match(html, /Built-in Dark Theme · No Active Skin/u)
   assert.doesNotMatch(html, /UIUX Comparison/u)
   assert.doesNotMatch(html, /Tag and Tab Polish|id="polish"/u)
-  assert.equal(new Set(images).size, 66)
+  assert.equal(new Set(images).size, 61)
+  assert.equal(new Set(images).size, images.length, 'Each screenshot is shown only once')
   assert.deepEqual(images, links)
   const actual = readdirSync(resolve(root, 'screenshots')).sort()
   assert.deepEqual(actual, proof.gallery.allowlist)
@@ -36,10 +37,23 @@ test('accounts for every gallery and supplemental capture without stale links', 
   assert.match(html, /id="reviews"[\s\S]*?Not Applicable/u)
 })
 
-test('ends at Imported Property Controls without a duplicate Surface 30', () => {
-  assert.doesNotMatch(html, /Surface 30|id="right-sidebar"|href="#right-sidebar"|Shared Right Sidebar/u)
-  assert.equal([...html.matchAll(/<section class="surface"/gu)].length, 29)
+test('omits comparisons already covered by a more complete retained surface', () => {
+  assert.doesNotMatch(html, /id="workspace"|href="#workspace"|Surface 29|Surface 30|id="right-sidebar"|href="#right-sidebar"|Shared Right Sidebar/u)
+  assert.equal([...html.matchAll(/<section class="surface"/gu)].length, 28)
   assert.equal([...html.matchAll(/<section class="surface" id="([^"]+)"/gu)].at(-1)?.[1], 'imported-properties')
+  for (const name of ['tocktutor-main-workspace.png', 'tocktutor-backlinks.png', 'obsidian-backlinks.png', 'tocktutor-reading-embed.png', 'obsidian-reading-embed.png']) {
+    assert.ok(!images.includes(`screenshots/${name}`), name)
+    assert.ok(proof.gallery.supplementalCaptures.includes(name), name)
+  }
+  for (const name of ['tocktutor-editor-live-preview.png', 'obsidian-main-editor.png', 'tocktutor-backlinks-unlinked-expanded.png', 'obsidian-backlinks-unlinked-expanded.png', 'tocktutor-attachments-embeds.png', 'obsidian-attachments-embeds.png', 'tocktutor-properties.png', 'tocktutor-imported-properties.png']) {
+    assert.ok(images.includes(`screenshots/${name}`), name)
+  }
+  for (const comparison of proof.comparisons) {
+    for (const name of comparison.screenshots) assert.ok(images.includes(`screenshots/${name}`), comparison.surface)
+  }
+  for (const pair of proof.pairs) {
+    for (const side of [pair.tocktutor, pair.obsidian]) assert.ok(images.includes(`screenshots/${side.screenshot}`), pair.surface)
+  }
 })
 
 test('pairs the Image Viewer with the verified installed Obsidian reference', () => {
@@ -502,9 +516,9 @@ test('keeps unmatched migration surfaces distinct from the four focused comparis
   })) assert.equal(proof.captures[name].contentSha256, sha256(content), name)
 })
 
-test('orders the numbered surfaces with Source Mode at Surface 04', () => {
+test('orders the numbered surfaces with Source Mode at Surface 03', () => {
   const sections = [...html.matchAll(/<section class="surface" id="([^"]+)">\s*<p class="section-number">Surface (\d+)<\/p>/gu)]
-  assert.deepEqual(sections.map(([, id]) => id).slice(0, 5), ['workspace', 'reading', 'live-preview', 'source', 'note-actions'])
+  assert.deepEqual(sections.map(([, id]) => id).slice(0, 4), ['reading', 'live-preview', 'source', 'note-actions'])
   assert.deepEqual(sections.map(([, , number]) => Number(number)), sections.map((_, index) => index + 1))
 })
 

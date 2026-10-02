@@ -265,15 +265,20 @@
     "skinId": null
   },
   "gallery": {
-    "uniqueImageSources": 66,
-    "captureCountLabel": "Visual Design Audit · 66 Captures",
+    "uniqueImageSources": 61,
+    "captureCountLabel": "Visual Design Audit · 61 Captures",
     "screenshotDirectoryTotal": 73,
     "supplementalCaptures": [
+      "obsidian-backlinks.png",
       "obsidian-outline.png",
       "obsidian-quick-switcher.png",
+      "obsidian-reading-embed.png",
+      "tocktutor-backlinks.png",
       "tocktutor-bookmarks-tags.png",
+      "tocktutor-main-workspace.png",
       "tocktutor-new-note-dialog.png",
       "tocktutor-properties-links.png",
+      "tocktutor-reading-embed.png",
       "tocktutor-tag-tab-polish.png",
       "tocktutor-web-viewer-reader.png"
     ],
@@ -472,14 +477,6 @@
   ],
   "comparisons": [
     {
-      "surface": "workspace",
-      "screenshots": [
-        "tocktutor-main-workspace.png",
-        "obsidian-main-editor.png"
-      ],
-      "contentComparison": "byte-identical Markdown"
-    },
-    {
       "surface": "reading",
       "screenshots": [
         "tocktutor-editor-reading.png",
@@ -554,14 +551,6 @@
     {
       "surface": "backlinks",
       "screenshots": [
-        "tocktutor-backlinks.png",
-        "obsidian-backlinks.png"
-      ],
-      "contentComparison": "byte-identical Markdown"
-    },
-    {
-      "surface": "backlinks-additional",
-      "screenshots": [
         "tocktutor-backlinks-unlinked-expanded.png",
         "obsidian-backlinks-unlinked-expanded.png"
       ],
@@ -601,14 +590,6 @@
     },
     {
       "surface": "attachments",
-      "screenshots": [
-        "tocktutor-reading-embed.png",
-        "obsidian-reading-embed.png"
-      ],
-      "contentComparison": "byte-identical Markdown"
-    },
-    {
-      "surface": "attachments-additional",
       "screenshots": [
         "tocktutor-attachments-embeds.png",
         "obsidian-attachments-embeds.png"
@@ -709,21 +690,6 @@
     }
   ],
   "pairs": [
-    {
-      "surface": "workspace",
-      "tocktutor": {
-        "screenshot": "tocktutor-main-workspace.png",
-        "path": "UIUX Comparison.md",
-        "mode": "live-preview",
-        "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
-      },
-      "obsidian": {
-        "screenshot": "obsidian-main-editor.png",
-        "path": "UIUX Comparison.md",
-        "mode": "live-preview",
-        "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
-      }
-    },
     {
       "surface": "reading",
       "tocktutor": {
@@ -878,21 +844,6 @@
     {
       "surface": "backlinks",
       "tocktutor": {
-        "screenshot": "tocktutor-backlinks.png",
-        "path": "UIUX Comparison.md",
-        "mode": "live-preview",
-        "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
-      },
-      "obsidian": {
-        "screenshot": "obsidian-backlinks.png",
-        "path": "UIUX Comparison.md",
-        "mode": "live-preview",
-        "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
-      }
-    },
-    {
-      "surface": "backlinks-additional",
-      "tocktutor": {
         "screenshot": "tocktutor-backlinks-unlinked-expanded.png",
         "path": "UIUX Comparison.md",
         "mode": "live-preview",
@@ -967,21 +918,6 @@
     },
     {
       "surface": "attachments",
-      "tocktutor": {
-        "screenshot": "tocktutor-reading-embed.png",
-        "path": "Notes/Welcome.md",
-        "mode": "reading",
-        "contentSha256": "d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c"
-      },
-      "obsidian": {
-        "screenshot": "obsidian-reading-embed.png",
-        "path": "Notes/Welcome.md",
-        "mode": "reading",
-        "contentSha256": "d8604ce74b20976b7497542d67bfe8ab546c54140de77a450d19edad6f62181c"
-      }
-    },
-    {
-      "surface": "attachments-additional",
       "tocktutor": {
         "screenshot": "tocktutor-attachments-embeds.png",
         "path": "Notes/Welcome.md",

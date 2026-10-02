@@ -1,0 +1,706 @@
+{
+  "inventory": {
+    "url": "http://127.0.0.1:64060/tocktutor.html",
+    "title": "TockTutor and Obsidian Surface Comparison",
+    "geometry": [
+      1512,
+      949,
+      2
+    ],
+    "colorScheme": "dark",
+    "prefersDark": true,
+    "rootSkin": null,
+    "bodySkin": null,
+    "label": "Visual Design Audit · 61 Captures",
+    "sections": [
+      {
+        "id": "reading",
+        "number": "Surface 01",
+        "title": "Reading View"
+      },
+      {
+        "id": "live-preview",
+        "number": "Surface 02",
+        "title": "Live Preview"
+      },
+      {
+        "id": "source",
+        "number": "Surface 03",
+        "title": "Source Mode"
+      },
+      {
+        "id": "note-actions",
+        "number": "Surface 04",
+        "title": "Note Actions Menu"
+      },
+      {
+        "id": "command-palette",
+        "number": "Surface 05",
+        "title": "Command Palette"
+      },
+      {
+        "id": "new-note",
+        "number": "Surface 06",
+        "title": "New Note Dialog"
+      },
+      {
+        "id": "search",
+        "number": "Surface 07",
+        "title": "Search"
+      },
+      {
+        "id": "recovery",
+        "number": "Surface 08",
+        "title": "File Recovery"
+      },
+      {
+        "id": "properties",
+        "number": "Surface 09",
+        "title": "Properties"
+      },
+      {
+        "id": "backlinks",
+        "number": "Surface 10",
+        "title": "Backlinks"
+      },
+      {
+        "id": "bookmarks",
+        "number": "Surface 11",
+        "title": "Bookmarks and Tags"
+      },
+      {
+        "id": "graph",
+        "number": "Surface 12",
+        "title": "Graph"
+      },
+      {
+        "id": "attachments",
+        "number": "Surface 13",
+        "title": "Attachments and Embeds"
+      },
+      {
+        "id": "note-tools",
+        "number": "Surface 14",
+        "title": "Note Tools"
+      },
+      {
+        "id": "workspaces",
+        "number": "Surface 15",
+        "title": "Workspaces and Panes"
+      },
+      {
+        "id": "vault",
+        "number": "Surface 16",
+        "title": "Vault Switcher"
+      },
+      {
+        "id": "settings",
+        "number": "Surface 17",
+        "title": "Settings"
+      },
+      {
+        "id": "marketplace",
+        "number": "Surface 18",
+        "title": "Plugin Marketplace"
+      },
+      {
+        "id": "assistant",
+        "number": "Surface 19",
+        "title": "Assistant"
+      },
+      {
+        "id": "reviews",
+        "number": "Surface 20",
+        "title": "Reviews and Native Actions"
+      },
+      {
+        "id": "base",
+        "number": "Surface 21",
+        "title": "Base"
+      },
+      {
+        "id": "canvas",
+        "number": "Surface 22",
+        "title": "Canvas"
+      },
+      {
+        "id": "web-viewer",
+        "number": "Surface 23",
+        "title": "Web Viewer"
+      },
+      {
+        "id": "image-viewer",
+        "number": "Surface 24",
+        "title": "Image Viewer"
+      },
+      {
+        "id": "image-resizing",
+        "number": "Surface 25",
+        "title": "Image Resizing"
+      },
+      {
+        "id": "mermaid",
+        "number": "Surface 26",
+        "title": "Mermaid Diagrams"
+      },
+      {
+        "id": "mermaid-editing",
+        "number": "Surface 27",
+        "title": "Diagram Editing"
+      },
+      {
+        "id": "imported-properties",
+        "number": "Surface 28",
+        "title": "Imported Property Controls"
+      }
+    ],
+    "images": [
+      "screenshots/tocktutor-editor-reading.png",
+      "screenshots/obsidian-reading-view.png",
+      "screenshots/tocktutor-editor-live-preview.png",
+      "screenshots/obsidian-main-editor.png",
+      "screenshots/tocktutor-live-preview-lower.png",
+      "screenshots/obsidian-live-preview-lower.png",
+      "screenshots/tocktutor-editor-source.png",
+      "screenshots/obsidian-source-mode.png",
+      "screenshots/tocktutor-note-actions-menu.png",
+      "screenshots/obsidian-note-actions.png",
+      "screenshots/tocktutor-command-palette.png",
+      "screenshots/obsidian-command-palette.png",
+      "screenshots/tocktutor-new-note.png",
+      "screenshots/obsidian-new-note.png",
+      "screenshots/tocktutor-search.png",
+      "screenshots/obsidian-search.png",
+      "screenshots/tocktutor-file-recovery.png",
+      "screenshots/obsidian-file-recovery.png",
+      "screenshots/tocktutor-properties.png",
+      "screenshots/obsidian-properties.png",
+      "screenshots/tocktutor-backlinks-unlinked-expanded.png",
+      "screenshots/obsidian-backlinks-unlinked-expanded.png",
+      "screenshots/tocktutor-bookmarks.png",
+      "screenshots/obsidian-bookmarks.png",
+      "screenshots/tocktutor-tags.png",
+      "screenshots/obsidian-tags.png",
+      "screenshots/tocktutor-graph-global.png",
+      "screenshots/obsidian-graph-global.png",
+      "screenshots/tocktutor-graph.png",
+      "screenshots/obsidian-graph-local.png",
+      "screenshots/tocktutor-attachments-embeds.png",
+      "screenshots/obsidian-attachments-embeds.png",
+      "screenshots/tocktutor-note-tools.png",
+      "screenshots/obsidian-note-tools.png",
+      "screenshots/tocktutor-workspaces-panes.png",
+      "screenshots/obsidian-workspaces-panes.png",
+      "screenshots/tocktutor-vault-switcher.png",
+      "screenshots/obsidian-vault-switcher.png",
+      "screenshots/tocktutor-settings.png",
+      "screenshots/obsidian-settings-general.png",
+      "screenshots/tocktutor-marketplace.png",
+      "screenshots/obsidian-settings-community-plugins.png",
+      "screenshots/tocktutor-assistant.png",
+      "screenshots/obsidian-assistant.png",
+      "screenshots/tocktutor-reviews-actions.png",
+      "screenshots/tocktutor-base.png",
+      "screenshots/obsidian-base.png",
+      "screenshots/tocktutor-canvas.png",
+      "screenshots/obsidian-canvas.png",
+      "screenshots/tocktutor-web-viewer.png",
+      "screenshots/obsidian-web-viewer.png",
+      "screenshots/tocktutor-image-viewer.png",
+      "screenshots/obsidian-image-viewer.png",
+      "screenshots/tocktutor-image-resizing.png",
+      "screenshots/obsidian-image-resizing.png",
+      "screenshots/tocktutor-mermaid-reading.png",
+      "screenshots/tocktutor-mermaid-live-preview.png",
+      "screenshots/tocktutor-mermaid-editing.png",
+      "screenshots/obsidian-mermaid-editing.png",
+      "screenshots/tocktutor-imported-properties.png",
+      "screenshots/obsidian-imported-properties.png"
+    ],
+    "brokenAnchors": [],
+    "workspacePresent": false,
+    "overflow": false
+  },
+  "imageDimensions": [
+    {
+      "src": "screenshots/tocktutor-editor-reading.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-reading-view.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-editor-live-preview.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-main-editor.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-live-preview-lower.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-live-preview-lower.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-editor-source.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-source-mode.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-note-actions-menu.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-note-actions.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-command-palette.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-command-palette.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-new-note.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-new-note.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-search.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-search.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-file-recovery.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-file-recovery.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-properties.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-properties.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-backlinks-unlinked-expanded.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-backlinks-unlinked-expanded.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-bookmarks.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-bookmarks.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-tags.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-tags.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-graph-global.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-graph-global.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-graph.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-graph-local.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-attachments-embeds.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-attachments-embeds.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-note-tools.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-note-tools.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-workspaces-panes.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-workspaces-panes.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-vault-switcher.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-vault-switcher.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-settings.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-settings-general.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-marketplace.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-settings-community-plugins.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-assistant.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-assistant.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-reviews-actions.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-base.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-base.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-canvas.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-canvas.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-web-viewer.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-web-viewer.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-image-viewer.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-image-viewer.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-image-resizing.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-image-resizing.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-mermaid-reading.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-mermaid-live-preview.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-mermaid-editing.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-mermaid-editing.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/tocktutor-imported-properties.png",
+      "width": 3024,
+      "height": 1898
+    },
+    {
+      "src": "screenshots/obsidian-imported-properties.png",
+      "width": 3024,
+      "height": 1898
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "live-preview.png",
+      "route": "http://127.0.0.1:64060/tocktutor.html#live-preview",
+      "state": {
+        "id": "live-preview",
+        "top": 11.9140625,
+        "title": "Live Preview",
+        "comparisonCount": 2,
+        "images": [
+          "screenshots/tocktutor-editor-live-preview.png",
+          "screenshots/obsidian-main-editor.png",
+          "screenshots/tocktutor-live-preview-lower.png",
+          "screenshots/obsidian-live-preview-lower.png"
+        ]
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "pixels": [
+        3024,
+        1898
+      ],
+      "sha256": "fbc8c4b113183e4adcd27b3aa2b2fabd27ad5ab33633341d3b1e5a7b981e27da",
+      "bytes": 495085
+    },
+    {
+      "name": "backlinks.png",
+      "route": "http://127.0.0.1:64060/tocktutor.html#backlinks",
+      "state": {
+        "id": "backlinks",
+        "top": 12.0859375,
+        "title": "Backlinks",
+        "comparisonCount": 1,
+        "images": [
+          "screenshots/tocktutor-backlinks-unlinked-expanded.png",
+          "screenshots/obsidian-backlinks-unlinked-expanded.png"
+        ]
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "pixels": [
+        3024,
+        1898
+      ],
+      "sha256": "42c078230143ad04cfd57ab6945abf3875c4481c8620e0907c4ac204bba87023",
+      "bytes": 455155
+    },
+    {
+      "name": "attachments.png",
+      "route": "http://127.0.0.1:64060/tocktutor.html#attachments",
+      "state": {
+        "id": "attachments",
+        "top": 11.9921875,
+        "title": "Attachments and Embeds",
+        "comparisonCount": 1,
+        "images": [
+          "screenshots/tocktutor-attachments-embeds.png",
+          "screenshots/obsidian-attachments-embeds.png"
+        ]
+      },
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "pixels": [
+        3024,
+        1898
+      ],
+      "sha256": "951a5b30301bd8e179d1df33ad398629a4221b2585e7bb81a226a675a709264b",
+      "bytes": 462427
+    }
+  ],
+  "runtimeErrors": [],
+  "consoleWarnings": [
+    "%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\n  Policy set or a policy with \"unsafe-eval\" enabled. This exposes users of\n  this app to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged."
+  ],
+  "failedRequests": [],
+  "launch": {
+    "browserRootPid": 52127,
+    "serverRootPid": 52111,
+    "cdp": "http://127.0.0.1:64065",
+    "extendedDisplayId": 19
+  },
+  "captureMethod": "Playwright app-scoped navigation and owned CDP Page.captureScreenshot with verified native device pixels",
+  "firstAttempt": {
+    "status": "rejected",
+    "reason": "Playwright screenshot returned 1512×949 pixels despite the emulated 2× DOM. No rejected image was published; retry uses owned CDP capture and keeps the exact pixel assertions."
+  },
+  "canonicalScreenshots": {
+    "unchanged": 73,
+    "sha256Manifest": "2127f60212fe55adef56122abe01658d0dd7c1ef08d55213d6163cc07e88e559",
+    "noFilesDeleted": true
+  },
+  "scope": "comparison-page-only; no app features, app source, or canonical screenshot files changed",
+  "removedComparisons": [
+    {
+      "removed": "Main Workspace",
+      "coveredBy": "Live Preview"
+    },
+    {
+      "removed": "Collapsed Backlinks",
+      "coveredBy": "Expanded Linked and Unlinked Mentions"
+    },
+    {
+      "removed": "Standalone Reading Embed",
+      "coveredBy": "Attachments and Embeds"
+    }
+  ],
+  "sourceFiles": {
+    ".agents/uiux/tocktutor/tocktutor.html": "c7745dc8b14c28ecee1d185a9c99b799049cd524b1ef18fa1a85331ba8bb3fdf",
+    ".agents/uiux/tocktutor/content-alignment.json": "d81914b32e6b9e990f8e240066c6bf7f396e4b7c4e41780a7ff149de65e91d3e",
+    "tests/tocktutor-gallery.test.ts": "6dd355bc9fc7b16d2441431ab15c7e2e180f6329b8f95a3695fabd7993b7fcef"
+  },
+  "checks": {
+    "command": "node --test tests/tocktutor-gallery.test.ts tests/tocktutor-content-alignment.test.ts",
+    "passed": 22,
+    "failed": 0,
+    "redCommand": "node --test --test-name-pattern='omits comparisons already covered' tests/tocktutor-gallery.test.ts",
+    "redFailedBeforeRemoval": true
+  },
+  "cleanup": {
+    "browserRuns": [
+      {
+        "id": "276a0a55-3f3d-4c48-b191-ab18dda61adb",
+        "rootPid": 51204,
+        "recordedPids": [
+          51204,
+          51206,
+          51207,
+          51208
+        ],
+        "stopped": true,
+        "remaining": []
+      },
+      {
+        "id": "72edfe55-2d2c-444a-9263-faee83851fc8",
+        "rootPid": 52127,
+        "recordedPids": [
+          52127,
+          52129,
+          52130,
+          52131
+        ],
+        "stopped": true,
+        "remaining": []
+      }
+    ],
+    "servers": [
+      {
+        "rootPid": 51185,
+        "stopped": true,
+        "childProcessesCreated": false
+      },
+      {
+        "rootPid": 52111,
+        "stopped": true,
+        "childProcessesCreated": false
+      }
+    ],
+    "playwrightCliSessionDetached": true,
+    "playwrightCliBrowsersAfterDetach": []
+  },
+  "publicationAllowlist": [
+    "attachments.png",
+    "backlinks.png",
+    "live-preview.png"
+  ],
+  "capturedAt": "2026-10-02T13:09:27.598Z"
+}
