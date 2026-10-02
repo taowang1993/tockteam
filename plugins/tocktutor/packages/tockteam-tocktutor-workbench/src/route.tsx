@@ -6188,7 +6188,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         </Tooltip>
         </div>
       </div>
-      {rightSidebarOpen && <div className="absolute inset-y-0 right-0 flex items-center px-3" style={{ width: assistantPanelWidth }}>
+      {rightSidebarOpen && <div className="absolute inset-y-0 right-0 flex items-center border-l border-[var(--tt-border)] px-3" style={{ width: assistantPanelWidth }}>
         <ToggleGroup unstyled aria-label="Right Sidebar View" className="tocktutor-sidebar-view-buttons flex items-center gap-2 [-webkit-app-region:no-drag]" data-view={sidebarView} orientation="horizontal" type="single" value={sidebarView} onValueChange={value => { if (value === 'assistant') setPanel(value); else if (value === 'file-properties') openProperties() }}>
           <Tooltip>
             <TooltipTrigger asChild>
