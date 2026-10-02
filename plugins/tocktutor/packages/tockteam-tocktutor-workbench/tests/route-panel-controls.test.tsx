@@ -603,7 +603,8 @@ describe('TockTutor titlebar panel controls', () => {
     expect(screen.getByText('No matching notes.')).toBeTruthy()
     expect(within(dialog).queryByText('Second.md')).toBeNull()
     expect(within(dialog).queryByText('Folder/Note.md')).toBeNull()
-    expect(screen.getByRole('tabpanel', { name: 'Note Editor' })).toBeTruthy()
+    expect(document.querySelector('[aria-label="Note Editor"]')).toBeTruthy()
+    expect(screen.queryByRole('tabpanel', { name: 'Note Editor' })).toBeNull()
   })
 
   it('shows a bounded Quick Answer and opens its exact captured citation', () => {
@@ -1402,6 +1403,8 @@ describe('TockTutor titlebar panel controls', () => {
     const editor = screen.getByRole('tabpanel', { name: 'Note Editor' })
     expect(editor.querySelector('.tocktutor-editor-header')?.className).not.toContain('border-b')
     expect(editor.className).not.toContain('_var(--tt-footer-height)')
+    expect(status.parentElement).toBe(editor.parentElement)
+    expect(editor.contains(status)).toBe(false)
     for (const utility of ['absolute', 'bottom-0', 'right-0', 'max-w-full', 'overflow-x-auto']) {
       expect(status.classList.contains(utility)).toBe(true)
     }

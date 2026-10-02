@@ -69,10 +69,13 @@ it.each(['editors', 'assistant', 'tabs'] as const)('mounts real independent edit
   }
   if (check === 'assistant') {
     const toggles = screen.getAllByRole('button', { name: 'Open Assistant' })
+    expect(toggles).toHaveLength(1)
+    const status = screen.getByRole('group', { name: 'TockTutor Status Bar' })
+    expect(status.closest('[data-pane-id]')).toBeNull()
     fireEvent.click(toggles[0]!)
-    expect(toggles.every(toggle => toggle.getAttribute('aria-expanded') === 'true')).toBe(true)
-    fireEvent.click(toggles[1]!)
-    expect(toggles.every(toggle => toggle.getAttribute('aria-expanded') === 'false')).toBe(true)
+    expect(toggles[0]!.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(toggles[0]!)
+    expect(toggles[0]!.getAttribute('aria-expanded')).toBe('false')
   }
   const seats = () => Array.from(view.container.querySelectorAll<HTMLElement>('[data-pane-id]'))
   const editor = (id: string) => EditorView.findFromDOM(seats().find(node => node.dataset.paneId === id)!.querySelector('.cm-editor')!)!
@@ -106,6 +109,10 @@ it.each(['editors', 'assistant', 'tabs'] as const)('mounts real independent edit
   await act(async () => { await controller.closePane(down); await controller.focusPane(right); await controller.select('Two.md'); controller.setMode('source') })
   expect(screen.queryByRole('separator', { name: 'Resize Down Split' })).toBeNull()
   await waitFor(() => expect(editor(right).state.doc.toString()).toBe('second\n'))
+  expect(screen.getByRole('group', { name: 'TockTutor Status Bar' }).textContent).toContain('7 characters')
+  await act(async () => { await controller.focusPane(left) })
+  expect(screen.getByRole('group', { name: 'TockTutor Status Bar' }).textContent).toContain('6 characters')
+  await act(async () => { await controller.focusPane(right) })
   act(() => editor(left).dispatch({ changes: { from: 0, to: 5, insert: 'left' } }))
   act(() => editor(right).dispatch({ changes: { from: 0, to: 6, insert: 'right' } }))
   expect(controller.getPaneSnapshot(left).source).toBe('left\n')

@@ -21142,7 +21142,7 @@ ${text}`;
           /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(ArrowDown, { "aria-hidden": "true" }),
           "Jump to Latest"
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("div", { className: "tocktutor-assistant-composer-wrap relative flex-none px-3 pb-3", children: /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)(Popover2, { open: menuOpen, onOpenChange: setMenuOpen, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("div", { className: "tocktutor-assistant-composer-wrap relative flex-none px-3 pb-[17px]", children: /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)(Popover2, { open: menuOpen, onOpenChange: setMenuOpen, children: [
           /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)(
             PopoverContent3,
             {

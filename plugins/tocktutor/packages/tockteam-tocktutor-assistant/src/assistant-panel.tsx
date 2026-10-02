@@ -614,7 +614,7 @@ export function TockTutorAssistantPanel(props: TockTutorAssistantPanelProps): Re
           Jump to Latest
         </Button>
       )}
-      <div className="tocktutor-assistant-composer-wrap relative flex-none px-3 pb-3">
+      <div className="tocktutor-assistant-composer-wrap relative flex-none px-3 pb-[17px]">
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverContent
             unstyled

@@ -6571,34 +6571,6 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               </section>
             )}
           </div>
-          <footer aria-label="TockTutor Status Bar" className="tocktutor-statusbar absolute right-0 bottom-0 z-10 flex h-[var(--tt-footer-height)] max-w-full min-w-0 items-center overflow-x-auto rounded-tl-md border-t border-l border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2 text-xs text-[var(--tt-muted)]" role="group">
-            <output aria-live="polite" className="tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]">{snapshot.message}</output>
-            {props.nativeNoteActions != null && props.nativeNoteActions.message !== 'Ready.' && <output aria-live="polite" className="mr-3 min-w-0 truncate">{props.nativeNoteActions.message}</output>}
-            <div className="tocktutor-document-stats ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2">
-              {snapshot.path !== null && (
-                <>
-                  <span>{backlinkLabel}</span>
-                  <span>{snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source'}</span>
-                </>
-              )}
-              <span>{String(words)} words</span>
-              <span>{String(characters)} characters</span>
-              {snapshot.path !== null && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button unstyled
-                      aria-label="Open Assistant"
-                      aria-expanded={panel === 'assistant'}
-                      onClick={() => { setPanel(current => current === 'assistant' ? null : 'assistant') }}
-                      type="button"
-                      className="border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]"
-                    ><WorkbenchGlyph kind="chat" /></Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Open Assistant</TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-          </footer>
         </section>)
   if (props.paneOnly) return <TooltipProvider><div className="flex h-full min-h-0 min-w-0 flex-col" data-pane-id={snapshot.focusedPaneId}
     onPointerDownCapture={() => { props.onFocusPane?.(snapshot.focusedPaneId) }}
@@ -6680,7 +6652,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         />
       )}
       <div
-        className="tocktutor-grid relative grid h-full min-h-0 grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)_auto_auto] transition-[grid-template-columns] duration-300 ease-out"
+        className="tocktutor-grid relative grid h-full min-h-0 grid-cols-[var(--tockteam-primary-sidebar-width,280px)_minmax(0,1fr)_auto_auto] transition-[grid-template-columns] duration-300 ease-out [&>.tocktutor-right-panel]:pb-[var(--tt-footer-height)]"
         style={{
           gridTemplateColumns: contentColumns,
           transitionDuration: shouldAnimateSidebarColumns ? undefined : '0ms',
@@ -6772,6 +6744,34 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           if (mode !== 'note' || result === undefined) return
           void Promise.resolve(result).then(success => { if (success === true) setPanel(null) })
         }} view={rightSidebarOpen ? null : panel} />
+        <footer aria-label="TockTutor Status Bar" className="tocktutor-statusbar absolute right-0 bottom-0 z-10 flex h-[var(--tt-footer-height)] max-w-full min-w-0 items-center overflow-x-auto rounded-tl-md border-t border-l border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2 text-xs text-[var(--tt-muted)]" role="group">
+          <output aria-live="polite" className="tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]">{snapshot.message}</output>
+          {props.nativeNoteActions != null && props.nativeNoteActions.message !== 'Ready.' && <output aria-live="polite" className="mr-3 min-w-0 truncate">{props.nativeNoteActions.message}</output>}
+          <div className="tocktutor-document-stats ml-auto flex items-center gap-[18px] whitespace-nowrap max-[760px]:gap-2">
+            {snapshot.path !== null && (
+              <>
+                <span>{backlinkLabel}</span>
+                <span>{snapshot.mode === 'reading' ? 'Reading' : snapshot.mode === 'live-preview' ? 'Live Preview' : 'Source'}</span>
+              </>
+            )}
+            <span>{String(words)} words</span>
+            <span>{String(characters)} characters</span>
+            {snapshot.path !== null && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button unstyled
+                    aria-label="Open Assistant"
+                    aria-expanded={panel === 'assistant'}
+                    onClick={() => { setPanel(current => current === 'assistant' ? null : 'assistant') }}
+                    type="button"
+                    className="border-0 bg-transparent px-0 py-0.5 text-[var(--tt-muted)] [&_svg]:size-[17px]"
+                  ><WorkbenchGlyph kind="chat" /></Button>
+                </TooltipTrigger>
+                <TooltipContent>Open Assistant</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </footer>
         </div>
       </main>
     </TooltipProvider>
