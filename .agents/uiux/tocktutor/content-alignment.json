@@ -1,7 +1,40 @@
 {
+  "propertiesLayoutRefresh": {
+    "status":"verified-current","sourceCommit":"379938f0","sourceCheckpoints":["631a9046","3867c5e8","379938f0"],"capturedAt":"2026-10-02T01:43:23.420Z",
+    "publicationAllowlist":["tocktutor-imported-properties.png"],"unrelatedExistingCapturesUnchanged":72,"installedReferenceUnchanged":true,"nativeReferenceCapture":"2026-10-02T00:25:05.523Z",
+    "screenshotSha256":"fcc3d0f99c074d56fdd4deeb303933ace8084884f483cc5f53b90cc52460ed1e","referenceScreenshotSha256":"22c5efa5ffe4dfa97c1a0f29b23dca62f3757c1dc0b9e1c64e3799c7044fa236",
+    "path":"comparison.md","noteBytes":1413,"contentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2","registryBytes":170,"registrySha256":"2a9367198f8ac89fc22fbc76c6a8d4372803559a3c0d9306bed8bac7d65c8fb2","sameSavedBytes":true,"registryUnchanged":true,
+    "geometry":[1512,949,2],"pixels":[3024,1898],"theme":"dark","skin":null,"titlebarButtons":true,"segmentedToggle":false,"compactRows":true,"keyboardSwitch":true,"propertyDraftRetained":true,"closedFocusExcluded":true,
+    "narrow":{"width":240,"scrollWidth":240,"clientWidth":240,"overflow":[]},"baselineRestored":{"scheme":"dark","skin":null},
+    "appearanceChecks":[
+      {"skin":null,"mode":"Dark","system":"light","geometry":[1512,949,2],"overflow":false,"nameContrast":11.067896561378452,"valueContrast":15.95286574315298,"sourceHintContrast":7.762465092058489,"selectedIconContrast":11.5745859518911},
+      {"skin":null,"mode":"Light","system":"dark","geometry":[1512,949,2],"overflow":false,"nameContrast":5.3415278207177295,"valueContrast":17.40487765850205,"sourceHintContrast":17.40487765850205,"selectedIconContrast":18.896452054380127},
+      {"skin":"tockteam-skin-navy","mode":"Dark","system":"light","geometry":[1512,949,2],"overflow":false,"nameContrast":11.134419781813875,"valueContrast":14.999134677756654,"sourceHintContrast":10.143138857186486,"selectedIconContrast":12.001363841669917},
+      {"skin":"tockteam-skin-navy","mode":"Light","system":"dark","geometry":[1512,949,2],"overflow":false,"nameContrast":6.877599363661155,"valueContrast":12.980894386787863,"sourceHintContrast":12.980894386787863,"selectedIconContrast":10.359702609072974},
+      {"skin":"tockteam-skin-jade","mode":"Dark","system":"light","geometry":[1512,949,2],"overflow":false,"nameContrast":11.122989699986702,"valueContrast":15.216209781330681,"sourceHintContrast":10.39225954805054,"selectedIconContrast":11.794717553504489},
+      {"skin":"tockteam-skin-jade","mode":"Light","system":"dark","geometry":[1512,949,2],"overflow":false,"nameContrast":7.115238024291395,"valueContrast":12.539701567157891,"sourceHintContrast":12.539701567157891,"selectedIconContrast":9.752566970718595},
+      {"skin":"tockteam-skin-ember","mode":"Dark","system":"light","geometry":[1512,949,2],"overflow":false,"nameContrast":7.949428151220386,"valueContrast":15.355121898532204,"sourceHintContrast":10.75595800651965,"selectedIconContrast":15.159150109939707},
+      {"skin":"tockteam-skin-ember","mode":"Light","system":"dark","geometry":[1512,949,2],"overflow":false,"nameContrast":7.9794265906464865,"valueContrast":13.198254227619962,"sourceHintContrast":13.198254227619962,"selectedIconContrast":9.502771001321662}
+    ],
+    "runtimeErrors":[],"externalRequests":[],"consoleWarnings":1,
+    "builtArtifactHashes":{"dist/main.js":"c357f9a85fbea5a199026c1ac07a3ca06d5fdfacdbc977c740441eca272bc22f","dist/client.js":"713b7ba358a3866023ef44c9318d5f1e7ee7083546e7e87e06d9bcd156dacf92","plugins/tocktutor/build-manifest.json":"79fcd3c7721689e3437f902bd192e71327dd8cbf5ce99a2f568552b8e1571c75","plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/client.js":"a25ea7d61b89213ff911a0419377fe1ff1be6b1711ae5479a38c3440abf69c0b","plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/route.js":"c5385f855e360a9f10e19a88e731aeb8658c96b06f58bb51ecf35b47ed21296f","plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx":"adb507ffb1f947303f623be7549f21f36a2064ca725129e2dc2850162afec601","plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/linked-note-pane.tsx":"b39fb4d6420c436429d95a91ebac4b7020d50f4170ff3fc7a10570b7a9b617e3","plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/live-preview-editor.tsx":"b16ded4f4f73bee049a02bc5c42e4eafcd555cb6d1990001c08ce2502ab45251"},
+    "protectedUserBytesPreserved":true,"approvedProtectedAssertions":2,
+    "captureMethod":"Rebuilt owned TockTutor source via approved build/stage; guarded isolated Desktop on display17, owned CDP and real UI menus, chip edit/cancel, keyboard switches/resizing, draft retention and app Appearance settings. CSS/device metrics only; no DOM styling, system clipboard, user profile/vault or installed Obsidian writes. Existing installed Obsidian comparison retained unchanged.",
+    "cleanup":[
+      {"id":"4debbbf9-b214-4278-8411-c8a58d71d574","rootPid":40888,"recordedPids":[40888,40892,40893,40894,40895,40897,40908,40916,41112,41169,41170,41171,41172,41173,41174,41175,41176,41433,41434,41435,41436,41437,41438,41439,41440],"stopped":true,"remaining":[]},
+      {"id":"c88f39ca-8f40-46c2-806c-05825a75a58a","rootPid":46267,"recordedPids":[46267,46269,46270,46272,46273,46276,46290,46457,46458,46459,46493,46670,46671,46672,46673,46674,46675,46676,46677],"stopped":true,"remaining":[]},
+      {"id":"bbd2fd79-6cdd-4a91-88cc-45d5c40b3122","rootPid":50977,"recordedPids":[50977,50979,50980,50982,50983,50986,50996,51005,51006,51007,51008,51009,51010,51011,51012,51192,51217,51218,51219,51220,51221,51222,51223,51224,51465,51466,51467,51468,51469,51470,51472,51473],"stopped":true,"remaining":[]},
+      {"id":"65368e74-2a36-43a6-aa13-f3834634c09b","rootPid":58717,"recordedPids":[58717,58719,58720,58722,58723,58726,58736,58778,58779,58934,59004,59231,59232,59233,59234,59235,59236,59237,59238],"stopped":true,"remaining":[]}
+    ],
+    "galleryVerification":{"status":"verified","geometry":[1512,949,2],"surface":"imported-properties","bothImagesDecoded":true,"surface30Absent":true,"surfaceCount":29,"imageCount":66,"oldGalleryLink":false,"runtimeErrors":[],"failedRequests":[],"httpErrors":[]},
+    "galleryCleanup":{"id":"e936ec02-7dfe-4913-8402-25f470501c25","stopped":true,"rootPid":63663,"recordedPids":[63663,63665,63666,63667],"remaining":[],"serverPid":63655,"serverStopped":true,"portClosed":true},
+    "previousGalleryCleanup":{"id":"2fd730b6-98bd-477d-bf36-620493c20e5a","stopped":true,"rootPid":60319,"recordedPids":[60319,60321,60322,60323],"remaining":[],"serverPid":60300,"serverStopped":true,"portClosed":true},
+    "report":"../../../.beads/reports/2026-10-02-tocktutor-properties-alignment.md",
+    "limits":["Native date/list controls and nested-value rendering are not identical; row positions match within0.5 CSS pixels, not exact pixel parity.","This rendered layout/draft/appearance verification is not a repeated exhaustive save/recovery or installed-Obsidian functional certification.","One existing Vue build warning; React Doctor scoped lint clean but maintainability timeout/score incomplete.","One unrelated20ms file-search deadline test failed under parallel root load; unchanged focused test and exact full root retry passed."]
+  },
   "comparisonNoteRevision": {"changedFrontmatterOnly":true,"current":{"bytes":1413,"contentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2","bodySha256":"cce1af0f82e43be949bc0c9c1f6a5b2740f5096aa334879904321f46f1118aed"},"previous":{"bytes":1324,"contentSha256":"3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5","frontmatter":"---\nstatus: review\nfavorite: true\narea: markdown\ntags: [comparison, typography]\ndifficulty: medium\n---\n","bodySha256":"cce1af0f82e43be949bc0c9c1f6a5b2740f5096aa334879904321f46f1118aed"},"unchangedCaptures":71},
   "comparisonPropertiesRefresh": {
-    "status":"verified-current",
+    "status":"verified-historical",
     "path":"comparison.md",
     "sharedNote":".agents/uiux/tocktutor/comparison.md",
     "sourceCommit":"9b1fccbf",
@@ -1127,13 +1160,31 @@
       "contentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
       "registrySha256":"2a9367198f8ac89fc22fbc76c6a8d4372803559a3c0d9306bed8bac7d65c8fb2",
       "registryUnchanged":true,
-      "bytes":310626,
-      "sha256":"122b65c7aca808dd5c84ae125e0bb2d911fb30b1be24379f7ef6a8557464191d",
-      "sourceCommit":"9b1fccbf",
-      "capturedAt":"2026-10-02T00:23:54.585Z",
-      "visibleState":{"linkedProperties":true,"rightSidebar":true,"fullHeightNote":true,"noteHeading":"Markdown Rendering Lab","frontmatterCollapsed":true,"rootColorScheme":"dark","rootSkin":null,"bodySkin":null,"exponentNumber":true,"reopened":true,"unsupportedSourceFallback":true,"extraToolbar":false,"rowMenuEntries":["Rename Property","Copy Value","Remove Property"],"typeMenuEntries":["Text","List","Number","Checkbox","Date","Date & Time"],"chipEditCancelled":true,"segmentedToggle":true,"selector":[{"label":"Properties","selected":"true"},{"label":"Assistant","selected":"false"}],"toggle":{"x":1054,"y":44.5,"width":86,"height":38},"values":{"status":"review","favorite":true,"area":"markdown","tags":["comparison","typography"],"difficulty":"medium","due":"2026-10-01","meeting":"2026-10-01T14:45","rating":"1e+21"},"propertyTypes":{"status":"text","favorite":"checkbox","area":"text","tags":"tags","difficulty":"text","due":"date","meeting":"datetime","rating":"number","unsupported":"text"},"controlTypes":["text","checkbox","text","list","text","date","datetime-local","number","source"],"panel":{"x":1042,"y":40,"width":470,"height":909},"editor":{"x":320,"y":40,"width":722,"height":909},"propertyRows":[{"key":"status","y":144,"bottom":216},{"key":"favorite","y":216,"bottom":272},{"key":"area","y":272,"bottom":344},{"key":"tags","y":344,"bottom":444},{"key":"difficulty","y":444,"bottom":516},{"key":"due","y":516,"bottom":588},{"key":"meeting","y":588,"bottom":660},{"key":"rating","y":660,"bottom":732},{"key":"unsupported","y":732,"bottom":796}]},
+      "bytes":292596,
+      "sha256":"fcc3d0f99c074d56fdd4deeb303933ace8084884f483cc5f53b90cc52460ed1e",
+      "sourceCommit":"379938f0",
+      "capturedAt":"2026-10-02T01:43:23.420Z",
+      "visibleState":{
+        "linkedProperties":true,"rightSidebar":true,"fullHeightNote":true,"noteHeading":"Markdown Rendering Lab","frontmatterCollapsed":true,"rootColorScheme":"dark","rootSkin":null,"bodySkin":null,"exponentNumber":true,"reopened":true,"unsupportedSourceFallback":true,"extraToolbar":false,
+        "rowMenuEntries":["Rename Property","Copy Value","Remove Property"],"typeMenuEntries":["Text","List","Number","Checkbox","Date","Date & Time"],"chipEditCancelled":true,"segmentedToggle":false,"titlebarButtons":true,"compactRows":true,"structuredValuePreview":"{nested: value}Use Source Mode",
+        "selector":[{"label":"Properties","selected":"true"},{"label":"Assistant","selected":"false"}],"toggle":{"x":1054,"y":6,"width":64,"height":28},
+        "values":{"status":"review","favorite":true,"area":"markdown","tags":["comparison","typography"],"difficulty":"medium","due":"2026-10-01","meeting":"2026-10-01T14:45","rating":"1e+21"},"propertyTypes":{"status":"text","favorite":"checkbox","area":"text","tags":"tags","difficulty":"text","due":"date","meeting":"datetime","rating":"number","unsupported":"text"},"controlTypes":["text","checkbox","text","list","text","date","datetime-local","number","source"],
+        "panel":{"x":1042,"y":40,"width":470,"height":909},"editor":{"x":320,"y":40,"width":722,"height":909},
+        "fieldBorders":[{"label":"Property status","borderWidth":"0px","background":"rgba(0, 0, 0, 0)"},{"label":"Property area","borderWidth":"0px","background":"rgba(0, 0, 0, 0)"},{"label":"Property difficulty","borderWidth":"0px","background":"rgba(0, 0, 0, 0)"},{"label":"Property due","borderWidth":"0px","background":"rgba(0, 0, 0, 0)"},{"label":"Property meeting","borderWidth":"0px","background":"rgba(0, 0, 0, 0)"},{"label":"Property rating","borderWidth":"0px","background":"rgba(0, 0, 0, 0)"}],
+        "propertyRows":[
+          {"key":"status","y":52,"bottom":81,"labelBounds":{"x":1054,"y":52,"width":142.71875,"height":29},"controlBounds":{"x":1204.71875,"y":52,"width":295.28125,"height":29}},
+          {"key":"favorite","y":81,"bottom":110,"labelBounds":{"x":1054,"y":81,"width":142.71875,"height":29},"controlBounds":{"x":1204.71875,"y":81,"width":295.28125,"height":29}},
+          {"key":"area","y":110,"bottom":139,"labelBounds":{"x":1054,"y":110,"width":142.71875,"height":29},"controlBounds":{"x":1204.71875,"y":110,"width":295.28125,"height":29}},
+          {"key":"tags","y":139,"bottom":168,"labelBounds":{"x":1054,"y":139,"width":142.71875,"height":29},"controlBounds":{"x":1204.71875,"y":139,"width":295.28125,"height":29}},
+          {"key":"difficulty","y":168,"bottom":197,"labelBounds":{"x":1054,"y":168,"width":142.71875,"height":29},"controlBounds":{"x":1204.71875,"y":168,"width":295.28125,"height":29}},
+          {"key":"due","y":197,"bottom":226,"labelBounds":{"x":1054,"y":197,"width":142.71875,"height":29},"controlBounds":{"x":1204.71875,"y":197,"width":295.28125,"height":29}},
+          {"key":"meeting","y":226,"bottom":255,"labelBounds":{"x":1054,"y":226,"width":142.71875,"height":29},"controlBounds":{"x":1204.71875,"y":226,"width":295.28125,"height":29}},
+          {"key":"rating","y":255,"bottom":284,"labelBounds":{"x":1054,"y":255,"width":142.71875,"height":29},"controlBounds":{"x":1204.71875,"y":255,"width":295.28125,"height":29}},
+          {"key":"unsupported","y":284,"bottom":313,"labelBounds":{"x":1054,"y":284,"width":142.71875,"height":29},"controlBounds":{"x":1204.71875,"y":284,"width":295.28125,"height":29}}
+        ]
+      },
       "runtimeErrors":[],
-      "runtimeErrorMonitoring":"Frozen existing Desktop via guarded isolated Electron/owned CDP; monitored zero capture-time errors/external requests, final console Errors:0. Exact shared note/registry unchanged; owned tree stopped. See comparisonPropertiesRefresh.",
+      "runtimeErrorMonitoring":"Guarded rebuilt isolated Desktop via owned CDP; zero capture/appearance errors/external requests, exact note/registry unchanged, all owned trees stopped. Existing installed Obsidian reference unchanged. See propertiesLayoutRefresh.",
       "captureScope":"real-desktop"
     },
     "tocktutor-mermaid-live-preview.png": {

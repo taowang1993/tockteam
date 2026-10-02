@@ -205,8 +205,8 @@ test('pairs Imported Property Controls with genuine Obsidian and the identical s
   assert.equal(refresh.samePropertyTypes, true)
   assert.equal(refresh.reusesExistingBuild, true)
   const current = proof.captures['tocktutor-imported-properties.png']
-  assert.equal(current.sourceCommit, proof.comparisonPropertiesRefresh.sourceCommit)
-  assert.equal(current.sha256, proof.comparisonPropertiesRefresh.screenshotSha256s['tocktutor-imported-properties.png'])
+  assert.equal(current.sourceCommit, proof.propertiesLayoutRefresh.sourceCommit)
+  assert.equal(current.sha256, proof.propertiesLayoutRefresh.screenshotSha256)
   assert.equal(current.visibleState.rightSidebar, true)
   assert.equal(current.visibleState.fullHeightNote, true)
   assert.equal(current.visibleState.rootColorScheme, 'dark')
@@ -219,12 +219,14 @@ test('pairs Imported Property Controls with genuine Obsidian and the identical s
   assert.deepEqual(current.visibleState.propertyTypes, native.visibleState.propertyTypes)
   assert.equal(current.registrySha256, native.registrySha256)
   assert.equal(current.registryUnchanged, true)
-  assert.equal(current.visibleState.segmentedToggle, true)
+  assert.equal(current.visibleState.segmentedToggle, false)
+  assert.equal(current.visibleState.titlebarButtons, true)
+  assert.equal(current.visibleState.compactRows, true)
   assert.deepEqual(current.visibleState.selector, [
     { label: 'Properties', selected: 'true' },
     { label: 'Assistant', selected: 'false' },
   ])
-  assert.equal(current.visibleState.toggle.width, 86)
+  assert.deepEqual(current.visibleState.toggle, { x: 1054, y: 6, width: 64, height: 28 })
   assert.ok(refresh.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
   assert.equal(refresh.galleryVerification.bothImagesDecoded, true)
   assert.equal(refresh.galleryVerification.surface30Absent, true)
@@ -271,7 +273,9 @@ test('publishes the current Properties comparison in the canonical gallery from 
   assert.equal(refresh.registryUnchanged, true)
   const current = proof.captures['tocktutor-imported-properties.png']
   const native = proof.captures['obsidian-imported-properties.png']
-  assert.equal(current.sourceCommit, refresh.sourceCommit)
+  assert.equal(current.sourceCommit, proof.propertiesLayoutRefresh.sourceCommit)
+  assert.equal(refresh.status, 'verified-historical')
+  assert.equal(native.sha256, refresh.screenshotSha256s['obsidian-imported-properties.png'])
   assert.equal(native.entry, '/Applications/Obsidian.app/Contents/Resources/app.asar')
   assert.equal(current.contentSha256, native.contentSha256)
   assert.equal(current.registrySha256, native.registrySha256)
@@ -290,6 +294,53 @@ test('publishes the current Properties comparison in the canonical gallery from 
   assert.equal(existsSync(resolve('.beads/reports/2026-10-01-tocktutor-properties-proof/index.html')), false)
 })
 
+test('aligns compact Properties rows and titlebar buttons without replacing the installed reference', () => {
+  const refresh = proof.propertiesLayoutRefresh
+  const current = proof.captures['tocktutor-imported-properties.png']
+  const native = proof.captures['obsidian-imported-properties.png']
+  assert.equal(refresh.status, 'verified-current')
+  assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-imported-properties.png'])
+  assert.equal(refresh.unrelatedExistingCapturesUnchanged, 72)
+  assert.equal(refresh.installedReferenceUnchanged, true)
+  assert.equal(refresh.noteBytes, 1413)
+  assert.equal(refresh.sameSavedBytes, true)
+  assert.equal(refresh.registryUnchanged, true)
+  assert.deepEqual(refresh.geometry, [1512, 949, 2])
+  assert.deepEqual(refresh.pixels, [3024, 1898])
+  assert.equal(refresh.theme, 'dark')
+  assert.equal(refresh.skin, null)
+  assert.equal(refresh.keyboardSwitch, true)
+  assert.equal(refresh.propertyDraftRetained, true)
+  assert.equal(refresh.closedFocusExcluded, true)
+  assert.deepEqual(refresh.narrow, { width: 240, scrollWidth: 240, clientWidth: 240, overflow: [] })
+  assert.deepEqual(refresh.baselineRestored, { scheme: 'dark', skin: null })
+  assert.deepEqual(refresh.runtimeErrors, [])
+  assert.equal(current.visibleState.propertyRows.length, 9)
+  for (const [index, row] of current.visibleState.propertyRows.entries()) {
+    const reference = native.visibleState.propertyRows[index]
+    assert.equal(row.key, reference.key)
+    assert.ok(Math.abs(row.y - reference.y) <= 1, row.key)
+    assert.equal(row.labelBounds.height, 29, row.key)
+    assert.equal(row.labelBounds.y, row.controlBounds.y, row.key)
+    assert.ok(row.controlBounds.x >= row.labelBounds.x + row.labelBounds.width, row.key)
+  }
+  assert.ok(current.visibleState.fieldBorders.every((field: { borderWidth: string; background: string }) => field.borderWidth === '0px' && field.background === 'rgba(0, 0, 0, 0)'))
+  assert.deepEqual(refresh.appearanceChecks.map((check: { skin: string | null; mode: string }) => [check.skin, check.mode.toLowerCase()]), [
+    [null, 'dark'], [null, 'light'], ...TOCKTEAM_SKINS.flatMap(skin => [[skin.id, 'dark'], [skin.id, 'light']]),
+  ])
+  for (const check of refresh.appearanceChecks) {
+    assert.notEqual(check.mode.toLowerCase(), check.system)
+    assert.ok(check.nameContrast >= 4.5)
+    assert.ok(check.valueContrast >= 4.5)
+    assert.ok(check.sourceHintContrast >= 4.5)
+    assert.ok(check.selectedIconContrast >= 3)
+    assert.deepEqual(check.geometry, [1512, 949, 2])
+    assert.equal(check.overflow, false)
+  }
+  assert.ok(refresh.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
+  assert.match(html, /Properties Layout Refresh/u)
+})
+
 test('keeps unmatched migration surfaces distinct from the four focused comparisons', () => {
   const additions = proof.migrationReview
   assert.equal(additions.allowlist.length, 6)
@@ -306,7 +357,7 @@ test('keeps unmatched migration surfaces distinct from the four focused comparis
     assert.equal(proof.captures[name].captureScope, 'real-desktop')
     const expectedCommit = name === 'tocktutor-image-viewer.png' ? additions.imageViewerRefresh.sourceCommit
       : name === 'tocktutor-image-resizing.png' ? additions.imageLayoutRefresh.sourceCommit
-        : name === 'tocktutor-imported-properties.png' ? proof.comparisonPropertiesRefresh.sourceCommit : additions.sourceCommit
+        : name === 'tocktutor-imported-properties.png' ? proof.propertiesLayoutRefresh.sourceCommit : additions.sourceCommit
     assert.equal(proof.captures[name].sourceCommit, expectedCommit)
   }
   const fixtures = resolve(root, additions.fixtures)
