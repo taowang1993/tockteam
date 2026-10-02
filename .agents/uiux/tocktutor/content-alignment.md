@@ -1,6 +1,23 @@
 # TockTutor and Obsidian Content Alignment
 
-## Current Calendar Placement — 2026-10-02
+## Current Footer and Composer — 2026-10-02
+
+Source checkpoint `c87ad048` keeps one status bar at the whole workspace's bottom-right edge, not inside each editor. Counts follow the focused note through splits. Shared right-panel siblings reserve the existing 28px footer height without shortening the note editor; the Assistant composer's bottom padding increases from 12px to 17px, an independently measured extra 5px lift above that footer-safe area.
+
+**Total: 2 confirmed scoped findings, fixed and verified.**
+
+1. **Low — Footer shifted left when the right panel opened.** Impact: statistics stayed below the note instead of the far-right window edge; split editors also duplicated the footer. Affected path: `plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx`. Fixed by reparenting the same footer to the existing Workbench grid. Component REDs proved the old editor-bound parent and duplicate controls. GREEN checks prove a single footer with right=1512/bottom=949 in Properties, Assistant, closed and 240px-wide panel states; focused-note counts and editor seats survive nested splits.
+2. **Low — Composer lacked footer clearance.** Impact: bottom controls could be obscured by the relocated footer. Affected paths: the Workbench grid and `plugins/tocktutor/packages/tockteam-tocktutor-assistant/src/assistant-panel.tsx`. Fixed by reserving the existing footer height and changing composer padding 12→17. Rendered A/B measurement proves exactly 5px of additional upward movement within that safe area, a 17px gap above the footer, visible 2px Send focus, a successful hit test, and Escape focus restoration from Add Context. No prompt was sent. Total window movement also includes the required footer-safe area; it is not mislabeled as only 5px.
+
+Both current screenshots use 1512 × 949 CSS at DPR 2, unscaled 3024 × 1898 PNGs, built-in dark/no skin, Live Preview and empty/unchanged saved state. Properties preserves the expanded 1,413-byte note (`6792ccbb…`); Assistant preserves the original 1,324-byte note (`3a55316a…`) matching its retained reference. Its original frontmatter was reconstructed only in the temporary fixture, not rewritten in the repository. Registry170 bytes remains unchanged. Only `tocktutor-imported-properties.png` and `tocktutor-assistant.png` are allowlisted; all 71 other captures, including the installed Properties and historical Assistant/Claudian references, remain unchanged. No new reference/backend/native-certification claim.
+
+Default Dark/Light and Navy/Jade/Ember in both modes pass with opposite system appearance: one right-edge footer, 5px additional composer lift, 17px gap, no 240px overflow, native leading calendars preserved, keyboard/drafts/closed focus preserved, and footer-text contrast at least 5.32:1. Current provenance is `footerComposerRefresh`; prior calendar/layout metadata remains historical.
+
+Focused Workbench checks pass164/164 and Assistant13/13; nested Node99+216+15+429 and bounded full Workbench790/790 pass. The unchanged 5s capped Replace All test timed out in the unbounded nested run, then passed focused and full four-worker retries. Root1698 pass/0 fail/18 optional skips, root/nested typechecks, builds, quick stage and manifest pass. The first root run had an unrelated Native persistence projected-frame race; unchanged focused11 and full-root retries pass, with its owner retaining the separate test correction. React Doctor reports two complexity warnings in existing large functions; no new branches or refactor, numerical score unavailable. The empty unowned save lock was removed only after explicit user approval and unchanged-empty-file checks.
+
+The owned Desktop root1259 and all8 recorded PIDs stopped with remaining empty; Playwright detached. After transactional publication, the canonical gallery decodes both pairs at the required geometry with29 surfaces/66 unique images and no errors or failed requests. Gallery root6850 and all4 recorded PIDs stopped, remaining empty; server6772 is absent and port55237 closed. Final gallery/alignment checks pass21/21. Full runtime and gallery cleanup records live in `footerComposerRefresh`. Protected user bytes and all nine frozen Native files remain unchanged. Restart Electron to load the fixes.
+
+## Historical Calendar Placement — 2026-10-02
 
 The native calendar button now appears before the value for both Date and Date & Time, matching the placement in the unchanged installed Obsidian reference. Source checkpoint `09c3c06a` changes only the shared Properties field's Tailwind layout: reorder the existing indicator, remove its leading margin, and leave a small gap. No duplicate icon, custom picker, palette, event handler, date conversion, or Host change.
 

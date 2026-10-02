@@ -1,6 +1,33 @@
 {
+  "footerComposerRefresh": {
+    "status":"verified-current","sourceCommit":"c87ad048","capturedFromFrozenWorkingTreeBeforeCheckpoint":true,
+    "publicationAllowlist":["tocktutor-imported-properties.png","tocktutor-assistant.png"],"unrelatedExistingCapturesUnchanged":71,"installedReferencesUnchanged":true,
+    "screenshotSha256s":{"tocktutor-imported-properties.png":"a52076aaa924b76af45481098f0256e66cd7e62017d69a5235da3afbb300472e","tocktutor-assistant.png":"4c9b6eb2a1c66faea0a636e601745c1c4dcf41bcd989978ba58ea60098c343ab"},
+    "geometry":[1512,949,2],"pixels":[3024,1898],"theme":"dark","skin":null,"composerLift":5,"composerPadding":17,"footerSafeArea":28,"noPromptSent":true,
+    "propertiesContentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2","propertiesNoteBytes":1413,"assistantContentSha256":"3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5","assistantNoteBytes":1324,"registrySha256":"2a9367198f8ac89fc22fbc76c6a8d4372803559a3c0d9306bed8bac7d65c8fb2","registryBytes":170,"sameSavedBytes":true,"registryUnchanged":true,
+    "footerOutsideEditor":true,"oneFooterAcrossSplits":true,"focusedNoteCountsVerified":true,"editorRemainsFullHeight":true,"closedFooter":{"right":1512,"bottom":949,"count":1},
+    "narrow":{"width":240,"scrollWidth":240,"clientWidth":240,"overflow":[]},"narrowComposerGap":17,
+    "appearanceChecks":[
+      {"skin":null,"mode":"Dark","system":"light","footerRight":1512,"footerBottom":949,"footerCount":1,"composerLift":5,"composerGap":17,"footerContrast":11.067896561378452},
+      {"skin":null,"mode":"Light","system":"dark","footerRight":1512,"footerBottom":949,"footerCount":1,"composerLift":5,"composerGap":17,"footerContrast":5.322704663147297},
+      {"skin":"tockteam-skin-navy","mode":"Dark","system":"light","footerRight":1512,"footerBottom":949,"footerCount":1,"composerLift":5,"composerGap":17,"footerContrast":11.134419781813875},
+      {"skin":"tockteam-skin-navy","mode":"Light","system":"dark","footerRight":1512,"footerBottom":949,"footerCount":1,"composerLift":5,"composerGap":17,"footerContrast":6.877599363661155},
+      {"skin":"tockteam-skin-jade","mode":"Dark","system":"light","footerRight":1512,"footerBottom":949,"footerCount":1,"composerLift":5,"composerGap":17,"footerContrast":11.122989699986702},
+      {"skin":"tockteam-skin-jade","mode":"Light","system":"dark","footerRight":1512,"footerBottom":949,"footerCount":1,"composerLift":5,"composerGap":17,"footerContrast":7.115238024291395},
+      {"skin":"tockteam-skin-ember","mode":"Dark","system":"light","footerRight":1512,"footerBottom":949,"footerCount":1,"composerLift":5,"composerGap":17,"footerContrast":7.949428151220386},
+      {"skin":"tockteam-skin-ember","mode":"Light","system":"dark","footerRight":1512,"footerBottom":949,"footerCount":1,"composerLift":5,"composerGap":17,"footerContrast":7.9794265906464865}
+    ],
+    "keyboardFocus":{"focused":true,"outline":"2px","hit":true},"escapeRestored":true,"keyboardSwitch":true,"propertyDraftRetained":true,"closedFocusExcluded":true,"baselineRestored":{"scheme":"dark","skin":null},"runtimeErrors":[],"externalRequests":[],
+    "captureMethod":"Rebuilt/staged real isolated Desktop through guarded display17 and owned CDP. SAME footer reparented from per-note editors to existing Workbench grid; shared right-panel siblings reserve existing footer height. Composer bottom padding12→17 gives an independently measured5px lift above that safe area. No new palette, shared primitive, picker, event handler or authority. Original Assistant1324-byte note reconstructed in temporary fixture by removing only four later added frontmatter lines; exact SHA matches its retained reference. Expanded Properties note/registry unchanged.",
+    "builtArtifactHashes":{"dist/main.js":"26f95f9aae214361cce6f48dc39ff4c94699dc9d47bbb0acc37e270492b5e877","dist/client.js":"713b7ba358a3866023ef44c9318d5f1e7ee7083546e7e87e06d9bcd156dacf92","dist/plugins/skins/client.js":"d98b7f74643cdd55eb3fe17b68c0fa09070a6bea54353735681d9a61a97e51c4","plugins/tocktutor/build-manifest.json":"704ef72f9fff57ab7d4642029aaeb0c95483173a03f1683e171f57368e73a769","plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/client.js":"080e0da7c9545c3ba211b90de87ab33c2f2e6e02444a4e781fab0a115cd658df","plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/route.js":"5fa1dea081f16df26377b605f4fb8164e29f8d47207a9161cf47409a793bd283","plugins/tocktutor/packages/tockteam-tocktutor-assistant/lib/client-bundle.js":"899c0836c57a1955f9042e3a3750570f4c690d29173fec7b97b9a6165c2acd37","plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx":"9cc67f36e0070dd36b07668d52868c35d03821b2337b7c40c87b9db8e4f8f3ba","plugins/tocktutor/packages/tockteam-tocktutor-assistant/src/assistant-panel.tsx":"6753e4c5a3399ed71bbf2fd876068e6b8cc35ffb264c0a7580ac094a08a5079a"},
+    "checkScript":"../../../.beads/reports/2026-10-02-tocktutor-footer-check.js","report":"../../../.beads/reports/2026-10-02-tocktutor-footer-composer.md",
+    "cleanup":{"id":"4bf2686c-d5ca-4120-b906-c9ae6a2ed168","rootPid":1259,"recordedPids":[1259,1261,1262,1264,1265,1270,1281,1484],"stopped":true,"remaining":[]},
+    "galleryVerification":{"status":"verified","geometry":[1512,949,2],"surfaces":["imported-properties","assistant"],"bothPairsDecoded":true,"surfaceCount":29,"imageCount":66,"runtimeErrors":[],"failedRequests":[],"httpErrors":[]},
+    "galleryCleanup":{"id":"2b88ca0a-113a-4371-95e5-cbaa3b5f359c","rootPid":6850,"recordedPids":[6850,6852,6853,6854],"stopped":true,"remaining":[],"serverPid":6772,"serverPort":55237,"serverStopped":true,"portClosed":true},"protectedUserBytesPreserved":true,"nativeSourceHashesPreserved":true,
+    "limits":["Properties installed Obsidian and historical Assistant/Claudian reference captures are unchanged, not new native certification.","Unchanged five-second capped Replace All timeout passed focused and full four-worker790-case retries.","Native persistence harness raced a projected React commit; unchanged focused11/fullroot1698-case retries passed; owner retains its separate correction.","React Doctor reported two complexity warnings in existing large functions; no new branches or architecture changes, numerical score unavailable.","Unowned empty index.lock blocked the first checkpoint; no open handle/agent owner found, removed only after explicit user approval and unchanged-file checks."]
+  },
   "propertyCalendarRefresh": {
-    "status":"verified-current","sourceCommit":"09c3c06a","capturedAt":"2026-10-02T02:45:35.367Z",
+    "status":"verified-historical","sourceCommit":"09c3c06a","capturedAt":"2026-10-02T02:45:35.367Z",
     "publicationAllowlist":["tocktutor-imported-properties.png"],"unrelatedExistingCapturesUnchanged":72,"installedReferenceUnchanged":true,
     "referenceScreenshotSha256":"22c5efa5ffe4dfa97c1a0f29b23dca62f3757c1dc0b9e1c64e3799c7044fa236","screenshotSha256":"df7a8c8b4706062e333280d1adb31c82e8f4cc05586e969b09abb97fa6c313a9",
     "path":"comparison.md","noteBytes":1413,"contentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2","registryBytes":170,"registrySha256":"2a9367198f8ac89fc22fbc76c6a8d4372803559a3c0d9306bed8bac7d65c8fb2","sameSavedBytes":true,"registryUnchanged":true,
@@ -1189,13 +1216,14 @@
       "contentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
       "registrySha256":"2a9367198f8ac89fc22fbc76c6a8d4372803559a3c0d9306bed8bac7d65c8fb2",
       "registryUnchanged":true,
-      "bytes":292229,
-      "sha256":"df7a8c8b4706062e333280d1adb31c82e8f4cc05586e969b09abb97fa6c313a9",
-      "sourceCommit":"09c3c06a",
-      "capturedAt":"2026-10-02T02:45:35.367Z",
+      "bytes":297247,
+      "sha256":"a52076aaa924b76af45481098f0256e66cd7e62017d69a5235da3afbb300472e",
+      "sourceCommit":"c87ad048",
+      "capturedAt":"2026-10-02T03:39:15.853Z",
       "visibleState":{
         "linkedProperties":true,"rightSidebar":true,"fullHeightNote":true,"noteHeading":"Markdown Rendering Lab","frontmatterCollapsed":true,"rootColorScheme":"dark","rootSkin":null,"bodySkin":null,"exponentNumber":true,"reopened":true,"unsupportedSourceFallback":true,"extraToolbar":false,
         "rowMenuEntries":["Rename Property","Copy Value","Remove Property"],"typeMenuEntries":["Text","List","Number","Checkbox","Date","Date & Time"],"chipEditCancelled":true,"segmentedToggle":false,"titlebarButtons":true,"compactRows":true,"structuredValuePreview":"{nested: value}Use Source Mode",
+        "footer":{"x":1125.2109375,"y":921,"width":386.7890625,"height":28},"footerCount":1,"footerText":"comparison.md opened.0 backlinksLive Preview186 words1411 characters",
         "leadingCalendars":[{"key":"due","picker":{"x":1208.71875,"y":202.8359375,"width":17,"height":17},"date":{"x":1230.046875,"y":202.5,"width":266,"height":18},"value":"2026-10-01"},{"key":"meeting","picker":{"x":1208.71875,"y":231.8359375,"width":17,"height":17},"date":{"x":1230.046875,"y":231.5,"width":266,"height":18},"value":"2026-10-01T14:45"}],
         "selector":[{"label":"Properties","selected":"true"},{"label":"Assistant","selected":"false"}],"toggle":{"x":1054,"y":6,"width":64,"height":28},
         "values":{"status":"review","favorite":true,"area":"markdown","tags":["comparison","typography"],"difficulty":"medium","due":"2026-10-01","meeting":"2026-10-01T14:45","rating":"1e+21"},"propertyTypes":{"status":"text","favorite":"checkbox","area":"text","tags":"tags","difficulty":"text","due":"date","meeting":"datetime","rating":"number","unsupported":"text"},"controlTypes":["text","checkbox","text","list","text","date","datetime-local","number","source"],
@@ -1214,7 +1242,7 @@
         ]
       },
       "runtimeErrors":[],
-      "runtimeErrorMonitoring":"Guarded rebuilt isolated Desktop via owned CDP; native shadow bounds prove leading calendars in both date fields and all8appearances, zero errors/external requests. Exact note/registry unchanged, all owned trees stopped. Existing installed Obsidian reference unchanged. See propertyCalendarRefresh.",
+      "runtimeErrorMonitoring":"Guarded rebuilt isolated Desktop via owned CDP; leading calendars preserved, ONEfooter remains at workspace right edge through Properties/Assistant/closed/narrow states and all8appearances. Zero errors/external requests, exact note/registry unchanged, all owned trees stopped. Installed reference unchanged. See footerComposerRefresh.",
       "captureScope":"real-desktop"
     },
     "tocktutor-mermaid-live-preview.png": {
@@ -1828,17 +1856,19 @@
       "path": "UIUX Comparison.md",
       "mode": "live-preview",
       "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 320719,
-      "sha256": "b8bba5fdf48d03adcbf588f75f4c4f8bffa524670ac5e96bd69feb95f7ac9cc5",
-      "capturedAt": "2026-09-25T13:53:00.589Z",
+      "bytes": 291005,
+      "sha256": "4c9b6eb2a1c66faea0a636e601745c1c4dcf41bcd989978ba58ea60098c343ab",
+      "capturedAt": "2026-10-02T03:39:18.001Z",
       "visibleState": {
         "assertedText": "What can I help you with?",
         "assertionPassed": true,
         "textExcerpt": "What can I help you with?",
-        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
+        "footer":{"x":1124.84375,"y":921,"width":387.15625,"height":28,"right":1512,"bottom":949},"footerCount":1,"footerText":"UIUX Comparison.md opened.0 backlinksLive Preview171 words1322 characters",
+        "composer":{"x":1054,"y":792,"width":446,"height":112,"right":1500,"bottom":904},"composerGap":17,"composerLift":5,"composerPadding":17,"panelFooterSpace":28,"emptyComposer":true,"sendDisabled":true,"noPromptSent":true
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection listeners plus Playwright console/pageerror listeners during the full 34-image batch; all per-capture checks and error lists passed.",
-      "sourceCommit": "f436fcc0"
+      "runtimeErrorMonitoring": "Guarded real rebuilt Desktop via owned CDP; empty Assistant, original note bytes unchanged; keyboard focus, Escape restoration, 5px composer lift, footer-safe gap, eight appearances and contrast verified. Zero errors/external requests, no prompt sent, all owned trees stopped. Historical reference retained. See footerComposerRefresh.",
+      "sourceCommit": "c87ad048"
     },
     "obsidian-assistant.png": {
       "geometry": {
