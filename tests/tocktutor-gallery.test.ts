@@ -205,8 +205,8 @@ test('pairs Imported Property Controls with genuine Obsidian and the identical s
   assert.equal(refresh.samePropertyTypes, true)
   assert.equal(refresh.reusesExistingBuild, true)
   const current = proof.captures['tocktutor-imported-properties.png']
-  assert.equal(current.sourceCommit, proof.propertiesLayoutRefresh.sourceCommit)
-  assert.equal(current.sha256, proof.propertiesLayoutRefresh.screenshotSha256)
+  assert.equal(current.sourceCommit, proof.propertyCalendarRefresh.sourceCommit)
+  assert.equal(current.sha256, proof.propertyCalendarRefresh.screenshotSha256)
   assert.equal(current.visibleState.rightSidebar, true)
   assert.equal(current.visibleState.fullHeightNote, true)
   assert.equal(current.visibleState.rootColorScheme, 'dark')
@@ -273,7 +273,7 @@ test('publishes the current Properties comparison in the canonical gallery from 
   assert.equal(refresh.registryUnchanged, true)
   const current = proof.captures['tocktutor-imported-properties.png']
   const native = proof.captures['obsidian-imported-properties.png']
-  assert.equal(current.sourceCommit, proof.propertiesLayoutRefresh.sourceCommit)
+  assert.equal(current.sourceCommit, proof.propertyCalendarRefresh.sourceCommit)
   assert.equal(refresh.status, 'verified-historical')
   assert.equal(native.sha256, refresh.screenshotSha256s['obsidian-imported-properties.png'])
   assert.equal(native.entry, '/Applications/Obsidian.app/Contents/Resources/app.asar')
@@ -298,7 +298,7 @@ test('aligns compact Properties rows and titlebar buttons without replacing the 
   const refresh = proof.propertiesLayoutRefresh
   const current = proof.captures['tocktutor-imported-properties.png']
   const native = proof.captures['obsidian-imported-properties.png']
-  assert.equal(refresh.status, 'verified-current')
+  assert.equal(refresh.status, 'verified-historical')
   assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-imported-properties.png'])
   assert.equal(refresh.unrelatedExistingCapturesUnchanged, 72)
   assert.equal(refresh.installedReferenceUnchanged, true)
@@ -341,6 +341,40 @@ test('aligns compact Properties rows and titlebar buttons without replacing the 
   assert.match(html, /Properties Layout Refresh/u)
 })
 
+test('places native calendar controls before both property dates in all eight appearances', () => {
+  const refresh = proof.propertyCalendarRefresh
+  const current = proof.captures['tocktutor-imported-properties.png']
+  assert.equal(refresh.status, 'verified-current')
+  assert.equal(current.sourceCommit, refresh.sourceCommit)
+  assert.equal(current.sha256, refresh.screenshotSha256)
+  assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-imported-properties.png'])
+  assert.equal(refresh.installedReferenceUnchanged, true)
+  assert.equal(refresh.unrelatedExistingCapturesUnchanged, 72)
+  assert.equal(refresh.sameSavedBytes, true)
+  assert.equal(refresh.registryUnchanged, true)
+  assert.deepEqual(refresh.geometry, [1512, 949, 2])
+  assert.deepEqual(refresh.pixels, [3024, 1898])
+  assert.equal(refresh.nativePickerRetained, true)
+  assert.deepEqual(refresh.nativeInputs.map((field: { key: string; value: string }) => [field.key, field.value]), [['due', '2026-10-01'], ['meeting', '2026-10-01T14:45']])
+  assert.deepEqual(current.visibleState.leadingCalendars, refresh.nativeInputs)
+  assert.equal(refresh.appearanceChecks.length, 8)
+  for (const check of refresh.appearanceChecks) {
+    assert.notEqual(check.mode.toLowerCase(), check.system)
+    for (const field of check.nativeInputs) {
+      assert.ok(field.picker.width > 0 && field.picker.height > 0)
+      assert.ok(field.picker.x + field.picker.width <= field.date.x, field.key)
+    }
+    assert.deepEqual(check.geometry, [1512, 949, 2])
+  }
+  assert.ok(refresh.nativeFocus.every((field: { focused: boolean; outline: string }) => field.focused && parseFloat(field.outline) >= 2))
+  assert.equal(existsSync(resolve(root, refresh.checkScript)), true)
+  assert.deepEqual(refresh.runtimeErrors, [])
+  assert.ok(refresh.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
+  assert.equal(refresh.galleryCleanup.serverStopped, true)
+  assert.deepEqual(refresh.galleryCleanup.remaining, [])
+  assert.match(html, /calendar button before the date/u)
+})
+
 test('keeps unmatched migration surfaces distinct from the four focused comparisons', () => {
   const additions = proof.migrationReview
   assert.equal(additions.allowlist.length, 6)
@@ -357,7 +391,7 @@ test('keeps unmatched migration surfaces distinct from the four focused comparis
     assert.equal(proof.captures[name].captureScope, 'real-desktop')
     const expectedCommit = name === 'tocktutor-image-viewer.png' ? additions.imageViewerRefresh.sourceCommit
       : name === 'tocktutor-image-resizing.png' ? additions.imageLayoutRefresh.sourceCommit
-        : name === 'tocktutor-imported-properties.png' ? proof.propertiesLayoutRefresh.sourceCommit : additions.sourceCommit
+        : name === 'tocktutor-imported-properties.png' ? proof.propertyCalendarRefresh.sourceCommit : additions.sourceCommit
     assert.equal(proof.captures[name].sourceCommit, expectedCommit)
   }
   const fixtures = resolve(root, additions.fixtures)

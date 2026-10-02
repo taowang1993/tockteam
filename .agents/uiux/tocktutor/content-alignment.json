@@ -1,6 +1,35 @@
 {
+  "propertyCalendarRefresh": {
+    "status":"verified-current","sourceCommit":"09c3c06a","capturedAt":"2026-10-02T02:45:35.367Z",
+    "publicationAllowlist":["tocktutor-imported-properties.png"],"unrelatedExistingCapturesUnchanged":72,"installedReferenceUnchanged":true,
+    "referenceScreenshotSha256":"22c5efa5ffe4dfa97c1a0f29b23dca62f3757c1dc0b9e1c64e3799c7044fa236","screenshotSha256":"df7a8c8b4706062e333280d1adb31c82e8f4cc05586e969b09abb97fa6c313a9",
+    "path":"comparison.md","noteBytes":1413,"contentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2","registryBytes":170,"registrySha256":"2a9367198f8ac89fc22fbc76c6a8d4372803559a3c0d9306bed8bac7d65c8fb2","sameSavedBytes":true,"registryUnchanged":true,
+    "geometry":[1512,949,2],"pixels":[3024,1898],"theme":"dark","skin":null,"nativePickerRetained":true,
+    "nativeInputs":[{"key":"due","picker":{"x":1208.71875,"y":202.8359375,"width":17,"height":17},"date":{"x":1230.046875,"y":202.5,"width":266,"height":18},"value":"2026-10-01"},{"key":"meeting","picker":{"x":1208.71875,"y":231.8359375,"width":17,"height":17},"date":{"x":1230.046875,"y":231.5,"width":266,"height":18},"value":"2026-10-01T14:45"}],
+    "nativeFocus":[{"key":"due","type":"date","value":"2026-10-01","focused":true,"outline":"2px"},{"key":"meeting","type":"datetime-local","value":"2026-10-01T14:45","focused":true,"outline":"2px"}],
+    "narrow":{"width":240,"scrollWidth":240,"clientWidth":240,"overflow":[]},
+    "appearanceChecks":[
+      {"skin":null,"mode":"Dark","system":"light","geometry":[1512,949,2],"nativeInputs":[{"key":"due","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}},{"key":"meeting","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}}]},
+      {"skin":null,"mode":"Light","system":"dark","geometry":[1512,949,2],"nativeInputs":[{"key":"due","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}},{"key":"meeting","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}}]},
+      {"skin":"tockteam-skin-navy","mode":"Dark","system":"light","geometry":[1512,949,2],"nativeInputs":[{"key":"due","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}},{"key":"meeting","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}}]},
+      {"skin":"tockteam-skin-navy","mode":"Light","system":"dark","geometry":[1512,949,2],"nativeInputs":[{"key":"due","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}},{"key":"meeting","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}}]},
+      {"skin":"tockteam-skin-jade","mode":"Dark","system":"light","geometry":[1512,949,2],"nativeInputs":[{"key":"due","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}},{"key":"meeting","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}}]},
+      {"skin":"tockteam-skin-jade","mode":"Light","system":"dark","geometry":[1512,949,2],"nativeInputs":[{"key":"due","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}},{"key":"meeting","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}}]},
+      {"skin":"tockteam-skin-ember","mode":"Dark","system":"light","geometry":[1512,949,2],"nativeInputs":[{"key":"due","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}},{"key":"meeting","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}}]},
+      {"skin":"tockteam-skin-ember","mode":"Light","system":"dark","geometry":[1512,949,2],"nativeInputs":[{"key":"due","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}},{"key":"meeting","picker":{"x":1208.71875,"width":17,"height":17},"date":{"x":1230.046875}}]}
+    ],
+    "keyboardSwitch":true,"propertyDraftRetained":true,"closedFocusExcluded":true,"baselineRestored":{"scheme":"dark","skin":null},"runtimeErrors":[],"externalRequests":[],"consoleWarnings":0,"startupConsoleWarnings":1,
+    "builtArtifactHashes":{"dist/main.js":"c357f9a85fbea5a199026c1ac07a3ca06d5fdfacdbc977c740441eca272bc22f","dist/client.js":"713b7ba358a3866023ef44c9318d5f1e7ee7083546e7e87e06d9bcd156dacf92","dist/plugins/skins/client.js":"b5cd5b14ed051db5a1b52d2d26152b29417856c593018c441930162b092ba5e3","plugins/tocktutor/build-manifest.json":"98db7a4353a0ef1dbacd561b6b12361f81e3b4dd746a70eda567783a942c4f21","plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/client.js":"3288e60cc52daf70d261bb5f7f4223962588ff454cbda0148a5d8fe0e951e903","plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/live-preview-editor.js":"654f96a2a539e83b59e421f97ea6538e3219ad17fe76505260e752a7394030d0","plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/live-preview-editor.tsx":"ad7f6ec78d750b2795c67ae771e46949bcab71f3c289a600ade411a125ec6f2a"},
+    "checkScript":"../../../.beads/reports/2026-10-02-tocktutor-calendar-check.js",
+    "captureMethod":"Three local Tailwind utilities reorder the existing native calendar indicator before the date edit segment in shared Properties markup; no new icon, picker, palette or event handler. Rebuilt/staged real isolated Desktop via guarded display17 and owned CDP; native shadow bounds prove both fields in eight app/system-mismatch appearances. Installed Obsidian reference retained unchanged.",
+    "cleanup":[{"id":"2b691b0b-907d-4bf2-8895-bbaa9f92a3a3","rootPid":72580,"recordedPids":[72580,72588,72589,72590,72591,72594,72604,72744,72745,72746,72747,72748,72800,72977,72978,72979,72980],"stopped":true,"remaining":[]},{"id":"ab49b673-c3cb-4164-be2a-dd60fde31f5f","rootPid":83033,"recordedPids":[83033,83035,83036,83038,83039,83042,83064,83106,83107,83108,83260,83316,83317,83318,83319,83320,83321,83322,83323,83557,83558,83559,83560,83561,83562,83563,83564],"stopped":true,"remaining":[]}],
+    "galleryVerification":{"status":"verified","geometry":[1512,949,2],"surface":"imported-properties","bothImagesDecoded":true,"surface30Absent":true,"surfaceCount":29,"imageCount":66,"oldGalleryLink":false,"runtimeErrors":[],"failedRequests":[],"httpErrors":[]},
+    "galleryCleanup":{"id":"b7a2f8ce-0f7b-4dfc-ae53-bccbc093af96","stopped":true,"rootPid":86361,"recordedPids":[86361,86363,86364,86365],"remaining":[],"serverPid":86297,"serverStopped":true,"portClosed":true},
+    "protectedUserBytesPreserved":true,
+    "limits":["Native date/datetime formatting and calendar artwork remain Chromium/Electron-native, not exact Obsidian rendering. Other browser engines are not certified.","Unchanged capped-search5s component timeout passed focused and bounded39-file/790-case retry.","One Native persistence harness asserted unmount before React committed; unchanged focused/fullroot retry passed, peer owns the bounded visible-unmount correction.","React Doctor scoped lint found no issues; maintainability analysis incomplete, score disabled."]
+  },
   "propertiesLayoutRefresh": {
-    "status":"verified-current","sourceCommit":"379938f0","sourceCheckpoints":["631a9046","3867c5e8","379938f0"],"capturedAt":"2026-10-02T01:43:23.420Z",
+    "status":"verified-historical","sourceCommit":"379938f0","sourceCheckpoints":["631a9046","3867c5e8","379938f0"],"capturedAt":"2026-10-02T01:43:23.420Z",
     "publicationAllowlist":["tocktutor-imported-properties.png"],"unrelatedExistingCapturesUnchanged":72,"installedReferenceUnchanged":true,"nativeReferenceCapture":"2026-10-02T00:25:05.523Z",
     "screenshotSha256":"fcc3d0f99c074d56fdd4deeb303933ace8084884f483cc5f53b90cc52460ed1e","referenceScreenshotSha256":"22c5efa5ffe4dfa97c1a0f29b23dca62f3757c1dc0b9e1c64e3799c7044fa236",
     "path":"comparison.md","noteBytes":1413,"contentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2","registryBytes":170,"registrySha256":"2a9367198f8ac89fc22fbc76c6a8d4372803559a3c0d9306bed8bac7d65c8fb2","sameSavedBytes":true,"registryUnchanged":true,
@@ -1160,13 +1189,14 @@
       "contentSha256":"6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
       "registrySha256":"2a9367198f8ac89fc22fbc76c6a8d4372803559a3c0d9306bed8bac7d65c8fb2",
       "registryUnchanged":true,
-      "bytes":292596,
-      "sha256":"fcc3d0f99c074d56fdd4deeb303933ace8084884f483cc5f53b90cc52460ed1e",
-      "sourceCommit":"379938f0",
-      "capturedAt":"2026-10-02T01:43:23.420Z",
+      "bytes":292229,
+      "sha256":"df7a8c8b4706062e333280d1adb31c82e8f4cc05586e969b09abb97fa6c313a9",
+      "sourceCommit":"09c3c06a",
+      "capturedAt":"2026-10-02T02:45:35.367Z",
       "visibleState":{
         "linkedProperties":true,"rightSidebar":true,"fullHeightNote":true,"noteHeading":"Markdown Rendering Lab","frontmatterCollapsed":true,"rootColorScheme":"dark","rootSkin":null,"bodySkin":null,"exponentNumber":true,"reopened":true,"unsupportedSourceFallback":true,"extraToolbar":false,
         "rowMenuEntries":["Rename Property","Copy Value","Remove Property"],"typeMenuEntries":["Text","List","Number","Checkbox","Date","Date & Time"],"chipEditCancelled":true,"segmentedToggle":false,"titlebarButtons":true,"compactRows":true,"structuredValuePreview":"{nested: value}Use Source Mode",
+        "leadingCalendars":[{"key":"due","picker":{"x":1208.71875,"y":202.8359375,"width":17,"height":17},"date":{"x":1230.046875,"y":202.5,"width":266,"height":18},"value":"2026-10-01"},{"key":"meeting","picker":{"x":1208.71875,"y":231.8359375,"width":17,"height":17},"date":{"x":1230.046875,"y":231.5,"width":266,"height":18},"value":"2026-10-01T14:45"}],
         "selector":[{"label":"Properties","selected":"true"},{"label":"Assistant","selected":"false"}],"toggle":{"x":1054,"y":6,"width":64,"height":28},
         "values":{"status":"review","favorite":true,"area":"markdown","tags":["comparison","typography"],"difficulty":"medium","due":"2026-10-01","meeting":"2026-10-01T14:45","rating":"1e+21"},"propertyTypes":{"status":"text","favorite":"checkbox","area":"text","tags":"tags","difficulty":"text","due":"date","meeting":"datetime","rating":"number","unsupported":"text"},"controlTypes":["text","checkbox","text","list","text","date","datetime-local","number","source"],
         "panel":{"x":1042,"y":40,"width":470,"height":909},"editor":{"x":320,"y":40,"width":722,"height":909},
@@ -1184,7 +1214,7 @@
         ]
       },
       "runtimeErrors":[],
-      "runtimeErrorMonitoring":"Guarded rebuilt isolated Desktop via owned CDP; zero capture/appearance errors/external requests, exact note/registry unchanged, all owned trees stopped. Existing installed Obsidian reference unchanged. See propertiesLayoutRefresh.",
+      "runtimeErrorMonitoring":"Guarded rebuilt isolated Desktop via owned CDP; native shadow bounds prove leading calendars in both date fields and all8appearances, zero errors/external requests. Exact note/registry unchanged, all owned trees stopped. Existing installed Obsidian reference unchanged. See propertyCalendarRefresh.",
       "captureScope":"real-desktop"
     },
     "tocktutor-mermaid-live-preview.png": {
