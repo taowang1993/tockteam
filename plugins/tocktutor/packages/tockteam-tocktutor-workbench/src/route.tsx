@@ -6188,6 +6188,22 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         </Tooltip>
         </div>
       </div>
+      {rightSidebarOpen && <div className="absolute inset-y-0 right-0 flex items-center px-3" style={{ width: assistantPanelWidth }}>
+        <ToggleGroup unstyled aria-label="Right Sidebar View" className="tocktutor-sidebar-view-buttons flex items-center gap-2 [-webkit-app-region:no-drag]" data-view={sidebarView} orientation="horizontal" type="single" value={sidebarView} onValueChange={value => { if (value === 'assistant') setPanel(value); else if (value === 'file-properties') openProperties() }}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <ToggleGroupItem unstyled aria-label="Properties" className="flex size-7 items-center justify-center rounded-[5px] border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" value="file-properties"><ListTree aria-hidden="true" /></ToggleGroupItem>
+            </TooltipTrigger>
+            <TooltipContent>Properties</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <ToggleGroupItem unstyled aria-label="Assistant" className="flex size-7 items-center justify-center rounded-[5px] border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" value="assistant"><MessageSquare aria-hidden="true" /></ToggleGroupItem>
+            </TooltipTrigger>
+            <TooltipContent>Assistant</TooltipContent>
+          </Tooltip>
+        </ToggleGroup>
+      </div>}
     </section>
   ) : null
   const sidebarTarget = sidebarDialog?.target
@@ -6723,7 +6739,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         <aside
           aria-hidden={!rightSidebarOpen}
           aria-label="Right Sidebar"
-          className="tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-h-0 min-w-0 w-0 max-w-[calc(100vw-var(--tockteam-rail-width,40px))] translate-x-6 grid-rows-[auto_minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto"
+          className="tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-h-0 min-w-0 w-0 max-w-[calc(100vw-var(--tockteam-rail-width,40px))] translate-x-6 grid-rows-[minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto"
           data-open={rightSidebarOpen}
           style={{ width: rightSidebarOpen ? `${String(assistantPanelWidth)}px` : '0px' }}
           {...(rightSidebarOpen ? {} : { inert: '' })}
@@ -6743,23 +6759,6 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               type="button"
             />
           )}
-          <header className="flex min-h-12 shrink-0 items-center border-b border-[var(--tt-border)] px-3 py-1">
-            <ToggleGroup unstyled aria-label="Right Sidebar View" className="tocktutor-sidebar-view-toggle group/sidebar-view relative isolate inline-grid grid-cols-2 gap-0 rounded-lg border border-border bg-muted/20 p-0.5 [&_svg]:text-muted-foreground [&_[data-state=on]_svg]:text-foreground" data-view={sidebarView} orientation="horizontal" type="single" value={sidebarView} onValueChange={value => { if (value === 'assistant') setPanel(value); else if (value === 'file-properties') openProperties() }}>
-              <span aria-hidden="true" className="tocktutor-sidebar-view-indicator pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc((100%_-_4px)/2)] rounded-md border border-border bg-accent transition-transform duration-200 ease-out group-data-[view=assistant]/sidebar-view:translate-x-full motion-reduce:transition-none" />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <ToggleGroupItem unstyled aria-label="Properties" className="relative grid h-8 items-center justify-center rounded-md border-0 bg-transparent px-3 py-0" value="file-properties"><ListTree aria-hidden="true" /></ToggleGroupItem>
-                </TooltipTrigger>
-                <TooltipContent>Properties</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <ToggleGroupItem unstyled aria-label="Assistant" className="relative grid h-8 items-center justify-center rounded-md border-0 bg-transparent px-3 py-0" value="assistant"><MessageSquare aria-hidden="true" /></ToggleGroupItem>
-                </TooltipTrigger>
-                <TooltipContent>Assistant</TooltipContent>
-              </Tooltip>
-            </ToggleGroup>
-          </header>
           <div className="min-h-0 min-w-0 overflow-hidden">
             <div aria-label="Assistant Panel" className="tocktutor-assistant-content h-full min-h-0 min-w-0 overflow-hidden [&[hidden]]:hidden" hidden={panel !== 'assistant'} {...(panel === 'assistant' ? {} : { inert: '' })}>{props.assistantPanel}</div>
             <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden [&[hidden]]:hidden" hidden={panel !== 'file-properties'} {...(panel === 'file-properties' ? {} : { inert: '' })}>

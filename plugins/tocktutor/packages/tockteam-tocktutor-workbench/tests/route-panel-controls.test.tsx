@@ -716,16 +716,20 @@ describe('TockTutor titlebar panel controls', () => {
     expect(assistant.hasAttribute('inert')).toBe(true)
   })
 
-  it('shows a compact segmented sidebar toggle with accessible icons and one selected highlight', async () => {
+  it('switches sidebar views with separate accessible titlebar buttons', async () => {
     renderRoute()
     fireEvent.click(screen.getByRole('button', { name: 'Toggle Right Sidebar' }))
     const chooser = screen.getByRole('radiogroup', { name: 'Right Sidebar View' })
     const properties = within(chooser).getByRole('radio', { name: 'Properties' })
     const assistant = within(chooser).getByRole('radio', { name: 'Assistant' })
     expect(chooser.textContent).toBe('')
-    const highlight = chooser.querySelector('.tocktutor-sidebar-view-indicator')
-    expect(highlight?.getAttribute('aria-hidden')).toBe('true')
-    for (const choice of [properties, assistant]) expect(choice.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
+    expect(within(screen.getByRole('region', { name: 'TockTutor Title Bar' })).getByRole('radiogroup', { name: 'Right Sidebar View' })).toBe(chooser)
+    expect(within(screen.getByRole('complementary', { name: 'Right Sidebar' })).queryByRole('radiogroup', { name: 'Right Sidebar View' })).toBeNull()
+    expect(chooser.querySelector('.tocktutor-sidebar-view-indicator')).toBeNull()
+    for (const choice of [properties, assistant]) {
+      expect(choice.tagName).toBe('BUTTON')
+      expect(choice.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
+    }
     expect(assistant.getAttribute('aria-checked')).toBe('true')
     expect(chooser.getAttribute('data-view')).toBe('assistant')
     fireEvent.click(properties)

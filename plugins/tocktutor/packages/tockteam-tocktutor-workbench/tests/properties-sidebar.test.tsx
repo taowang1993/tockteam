@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { useSyncExternalStore } from 'react'
 import { afterEach, expect, it } from 'vitest'
 import { LinkedNotePane } from '../src/linked-note-pane.tsx'
+import { MarkdownDocumentHeader } from '../src/live-preview-editor.tsx'
 import { WorkbenchRouteController, TockTutorRouteView, type WorkbenchRouteRemote } from '../src/route.tsx'
 
 const vault = { id: `vault:${'f'.repeat(64)}`, generation: 1 }
@@ -62,7 +63,7 @@ it('preserves Properties and Assistant drafts without the extra toolbar and reta
   const view = render(<Harness />)
   try {
     const sidebar = screen.getByRole('complementary', { name: 'Right Sidebar' })
-    const chooser = within(sidebar).getByRole('radiogroup', { name: 'Right Sidebar View' })
+    const chooser = within(screen.getByRole('region', { name: 'TockTutor Title Bar' })).getByRole('radiogroup', { name: 'Right Sidebar View' })
     await waitFor(() => expect(within(sidebar).getByLabelText('Property name')).toBeTruthy())
     fireEvent.blur(within(sidebar).getByLabelText('Property name'), { target: { value: 'Changed' } })
     const listDraft = within(sidebar).getByLabelText('New aliases Value') as HTMLInputElement
@@ -90,6 +91,24 @@ it('preserves Properties and Assistant drafts without the extra toolbar and reta
     expect(within(sidebar).getByLabelText('Assistant Draft')).toBe(assistantDraft)
     expect(assistantDraft.value).toBe('Unsent question')
   } finally { view.unmount(); await controller.dispose() }
+})
+
+it('offers compact property values and icon-only list actions without an extra collapse row', () => {
+  const changes: unknown[] = []
+  render(<MarkdownDocumentHeader compact editableProperties declaredTypes={{ rating: 'number' }} source={'---\ntags: [one, two]\nnested: {keep: true}\nrating: "rating: unknown"\n---\n'} onSetProperty={(key, value) => { changes.push([key, value]); return true }} />)
+  expect(screen.getByRole('heading', { name: 'Properties' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Properties', exact: true })).toBeNull()
+  const add = screen.getByRole('button', { name: 'Add tags Value' })
+  expect(add.textContent).toBe('')
+  expect(add.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
+  fireEvent.change(screen.getByLabelText('New tags Value'), { target: { value: 'three' } })
+  fireEvent.click(add)
+  expect(changes).toEqual([['tags', ['one', 'two', 'three']]])
+  expect(screen.getByText('{keep: true}')).toBeTruthy()
+  expect(screen.getByText('rating: unknown')).toBeTruthy()
+  expect(screen.getAllByText('Use Source Mode')).toHaveLength(2)
+  expect(screen.queryByLabelText('Property nested')).toBeNull()
+  expect(screen.queryByLabelText('Property rating')).toBeNull()
 })
 
 it('retains relationship controls on other linked panes', async () => {

@@ -48,6 +48,7 @@ export interface LivePreviewEditorProps {
     title?: string;
 }
 export declare function MarkdownDocumentHeader(props: {
+    compact?: boolean;
     editableProperties?: boolean;
     className?: string;
     declaredTypes?: ObsidianPropertyTypes | undefined;

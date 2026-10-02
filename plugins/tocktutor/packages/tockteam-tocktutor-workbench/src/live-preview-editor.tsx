@@ -1,3 +1,4 @@
+import { cn } from '@tockteam/ui'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -19,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@tockteam/ui/dropdown-menu'
 import { Input } from '@tockteam/ui/input'
-import { AlignLeft, CalendarDays, CheckSquare, ChevronRight, Hash, List, MoreHorizontal, Plus, Tags, X } from 'lucide-react'
+import { AlignLeft, CalendarDays, CheckSquare, ChevronRight, Hash, List, MoreHorizontal, Plus, Tags, TriangleAlert, X } from 'lucide-react'
 import {
   lazy,
   Suspense,
@@ -114,7 +115,7 @@ function propertyDraftKey(kind: PropertyDraftKind, property?: string, index?: nu
   return `${propertyDraftPrefix}${kind}${property === undefined ? '' : `:${encodeURIComponent(property)}`}${index === undefined ? '' : `:${index}`}`
 }
 
-function PropertyListEditor(props: { name: string; values: string[]; onSet: (values: string[]) => boolean | undefined; propertyDrafts?: Map<string, string> | undefined; suggestions?: PropertySuggestions | undefined }): ReactNode {
+function PropertyListEditor(props: { compact?: boolean | undefined; name: string; values: string[]; onSet: (values: string[]) => boolean | undefined; propertyDrafts?: Map<string, string> | undefined; suggestions?: PropertySuggestions | undefined }): ReactNode {
   const addKey = propertyDraftKey('list-add', props.name)
   const findEditingIndex = (): number => props.values.findIndex((_value, index) => props.propertyDrafts?.has(propertyDraftKey('list-edit', props.name, index)) === true)
   const [draft, setDraft] = useState(() => props.propertyDrafts?.get(addKey) ?? '')
@@ -199,7 +200,7 @@ function PropertyListEditor(props: { name: string; values: string[]; onSet: (val
     }
   }
   return <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-    {props.values.map((value, index) => <span className="inline-flex min-h-6 max-w-full items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_10%,transparent)] px-2 text-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_85%,var(--tt-text))]" key={`${index}:${value}`}>
+    {props.values.map((value, index) => <span className={cn('inline-flex max-w-full items-center gap-1 bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_10%,transparent)] text-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_85%,var(--tt-text))]', props.compact ? 'min-h-5 rounded px-1 leading-5' : 'min-h-6 rounded-full px-2')} key={`${index}:${value}`}>
       {editingIndex === index
         ? <Input aria-label={`Edit ${value} in ${props.name}`} autoFocus className="h-6 min-w-12 max-w-48 border-0 bg-transparent px-0 py-0 text-xs" onBlur={commitEdit} onChange={event => { setCurrentEditDraft(event.currentTarget.value) }} onKeyDown={event => {
             if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancelEdit() }
@@ -208,7 +209,7 @@ function PropertyListEditor(props: { name: string; values: string[]; onSet: (val
         : <Button unstyled aria-label={`Edit ${value} in ${props.name}`} className="min-w-0 max-w-full cursor-text truncate rounded border-0 bg-transparent p-0 text-inherit focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={() => { startEdit(value, index) }} ref={element => { if (element) editButtons.current.set(index, element); else editButtons.current.delete(index) }} type="button">{value}</Button>}
       {editingIndex !== index && <Button unstyled aria-label={`Remove ${value} from ${props.name}`} className="inline-flex size-5 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-current focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" disabled={props.onSet === undefined} onClick={() => { remove(index) }} type="button"><X aria-hidden="true" className="size-3" /></Button>}
     </span>)}
-    <form className="flex min-w-0 flex-1 flex-wrap items-center gap-1" onSubmit={event => {
+    <form className={cn('flex min-w-0 flex-1 items-center gap-1', props.compact ? 'basis-8' : 'flex-wrap')} onSubmit={event => {
       event.preventDefault()
       if (draft.trim() === '') { setError('Enter a value.'); return }
       const value = normalizePropertyListValue(props.name, draft)
@@ -217,15 +218,16 @@ function PropertyListEditor(props: { name: string; values: string[]; onSet: (val
         setDraft('')
       }
     }}>
-      <Input aria-label={`New ${props.name} Value`} className="h-7 min-w-28 flex-1 text-xs" onChange={event => { setAddDraft(event.currentTarget.value); setError('') }} value={draft} />
+      <Input unstyled={props.compact === true} aria-label={`New ${props.name} Value`} className={props.compact ? 'h-6 min-w-6 w-6 flex-1 rounded border-0 bg-transparent px-1 py-0 text-inherit shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring' : 'h-7 min-w-28 flex-1 text-xs'} onChange={event => { setAddDraft(event.currentTarget.value); setError('') }} value={draft} />
       {props.name.toLowerCase() === 'tags' && props.suggestions && <PropertySuggestionMenu items={props.suggestions.tags.filter(tag => !props.values.includes(normalizePropertyListValue(props.name, tag)))} label={`${props.name} Value Suggestions`} onSelect={value => { if (!update([...props.values, normalizePropertyListValue(props.name, value)])) return false; props.propertyDrafts?.delete(addKey); setDraft(''); return true }} suggestions={props.suggestions} value={draft} />}
-      <Button aria-label={`Add ${props.name} Value`} disabled={props.onSet === undefined} size="xs" type="submit" variant="outline">Add</Button>
+      <Button aria-label={`Add ${props.name} Value`} className={props.compact ? 'size-6 shrink-0 p-0 opacity-0 group-hover/property:opacity-100 group-focus-within/property:opacity-100' : undefined} disabled={props.onSet === undefined} size={props.compact ? 'icon-xs' : 'xs'} type="submit" variant={props.compact ? 'ghost' : 'outline'}>{props.compact ? <Plus aria-hidden="true" /> : 'Add'}</Button>
     </form>
     {error && <span className="basis-full text-xs text-destructive" role="alert">{error}</span>}
   </div>
 }
 
 function MarkdownDocumentProperty(props: {
+  compact?: boolean | undefined
   property: FrontmatterProperty
   rawType: PropertyType
   source: string
@@ -379,9 +381,13 @@ function MarkdownDocumentProperty(props: {
     setRemoveOpen(false)
   }
   const displayValue = (): ReactNode => {
-    if (props.editable && property.type === 'mixed' && property.value !== null) return <span className="text-muted-foreground">Use Source Mode</span>
-    if (props.editable && list) return <PropertyListEditor name={property.key} onSet={values => props.onSetProperty?.(property.key, values)} propertyDrafts={props.propertyDrafts} suggestions={props.suggestions} values={Array.isArray(property.value) ? property.value : []} />
-    if (props.editable && !checkbox) return <Input aria-describedby={props.error === '' ? undefined : props.errorId} aria-invalid={props.error === '' ? undefined : true} aria-label={`Property ${property.key}`} onBlur={event => {
+    const sourceValue = String(property.value)
+    const valuePrefix = `${property.key}:`
+    if (props.editable && property.type === 'mixed' && property.value !== null) return props.compact
+      ? <span className="flex min-w-0 w-full items-center gap-2" title="Use Source Mode to edit this value."><span className="min-w-0 flex-1 truncate font-mono text-warning">{props.rawType === 'mixed' && sourceValue.startsWith(valuePrefix) ? sourceValue.slice(valuePrefix.length).trimStart() : sourceValue}</span><TriangleAlert aria-hidden="true" className="shrink-0 text-warning" /><span className="sr-only">Use Source Mode</span></span>
+      : <span className="text-muted-foreground">Use Source Mode</span>
+    if (props.editable && list) return <PropertyListEditor compact={props.compact} name={property.key} onSet={values => props.onSetProperty?.(property.key, values)} propertyDrafts={props.propertyDrafts} suggestions={props.suggestions} values={Array.isArray(property.value) ? property.value : []} />
+    if (props.editable && !checkbox) return <Input unstyled={props.compact === true} className={props.compact ? 'h-6 min-w-0 w-full rounded border-0 bg-transparent px-1 py-0 text-inherit shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring' : undefined} aria-describedby={props.error === '' ? undefined : props.errorId} aria-invalid={props.error === '' ? undefined : true} aria-label={`Property ${property.key}`} onBlur={event => {
       try {
         const text = event.currentTarget.value
         if (text === originalScalar) {
@@ -405,9 +411,9 @@ function MarkdownDocumentProperty(props: {
     </span>)
   }
   return <>
-    <dt className="flex min-h-8 min-w-0 items-center gap-2 self-start text-[var(--tt-muted)]" title={`${property.key} · ${propertyTypeLabels[property.type]}`}>
+    <dt className={cn('flex min-w-0 items-center self-start text-[var(--tt-muted)]', props.compact ? 'min-h-[29px] gap-1' : 'min-h-8 gap-2')} title={`${property.key} · ${propertyTypeLabels[property.type]}`}>
       {props.onChangePropertyType ? <DropdownMenu>
-        <DropdownMenuTrigger asChild><Button unstyled aria-label={`Property Type for ${property.key}`} className="inline-flex size-6 shrink-0 items-center justify-center rounded bg-transparent p-0 text-inherit hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" disabled={!canChangeType || typeBusy} ref={typeButton} title={propertyTypeLabels[property.type]} type="button"><IconComponent aria-hidden="true" className="size-4" /></Button></DropdownMenuTrigger>
+        <DropdownMenuTrigger asChild><Button unstyled aria-label={`Property Type for ${property.key}`} className="inline-flex size-6 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-inherit hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" disabled={!canChangeType || typeBusy} ref={typeButton} title={propertyTypeLabels[property.type]} type="button"><IconComponent aria-hidden="true" className="size-4" /></Button></DropdownMenuTrigger>
         <DropdownMenuContent align="start" portalled={false}><DropdownMenuRadioGroup onValueChange={value => { chooseType(value as EditablePropertyType) }} value={property.type}>
           {(Object.keys(propertyTypeLabels) as PropertyType[]).filter(type => type !== 'mixed').map(type => <DropdownMenuRadioItem key={type} value={type}>{propertyTypeLabels[type]}</DropdownMenuRadioItem>)}
         </DropdownMenuRadioGroup></DropdownMenuContent>
@@ -422,7 +428,7 @@ function MarkdownDocumentProperty(props: {
           : <span className="min-w-0 truncate">{property.key}</span>}
       {props.editable && <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button unstyled aria-label={`Actions for ${property.key}`} className="inline-flex size-6 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" ref={actionsButton} type="button"><MoreHorizontal aria-hidden="true" className="size-4" /></Button>
+          <Button unstyled aria-label={`Actions for ${property.key}`} className={cn('inline-flex size-6 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring', props.compact && 'opacity-0 group-hover/property:opacity-100 group-focus-within/property:opacity-100')} ref={actionsButton} type="button"><MoreHorizontal aria-hidden="true" className="size-4" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-40" portalled={false}>
           <DropdownMenuGroup>
@@ -433,7 +439,7 @@ function MarkdownDocumentProperty(props: {
         </DropdownMenuContent>
       </DropdownMenu>}
     </dt>
-    <dd className="m-0 flex min-h-8 min-w-0 flex-wrap items-center gap-1 py-1 text-[var(--tt-text)]">
+    <dd className={cn('m-0 flex min-w-0 flex-wrap items-center gap-1 text-[var(--tt-text)]', props.compact ? 'min-h-[29px] py-0' : 'min-h-8 py-1')}>
       {displayValue()}
       {typeBusy && <span className="basis-full text-xs text-muted-foreground" role="status">Remembering type…</span>}
       {typeError && !typePending && <span className="basis-full text-xs text-destructive" role="alert">{typeError}</span>}
@@ -472,6 +478,7 @@ function fallbackDocumentTitle(source: string, title: string | undefined): strin
 }
 
 export function MarkdownDocumentHeader(props: {
+  compact?: boolean
   editableProperties?: boolean
   className?: string
   declaredTypes?: ObsidianPropertyTypes | undefined
@@ -508,7 +515,7 @@ export function MarkdownDocumentHeader(props: {
   const title = props.onRenameTitle === undefined ? fallbackDocumentTitle(props.source, props.title) : props.title
   if (title === undefined && !showProperties) return null
   return (
-    <header className={props.className}>
+    <header className={cn(props.className, props.compact && 'tocktutor-properties-compact text-[13px] leading-5 [&_svg]:size-3.5!')}>
       {title !== undefined && (props.onRenameTitle === undefined
         ? <h1 className="m-0 mb-5 text-[30px] leading-tight font-bold tracking-[-.01em] text-[var(--tt-text)]">{title}</h1>
         : <NoteTitleEditor compact onRenameTitle={props.onRenameTitle} title={title} />)}
@@ -517,7 +524,7 @@ export function MarkdownDocumentHeader(props: {
       {props.editableProperties && properties.length === 0 && <p className="text-xs text-[var(--tt-muted)]">No properties.</p>}
       {showProperties && (
         <section>
-          <h2 className="m-0 mb-3 text-base font-semibold text-[var(--tt-text)]">
+          {props.compact ? <h2 className="sr-only">Properties</h2> : <h2 className="m-0 mb-3 text-base font-semibold text-[var(--tt-text)]">
             <Button
               unstyled
               aria-controls={propertiesId}
@@ -529,12 +536,13 @@ export function MarkdownDocumentHeader(props: {
               <ChevronRight aria-hidden="true" className="absolute -left-5 size-4 text-[var(--tt-muted)] group-aria-expanded:rotate-90" data-icon="inline-start" />
               Properties
             </Button>
-          </h2>
+          </h2>}
           <div hidden={!propertiesExpanded} id={propertiesId}>
             {properties.length > 0 && (
-              <dl aria-label="Document Properties" className="m-0 grid grid-cols-[minmax(96px,140px)_minmax(0,1fr)] gap-x-3 text-sm leading-6">
-                {properties.map(property => <div className="contents" key={property.key}>
+              <dl aria-label="Document Properties" className={props.compact ? 'm-0' : 'm-0 grid grid-cols-[minmax(96px,140px)_minmax(0,1fr)] gap-x-3 text-sm leading-6'}>
+                {properties.map(property => <div className={props.compact ? 'group/property grid min-h-[29px] grid-cols-[minmax(96px,32%)_minmax(0,1fr)] gap-x-2 rounded hover:bg-muted/50 focus-within:bg-muted/50' : 'contents'} key={property.key}>
                   <MarkdownDocumentProperty
+                    compact={props.compact}
                     editable={props.editableProperties === true}
                     error={error}
                     errorId={errorId}
@@ -589,7 +597,7 @@ export function MarkdownDocumentHeader(props: {
                     {error !== '' && <span className="basis-full text-xs text-[var(--dsw-alias-state-error-primary)]" id={errorId} role="alert">{error}</span>}
                   </form>
                 )
-              : <Button className="mt-2 -ml-2.5 bg-transparent text-[var(--tt-muted)] hover:text-[var(--tt-text)]" onClick={() => { props.propertyDrafts?.set(addKey, ''); setName(''); setError(''); setAdding(true) }} ref={addButton} type="button" variant="ghost"><Plus aria-hidden="true" data-icon="inline-start" />Add Property</Button>)}
+              : <Button className={cn('bg-transparent text-[var(--tt-muted)] hover:text-[var(--tt-text)]', props.compact ? 'mt-1 -ml-1.5 h-7 px-1.5 text-[13px]' : 'mt-2 -ml-2.5')} onClick={() => { props.propertyDrafts?.set(addKey, ''); setName(''); setError(''); setAdding(true) }} ref={addButton} type="button" variant="ghost"><Plus aria-hidden="true" data-icon="inline-start" />Add Property</Button>)}
           </div>
         </section>
       )}
