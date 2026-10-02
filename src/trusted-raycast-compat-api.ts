@@ -71,13 +71,28 @@ export function useNavigation(): { push: (view: unknown) => void; pop: () => voi
 }
 
 // Each mounted Form owns its values; no process-global registry outlives that form.
-const FormContext = React.createContext<Map<string, UserRaycastFieldValue> | null>(null)
+type StoredFormValue = readonly [UserRaycastFieldKind, UserRaycastFieldValue]
+const FormContext = React.createContext<{ values: Map<string, UserRaycastFieldValue>; stored: Map<string, UserRaycastFieldKind>; load(): Map<string, StoredFormValue>; save?: (value: string) => void } | null>(null)
 const copyFormValue = (value: UserRaycastFieldValue): UserRaycastFieldValue => Array.isArray(value) ? [...value] : value
+const readStoredForm = (raw: string | undefined): Map<string, StoredFormValue> => {
+  if (raw === undefined) return new Map()
+  try {
+    if (Buffer.byteLength(raw) > 4096) throw new Error()
+    const entries: unknown = JSON.parse(raw)
+    if (!Array.isArray(entries) || entries.length > 64 || !entries.every(entry => Array.isArray(entry) && entry.length === 3 && typeof entry[0] === 'string' && entry[0].length > 0 && entry[0].length <= 128 && isUserRaycastFieldValue(entry[1], entry[2])) || new Set(entries.map(entry => entry[0])).size !== entries.length) throw new Error()
+    return new Map((entries as Array<[string, UserRaycastFieldKind, UserRaycastFieldValue]>).map(([id, kind, value]) => [id, [kind, value]]))
+  } catch { throw new Error('Stored form values are invalid') }
+}
 let handleSequence = 0
 const form = (props: Record<string, unknown>) => {
-  const values = React.useRef(new Map<string, UserRaycastFieldValue>()).current
+  // ponytail: useId scopes stable mounted form order; add persistent view identity for dynamic navigation.
   const formId = React.useId()
-  return React.createElement(FormContext.Provider, { value: values }, element('raycast-form', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? {} : { formId }, [props.actions as React.ReactNode, ...React.Children.toArray(props.children as React.ReactNode)]))
+  const [state] = React.useState(() => {
+    const cache = process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? undefined : compatibility.cache?.(`form:${process.env.TOCKTEAM_USER_RAYCAST_COMMAND}`)
+    let previous: Map<string, StoredFormValue> | undefined
+    return { values: new Map<string, UserRaycastFieldValue>(), stored: new Map<string, UserRaycastFieldKind>(), load: () => previous ??= readStoredForm(cache?.get(formId)), ...(cache ? { save: (value: string) => { cache.set(formId, value); previous = readStoredForm(value) } } : {}) }
+  })
+  return React.createElement(FormContext.Provider, { value: state }, element('raycast-form', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? {} : { formId }, [props.actions as React.ReactNode, ...React.Children.toArray(props.children as React.ReactNode)]))
 }
 const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFieldValue | ((props: Record<string, unknown>) => UserRaycastFieldValue)) => (props: Record<string, unknown>) => {
   const collected = React.useContext(FormContext)
@@ -88,7 +103,10 @@ const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFi
     initialRef.current = copyFormValue(initial)
   }
   const initial = initialRef.current
-  const [draft, setDraft] = React.useState(initial)
+  const [draft, setDraft] = React.useState(() => {
+    const stored = props.storeValue === true && collected?.save ? collected.load().get(String(props.id)) : undefined
+    return copyFormValue(stored?.[0] === fieldKind ? stored[1] : initial)
+  })
   const [focusRequest, setFocusRequest] = React.useState(0)
   const [, refresh] = React.useState(0)
   const rawValue = props.value === undefined ? draft : props.value
@@ -109,9 +127,10 @@ const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFi
   }))
   React.useLayoutEffect(() => {
     if (!collected) return
-    collected.set(id, copyFormValue(value))
-    return () => { collected.delete(id) }
-  }, [collected, id, value])
+    collected.values.set(id, copyFormValue(value))
+    if (props.storeValue === true) collected.stored.set(id, fieldKind)
+    return () => { collected.values.delete(id); collected.stored.delete(id) }
+  }, [collected, id, value, props.storeValue])
   // The reviewed bundled projection remains unchanged; callbacks stay in the private child.
   return element('raycast-text-field', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? props : {
     ...props, ref: undefined, fieldKind, value, fieldEventId, focusRequest, onChange: change,
@@ -125,7 +144,7 @@ const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFi
   }, React.Children.toArray(props.children as React.ReactNode))
 }
 const formDropdown = (props: Record<string, unknown>) => {
-  const collected = React.useContext(FormContext)
+  const collected = React.useContext(FormContext)?.values ?? null
   const fieldId = React.useRef(`field-${++handleSequence}`).current
   let value = typeof props.value === 'string' ? props.value : ''
   if (collected !== null) {
@@ -256,8 +275,17 @@ export const Action = Object.assign(action, {
   SubmitForm: (props: Record<string, unknown>) => {
     const collected = React.useContext(FormContext)
     return element('raycast-action', { title: props.title ?? 'Submit', shortcut: JSON.stringify(props.shortcut ?? null), onAction: async () => {
-      const values = Object.fromEntries(Array.from(collected ?? [], ([id, value]) => [id, copyFormValue(value)]))
+      const values = Object.fromEntries(Array.from(collected?.values ?? [], ([id, value]) => [id, copyFormValue(value)]))
+      const stored = collected?.save && collected.stored.size ? new Map(collected.load()) : undefined
+      if (stored) for (const [id, kind] of collected!.stored) stored.set(id, [kind, copyFormValue(values[id]!)])
+      const snapshot = stored ? JSON.stringify(Array.from(stored, ([id, [kind, value]]) => [id, kind, value])) : undefined
+      // ponytail: reuse the atomic 4 KiB cache entry; raise storage limits only for a measured command.
+      if (snapshot !== undefined) {
+        if (Buffer.byteLength(snapshot) > 4096) throw new Error('Stored form values exceed the 4 KiB limit')
+        readStoredForm(snapshot)
+      }
       if (typeof props.onSubmit === 'function' && await props.onSubmit(values) === false) throw new Error('Form submission was not accepted')
+      if (snapshot !== undefined) collected!.save!(snapshot)
     } })
   },
 })
