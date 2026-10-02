@@ -64,7 +64,10 @@ test('controlled values win while reset uses declared defaults and submit mutati
 
 test('stored choices survive submit-triggered unmount and remain separate between extensions and commands',async t=>{
  const f=await fixture(t),code=`const React=require('react');const {Form,Action,ActionPanel,List}=require('@raycast/api');global.fetch=()=>{throw Error('Network prohibited')};exports.default=function Edit(){const [saved,setSaved]=React.useState(null);if(saved)return React.createElement(List,null,React.createElement(List.Item,{title:JSON.stringify(saved)}));return React.createElement(Form,{actions:React.createElement(ActionPanel,null,React.createElement(Action.SubmitForm,{title:'Submit Form',onSubmit:values=>setSaved(values)}))},${choices});}`
- f.select('scope-first',code);await f.open();await f.edit('locale','fr');await f.edit('tags',['blue']);assert.equal((await f.act()).succeeded,true);assert.equal(f.nodes('raycast-form').length,0)
+ f.select('scope-first',code);await f.open();await f.edit('locale','fr');await f.edit('tags',['blue']);assert.equal((await f.act()).succeeded,true)
+ // The callback outcome does not promise that React has committed its visible unmount yet.
+ const deadline=Date.now()+2500;while(f.nodes('raycast-form').length&&!f.errors.length&&Date.now()<deadline)await new Promise(r=>setTimeout(r,10))
+ assert.equal(f.nodes('raycast-form').length,0)
  await f.open();assert.equal(f.field('locale').props.value,'fr');assert.deepEqual(f.field('tags').props.value,['blue'])
  f.select('scope-first',code,'other');await f.open();assert.equal(f.field('locale').props.value,'en');assert.deepEqual(f.field('tags').props.value,['red']);await f.edit('tags',[]);assert.equal((await f.act()).succeeded,true)
  f.select('scope-second',code);await f.open();assert.equal(f.field('locale').props.value,'en');assert.deepEqual(f.field('tags').props.value,['red']);await f.edit('locale','en');assert.equal((await f.act()).succeeded,true)

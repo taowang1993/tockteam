@@ -41,6 +41,8 @@ const validNode = (value: unknown, state = { nodes: 0, text: 0, actions: new Set
   if (node.type === 'raycast-text-field' && Object.hasOwn(props, 'fieldEventId')) {
     if (typeof props.fieldEventId !== 'string' || !props.fieldEventId || props.fieldEventId.length > 128 || state.fields.size >= 64 || state.fields.has(props.fieldEventId)
       || !isUserRaycastFieldValue(props.fieldKind, props.value) || !Number.isSafeInteger(props.focusRequest) || (props.focusRequest as number) < 0) return false
+    if (props.fieldKind === 'date' && (props.dateType !== 'date' && props.dateType !== 'date_time'
+      || ['min', 'max'].some(key => Object.hasOwn(props, key) && (props[key] === null || !isUserRaycastFieldValue('date', props[key]))))) return false
     state.fields.add(props.fieldEventId)
   }
   return node.children.every(child => typeof child === 'string' ? (state.text += Buffer.byteLength(child)) <= 256 * 1024 && Buffer.byteLength(child) <= 16384 : validNode(child, state, depth + 1))

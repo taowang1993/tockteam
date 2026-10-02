@@ -40,6 +40,18 @@ test('tag requests admit only dense unique bounded string arrays and never widen
   assert.equal(isUserRaycastEvent({ ...field, kind: 'action', value: [] }), false)
 })
 
+test('date requests admit only canonical ISO strings or null without widening other field kinds', () => {
+  for (const value of [null, '2024-02-29T12:34:56.789Z', '0001-01-01T00:00:00.000Z', '+010000-01-01T00:00:00.000Z']) {
+    assert.equal(isUserRaycastFieldValue('date', value), true)
+    for (const kind of ['fieldChanged', 'fieldFocused', 'fieldBlurred']) assert.equal(isUserRaycastEvent({ ...field, kind, value }), true)
+  }
+  for (const value of [undefined, '', '2026-02-30T00:00:00.000Z', '2026-10-02T12:34:56Z', '2026-10-02T12:34:56.789+00:00', '2026-10-02T12:34:56.789Z\n', 'tomorrow', true, 0, [], {}, new Date('2026-10-02'), { toJSON: () => '2026-10-02T00:00:00.000Z' }]) assert.equal(isUserRaycastFieldValue('date', value), false)
+  for (const kind of ['text', 'password', 'textarea', 'checkbox', 'dropdown', 'tagpicker']) assert.equal(isUserRaycastFieldValue(kind, null), false)
+  for (const kind of ['action', 'searchChanged', 'fieldSearchChanged', 'native']) assert.equal(isUserRaycastEvent({ ...field, kind, value: null }), false)
+  assert.equal(isUserRaycastEvent({ ...field, value: new Date('2026-10-02') }), false)
+  assert.equal(isUserRaycastEvent({ ...field, value: null, path: '/tmp/not-allowed' }), false)
+})
+
 test('picker search accepts only owned bounded string queries and never tag/boolean/native payloads', () => {
   const search = { ...field, kind: 'fieldSearchChanged', value: '' }
   assert.equal(isUserRaycastEvent(search), true)
