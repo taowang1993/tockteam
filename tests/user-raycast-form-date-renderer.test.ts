@@ -71,6 +71,14 @@ test('switching modes with an invalid date draft fails visibly without crashing 
  }finally{f.close();if(previous===undefined)delete process.env.TZ;else process.env.TZ=previous}
 })
 
+test('explicit date reset clears only invalid local drafts, not valid unacknowledged input or an ordinary focus patch',async()=>{
+ let release!:()=>void;const gate=new Promise<void>(r=>{release=r});const f=await setup(async event=>{if(event.kind==='fieldChanged')await gate})
+ try{
+  const when=f.document.querySelector<HTMLInputElement>('input[aria-label="When"]')!;when.value='2026-10-05T11:12:13.123';when.dispatchEvent(new f.dom.window.Event('input',{bubbles:true}));await flush();const pending=when.valueAsNumber;f.emit(1,dates(undefined,{resetRequest:1,focusRequest:1}));assert.equal(when.valueAsNumber,pending);release();await flush();await flush()
+  const day=f.document.querySelector<HTMLInputElement>('input[aria-label="Day"]')!;day.value='2026-11-02';day.dispatchEvent(new f.dom.window.Event('input',{bubbles:true}));await flush();f.emit(2,dates(undefined,{focusRequest:2}));assert.equal(day.value,'2026-11-02');const reset=dates();reset.children[0]!.children[0]!.props={...reset.children[0]!.children[0]!.props,resetRequest:1}as any;f.emit(3,reset);assert.equal(day.getAttribute('aria-invalid'),'false');assert.notEqual(day.value,'2026-11-02')
+ }finally{release();f.close()}
+})
+
 test('date validation belongs to its SubmitForm; reset actions and a separate healthy Form remain usable',async()=>{
  for(const [title,eventId]of [['Reset Date','reset-0'],['Submit Healthy Form','healthy-0']]){const f=await setup();try{
   const invalid=dates('0000-01-01T00:00:00.000Z'),first=invalid.children[0]!;first.children.push({type:'raycast-action',props:{title:'Reset Date',submitForm:false,actionEventId:'reset-0'},children:[]});invalid.children.push({type:'raycast-form',props:{formId:'form-2'},children:[{type:'raycast-action',props:{title:'Submit Healthy Form',submitForm:true,actionEventId:'healthy-0'},children:[]}]});f.emit(1,invalid)

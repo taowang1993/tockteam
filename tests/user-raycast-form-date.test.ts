@@ -51,12 +51,13 @@ test('date selection limits are inclusive, ignore clocks only in day mode and ne
 test('controlled date callbacks, focus events and reset refs receive fresh Dates or null',async t=>{
  const initial='2026-10-02T12:00:00.000Z'
  const f=await fixture(t,shell(`React.createElement(Form.DatePicker,{id:'when',value:when,defaultValue:new Date('${initial}'),ref:dateRef,onChange:async value=>{await new Promise(r=>setTimeout(r,20));setWhen(value===null?null:new Date(value.getTime()+60000))},onFocus:event=>{setAnswer(JSON.stringify({type:event.type,id:event.target.id,isDate:event.target.value instanceof Date,iso:event.target.value===null?null:event.target.value.toISOString()}));event.target.value?.setUTCFullYear(1999)},onBlur:event=>setAnswer(JSON.stringify({type:event.type,id:event.target.id,value:event.target.value===null?null:event.target.value.toISOString()}))})`,`const [when,setWhen]=React.useState(null);const dateRef=React.useRef(null)`,undefined,`React.createElement(Action,{title:'Reset and Focus',onAction:()=>{dateRef.current.reset();dateRef.current.focus()}})`))
+ assert.equal(f.field('when').props.resetRequest,0)
  assert.equal(f.field('when').props.value,null);await f.edit('when',initial);assert.equal(f.field('when').props.value,'2026-10-02T12:01:00.000Z')
  await f.edit('when','2026-10-02T12:01:00.000Z','fieldFocused');assert.deepEqual(await f.answer(),{type:'focus',id:'when',isDate:true,iso:'2026-10-02T12:01:00.000Z'});assert.equal(f.field('when').props.value,'2026-10-02T12:01:00.000Z')
  await f.edit('when',null);await f.edit('when',null,'fieldBlurred');assert.deepEqual(await f.answer(),{type:'blur',id:'when',value:null})
  const focused=f.field('when').props.focusRequest;assert.equal((await f.act('Reset and Focus')).succeeded,true)
  const deadline=Date.now()+2500;while(f.field('when').props.value!=='2026-10-02T12:01:00.000Z'&&Date.now()<deadline)await new Promise(r=>setTimeout(r,10))
- assert.equal(f.field('when').props.value,'2026-10-02T12:01:00.000Z');assert.ok(f.field('when').props.focusRequest>focused)
+ assert.equal(f.field('when').props.value,'2026-10-02T12:01:00.000Z');assert.ok(f.field('when').props.focusRequest>focused);assert.equal(f.field('when').props.resetRequest,1)
 })
 
 test('mutable Date defaults, callback arguments and submit arguments never alias owned values',async t=>{
@@ -94,5 +95,7 @@ test('retired date fields release submission values and handles while unverified
 
 test('invalid public date props and forged date metadata cannot enter the owned renderer',async t=>{
  const fields=[`React.createElement(Form.DatePicker,{id:'when',defaultValue:'2026-10-02T12:00:00.000Z'})`,`React.createElement(Form.DatePicker,{id:'when',value:new Date(NaN)})`,`React.createElement(Form.DatePicker,{id:'when',type:'guessed'})`,`React.createElement(Form.DatePicker,{id:'when',min:null})`,`React.createElement(Form.DatePicker,{id:'when',min:new Date('2026-10-03'),max:new Date('2026-10-01')})`,`React.createElement('raycast-text-field',{id:'when',fieldEventId:'forged',focusRequest:0,fieldKind:'date',value:null,dateType:'guessed'})`,`React.createElement('raycast-text-field',{id:'when',fieldEventId:'forged',focusRequest:0,fieldKind:'date',value:null,dateType:'date_time',min:'forged'})`]
- for(const field of fields){let f:Awaited<ReturnType<typeof fixture>>|undefined;try{f=await fixture(t,shell(field))}catch(error){assert.ok(error instanceof Error);continue}const deadline=Date.now()+2500;while(!f.errors.length&&Date.now()<deadline)await new Promise(r=>setTimeout(r,10));assert.ok(f.errors.length,'Invalid date props must fail visibly');await f.manager.close();assert.equal(f.manager.childPid,undefined)}
+ for(const resetRequest of ['-1','1.5',"'1'"])fields.push(`React.createElement('raycast-text-field',{id:'when',fieldEventId:'forged',focusRequest:0,fieldKind:'date',value:null,dateType:'date_time',resetRequest:${resetRequest}})`)
+ for(const field of fields){let f:Awaited<ReturnType<typeof fixture>>|undefined;try{f=await fixture(t,shell(field))}catch(error){assert.ok(error instanceof Error);continue}const deadline=Date.now()+2500;while(!f.errors.length&&Date.now()<deadline)await new Promise(r=>setTimeout(r,10));assert.ok(f.errors.length,'Invalid date props must fail visibly: '+field);await f.manager.close();assert.equal(f.manager.childPid,undefined)}
+ const filtered=await fixture(t,shell(`React.createElement('raycast-text-field',{id:'when',fieldEventId:'forged',focusRequest:0,fieldKind:'date',value:null,dateType:'date_time',resetRequest:Infinity})`));assert.equal(Object.hasOwn(filtered.field('when').props,'resetRequest'),false,'Non-finite primitive metadata is omitted, not transported as a reset');assert.equal(filtered.field('when').props.value,null);assert.deepEqual(filtered.errors,[])
 })

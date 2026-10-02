@@ -15,7 +15,7 @@ const dateControlValue = (raw: unknown, type: unknown): { value: string; number:
   const time = `${pad(wall.getUTCHours())}:${pad(wall.getUTCMinutes())}${wall.getUTCSeconds() || wall.getUTCMilliseconds() ? `:${pad(wall.getUTCSeconds())}${wall.getUTCMilliseconds() ? `.${pad(wall.getUTCMilliseconds(), 3)}` : ''}` : ''}`
   return { value: type === 'date' ? day : `${day}T${time}`, number: wall.getTime() }
 }
-type Field = { input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement; row: HTMLElement; title: HTMLElement; label: HTMLElement; info: HTMLElement; error: HTMLElement; node: Node; sessionId: string; formId?: string; dateError?: string | undefined; dateModeError?: boolean; version: number; dirty?: number; focused: number; autoFocused: boolean; selection?: readonly string[]; search?: HTMLInputElement; results?: HTMLElement; searchTimer?: ReturnType<typeof setTimeout>; searchPending?: boolean; searchText?: string }
+type Field = { input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement; row: HTMLElement; title: HTMLElement; label: HTMLElement; info: HTMLElement; error: HTMLElement; node: Node; sessionId: string; formId?: string; dateError?: string | undefined; dateModeError?: boolean; resetRequest?: number; version: number; dirty?: number; focused: number; autoFocused: boolean; selection?: readonly string[]; search?: HTMLInputElement; results?: HTMLElement; searchTimer?: ReturnType<typeof setTimeout>; searchPending?: boolean; searchText?: string }
 
 /** Inert native controls only: extension code and React never enter the launcher renderer. */
 export function createUserRaycastView(document: Document, bridge: LauncherPreloadBridge, onClose: () => void) {
@@ -395,6 +395,9 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
           }
         }
         if (node.props.fieldKind === 'date') {
+          const reset = Number(node.props.resetRequest ?? 0)
+          if (reset > (field.resetRequest ?? 0) && field.dateError) { delete field.dirty; delete field.dateModeError }
+          field.resetRequest = reset
           const input = field.input as HTMLInputElement, type = node.props.dateType === 'date' ? 'date' : 'datetime-local'
           if (input.type !== type) {
             let value: string

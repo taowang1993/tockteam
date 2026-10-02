@@ -42,6 +42,7 @@ const validNode = (value: unknown, state = { nodes: 0, text: 0, actions: new Set
     if (typeof props.fieldEventId !== 'string' || !props.fieldEventId || props.fieldEventId.length > 128 || state.fields.size >= 64 || state.fields.has(props.fieldEventId)
       || !isUserRaycastFieldValue(props.fieldKind, props.value) || !Number.isSafeInteger(props.focusRequest) || (props.focusRequest as number) < 0) return false
     if (props.fieldKind === 'date' && (props.dateType !== 'date' && props.dateType !== 'date_time'
+      || Object.hasOwn(props, 'resetRequest') && (!Number.isSafeInteger(props.resetRequest) || (props.resetRequest as number) < 0)
       || ['min', 'max'].some(key => Object.hasOwn(props, key) && (props[key] === null || !isUserRaycastFieldValue('date', props[key]))))) return false
     state.fields.add(props.fieldEventId)
   }

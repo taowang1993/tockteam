@@ -123,6 +123,7 @@ const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFi
     return copyFormValue(stored?.[0] === fieldKind ? stored[1] : initial)
   })
   const [focusRequest, setFocusRequest] = React.useState(0)
+  const [resetRequest, setResetRequest] = React.useState(0)
   const [, refresh] = React.useState(0)
   const rawValue = props.value === undefined ? draft : props.value
   const id = props.id
@@ -138,7 +139,7 @@ const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFi
   }
   React.useImperativeHandle(props.ref as React.Ref<{ focus(): void; reset(): void }>, () => ({
     focus: () => setFocusRequest(previous => previous + 1),
-    reset: () => { void change(initial) },
+    reset: () => { if (fieldKind === 'date') setResetRequest(previous => previous + 1); void change(initial) },
   }))
   React.useLayoutEffect(() => {
     if (!collected) return
@@ -149,7 +150,7 @@ const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFi
   }, [collected, id, value, props.storeValue])
   // The reviewed bundled projection remains unchanged; callbacks stay in the private child.
   return element('raycast-text-field', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? props : {
-    ...props, ref: undefined, fieldKind, value, fieldEventId, focusRequest,
+    ...props, ref: undefined, fieldKind, value, fieldEventId, focusRequest, ...(fieldKind === 'date' ? { resetRequest } : {}),
     onChange: (next: UserRaycastFieldValue) => {
       if (fieldKind === 'date' && typeof next === 'string' && (typeof props.min === 'string' && formDateKey(next, props.dateType) < formDateKey(props.min, props.dateType)
         || typeof props.max === 'string' && formDateKey(next, props.dateType) > formDateKey(props.max, props.dateType))) throw new Error('The date is outside the allowed range.')
