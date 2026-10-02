@@ -1,0 +1,567 @@
+{
+  "nativeSourceCheckpoint": "a88ab87575e4d043d010633eca4df5173008339d",
+  "captureCheckout": "942ee0b8d109819456c93dc413c3af4c8578acf0",
+  "distMainSha256": "779c8529d9f3376c671a4446939d3122cab44e760b210b6242f455ac55559a65",
+  "scope": "Verified first-party approved user-extension native Date/DateTime subset, not complete Tinycast compatibility",
+  "displayId": 17,
+  "physicalWindowEvidence": [
+    {
+      "windowId": 1,
+      "displayId": 17,
+      "bounds": {
+        "x": 1512,
+        "y": 30,
+        "width": 1366,
+        "height": 994
+      },
+      "focused": false
+    },
+    {
+      "windowId": 2,
+      "displayId": 17,
+      "bounds": {
+        "x": 1820,
+        "y": 289,
+        "width": 750,
+        "height": 475
+      },
+      "focused": false
+    }
+  ],
+  "ownedProfiles": [
+    {
+      "homePreserved": true,
+      "mockKeychain": true
+    },
+    {
+      "homePreserved": true,
+      "mockKeychain": true
+    }
+  ],
+  "captures": [
+    {
+      "file": "date-fields-default-dark.png",
+      "state": "Declared day, controlled date/time with exact milliseconds, and explicit empty optional Date",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true,
+      "timezone": "Asia/Shanghai",
+      "width": 3024,
+      "height": 1898,
+      "bytes": 610384,
+      "sha256": "abbe1868a8a6c00ebb5ba2c1bf0298d36b4c8985f854cffff3e5d1140a7c237a"
+    },
+    {
+      "file": "date-fields-required-dark.png",
+      "state": "An empty required day is rejected without saving; validation and ref focus stay in the Form",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true,
+      "timezone": "Asia/Shanghai",
+      "width": 3024,
+      "height": 1898,
+      "bytes": 622127,
+      "sha256": "5748c7e0f22de5bfcfe79dcbe0c130885fab3a64335a63e3df1628ec9dfdef04"
+    },
+    {
+      "file": "date-fields-saved-dark.png",
+      "state": "Pending date/time edits submit true SDK Dates and explicit null; accepted callback unmounts the Form",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true,
+      "timezone": "Asia/Shanghai",
+      "width": 3024,
+      "height": 1898,
+      "bytes": 545039,
+      "sha256": "2db17145bc8b0d59d9b886d170b23cd3c8da8cb9b011dd92421a9ace9197dc80"
+    },
+    {
+      "file": "date-fields-restored-dark.png",
+      "state": "Only opted-in day and null reminder restore; unmarked controlled meeting retains its declared default",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true,
+      "timezone": "Asia/Shanghai",
+      "width": 3024,
+      "height": 1898,
+      "bytes": 609774,
+      "sha256": "a3ae3a1d7ef6f75909cf284cfbcb58db9fd99f62b0b263c7195cd0033b6a4a7e"
+    }
+  ],
+  "flow": {
+    "passed": true,
+    "realDesktop": true,
+    "firstParty": true,
+    "nativeEffects": false,
+    "accountOperations": false,
+    "initial": {
+      "day": "2026-10-02",
+      "meeting": {
+        "value": "2026-10-03T14:30:15.25",
+        "wallNumber": 1791037815250,
+        "type": "datetime-local",
+        "min": "2026-10-01T00:00",
+        "max": "2026-10-31T23:59:59.999",
+        "step": "any"
+      },
+      "optional": "",
+      "fields": {
+        "day": "2026-10-01T16:00:00.000Z",
+        "meeting": "2026-10-03T06:30:15.250Z",
+        "optional": null
+      }
+    },
+    "bounds": {
+      "type": "date",
+      "min": "2026-10-01",
+      "max": "2026-10-31"
+    },
+    "rejected": {
+      "day": "",
+      "meeting": {
+        "value": "2026-10-03T14:30:15.25",
+        "wallNumber": 1791037815250,
+        "type": "datetime-local",
+        "min": "2026-10-01T00:00",
+        "max": "2026-10-31T23:59:59.999",
+        "step": "any"
+      },
+      "optional": "",
+      "fields": {
+        "day": null,
+        "meeting": "2026-10-03T06:30:15.250Z",
+        "optional": null
+      }
+    },
+    "deniedRange": {
+      "day": "2026-11-02",
+      "meeting": {
+        "value": "2026-10-03T14:30:15.25",
+        "wallNumber": 1791037815250,
+        "type": "datetime-local",
+        "min": "2026-10-01T00:00",
+        "max": "2026-10-31T23:59:59.999",
+        "step": "any"
+      },
+      "optional": "",
+      "fields": {
+        "day": "2026-10-01T16:00:00.000Z",
+        "meeting": "2026-10-03T06:30:15.250Z",
+        "optional": null
+      }
+    },
+    "cancelled": {
+      "day": "2026-10-02",
+      "meeting": {
+        "value": "2026-10-03T14:30:15.25",
+        "wallNumber": 1791037815250,
+        "type": "datetime-local",
+        "min": "2026-10-01T00:00",
+        "max": "2026-10-31T23:59:59.999",
+        "step": "any"
+      },
+      "optional": "",
+      "fields": {
+        "day": "2026-10-01T16:00:00.000Z",
+        "meeting": "2026-10-03T06:30:15.250Z",
+        "optional": null
+      }
+    },
+    "saved": {
+      "day": {
+        "isDate": true,
+        "iso": "2026-10-11T16:00:00.000Z",
+        "local": [
+          2026,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "optional": null,
+      "meeting": {
+        "isDate": true,
+        "iso": "2026-10-13T08:45:30.125Z",
+        "local": [
+          2026,
+          10,
+          13,
+          16,
+          45,
+          30,
+          125
+        ]
+      }
+    },
+    "restored": {
+      "day": "2026-10-12",
+      "meeting": {
+        "value": "2026-10-03T14:30:15.25",
+        "wallNumber": 1791037815250,
+        "type": "datetime-local",
+        "min": "2026-10-01T00:00",
+        "max": "2026-10-31T23:59:59.999",
+        "step": "any"
+      },
+      "optional": "",
+      "fields": {
+        "day": "2026-10-11T16:00:00.000Z",
+        "meeting": "2026-10-03T06:30:15.250Z",
+        "optional": null
+      }
+    },
+    "afterCancel": {
+      "day": "2026-10-12",
+      "meeting": {
+        "value": "2026-10-03T14:30:15.25",
+        "wallNumber": 1791037815250,
+        "type": "datetime-local",
+        "min": "2026-10-01T00:00",
+        "max": "2026-10-31T23:59:59.999",
+        "step": "any"
+      },
+      "optional": "",
+      "fields": {
+        "day": "2026-10-11T16:00:00.000Z",
+        "meeting": "2026-10-03T06:30:15.250Z",
+        "optional": null
+      }
+    },
+    "focus": {
+      "label": "Day",
+      "outline": "solid",
+      "width": "2px"
+    },
+    "narrow": {
+      "viewport": 640,
+      "form": 606,
+      "fields": [
+        {
+          "label": "Day",
+          "width": 606,
+          "parent": 606
+        },
+        {
+          "label": "Meeting",
+          "width": 606,
+          "parent": 606
+        },
+        {
+          "label": "Optional Reminder",
+          "width": 606,
+          "parent": 606
+        }
+      ],
+      "scrollWidth": 606,
+      "clientWidth": 606
+    },
+    "captures": [
+      {
+        "file": "date-fields-default-dark.png",
+        "state": "Declared day, controlled date/time with exact milliseconds, and explicit empty optional Date",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+        "mode": "dark",
+        "skin": null,
+        "nativeIsolation": true,
+        "timezone": "Asia/Shanghai"
+      },
+      {
+        "file": "date-fields-required-dark.png",
+        "state": "An empty required day is rejected without saving; validation and ref focus stay in the Form",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+        "mode": "dark",
+        "skin": null,
+        "nativeIsolation": true,
+        "timezone": "Asia/Shanghai"
+      },
+      {
+        "file": "date-fields-saved-dark.png",
+        "state": "Pending date/time edits submit true SDK Dates and explicit null; accepted callback unmounts the Form",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+        "mode": "dark",
+        "skin": null,
+        "nativeIsolation": true,
+        "timezone": "Asia/Shanghai"
+      },
+      {
+        "file": "date-fields-restored-dark.png",
+        "state": "Only opted-in day and null reminder restore; unmarked controlled meeting retains its declared default",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+        "mode": "dark",
+        "skin": null,
+        "nativeIsolation": true,
+        "timezone": "Asia/Shanghai"
+      }
+    ],
+    "errors": [],
+    "consoleErrors": [],
+    "nonlocalRequests": []
+  },
+  "coldNewHost": {
+    "passed": true,
+    "coldNewDesktopHost": true,
+    "state": {
+      "day": "2026-10-12",
+      "meeting": 1791037815250,
+      "optional": ""
+    },
+    "facts": {
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true,
+      "timezone": "Asia/Shanghai"
+    },
+    "errors": [],
+    "consoleErrors": [],
+    "nonlocalRequests": []
+  },
+  "cleanup": {
+    "allTreePidsStopped": 54,
+    "live": [],
+    "closedPorts": [
+      63595,
+      63611,
+      63812,
+      63829
+    ],
+    "protectedPathsUnchanged": 2117,
+    "inspect": {
+      "rootPid": 32472,
+      "recordedPids": [
+        32472,
+        32474,
+        32475
+      ],
+      "stopped": true,
+      "remaining": []
+    },
+    "desktop": [
+      {
+        "id": "786b12d2-22a1-4b59-8824-40c6d26a9e55",
+        "rootPid": 32485,
+        "recordedPids": [
+          32485,
+          32487,
+          32488,
+          32490,
+          32492,
+          32493,
+          32515,
+          32516,
+          32670,
+          32671,
+          32672,
+          32678,
+          32886,
+          32887,
+          32888,
+          32889,
+          32890,
+          32891,
+          32892,
+          32893,
+          33104,
+          33108,
+          33110,
+          33114,
+          33116
+        ],
+        "remaining": [],
+        "expectedHostCancellationErrors": 2
+      },
+      {
+        "id": "c622a333-72d3-4fd2-bf57-22842078335a",
+        "rootPid": 33771,
+        "recordedPids": [
+          33771,
+          33773,
+          33774,
+          33776,
+          33777,
+          33781,
+          33791,
+          33792,
+          33793,
+          33943,
+          34007,
+          34008,
+          34009,
+          34010,
+          34011,
+          34013,
+          34014,
+          34256,
+          34257,
+          34258,
+          34259,
+          34260,
+          34261,
+          34262,
+          34263,
+          34360
+        ],
+        "remaining": []
+      }
+    ],
+    "postDesktopFakeGroupsStopped": 89,
+    "postDesktopFakeGroups": [
+      35368,
+      35354,
+      35359,
+      35370,
+      35409,
+      35428,
+      35438,
+      35444,
+      35450,
+      35455,
+      35463,
+      35472,
+      35482,
+      35491,
+      35499,
+      35508,
+      35516,
+      35523,
+      35529,
+      35534,
+      35539,
+      35543,
+      35547,
+      35355,
+      35358,
+      35369,
+      35405,
+      35420,
+      35436,
+      35442,
+      35448,
+      35456,
+      35466,
+      35476,
+      35485,
+      35494,
+      35502,
+      35510,
+      35518,
+      35390,
+      35412,
+      35434,
+      35440,
+      35446,
+      35451,
+      35457,
+      35465,
+      35473,
+      35483,
+      35492,
+      35500,
+      35509,
+      35517,
+      35524,
+      35530,
+      35535,
+      35540,
+      35544,
+      35549,
+      35551,
+      35553,
+      35555,
+      35557,
+      35559,
+      35561,
+      35563,
+      35565,
+      35569,
+      35571,
+      35573,
+      35575,
+      35579,
+      35581,
+      35583,
+      35585,
+      35587,
+      35589,
+      35591,
+      35593,
+      35595,
+      35467,
+      35477,
+      35486,
+      35493,
+      35501,
+      35511,
+      35519,
+      35525,
+      35531
+    ],
+    "deliberateOwnedUpdates": [
+      ".agents/references/tocklauncher.md"
+    ]
+  },
+  "firstPartyFixture": {
+    "sourceSha256": "847f5e6fdc262cfaecfb63440ce4aca67d467284cbfd3b42f55e16f4fdc0044b",
+    "checkerSha256": "64ded8801a0206ef39aec5fa7b659592839f01fab3368749376a834b4061b510",
+    "coldCheckerSha256": "44bbbd15f4bf709b93f063e0cd862131ce63504cfe94abccdf66feb808a9d5ce"
+  },
+  "limitations": [
+    "isFullDay explicitly unsupported; no guessed encoding",
+    "Natural-language dates and native OS calendar-popup keyboard behavior unverified",
+    "No full appearance/installed-release/real Store extension/OS-sandbox claim",
+    "Inline image previews unavailable; PNG geometry/visible DOM flow verified, no visual-image-review claim",
+    "Launcher-only error/request watchers; 2 expected Host close-time field callback cancellations recorded"
+  ]
+}
