@@ -119,6 +119,7 @@ function searchIndexedItems(
   now: number,
 ): LauncherInternalResultItem[] {
   const hasAliases = searchResultItems.some(item => item.searchAliases?.length)
+  const hasTieBreakers = favorites.size > 0 || ranking.length > 0
   const usageOrder = new Map((ranking.length > 0 ? rankLauncherItems(searchResultItems, ranking, now) : [])
     .map((item, index) => [item.id, index]))
   const compareTie = (left: LauncherInternalResultItem, right: LauncherInternalResultItem): number =>
@@ -127,26 +128,26 @@ function searchIndexedItems(
   if (options.searchEngineId === 'Fuse.js') {
     const results = new Fuse([...searchResultItems], {
       keys: hasAliases ? [{ name: 'name', weight: 0.9 }, { name: 'searchAliases', weight: 0.1 }] : ['name'],
-      includeScore: ranking.length > 0,
+      includeScore: hasTieBreakers,
       shouldSort: true,
       threshold: options.fuzziness,
     }).search(searchTerm)
-    return (ranking.length > 0
+    return (hasTieBreakers
       ? results.toSorted((left, right) => (left.score ?? 1) - (right.score ?? 1) || compareTie(left.item, right.item))
       : results).slice(0, options.maxSearchResultItems).map(result => result.item)
   }
   // Ueli inverts fuzzysort's strictness scale and rounds it to one decimal.
   const threshold = Math.round((1 - options.fuzziness) * 10) / 10
   const items = [...searchResultItems]
-  // ponytail: inspect at most twice the visible candidates (minimum 100); widen only if tied inventories grow beyond this bound.
-  const limit = ranking.length > 0 ? Math.min(items.length, Math.max(100, options.maxSearchResultItems * 2)) : options.maxSearchResultItems
+  // Apply tie breakers before the visible limit can discard a pinned or used match.
+  const limit = hasTieBreakers ? items.length : options.maxSearchResultItems
   const results = hasAliases ? fuzzysort.go(searchTerm, items, {
     keys: ['name', item => item.searchAliases?.join(' ') ?? ''],
     limit,
     scoreFn: result => Math.max(result[0]?.score ?? 0, (result[1]?.score ?? 0) * 0.98),
     threshold,
   }) : fuzzysort.go(searchTerm, items, { key: 'name', limit, threshold })
-  return (ranking.length > 0
+  return (hasTieBreakers
     ? results.toSorted((left, right) => right.score - left.score || compareTie(left.obj, right.obj))
     : results).slice(0, options.maxSearchResultItems).map(result => result.obj)
 }
