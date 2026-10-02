@@ -118,6 +118,47 @@ for (const operation of ['importSettingsFromPath', 'grantExternalSettingsFile'] 
   }
 })
 
+for (const edit of ['valid', 'invalid'] as const) test(`external settings selection re-reads ${edit} same-inode edits before adoption`, async t => {
+  const root = fs.mkdtempSync(join(tmpdir(), 'launcher-settings-adoption-'))
+  const selected = join(root, 'selected.json')
+  const repository = await LauncherPersistenceRepository.open({ userDataPath: root })
+  await repository.updateSetting('general.language', 'en-US')
+  fs.writeFileSync(selected, '{"general.language":"fr-FR"}')
+  const original = fs.statSync(selected)
+  const selectedPaths = new Set([selected, fs.realpathSync(selected)])
+  const changed = edit === 'valid' ? '{"general.language":"zh-CN"}' : '{'
+  const nativeOpen = promises.open
+  let selectedOpens = 0
+  t.mock.method(promises, 'open', async (...args: Parameters<typeof nativeOpen>) => {
+    const handle = await nativeOpen(...args)
+    // An editor saves after the initial read, while the queued selection revalidates identity.
+    if (selectedPaths.has(String(args[0])) && ++selectedOpens === 3) fs.writeFileSync(selected, changed)
+    return handle
+  })
+  syncBuiltinESMExports()
+  try {
+    if (edit === 'valid') {
+      await repository.grantExternalSettingsFile(selected)
+      assert.ok(selectedOpens >= 3, 'the editor changed the already-read file')
+      assert.equal(repository.getSetting('general.language', ''), 'zh-CN')
+      assert.equal(fs.statSync(selected).ino, original.ino)
+      await repository.updateSetting('window.alwaysOnTop', false)
+      assert.equal(JSON.parse(fs.readFileSync(selected, 'utf8'))['general.language'], 'zh-CN')
+    } else {
+      await assert.rejects(repository.grantExternalSettingsFile(selected), /invalid/)
+      assert.equal(repository.snapshot().settingsSource, 'managed')
+      assert.equal(repository.getSetting('general.language', ''), 'en-US')
+      assert.equal(fs.readFileSync(selected, 'utf8'), changed)
+    }
+    assert.ok(selectedOpens >= 3, 'the editor changed the already-read file')
+    if (edit === 'invalid') assert.equal(fs.statSync(selected).ino, original.ino)
+  } finally {
+    t.mock.restoreAll(); syncBuiltinESMExports()
+    await repository.close()
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
 const readers = [
   { name: 'text', read: readBoundedRegularFile },
   { name: 'artifact', read: readTrustedRaycastFile },

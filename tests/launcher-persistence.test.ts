@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
 import { LauncherPersistenceRepository } from '../src/launcher-persistence.ts'
+import { parseLauncherSettingsSnapshot } from '../src/launcher-settings-contract.ts'
 
 const persistenceSource = readFileSync(path.join(import.meta.dirname, '..', 'src', 'launcher-persistence.ts'), 'utf8')
 
@@ -103,6 +104,63 @@ test('reset fences a queued ranking write from restoring cleared usage', async (
     assert.deepEqual(repository.readRanking(), [])
     await repository.close()
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('a reset canceled before it starts preserves Recent history and later usage across restart', async () => {
+  const userDataPath = await root()
+  const repository = await LauncherPersistenceRepository.open({ userDataPath })
+  try {
+    await repository.updateSetting('general.language', 'fr-FR')
+    await repository.recordUsage('previous')
+    const before = repository.readRanking()
+    const rankingPath = path.join(userDataPath, 'launcher', 'usage-ranking.json')
+    const bytesBefore = await readFile(rankingPath)
+    const controller = new AbortController()
+    const reset = repository.resetSettings(controller.signal)
+    controller.abort(new Error('Reset canceled before starting'))
+    await assert.rejects(reset, /Reset canceled before starting/u)
+    assert.deepEqual(repository.readRanking(), before)
+    assert.deepEqual(await readFile(rankingPath), bytesBefore)
+    assert.equal(repository.getSetting('general.language', 'en-US'), 'fr-FR')
+    await repository.recordUsage('next')
+    await repository.close()
+    const restarted = await LauncherPersistenceRepository.open({ userDataPath })
+    try {
+      assert.deepEqual(restarted.readRanking().map(entry => entry.id), ['next', 'previous'])
+      assert.equal(restarted.getSetting('general.language', 'en-US'), 'fr-FR')
+    } finally { await restarted.close() }
+  } finally {
+    await repository.close()
+    await rm(userDataPath, { recursive: true, force: true })
+  }
+})
+
+test('usage queued behind a reset survives cancellation but cannot undo an accepted reset', async () => {
+  for (const canceled of [true, false]) {
+    const userDataPath = await root()
+    const repository = await LauncherPersistenceRepository.open({ userDataPath })
+    try {
+      await repository.recordUsage('previous')
+      const controller = new AbortController()
+      const reset = repository.resetSettings(controller.signal)
+      const usage = repository.recordUsage('queued')
+      if (canceled) {
+        controller.abort(new Error('Reset canceled before starting'))
+        await assert.rejects(reset, /Reset canceled before starting/u)
+      } else await reset
+      await usage
+      const expected = canceled ? ['previous', 'queued'] : []
+      assert.deepEqual(repository.readRanking().map(entry => entry.id), expected)
+      await repository.close()
+      const restarted = await LauncherPersistenceRepository.open({ userDataPath })
+      try {
+        assert.deepEqual(restarted.readRanking().map(entry => entry.id), expected)
+      } finally { await restarted.close() }
+    } finally {
+      await repository.close()
+      await rm(userDataPath, { recursive: true, force: true })
+    }
+  }
 })
 
 test('invalid ranking persistence falls back to empty without damaging other launcher artifacts', async () => {
@@ -408,6 +466,25 @@ test('history records serialize and disabled history rejects injected or importe
     assert.deepEqual(restarted.snapshot().values['general.searchHistory.history'], [])
     await restarted.close()
   } finally { await rm(userDataPath, { recursive: true, force: true }) }
+})
+
+test('provider log text stays readable in settings and survives restart', async () => {
+  const userDataPath = await root()
+  let repository: LauncherPersistenceRepository | undefined
+  try {
+    repository = await LauncherPersistenceRepository.open({ userDataPath })
+    await repository.appendLog('INFO', 'index ready')
+    await repository.appendLog('ERROR', 'provider\0failed\r\ntry again')
+    const snapshot = parseLauncherSettingsSnapshot(repository.snapshot())
+    assert.equal(snapshot.logs.length, 2)
+    assert.ok(snapshot.logs[1]?.endsWith('provider failed try again'))
+    await repository.close()
+    repository = await LauncherPersistenceRepository.open({ userDataPath })
+    assert.deepEqual(parseLauncherSettingsSnapshot(repository.snapshot()).logs, snapshot.logs)
+  } finally {
+    await repository?.close()
+    await rm(userDataPath, { recursive: true, force: true })
+  }
 })
 
 test('logs recover independently when the primary contains renderer-unsafe text', async () => {

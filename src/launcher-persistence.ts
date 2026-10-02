@@ -610,23 +610,23 @@ export class LauncherPersistenceRepository {
   async resetSettings(signal?: AbortSignal): Promise<void> {
     throwIfAborted(signal)
     if (this.#closed) throw new Error('TockLauncher persistence repository is closed')
-    const generation = ++this.#rankingGeneration
-    this.#rankingResetInProgress = true
-    this.#ranking = Object.freeze([])
-    try {
-      await this.#enqueue(async () => {
-        throwIfAborted(signal)
-        await rm(this.#rankingPath, { force: true })
-        await rm(`${this.#rankingPath}.bak`, { force: true })
-        await syncDirectory(this.#rootPath)
+    await this.#enqueue(async () => {
+      throwIfAborted(signal)
+      this.#rankingResetInProgress = true
+      try {
         await this.#writeSettings({})
         // A completed reset must not recover the credentials/history it just cleared.
         if (this.#settingsSource === 'managed') await atomicWrite(`${this.#managedSettingsPath}.bak`, '{}', { backup: false })
+        // A rejected settings reset must retain ranking bytes and queued usage.
+        ++this.#rankingGeneration
+        await rm(this.#rankingPath, { force: true })
+        await rm(`${this.#rankingPath}.bak`, { force: true })
+        await syncDirectory(this.#rootPath)
         this.#ranking = Object.freeze([])
-      })
-    } finally {
-      if (this.#rankingGeneration === generation) this.#rankingResetInProgress = false
-    }
+      } finally {
+        this.#rankingResetInProgress = false
+      }
+    })
   }
 
   async recordSearch(query: string, defaults: Readonly<{ historyEnabled: boolean; historyLimit: number }>): Promise<void> {
@@ -662,7 +662,7 @@ export class LauncherPersistenceRepository {
 
   async appendLog(level: 'DEBUG' | 'ERROR' | 'INFO' | 'WARNING', message: string): Promise<void> {
     await this.#enqueue(async () => {
-      const bounded = message.replace(/[\r\n]+/gu, ' ').slice(0, MAX_LOG_MESSAGE_LENGTH)
+      const bounded = message.replace(/[\0\r\n]+/gu, ' ').slice(0, MAX_LOG_MESSAGE_LENGTH)
       const next = [...this.#logs, `[${new Date().toISOString()}][${level}] ${bounded}`].slice(-MAX_LOG_ENTRIES)
       const encoded = JSON.stringify(next, null, 2)
       if (Buffer.byteLength(encoded, 'utf8') > MAX_LAUNCHER_LOG_BYTES) next.splice(0, Math.max(0, next.length - 1))
@@ -716,13 +716,14 @@ export class LauncherPersistenceRepository {
   async grantExternalSettingsFile(filePath: string, signal?: AbortSignal): Promise<void> {
     throwIfAborted(signal)
     const grant = await this.#createGrant(filePath)
-    const settings = await readJson(grant.path, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), grant)
+    await readJson(grant.path, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), grant)
     throwIfAborted(signal)
     await this.#enqueue(async () => {
       throwIfAborted(signal)
       // Re-open/revalidate inside the serialized mutation before adopting the path.
       const current = await this.#createGrant(grant.path)
       if (!this.#sameGrant(current, grant)) throw new Error('TockLauncher external settings file changed')
+      const settings = await readJson(current.path, MAX_LAUNCHER_SETTINGS_BYTES, value => parseStoredSettings(value), current)
       throwIfAborted(signal)
       await this.#retireExternalGrant()
       await atomicWrite(this.#grantPath, JSON.stringify(grant, null, 2), { backup: false })
