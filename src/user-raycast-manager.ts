@@ -19,7 +19,7 @@ type Session = { child: ChildProcessWithoutNullStreams; workspace: string; owner
 type FieldOutcome = { type: 'field-outcome'; extensionId: string; sessionId: string; revision: number; eventId: string; requestId: string; succeeded: boolean; message: string }
 type NativeRequest = { type: 'native'; extensionId: string; sessionId: string; revision: number; eventId: string; requestId: string; kind: 'copy'; text: string }
 const frameBytes = 1024 * 1024
-const types = new Set(['root', 'raycast-list', 'raycast-list-item', 'raycast-section', 'raycast-detail', 'raycast-empty', 'raycast-dropdown', 'raycast-dropdown-item', 'raycast-grid', 'raycast-grid-item', 'raycast-action-panel', 'raycast-action-section', 'raycast-action', 'raycast-menu-bar', 'raycast-menu-section', 'raycast-menu-item', 'raycast-form', 'raycast-text-field', 'raycast-form-dropdown', 'raycast-form-dropdown-item'])
+const types = new Set(['root', 'raycast-list', 'raycast-list-item', 'raycast-section', 'raycast-detail', 'raycast-empty', 'raycast-dropdown', 'raycast-dropdown-item', 'raycast-grid', 'raycast-grid-item', 'raycast-action-panel', 'raycast-action-section', 'raycast-action', 'raycast-menu-bar', 'raycast-menu-section', 'raycast-menu-item', 'raycast-form', 'raycast-text-field', 'raycast-form-dropdown', 'raycast-form-dropdown-item', 'raycast-form-description', 'raycast-form-separator'])
 const validNode = (value: unknown, state = { nodes: 0, text: 0, actions: new Set<string>(), fields: new Set<string>() }, depth = 0): boolean => {
   if (!value || typeof value !== 'object' || Array.isArray(value) || depth > 32 || ++state.nodes > 8192) return false
   const node = value as { type?: unknown; props?: unknown; children?: unknown }
@@ -38,6 +38,9 @@ const validNode = (value: unknown, state = { nodes: 0, text: 0, actions: new Set
     }
   }
   const props = node.props as Record<string, unknown>
+  if (node.type === 'raycast-form-description' && (node.children.length !== 0 || Object.keys(props).some(key => key !== 'title' && key !== 'text')
+    || !isUserRaycastFieldValue('text', props.text) || Object.hasOwn(props, 'title') && !isUserRaycastFieldValue('text', props.title))) return false
+  if (node.type === 'raycast-form-separator' && (node.children.length !== 0 || Object.keys(props).length !== 0)) return false
   if (node.type === 'raycast-text-field' && Object.hasOwn(props, 'fieldEventId')) {
     if (typeof props.fieldEventId !== 'string' || !props.fieldEventId || props.fieldEventId.length > 128 || state.fields.size >= 64 || state.fields.has(props.fieldEventId)
       || !isUserRaycastFieldValue(props.fieldKind, props.value) || !Number.isSafeInteger(props.focusRequest) || (props.focusRequest as number) < 0) return false

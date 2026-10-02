@@ -207,7 +207,13 @@ const datePicker = (props: Record<string, unknown>) => {
     onBlur: (event: { target: { id: string; value: UserRaycastFieldValue }; type: string }) => typeof props.onBlur === 'function' ? props.onBlur({ ...event, target: { id: event.target.id, value: decodeFormDate(event.target.value) } }) : undefined,
   })
 }
+const formDescription = (props: Record<string, unknown>) => {
+  if (!isUserRaycastFieldValue('text', props.text) || props.title !== undefined && !isUserRaycastFieldValue('text', props.title)) throw new Error('Invalid form description')
+  return element('raycast-form-description', { text: props.text, ...(props.title === undefined ? {} : { title: props.title }) })
+}
+const formSeparator = () => element('raycast-form-separator', {})
 export const Form = Object.assign(form, {
+  Description: formDescription, Separator: formSeparator,
   DatePicker: Object.assign(datePicker, { Type: Object.freeze({ Date: 'date', DateTime: 'date_time' }), isFullDay: (_date?: Date | null): never => unsupported('Form.DatePicker.isFullDay') }),
   TextField: basicFormField('text', ''), PasswordField: basicFormField('password', ''),
   TextArea: basicFormField('textarea', ''), Checkbox: basicFormField('checkbox', false),
@@ -215,7 +221,7 @@ export const Form = Object.assign(form, {
   TagPicker: Object.assign(basicFormField('tagpicker', []), { Item: dropdownItem }),
   DropdownItem: dropdownItem, DropdownSection: section, TagPickerItem: dropdownItem,
 })
-export const FormDatePicker = Form.DatePicker
+export const FormDatePicker = Form.DatePicker, FormSeparator = Form.Separator
 export const FormDropdown = Form.Dropdown, FormDropdownItem = dropdownItem, FormDropdownSection = section
 export const FormTagPicker = Form.TagPicker, FormTagPickerItem = dropdownItem
 

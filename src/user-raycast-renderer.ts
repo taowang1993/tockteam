@@ -318,8 +318,10 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     catch (error) { setActionPending(false); throw error }
   }
   const reorder = (parent: HTMLElement, desired: HTMLElement[]): void => {
+    // Remove retired siblings first so a text-only patch never moves a focused control.
+    const wanted = new Set(desired)
+    for (const child of Array.from(parent.children)) if (!wanted.has(child as HTMLElement)) child.remove()
     desired.forEach((child, index) => { if (parent.children[index] !== child) parent.insertBefore(child, parent.children[index] ?? null) })
-    for (const child of Array.from(parent.children)) if (!desired.includes(child as HTMLElement)) child.remove()
   }
   const renderForms = (nodes: Node[]): void => {
     if (!active) return
@@ -340,9 +342,25 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
           if (!event.isComposing && event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); current!.actions.querySelector<HTMLButtonElement>('button')?.click() }
         })
       }
-      const projected: Node[] = []; collect(form, 'raycast-text-field', projected)
+      const projected: Node[] = []
+      const collectRows = (node: Node | string): void => {
+        if (typeof node === 'string') return
+        if (['raycast-text-field', 'raycast-form-description', 'raycast-form-separator'].includes(node.type)) projected.push(node)
+        else if (node.type !== 'raycast-form' && !node.type.startsWith('raycast-action')) for (const child of node.children) collectRows(child)
+      }
+      for (const child of form.children) collectRows(child)
       const rows: HTMLElement[] = []
       for (const node of projected) {
+        if (node.type === 'raycast-form-separator') {
+          const rule = document.createElement('hr'); rule.className = 'm-0 w-full border-0 border-t border-border'; rows.push(rule); continue
+        }
+        if (node.type === 'raycast-form-description') {
+          const row = document.createElement('div'), label = document.createElement('span'), text = document.createElement('p')
+          row.className = 'flex min-w-0 flex-col gap-1'; row.dataset.slot = 'form-description'
+          label.className = 'min-w-0 break-words text-sm font-medium'; label.textContent = String(node.props.title ?? ''); label.hidden = !label.textContent
+          text.className = 'm-0 min-w-0 whitespace-pre-wrap break-words text-sm text-muted-foreground'; text.textContent = String(node.props.text ?? '')
+          row.append(label, text); rows.push(row); continue
+        }
         const id = node.props.fieldEventId
         if (typeof id !== 'string') continue
         liveFields.add(id)
