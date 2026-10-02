@@ -1,9 +1,9 @@
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
-import type { UserRaycastFieldEvent, UserRaycastStatus } from './user-raycast-contract.ts'
+import type { UserRaycastFieldEvent, UserRaycastFieldValue, UserRaycastStatus } from './user-raycast-contract.ts'
 import type { UserRaycastMessage } from './user-raycast-manager.ts'
 
-type Node = { type: string; props: Record<string, string | number | boolean | null>; children: Array<Node | string> }
-type Field = { input: HTMLInputElement | HTMLTextAreaElement; row: HTMLElement; title: HTMLElement; label: HTMLElement; info: HTMLElement; error: HTMLElement; node: Node; sessionId: string; version: number; dirty?: number; focused: number; autoFocused: boolean }
+type Node = { type: string; props: Record<string, string | number | boolean | null | readonly string[]>; children: Array<Node | string> }
+type Field = { input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement; row: HTMLElement; title: HTMLElement; label: HTMLElement; info: HTMLElement; error: HTMLElement; node: Node; sessionId: string; version: number; dirty?: number; focused: number; autoFocused: boolean; selection?: readonly string[] }
 
 /** Inert native controls only: extension code and React never enter the launcher renderer. */
 export function createUserRaycastView(document: Document, bridge: LauncherPreloadBridge, onClose: () => void) {
@@ -126,16 +126,51 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     if (node.type === type) output.push(node)
     for (const child of node.children) collect(child, type, output)
   }
+  const selectValue = (field: Field, value: unknown): void => {
+    const select = field.input as HTMLSelectElement
+    if (select.multiple) {
+      field.selection = Array.isArray(value) ? [...value] : []
+      for (const option of Array.from(select.options)) option.selected = field.selection.includes(option.value)
+    } else select.value = typeof value === 'string' ? value : ''
+  }
+  const syncChoices = (field: Field): void => {
+    const select = field.input as HTMLSelectElement
+    const value = field.dirty === undefined ? field.node.props.value : fieldValue(field)
+    const options = new Map(Array.from(select.options).map(option => [option.value, option]))
+    const groups = new Map(Array.from(select.querySelectorAll('optgroup')).map(group => [group.dataset.groupKey, group]))
+    const declared = new Set<string>()
+    const children = (nodes: Array<Node | string>, path = ''): HTMLElement[] => nodes.flatMap((node, index) => {
+      if (typeof node === 'string') return []
+      const key = `${path}-${index}`
+      if (node.type === 'raycast-section') {
+        const group = groups.get(key) ?? document.createElement('optgroup'); group.label = String(node.props.title ?? ''); group.dataset.groupKey = key
+        reorder(group, children(node.children, key)); return [group]
+      }
+      if (node.type !== 'raycast-form-dropdown-item') return children(node.children, key)
+      const id = String(node.props.value ?? '')
+      const option = options.get(id) ?? document.createElement('option'); option.value = id; option.textContent = String(node.props.title ?? id)
+      declared.add(id); return [option]
+    })
+    const desired = children(field.node.children)
+    for (const id of Array.isArray(value) ? value : typeof value === 'string' ? [value] : []) if (!declared.has(id)) {
+      const option = options.get(id) ?? document.createElement('option'); option.value = id; option.textContent ||= id || 'No Options'
+      desired.push(option)
+    }
+    reorder(select, desired); selectValue(field, value)
+    if (select.multiple) select.size = Math.min(6, Math.max(2, select.options.length))
+  }
   const applyValue = (field: Field): void => {
     if (field.dirty !== undefined) return
     const input = field.input
+    if (input.tagName === 'SELECT') { selectValue(field, field.node.props.value); return }
     if (field.node.props.fieldKind === 'checkbox') { (input as HTMLInputElement).checked = field.node.props.value === true; return }
+    const text = input as HTMLInputElement | HTMLTextAreaElement
     const next = String(field.node.props.value ?? '')
-    if (input.value === next) return
-    const focused = document.activeElement === input
-    const start = input.selectionStart, end = input.selectionEnd, direction = input.selectionDirection
-    input.value = next
-    if (focused && start !== null && end !== null) input.setSelectionRange(Math.min(start, next.length), Math.min(end, next.length), direction ?? undefined)
+    if (text.value === next) return
+    const focused = document.activeElement === text
+    const start = text.selectionStart, end = text.selectionEnd, direction = text.selectionDirection
+    text.value = next
+    if (focused && start !== null && end !== null) text.setSelectionRange(Math.min(start, next.length), Math.min(end, next.length), direction ?? undefined)
   }
   const applyFocusRequests = (): void => {
     if (actionPending) return
@@ -145,7 +180,15 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
       field.focused = requested; field.autoFocused = true; field.input.focus()
     }
   }
-  const fieldValue = (field: Field): string | boolean => field.node.props.fieldKind === 'checkbox' ? (field.input as HTMLInputElement).checked : field.input.value
+  const fieldValue = (field: Field): UserRaycastFieldValue => {
+    if (field.node.props.fieldKind === 'tagpicker') {
+      const selected = Array.from((field.input as HTMLSelectElement).selectedOptions).map(option => option.value)
+      const previous = field.selection ?? []
+      field.selection = [...previous.filter(value => selected.includes(value)), ...selected.filter(value => !previous.includes(value))]
+      return [...field.selection]
+    }
+    return field.node.props.fieldKind === 'checkbox' ? (field.input as HTMLInputElement).checked : field.input.value
+  }
   const enqueueField = (field: Field, kind: UserRaycastFieldEvent['kind']): void => {
     if (disposed || actionPending || queuedFields >= maxQueuedFields || !active || active.sessionId !== field.sessionId) return
     queuedFields++
@@ -172,7 +215,10 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     })
   }
   const setFieldAvailability = (): void => {
-    for (const field of fields.values()) field.input.disabled = actionPending || queuedFields >= maxQueuedFields
+    for (const field of fields.values()) {
+      field.input.disabled = actionPending || queuedFields >= maxQueuedFields
+      field.row.toggleAttribute('data-disabled', field.input.disabled)
+    }
   }
   const setActionPending = (pending: boolean): void => {
     actionPending = pending
@@ -220,14 +266,15 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
         if (field && field.node.props.fieldKind !== node.props.fieldKind) { field.row.remove(); fields.delete(id); field = undefined }
         if (!field) {
           const row = document.createElement('div'), title = document.createElement('span'), label = document.createElement('label'), info = document.createElement('p'), error = document.createElement('p')
-          const input = node.props.fieldKind === 'textarea' ? document.createElement('textarea') : document.createElement('input')
+          const input = node.props.fieldKind === 'textarea' ? document.createElement('textarea') : node.props.fieldKind === 'dropdown' || node.props.fieldKind === 'tagpicker' ? document.createElement('select') : document.createElement('input')
           row.className = 'flex min-w-0 flex-col gap-1'; row.dataset.slot = 'field'
-          title.className = 'text-sm font-medium'; label.className = node.props.fieldKind === 'checkbox' ? 'text-sm' : 'text-sm font-medium'
+          title.className = 'min-w-0 break-words text-sm font-medium'; label.className = node.props.fieldKind === 'checkbox' ? 'min-w-0 break-words text-sm' : 'min-w-0 break-words text-sm font-medium'
           input.id = `user-${sessionId}-${id}`; label.htmlFor = input.id
           if (input.tagName === 'INPUT') (input as HTMLInputElement).type = node.props.fieldKind === 'checkbox' ? 'checkbox' : node.props.fieldKind === 'password' ? 'password' : 'text'
           input.className = node.props.fieldKind === 'checkbox' ? 'm-0 box-border size-4 shrink-0 p-0 accent-primary focus-visible:outline-2 focus-visible:outline-ring' : 'box-border w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 font-[family-name:inherit] text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50'
-          input.maxLength = 16384
-          info.className = 'm-0 text-xs text-muted-foreground'; error.className = 'm-0 text-sm text-destructive'
+          if (input.tagName === 'SELECT') (input as HTMLSelectElement).multiple = node.props.fieldKind === 'tagpicker'
+          else (input as HTMLInputElement | HTMLTextAreaElement).maxLength = 16384
+          info.className = 'm-0 min-w-0 break-words text-xs text-muted-foreground'; error.className = 'm-0 min-w-0 break-words text-sm text-destructive'
           info.id = `${input.id}-info`; error.id = `${input.id}-error`; error.setAttribute('role', 'alert')
           if (node.props.fieldKind === 'checkbox') {
             const line = document.createElement('div'); line.className = 'flex min-w-0 items-center gap-2'
@@ -235,7 +282,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
           } else row.append(title, label, input, info, error)
           field = { input, row, title, label, info, error, node, sessionId, version: 0, focused: 0, autoFocused: false }; fields.set(id, field)
           const owned = field
-          input.addEventListener(node.props.fieldKind === 'checkbox' ? 'change' : 'input', () => enqueueField(owned, 'fieldChanged'))
+          input.addEventListener(input.tagName === 'SELECT' || node.props.fieldKind === 'checkbox' ? 'change' : 'input', () => enqueueField(owned, 'fieldChanged'))
           input.addEventListener('focus', () => enqueueField(owned, 'fieldFocused'))
           input.addEventListener('blur', () => enqueueField(owned, 'fieldBlurred'))
         }
@@ -243,9 +290,11 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
         field.title.textContent = node.props.fieldKind === 'checkbox' ? String(node.props.title ?? '') : ''; field.title.hidden = !field.title.textContent
         field.label.textContent = String(node.props.fieldKind === 'checkbox' ? node.props.label ?? node.props.title ?? node.props.id : node.props.title ?? node.props.id ?? 'Field')
         field.input.setAttribute('aria-label', field.label.textContent)
-        field.input.placeholder = String(node.props.placeholder ?? '')
+        if (field.input.tagName === 'SELECT') syncChoices(field)
+        else (field.input as HTMLInputElement | HTMLTextAreaElement).placeholder = String(node.props.placeholder ?? '')
         field.input.disabled = actionPending || queuedFields >= maxQueuedFields
-        field.info.textContent = String(node.props.info ?? ''); field.info.hidden = !field.info.textContent
+        field.row.toggleAttribute('data-disabled', field.input.disabled)
+        field.info.textContent = String(node.props.info ?? (node.props.fieldKind === 'tagpicker' ? (field.input as HTMLSelectElement).options.length === 0 ? 'No tags are available.' : 'Hold Command or Control to select more than one tag.' : '')); field.info.hidden = !field.info.textContent
         field.error.textContent = String(node.props.error ?? ''); field.error.hidden = !field.error.textContent
         field.input.setAttribute('aria-invalid', field.error.textContent ? 'true' : 'false')
         field.row.toggleAttribute('data-invalid', Boolean(field.error.textContent))

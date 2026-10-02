@@ -1,0 +1,87 @@
+{
+  "baseline": "c35bf8f82ae33c2aebe319d0ec83751c84eeffaf",
+  "peerPublication": "b7868184",
+  "checkedCount": 2365,
+  "peerExemptions": [
+    ".agents/uiux/tocktutor/content-alignment.json",
+    ".agents/uiux/tocktutor/content-alignment.md",
+    ".agents/uiux/tocktutor/screenshots/obsidian-imported-properties.png",
+    ".agents/uiux/tocktutor/screenshots/tocktutor-imported-properties.png",
+    ".agents/uiux/tocktutor/tocktutor.html",
+    ".beads/reports/2026-10-01-tocktutor-properties-functional-parity-verification.md",
+    ".beads/reports/2026-10-01-tocktutor-properties-proof/index.html",
+    "tests/tocktutor-gallery.test.ts"
+  ],
+  "changed": [],
+  "protectedPaths": [
+    {
+      "path": "AGENTS.md",
+      "unchanged": true
+    },
+    {
+      "path": "tests/right-panel-layout.test.ts",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/route-linked-panes.test.tsx",
+      "unchanged": true
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "dist/main.js",
+      "sha256": "5e65d51fd00054b8fe67df756edcd6e4948be4def1d88a663eec2f917b625bc8"
+    },
+    {
+      "path": "dist/launcher.js",
+      "sha256": "94115f681aaad43ff7003d41ddbc12e52813652b43064af64115fed14564a7e9"
+    },
+    {
+      "path": "dist/launcher.css",
+      "sha256": "098bb4b5a3ecc11f041c949109ddb786f4cf3fd5cf505453faa6efcc80078278"
+    },
+    {
+      "path": "dist/user-raycast/api.mjs",
+      "sha256": "99c399b2a667d5330a25538bfba104275b035f1f69441d8b0c7b0350fabc8202"
+    },
+    {
+      "path": "dist/user-raycast/child.mjs",
+      "sha256": "cdf878bdeeee4da5a77f601c6fdc34b70336748936e1a55710cafbe011272613"
+    }
+  ],
+  "passed": true,
+  "peerPostPublication": [
+    {
+      "path": ".agents/uiux/tocktutor/content-alignment.json",
+      "unchanged": true
+    },
+    {
+      "path": ".agents/uiux/tocktutor/content-alignment.md",
+      "unchanged": true
+    },
+    {
+      "path": ".agents/uiux/tocktutor/screenshots/obsidian-imported-properties.png",
+      "unchanged": true
+    },
+    {
+      "path": ".agents/uiux/tocktutor/screenshots/tocktutor-imported-properties.png",
+      "unchanged": true
+    },
+    {
+      "path": ".agents/uiux/tocktutor/tocktutor.html",
+      "unchanged": true
+    },
+    {
+      "path": ".beads/reports/2026-10-01-tocktutor-properties-functional-parity-verification.md",
+      "unchanged": true
+    },
+    {
+      "path": ".beads/reports/2026-10-01-tocktutor-properties-proof/index.html",
+      "unchanged": true
+    },
+    {
+      "path": "tests/tocktutor-gallery.test.ts",
+      "unchanged": true
+    }
+  ]
+}

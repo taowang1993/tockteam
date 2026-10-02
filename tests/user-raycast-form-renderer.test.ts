@@ -7,11 +7,19 @@ import type { UserRaycastMessage } from '../src/user-raycast-manager.ts'
 
 const { JSDOM } = createRequire(new URL('../plugins/tocktutor/packages/tockteam-tocktutor-workbench/package.json', import.meta.url))('jsdom')
 const flush = () => new Promise(resolve => setImmediate(resolve))
-const field = (id: string, kind: string, value: string | boolean, extra = {}) => ({ type: 'raycast-text-field', props: { id, title: id === 'name' ? 'Name' : id === 'password' ? 'Password' : id === 'notes' ? 'Notes' : 'Enabled', fieldKind: kind, value, fieldEventId: `field-${id}`, focusRequest: 0, ...extra }, children: [] })
+const field = (id: string, kind: string, value: string | boolean | readonly string[], extra = {}) => ({ type: 'raycast-text-field', props: { id, title: id === 'name' ? 'Name' : id === 'password' ? 'Password' : id === 'notes' ? 'Notes' : 'Enabled', fieldKind: kind, value, fieldEventId: `field-${id}`, focusRequest: 0, ...extra }, children: [] })
 const root = (name = 'First', extra = {}) => ({ type: 'root', props: { searchable: false }, children: [{ type: 'raycast-form', props: { formId: 'form-1' }, children: [
   field('name', 'text', name, { info: 'Your display name.', ...extra }), field('password', 'password', 'fake-only'), field('notes', 'textarea', 'Two\nLines'), field('enabled', 'checkbox', false, { label: 'Enable Notifications' }),
   { type: 'raycast-action-panel', props: {}, children: [{ type: 'raycast-action', props: { title: 'Submit Form', actionEventId: 'action-0' }, children: [] }] },
 ] }] })
+
+type ChoiceNode = { type: string; props: Record<string, unknown>; children: ChoiceNode[] }
+const choices = (locale = 'en', tags: string[] = ['red'], french = 'French', extra = {}, tagExtra = {}): ChoiceNode => {
+  const item = (value: string, title: string) => ({ type: 'raycast-form-dropdown-item', props: { value, title }, children: [] })
+  const dropdown = { ...field('locale', 'dropdown', locale, { title: 'Language', info: 'Choose a language.', ...extra }), children: [{ type: 'raycast-section', props: { title: 'Languages' }, children: [item('en', 'English'), item('fr', french)] }] }
+  const tagpicker = { ...field('tags', 'tagpicker', tags, { title: 'Colors', ...tagExtra }), children: [item('red', 'Red'), item('blue', 'Blue')] }
+  return { type: 'root', props: { searchable: false }, children: [{ type: 'raycast-form', props: { formId: 'form-1' }, children: [dropdown, tagpicker, { type: 'raycast-action', props: { title: 'Submit Form', actionEventId: 'action-0' }, children: [] }] }] }
+}
 
 async function setup(run: (event: any) => Promise<void> = async () => {}) {
   const dom = new JSDOM('<!doctype html><html><body></body></html>')
@@ -56,6 +64,108 @@ test('native form patches preserve a pending draft, caret and focus and submit o
     assert.ok(f.events.every(event => event.sessionId === 'session-1'))
     assert.equal(f.events.find(event => event.kind === 'action').revision, 2)
   } finally { finish(); f.close() }
+})
+
+test('native sectioned dropdown preserves a pending selection and focus across option updates before submitting', async () => {
+  let finish!: () => void
+  const blocked = new Promise<void>(resolve => { finish = resolve })
+  const f = await setup(async event => { if (event.kind === 'fieldChanged') await blocked })
+  try {
+    f.emit(1, choices())
+    const select = f.document.querySelector<HTMLSelectElement>('select[aria-label="Language"]')
+    assert.ok(select, 'Render the owned dropdown as a native select')
+    assert.equal(select.value, 'en'); assert.equal(select.querySelector('optgroup')?.label, 'Languages')
+    select.focus(); await flush()
+    select.value = 'fr'; select.dispatchEvent(new f.dom.window.Event('change', { bubbles: true })); await flush()
+    f.emit(2, choices('en', ['red'], 'Français', { error: 'Language needs review.' }))
+    assert.equal(f.document.querySelector('select[aria-label="Language"]'), select)
+    assert.equal(select.value, 'fr'); assert.equal(f.document.activeElement, select)
+    assert.equal(select.options[1]!.textContent, 'Français'); assert.equal(select.getAttribute('aria-invalid'), 'true')
+    f.document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="action-0"]')!.click(); await flush()
+    assert.equal(f.events.filter(event => event.kind === 'action').length, 0)
+    f.emit(3, choices('fr')); finish(); await flush(); await flush()
+    assert.equal(f.events.find(event => event.kind === 'fieldChanged').value, 'fr')
+    assert.equal(f.events.find(event => event.kind === 'action').revision, 3)
+  } finally { finish(); f.close() }
+})
+
+test('native tag selections preserve selection order and pending arrays across patches and keyboard submission', async () => {
+  let finish!: () => void
+  const blocked = new Promise<void>(resolve => { finish = resolve })
+  const f = await setup(async event => { if (event.kind === 'fieldChanged') await blocked })
+  try {
+    f.emit(1, choices('en', []))
+    const select = f.document.querySelector<HTMLSelectElement>('select[aria-label="Colors"]')!
+    assert.ok(select); assert.equal(select.multiple, true); assert.equal(select.selectedOptions.length, 0)
+    select.focus(); await flush()
+    select.options[1]!.selected = true; select.dispatchEvent(new f.dom.window.Event('change', { bubbles: true })); await flush()
+    select.options[0]!.selected = true; select.dispatchEvent(new f.dom.window.Event('change', { bubbles: true })); await flush()
+    f.emit(2, choices('en', ['red']))
+    assert.equal(f.document.querySelector('select[aria-label="Colors"]'), select)
+    assert.equal(f.document.activeElement, select); assert.equal(select.selectedOptions.length, 2)
+    select.dispatchEvent(new f.dom.window.KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true })); await flush()
+    assert.equal(f.events.some(event => event.kind === 'action'), false)
+    f.emit(3, choices('en', ['blue', 'red'])); finish(); await flush(); await flush()
+    assert.deepEqual(f.events.filter(event => event.kind === 'fieldChanged').map(event => event.value), [['blue'], ['blue', 'red']])
+    assert.equal(f.events.find(event => event.kind === 'action').revision, 3)
+    f.outcome(false); f.emit(4, choices('en', ['red'], 'French', {}, { focusRequest: 1, error: 'Colors need review.' })); await flush()
+    assert.equal(f.document.activeElement, select); assert.deepEqual(Array.from(select.selectedOptions).map(option => option.value), ['red'])
+    assert.equal(select.getAttribute('aria-invalid'), 'true'); assert.match(f.document.getElementById(select.getAttribute('aria-describedby')!.split(' ').at(-1)!)!.textContent ?? '', /Colors need review/)
+  } finally { finish(); f.close() }
+})
+
+test('removing choices during a pending edit does not erase accepted selections or their labels', async () => {
+  let finish!: () => void
+  const blocked = new Promise<void>(resolve => { finish = resolve })
+  const f = await setup(async event => { if (event.kind === 'fieldChanged') await blocked })
+  try {
+    f.emit(1, choices())
+    const dropdown = f.document.querySelector<HTMLSelectElement>('select[aria-label="Language"]')!, tags = f.document.querySelector<HTMLSelectElement>('select[aria-label="Colors"]')!
+    dropdown.value = 'fr'; dropdown.dispatchEvent(new f.dom.window.Event('change', { bubbles: true }))
+    tags.options[0]!.selected = false; tags.options[1]!.selected = true; tags.dispatchEvent(new f.dom.window.Event('change', { bubbles: true })); await flush()
+    const changed = choices(); changed.children[0]!.children[0]!.children = []; changed.children[0]!.children[1]!.children = []
+    f.emit(2, changed)
+    assert.equal(dropdown.value, 'fr'); assert.equal(dropdown.selectedOptions[0]!.textContent, 'French')
+    assert.deepEqual(Array.from(tags.selectedOptions).map(option => [option.value, option.textContent]), [['blue', 'Blue']])
+    f.emit(3, choices('fr', ['blue'])); finish(); await flush(); await flush()
+    assert.deepEqual(f.events.filter(event => event.kind === 'fieldChanged').map(event => event.value), ['fr', ['blue']])
+  } finally { finish(); f.close() }
+})
+
+test('duplicate section titles remain separate and refresh their labels without replacing controls', async () => {
+  const f = await setup()
+  try {
+    const tree = choices()
+    const dropdown = tree.children[0]!.children[0]!
+    const first = dropdown.children[0]!
+    first.props.title = 'Same Title'
+    dropdown.children.push({ type: 'raycast-section', props: { title: 'Same Title' }, children: [{ type: 'raycast-form-dropdown-item', props: { value: 'other', title: 'Other' }, children: [] }] })
+    f.emit(1, tree)
+    const select = f.document.querySelector<HTMLSelectElement>('select[aria-label="Language"]')!
+    f.emit(2, tree)
+    assert.equal(select.querySelectorAll('optgroup').length, 2)
+    assert.deepEqual(Array.from(select.options).map(option => option.value), ['en', 'fr', 'other'])
+    first.props.title = 'Renamed'; f.emit(3, tree)
+    assert.equal(select.querySelector('optgroup')?.label, 'Renamed')
+    assert.equal(f.document.querySelector('select[aria-label="Language"]'), select)
+  } finally { f.close() }
+})
+
+test('empty choice fields remain typed and detached selectors cannot send after a replacement', async () => {
+  const f = await setup()
+  try {
+    const tree = choices('', [])
+    tree.children[0]!.children[0]!.children = []; tree.children[0]!.children[1]!.children = []
+    f.emit(1, tree)
+    const dropdown = f.document.querySelector<HTMLSelectElement>('select[aria-label="Language"]')!, tags = f.document.querySelector<HTMLSelectElement>('select[aria-label="Colors"]')!
+    assert.equal(dropdown.value, ''); assert.equal(dropdown.selectedOptions[0]?.textContent, 'No Options'); assert.equal(tags.selectedOptions.length, 0)
+    assert.match(f.document.getElementById(tags.getAttribute('aria-describedby')!)!.textContent ?? '', /No tags are available/)
+    tags.focus(); await flush(); assert.deepEqual(f.events.find(event => event.eventId === 'field-tags').value, [])
+    f.emit(0, root('Replacement'), 'ready', 'replacement-session')
+    const before = f.events.length
+    dropdown.dispatchEvent(new f.dom.window.Event('change', { bubbles: true })); tags.dispatchEvent(new f.dom.window.Event('change', { bubbles: true })); await flush()
+    assert.equal(f.events.length, before)
+  } finally { f.close() }
 })
 
 test('password, textarea and checkbox use native typed controls and keyboard submission', async () => {

@@ -1,0 +1,950 @@
+{
+  "passed": true,
+  "realDesktop": true,
+  "firstPartyOfflineFixture": true,
+  "accountOrCredentialOperations": false,
+  "nativeEffects": false,
+  "route": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+  "captures": [
+    {
+      "file": "choice-form-dark.png",
+      "state": "Native sectioned language dropdown, multiple colors and empty choices, unskinned dark app/light system",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true,
+      "pixels": [
+        3024,
+        1898
+      ],
+      "sha256": "56485e754baac0e762cb02c5f7a00e29fd3f0cca88d6968b8c0046a0fe1c684d"
+    },
+    {
+      "file": "choice-form-error-dark.png",
+      "state": "Empty-language submission rejected, associated inline error and tag draft retained",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true,
+      "pixels": [
+        3024,
+        1898
+      ],
+      "sha256": "3419d0f47f38f368b5a7f75c4d3e03cafa5df800dc759b5d491c15e043b61a85"
+    },
+    {
+      "file": "choice-form-edited-dark.png",
+      "state": "Edited fake choices, app-scoped selected French, multiple colors, checkbox and focus ring",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true,
+      "pixels": [
+        3024,
+        1898
+      ],
+      "sha256": "e7c4a611e4d08922ab93113c9ee588c469b655cd4c7bfb17edb5b4e824ddba4d"
+    },
+    {
+      "file": "choice-form-saved-dark.png",
+      "state": "Exact typed string/array/empty/text/boolean values saved after pending tag callback with Control+Enter",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true,
+      "pixels": [
+        3024,
+        1898
+      ],
+      "sha256": "5ca1ce25fa037557dbed92c2874508741a793a038bf7c83d2149d4150b7acfab"
+    }
+  ],
+  "section": "Languages",
+  "nativePopupKeyboard": {
+    "verified": false,
+    "reason": "ArrowDown/Enter left both product and plain native selects unchanged in the inactive guarded macOS app; no foreground or OS-keyboard control was taken."
+  },
+  "visible": {
+    "text": "LanguageChoose a LanguageEnglishFrenchThis offline example waits for each selection before saving.ColorsRedBlueGreenHold Command or Control to select more than one tag.Empty ChoicesNo OptionsThis field has no options.NotesPreviewEnable the Fake PreviewSave Fake ChoicesReset Choices",
+    "controls": [
+      {
+        "label": "Language",
+        "tag": "SELECT",
+        "type": "select-one",
+        "value": "fr"
+      },
+      {
+        "label": "Colors",
+        "tag": "SELECT",
+        "type": "select-multiple",
+        "value": [
+          "red",
+          "blue"
+        ]
+      },
+      {
+        "label": "Empty Choices",
+        "tag": "SELECT",
+        "type": "select-one",
+        "value": ""
+      },
+      {
+        "label": "Notes",
+        "tag": "TEXTAREA",
+        "type": "textarea",
+        "value": "Reviewed offline choices."
+      },
+      {
+        "label": "Enable the Fake Preview",
+        "tag": "INPUT",
+        "type": "checkbox",
+        "value": true
+      }
+    ],
+    "focus": "Language",
+    "focusRing": "solid"
+  },
+  "widths": [
+    {
+      "name": "Language",
+      "width": 1478,
+      "parentWidth": 1478
+    },
+    {
+      "name": "Colors",
+      "width": 1478,
+      "parentWidth": 1478
+    },
+    {
+      "name": "Empty Choices",
+      "width": 1478,
+      "parentWidth": 1478
+    },
+    {
+      "name": "Notes",
+      "width": 1478,
+      "parentWidth": 1478
+    },
+    {
+      "name": "Enable the Fake Preview",
+      "width": 16,
+      "parentWidth": 1478
+    }
+  ],
+  "saved": {
+    "empty": "",
+    "notes": "Reviewed offline choices.",
+    "enabled": true,
+    "locale": "fr",
+    "tags": [
+      "blue"
+    ]
+  },
+  "errors": [],
+  "consoleErrors": [],
+  "nonlocalRequests": [],
+  "cleanup": {
+    "stopped": true,
+    "rootPid": 11825,
+    "recordedPids": [
+      11825,
+      11827,
+      11828,
+      11830,
+      11831,
+      11833,
+      11854,
+      11855,
+      11856,
+      12006,
+      12039,
+      12040,
+      12041,
+      12042,
+      12043,
+      12044,
+      12045,
+      12046,
+      12309,
+      12310,
+      12311,
+      12312,
+      12313,
+      12314,
+      12315,
+      12316,
+      12640,
+      12642,
+      12997,
+      13144
+    ],
+    "remaining": [],
+    "browser": "choice-proof detached; playwright-cli list has no browsers",
+    "display": 17,
+    "focused": false,
+    "tool": "extended_display.stop",
+    "inspector": {
+      "rootPid": 11729,
+      "stopped": true,
+      "remaining": []
+    }
+  },
+  "placement": [
+    {
+      "windowId": 1,
+      "displayId": 17,
+      "bounds": {
+        "x": 1512,
+        "y": 30,
+        "width": 1366,
+        "height": 994
+      },
+      "visible": true,
+      "focused": false
+    },
+    {
+      "windowId": 2,
+      "displayId": 17,
+      "bounds": {
+        "x": 1820,
+        "y": 289,
+        "width": 750,
+        "height": 475
+      },
+      "visible": true,
+      "focused": false
+    }
+  ],
+  "ownedData": {
+    "userData": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-1DBv88/user-data",
+    "homePreserved": true,
+    "mockKeychain": true
+  },
+  "sourceHead": "9b1fccbf30217e3ddabd0c79af7dc48953ed7f97",
+  "sourceHashes": [
+    {
+      "path": "src/user-raycast-renderer.ts",
+      "sha256": "5a03872e2537fca9f5c5db9a097b6a1ad76dfc4671b6fc6fc8579f3076e0d7c0"
+    },
+    {
+      "path": "src/trusted-raycast-compat-api.ts",
+      "sha256": "a7fa8eb3957081082398820f1e6933392677325e5a6446b2ba43a9916adf14f6"
+    },
+    {
+      "path": "src/user-raycast-contract.ts",
+      "sha256": "339b389e2c6d7fe0602a7feafbbda0a5041bbfef0cd1efdaba9ebc1e284bd2fa"
+    },
+    {
+      "path": "src/user-raycast-child.ts",
+      "sha256": "f72b7c350234d80c84811e1c9fe530539e7d3ee8083f39d26fd0fa680dec3c68"
+    },
+    {
+      "path": "src/user-raycast-manager.ts",
+      "sha256": "f841b09fdd7813eba8565e2a98864fc857ce1b8e946d675a10c88cd2d3c1647d"
+    }
+  ],
+  "warnings": [
+    "One existing unpackaged Electron CSP warning, no runtime/console errors in the interaction capture."
+  ],
+  "fixtureGroupAudit": {
+    "logs": [
+      "/tmp/tockteam-form-choices.cDDF8N/choice-focused-final.log",
+      "/tmp/tockteam-form-choices.cDDF8N/choice-root-test.log",
+      "/tmp/tockteam-form-choices.cDDF8N/choice-raycast-regression.log"
+    ],
+    "groupsByLog": {
+      "/tmp/tockteam-form-choices.cDDF8N/choice-focused-final.log": {
+        "owned": [],
+        "stopped": [
+          8551,
+          8553,
+          8555,
+          8557,
+          8559,
+          8561,
+          8563,
+          8565,
+          8567,
+          8569,
+          8571,
+          8573,
+          8575,
+          8581,
+          8583,
+          8585,
+          8587,
+          8589,
+          8591,
+          8597,
+          8599,
+          8603
+        ]
+      },
+      "/tmp/tockteam-form-choices.cDDF8N/choice-root-test.log": {
+        "owned": [
+          9854,
+          9858,
+          9862,
+          9866,
+          9869,
+          9872,
+          9879,
+          9971,
+          10125,
+          10657,
+          10982,
+          11283,
+          11547,
+          11550,
+          11553
+        ],
+        "stopped": [
+          9731,
+          9735,
+          9739,
+          9742,
+          9747,
+          9752,
+          9761,
+          9764,
+          9720,
+          9730,
+          9734,
+          9738,
+          9743,
+          9751,
+          9760,
+          9765,
+          9769,
+          9773,
+          9778,
+          9782,
+          9786,
+          9779,
+          9783,
+          9787,
+          9803,
+          9836,
+          9849,
+          9853,
+          9857,
+          9861,
+          9854,
+          9858,
+          9862,
+          9866,
+          9869,
+          9872,
+          9879,
+          9971,
+          10125,
+          10657,
+          10982,
+          11283,
+          11547,
+          11550,
+          11553,
+          9891,
+          9895,
+          9900,
+          9904,
+          9907,
+          9958
+        ]
+      },
+      "/tmp/tockteam-form-choices.cDDF8N/choice-raycast-regression.log": {
+        "owned": [
+          7453,
+          7456,
+          7460,
+          7462,
+          7471,
+          7475,
+          7482,
+          7511,
+          7513,
+          7517,
+          7519,
+          7521,
+          7523,
+          7525,
+          7527
+        ],
+        "stopped": [
+          7331,
+          7335,
+          7339,
+          7342,
+          7346,
+          7349,
+          7354,
+          7358,
+          7329,
+          7334,
+          7338,
+          7343,
+          7347,
+          7352,
+          7359,
+          7364,
+          7366,
+          7371,
+          7375,
+          7379,
+          7383,
+          7372,
+          7376,
+          7380,
+          7384,
+          7395,
+          7422,
+          7441,
+          7449,
+          7452,
+          7453,
+          7456,
+          7460,
+          7462,
+          7471,
+          7475,
+          7482,
+          7511,
+          7513,
+          7517,
+          7519,
+          7521,
+          7523,
+          7525,
+          7527,
+          7494,
+          7498,
+          7502,
+          7505,
+          7507,
+          7510
+        ]
+      }
+    },
+    "missingStopEvidence": [],
+    "checks": [
+      {
+        "pid": 7329,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7331,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7334,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7335,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7338,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7339,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7342,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7343,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7346,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7347,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7349,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7352,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7354,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7358,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7359,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7364,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7366,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7371,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7372,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7375,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7376,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7379,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7380,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7383,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7384,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7395,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7422,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7441,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7449,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7452,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7453,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7456,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7460,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7462,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7471,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7475,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7482,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7494,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7498,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7502,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7505,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7507,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7510,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7511,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7513,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7517,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7519,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7521,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7523,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7525,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 7527,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8551,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8553,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8555,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8557,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8559,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8561,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8563,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8565,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8567,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8569,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8571,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8573,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8575,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8581,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8583,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8585,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8587,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8589,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8591,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8597,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8599,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 8603,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9720,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9730,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9731,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9734,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9735,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9738,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9739,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9742,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9743,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9747,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9751,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9752,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9760,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9761,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9764,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9765,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9769,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9773,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9778,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9779,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9782,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9783,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9786,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9787,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9803,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9836,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9849,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9853,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9854,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9857,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9858,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9861,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9862,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9866,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9869,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9872,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9879,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9891,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9895,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9900,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9904,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9907,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9958,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 9971,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 10125,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 10657,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 10982,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 11283,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 11547,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 11550,
+        "result": "ESRCH"
+      },
+      {
+        "pid": 11553,
+        "result": "ESRCH"
+      }
+    ],
+    "passed": true
+  },
+  "screenshotVisualInspection": "Harness image reader could not provide an inline preview; PNG geometry and real visible DOM are verified, no pixel-level visual approval is claimed."
+}
