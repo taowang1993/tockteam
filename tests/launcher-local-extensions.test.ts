@@ -101,6 +101,36 @@ test('password and formatter flags preserve bounded source behavior', async () =
   assert.equal(automatic.before.find(item => item.sourceExtension === 'QuickFormatter')?.name, '{\n  "answer": 42\n}')
 })
 
+test('deep XML formatting preserves Unicode characters in displayed and copied results', async () => {
+  const copied: string[] = []
+  const local = createLauncherLocalExtensions({ ...options, copyText: async text => { copied.push(text) } })
+  try {
+    for (const [reference, character] of [
+      ['&#x1F600;', '😀'],
+      ['&#128512;', '😀'],
+      ['&#x20000;', '𠀀'],
+      ['&#131072;', '𠀀'],
+      ['&#x4E2D;', '中'],
+      ['&#65;', 'A'],
+    ]) {
+      const result = await local.searchInstant(`qfx &lt;root&gt;${reference}&lt;/root&gt;`)
+      const item = result.before.find(candidate => candidate.sourceExtension === 'QuickFormatter')!
+      const expected = `<root>${character}</root>`
+      assert.equal(item.name, expected, reference)
+      await local.executeAction(action({ ...item.defaultAction, sourceExtension: 'QuickFormatter' }))
+      assert.equal(copied.at(-1), expected, reference)
+    }
+  } finally { await local.close() }
+})
+
+test('deep XML formatting keeps out-of-range references unchanged instead of wrapping them', async () => {
+  for (const reference of ['&#x110000;', '&#1114112;', '&#999999999999999999999999999999;']) {
+    const input = `&lt;root&gt;${reference}&lt;/root&gt;`
+    const result = await search(`qfx ${input}`)
+    assert.equal(result.before.find(item => item.sourceExtension === 'QuickFormatter')?.name, input)
+  }
+})
+
 test('UUID search preserves exact generation, strictness, and formatting', async () => {
   const canonical = '21771a07-7dce-40b3-850e-386c1a0f5a2d'
   const format = { braces: true, hyphens: false, quotes: true, uppercase: true }
