@@ -335,7 +335,7 @@ function MarkdownDocumentProperty(props) {
         const valuePrefix = `${property.key}:`;
         if (props.editable && property.type === 'mixed' && property.value !== null)
             return props.compact
-                ? _jsxs("span", { className: "flex min-w-0 w-full items-center gap-2", title: "Use Source Mode to edit this value.", children: [_jsx("span", { className: "min-w-0 flex-1 truncate font-mono text-warning", children: props.rawType === 'mixed' && sourceValue.startsWith(valuePrefix) ? sourceValue.slice(valuePrefix.length).trimStart() : sourceValue }), _jsx(TriangleAlert, { "aria-hidden": "true", className: "shrink-0 text-warning" }), _jsx("span", { className: "sr-only", children: "Use Source Mode" })] })
+                ? _jsxs("span", { className: "tocktutor-property-source flex min-w-0 w-full items-center gap-2 text-[light-dark(var(--tt-text),var(--dsw-alias-state-warn-primary))]", title: "Use Source Mode to edit this value.", children: [_jsx("span", { className: "min-w-0 flex-1 truncate font-mono", children: props.rawType === 'mixed' && sourceValue.startsWith(valuePrefix) ? sourceValue.slice(valuePrefix.length).trimStart() : sourceValue }), _jsx(TriangleAlert, { "aria-hidden": "true", className: "shrink-0" }), _jsx("span", { className: "sr-only", children: "Use Source Mode" })] })
                 : _jsx("span", { className: "text-muted-foreground", children: "Use Source Mode" });
         if (props.editable && list)
             return _jsx(PropertyListEditor, { compact: props.compact, name: property.key, onSet: values => props.onSetProperty?.(property.key, values), propertyDrafts: props.propertyDrafts, suggestions: props.suggestions, values: Array.isArray(property.value) ? property.value : [] });
