@@ -205,8 +205,8 @@ test('pairs Imported Property Controls with genuine Obsidian and the identical s
   assert.equal(refresh.samePropertyTypes, true)
   assert.equal(refresh.reusesExistingBuild, true)
   const current = proof.captures['tocktutor-imported-properties.png']
-  assert.equal(current.sourceCommit, proof.footerComposerRefresh.sourceCommit)
-  assert.equal(current.sha256, proof.footerComposerRefresh.screenshotSha256s['tocktutor-imported-properties.png'])
+  assert.equal(current.sourceCommit, proof.titlebarDividerRefresh.sourceCommit)
+  assert.equal(current.sha256, proof.titlebarDividerRefresh.screenshotSha256s['tocktutor-imported-properties.png'])
   assert.equal(current.visibleState.rightSidebar, true)
   assert.equal(current.visibleState.fullHeightNote, true)
   assert.equal(current.visibleState.rootColorScheme, 'dark')
@@ -226,7 +226,7 @@ test('pairs Imported Property Controls with genuine Obsidian and the identical s
     { label: 'Properties', selected: 'true' },
     { label: 'Assistant', selected: 'false' },
   ])
-  assert.deepEqual(current.visibleState.toggle, { x: 1054, y: 6, width: 64, height: 28 })
+  assert.deepEqual(current.visibleState.toggle, { x: 1055, y: 6, width: 64, height: 28 })
   assert.ok(refresh.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
   assert.equal(refresh.galleryVerification.bothImagesDecoded, true)
   assert.equal(refresh.galleryVerification.surface30Absent, true)
@@ -273,7 +273,7 @@ test('publishes the current Properties comparison in the canonical gallery from 
   assert.equal(refresh.registryUnchanged, true)
   const current = proof.captures['tocktutor-imported-properties.png']
   const native = proof.captures['obsidian-imported-properties.png']
-  assert.equal(current.sourceCommit, proof.footerComposerRefresh.sourceCommit)
+  assert.equal(current.sourceCommit, proof.titlebarDividerRefresh.sourceCommit)
   assert.equal(refresh.status, 'verified-historical')
   assert.equal(native.sha256, refresh.screenshotSha256s['obsidian-imported-properties.png'])
   assert.equal(native.entry, '/Applications/Obsidian.app/Contents/Resources/app.asar')
@@ -345,8 +345,8 @@ test('places native calendar controls before both property dates in all eight ap
   const refresh = proof.propertyCalendarRefresh
   const current = proof.captures['tocktutor-imported-properties.png']
   assert.equal(refresh.status, 'verified-historical')
-  assert.equal(current.sourceCommit, proof.footerComposerRefresh.sourceCommit)
-  assert.equal(current.sha256, proof.footerComposerRefresh.screenshotSha256s['tocktutor-imported-properties.png'])
+  assert.equal(current.sourceCommit, proof.titlebarDividerRefresh.sourceCommit)
+  assert.equal(current.sha256, proof.titlebarDividerRefresh.screenshotSha256s['tocktutor-imported-properties.png'])
   assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-imported-properties.png'])
   assert.equal(refresh.installedReferenceUnchanged, true)
   assert.equal(refresh.unrelatedExistingCapturesUnchanged, 72)
@@ -377,7 +377,7 @@ test('places native calendar controls before both property dates in all eight ap
 
 test('keeps a two-pixel composer gap and right-edge footer without changing comparison content', () => {
   const refresh = proof.composerGapRefresh
-  assert.equal(refresh.status, 'verified-current')
+  assert.equal(refresh.status, 'verified-historical')
   assert.equal(proof.footerComposerRefresh.status, 'verified-historical')
   assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-assistant.png'])
   assert.equal(refresh.unrelatedExistingCapturesUnchanged, 72)
@@ -387,8 +387,8 @@ test('keeps a two-pixel composer gap and right-edge footer without changing comp
   assert.equal(refresh.footerSafeArea, 28)
   assert.equal(refresh.noPromptSent, true)
   const current = proof.captures['tocktutor-assistant.png']
-  assert.equal(current.sourceCommit, refresh.sourceCommit)
-  assert.equal(current.sha256, refresh.screenshotSha256)
+  assert.equal(current.sourceCommit, proof.titlebarDividerRefresh.sourceCommit)
+  assert.equal(current.sha256, proof.titlebarDividerRefresh.screenshotSha256s['tocktutor-assistant.png'])
   assert.equal(current.visibleState.footer.right, 1512)
   assert.equal(current.visibleState.footer.bottom, 949)
   assert.equal(current.theme, 'dark')
@@ -420,6 +420,46 @@ test('keeps a two-pixel composer gap and right-edge footer without changing comp
   assert.match(html, /2 CSS pixels/u)
 })
 
+test('matches the left titlebar divider in both right-sidebar views without moving the pane', () => {
+  const refresh = proof.titlebarDividerRefresh
+  assert.ok(refresh, 'Current right-titlebar divider has rendered Desktop evidence')
+  assert.equal(refresh.status, 'verified-current')
+  assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-imported-properties.png', 'tocktutor-assistant.png'])
+  assert.equal(refresh.unrelatedExistingCapturesUnchanged, 71)
+  assert.equal(refresh.installedReferencesUnchanged, true)
+  assert.deepEqual(refresh.geometry, [1512, 949, 2])
+  assert.deepEqual(refresh.pixels, [3024, 1898])
+  assert.equal(refresh.appearanceChecks.length, 8)
+  for (const sample of refresh.appearanceChecks) {
+    assert.notEqual(sample.mode.toLowerCase(), sample.system)
+    assert.deepEqual(sample.views.map((view: { view: string }) => view.view), ['assistant', 'file-properties'])
+    for (const view of sample.views) {
+      assert.deepEqual(view.rightDivider, view.leftDivider)
+      assert.equal(view.rightDivider.width, '1px')
+      assert.equal(view.rightDivider.style, 'solid')
+      assert.equal(view.right.x, view.panel.x)
+      assert.equal(view.right.width, view.panel.width)
+      assert.equal(view.right.height, 40)
+      assert.equal(view.rightOverflow, false)
+      assert.equal(view.footer.right, 1512)
+      assert.equal(view.footer.bottom, 949)
+      assert.equal(view.footerSafeArea, 28)
+    }
+  }
+  assert.ok(refresh.narrow.every((view: { right: { width: number }; rightOverflow: boolean }) => view.right.width === 240 && !view.rightOverflow))
+  assert.equal(refresh.keyboardSwitch, true)
+  assert.equal(refresh.closedFocusExcluded, true)
+  assert.equal(refresh.rememberedView, true)
+  assert.equal(refresh.noPromptSent, true)
+  assert.ok(refresh.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
+  assert.equal(refresh.galleryCleanup.serverStopped, true)
+  assert.deepEqual(refresh.galleryCleanup.remaining, [])
+  assert.deepEqual(refresh.runtimeErrors, [])
+  assert.deepEqual(refresh.externalRequests, [])
+  assert.equal(existsSync(resolve(root, refresh.checkScript)), true)
+  assert.match(html, /Titlebar Divider Refresh/u)
+})
+
 test('keeps unmatched migration surfaces distinct from the four focused comparisons', () => {
   const additions = proof.migrationReview
   assert.equal(additions.allowlist.length, 6)
@@ -436,7 +476,7 @@ test('keeps unmatched migration surfaces distinct from the four focused comparis
     assert.equal(proof.captures[name].captureScope, 'real-desktop')
     const expectedCommit = name === 'tocktutor-image-viewer.png' ? additions.imageViewerRefresh.sourceCommit
       : name === 'tocktutor-image-resizing.png' ? additions.imageLayoutRefresh.sourceCommit
-        : name === 'tocktutor-imported-properties.png' ? proof.footerComposerRefresh.sourceCommit : additions.sourceCommit
+        : name === 'tocktutor-imported-properties.png' ? proof.titlebarDividerRefresh.sourceCommit : additions.sourceCommit
     assert.equal(proof.captures[name].sourceCommit, expectedCommit)
   }
   const fixtures = resolve(root, additions.fixtures)
