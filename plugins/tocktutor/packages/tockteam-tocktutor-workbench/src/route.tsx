@@ -6192,13 +6192,13 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         <ToggleGroup unstyled aria-label="Right Sidebar View" className="tocktutor-sidebar-view-buttons flex items-center gap-2 [-webkit-app-region:no-drag]" data-view={sidebarView} orientation="horizontal" type="single" value={sidebarView} onValueChange={value => { if (value === 'assistant') setPanel(value); else if (value === 'file-properties') openProperties() }}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <ToggleGroupItem unstyled aria-label="Properties" className="flex size-7 items-center justify-center rounded-[5px] border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" value="file-properties"><ListTree aria-hidden="true" /></ToggleGroupItem>
+              <ToggleGroupItem unstyled aria-label="Properties" className="flex size-7 items-center justify-center rounded-[5px] border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted aria-checked:bg-accent aria-checked:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" value="file-properties"><ListTree aria-hidden="true" /></ToggleGroupItem>
             </TooltipTrigger>
             <TooltipContent>Properties</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <ToggleGroupItem unstyled aria-label="Assistant" className="flex size-7 items-center justify-center rounded-[5px] border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted data-[state=on]:bg-accent data-[state=on]:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" value="assistant"><MessageSquare aria-hidden="true" /></ToggleGroupItem>
+              <ToggleGroupItem unstyled aria-label="Assistant" className="flex size-7 items-center justify-center rounded-[5px] border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted aria-checked:bg-accent aria-checked:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" value="assistant"><MessageSquare aria-hidden="true" /></ToggleGroupItem>
             </TooltipTrigger>
             <TooltipContent>Assistant</TooltipContent>
           </Tooltip>
