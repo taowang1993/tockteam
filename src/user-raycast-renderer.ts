@@ -4,7 +4,18 @@ import type { UserRaycastFieldEvent, UserRaycastFieldValue, UserRaycastStatus } 
 import type { UserRaycastMessage } from './user-raycast-manager.ts'
 
 type Node = { type: string; props: Record<string, string | number | boolean | null | readonly string[]>; children: Array<Node | string> }
-type Field = { input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement; row: HTMLElement; title: HTMLElement; label: HTMLElement; info: HTMLElement; error: HTMLElement; node: Node; sessionId: string; version: number; dirty?: number; focused: number; autoFocused: boolean; selection?: readonly string[]; search?: HTMLInputElement; results?: HTMLElement; searchTimer?: ReturnType<typeof setTimeout>; searchPending?: boolean; searchText?: string }
+const dateControlValue = (raw: unknown, type: unknown): { value: string; number: number } => {
+  if (typeof raw !== 'string') return { value: '', number: NaN }
+  const date = new Date(raw), wall = new Date(0)
+  wall.setUTCFullYear(date.getFullYear(), date.getMonth(), date.getDate())
+  wall.setUTCHours(type === 'date' ? 0 : date.getHours(), type === 'date' ? 0 : date.getMinutes(), type === 'date' ? 0 : date.getSeconds(), type === 'date' ? 0 : date.getMilliseconds())
+  if (wall.getUTCFullYear() < 1 || !Number.isFinite(wall.getTime())) return { value: '', number: NaN }
+  const pad = (value: number, width = 2) => String(value).padStart(width, '0')
+  const day = `${pad(wall.getUTCFullYear(), 4)}-${pad(wall.getUTCMonth() + 1)}-${pad(wall.getUTCDate())}`
+  const time = `${pad(wall.getUTCHours())}:${pad(wall.getUTCMinutes())}${wall.getUTCSeconds() || wall.getUTCMilliseconds() ? `:${pad(wall.getUTCSeconds())}${wall.getUTCMilliseconds() ? `.${pad(wall.getUTCMilliseconds(), 3)}` : ''}` : ''}`
+  return { value: type === 'date' ? day : `${day}T${time}`, number: wall.getTime() }
+}
+type Field = { input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement; row: HTMLElement; title: HTMLElement; label: HTMLElement; info: HTMLElement; error: HTMLElement; node: Node; sessionId: string; formId?: string; dateError?: string | undefined; dateModeError?: boolean; version: number; dirty?: number; focused: number; autoFocused: boolean; selection?: readonly string[]; search?: HTMLInputElement; results?: HTMLElement; searchTimer?: ReturnType<typeof setTimeout>; searchPending?: boolean; searchText?: string }
 
 /** Inert native controls only: extension code and React never enter the launcher renderer. */
 export function createUserRaycastView(document: Document, bridge: LauncherPreloadBridge, onClose: () => void) {
@@ -175,6 +186,11 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     const input = field.input
     if (input.tagName === 'SELECT') { syncChoices(field); return }
     if (field.node.props.fieldKind === 'checkbox') { (input as HTMLInputElement).checked = field.node.props.value === true; return }
+    if (field.node.props.fieldKind === 'date') {
+      const next = dateControlValue(field.node.props.value, field.node.props.dateType), control = input as HTMLInputElement
+      if (control.valueAsNumber !== next.number) control.value = next.value
+      return
+    }
     const text = input as HTMLInputElement | HTMLTextAreaElement
     const next = String(field.node.props.value ?? '')
     if (text.value === next) return
@@ -198,15 +214,54 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
       field.selection = [...previous.filter(value => selected.includes(value)), ...selected.filter(value => !previous.includes(value))]
       return [...field.selection]
     }
+    if (field.node.props.fieldKind === 'date') {
+      const input = field.input as HTMLInputElement
+      if (!input.value) return null
+      const projected = field.node.props.value
+      if (typeof projected === 'string' && input.valueAsNumber === dateControlValue(projected, field.node.props.dateType).number) return projected
+      const wall = new Date(input.valueAsNumber), local = new Date(0)
+      local.setFullYear(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate())
+      local.setHours(wall.getUTCHours(), wall.getUTCMinutes(), wall.getUTCSeconds(), wall.getUTCMilliseconds())
+      if (!Number.isFinite(local.getTime())) throw new Error('Enter a valid date and time.')
+      const value = local.toISOString()
+      if (input.valueAsNumber !== dateControlValue(value, field.node.props.dateType).number) throw new Error('This local date or time does not exist in your time zone.')
+      return value
+    }
     return field.node.props.fieldKind === 'checkbox' ? (field.input as HTMLInputElement).checked : field.input.value
+  }
+  const dateError = (field: Field): string | undefined => {
+    if (field.node.props.fieldKind !== 'date') return
+    if (field.dateModeError) return 'The date mode changed while the draft was invalid. Re-enter the date to continue.'
+    const input = field.input as HTMLInputElement, props = field.node.props
+    if (input.validity.badInput) return 'Enter a valid date and time.'
+    if (field.dirty === undefined && typeof props.value === 'string' && !Number.isFinite(dateControlValue(props.value, props.dateType).number)) return 'The native calendar cannot display this year.'
+    try {
+      const value = fieldValue(field)
+      if (value === null) return
+      const key = (raw: string): number => props.dateType === 'date' ? dateControlValue(raw, props.dateType).number : Date.parse(raw)
+      if (typeof value === 'string' && (typeof props.min === 'string' && key(value) < key(props.min) || typeof props.max === 'string' && key(value) > key(props.max))) return 'The date is outside the allowed range.'
+    } catch (error) { return error instanceof Error ? error.message : 'Enter a valid date and time.' }
+  }
+  const paintFieldError = (field: Field): void => {
+    field.error.textContent = field.dateError ?? String(field.node.props.error ?? ''); field.error.hidden = !field.error.textContent
+    field.input.setAttribute('aria-invalid', field.error.textContent ? 'true' : 'false')
+    field.row.toggleAttribute('data-invalid', Boolean(field.error.textContent))
+    const descriptions = [field.info, field.error].filter(item => !item.hidden).map(item => item.id)
+    if (descriptions.length) field.input.setAttribute('aria-describedby', descriptions.join(' ')); else field.input.removeAttribute('aria-describedby')
   }
   const enqueueField = (field: Field, kind: UserRaycastFieldEvent['kind']): boolean => {
     if (disposed || actionPending || queuedFields >= maxQueuedFields || !active || active.sessionId !== field.sessionId || fields.get(String(field.node.props.fieldEventId)) !== field) return false
+    const version = ++field.version
+    if (kind === 'fieldChanged') field.dirty = version
+    if (field.node.props.fieldKind === 'date') {
+      if (kind === 'fieldChanged') delete field.dateModeError
+      field.dateError = dateError(field); paintFieldError(field)
+      if (kind === 'fieldChanged' && field.dateError) return false
+    }
+    const value = kind === 'fieldSearchChanged' ? field.search?.value ?? '' : field.dateError ? field.node.props.value as UserRaycastFieldValue : fieldValue(field)
     queuedFields++
     if (queuedFields === maxQueuedFields) { feedback.textContent = 'Waiting for field edits.'; feedback.setAttribute('role', 'status') }
     setFieldAvailability()
-    const value = kind === 'fieldSearchChanged' ? field.search?.value ?? '' : fieldValue(field), version = ++field.version
-    if (kind === 'fieldChanged') field.dirty = version
     const id = String(field.node.props.fieldEventId), sessionId = field.sessionId
     fieldQueue = fieldQueue.then(async () => {
       if (disposed || active?.sessionId !== sessionId || fields.get(id) !== field) throw new Error('Extension field is no longer open')
@@ -248,10 +303,14 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     setFieldAvailability()
     for (const form of forms.values()) for (const control of Array.from(form.actions.querySelectorAll<HTMLButtonElement>('button'))) control.disabled = pending
   }
-  const runAction = async (id: string, sessionId: string): Promise<void> => {
+  const runAction = async (id: string, sessionId: string, submitForm?: string): Promise<void> => {
     for (const field of fields.values()) flushSearch(field)
     let pending: Promise<void>
     do { pending = fieldQueue; await pending } while (pending !== fieldQueue)
+    if (submitForm !== undefined) for (const field of fields.values()) if (field.formId === submitForm && field.node.props.fieldKind === 'date') {
+      field.dateError = dateError(field); paintFieldError(field)
+      if (field.dateError) { field.input.focus(); throw new Error(field.dateError) }
+    }
     if (fieldFailures.size) throw fieldFailures.values().next().value
     if (disposed || active?.sessionId !== sessionId) throw new Error('Extension is no longer open')
     setActionPending(true)
@@ -335,7 +394,20 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
             })
           }
         }
-        field.node = node
+        if (node.props.fieldKind === 'date') {
+          const input = field.input as HTMLInputElement, type = node.props.dateType === 'date' ? 'date' : 'datetime-local'
+          if (input.type !== type) {
+            let value: string
+            try { value = dateControlValue(field.dirty === undefined ? node.props.value : fieldValue(field), node.props.dateType).value }
+            catch {
+              value = type === 'date' ? input.value.split('T')[0]! : `${input.value}T00:00`
+              field.dateModeError = true
+            }
+            input.type = type; input.value = value
+          }
+          input.step = 'any'; input.min = dateControlValue(node.props.min, node.props.dateType).value; input.max = dateControlValue(node.props.max, node.props.dateType).value
+        }
+        field.node = node; field.formId = formId
         field.title.textContent = node.props.fieldKind === 'checkbox' ? String(node.props.title ?? '') : ''; field.title.hidden = !field.title.textContent
         field.label.textContent = String(node.props.fieldKind === 'checkbox' ? node.props.label ?? node.props.title ?? node.props.id : node.props.title ?? node.props.id ?? 'Field')
         field.input.setAttribute('aria-label', field.label.textContent)
@@ -348,12 +420,8 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
         field.input.disabled = actionPending || queuedFields >= maxQueuedFields
         field.row.toggleAttribute('data-disabled', field.input.disabled)
         field.info.textContent = String(node.props.info ?? (node.props.fieldKind === 'tagpicker' ? (field.input as HTMLSelectElement).options.length === 0 ? 'No tags are available.' : 'Hold Command or Control to select more than one tag.' : '')); field.info.hidden = !field.info.textContent
-        field.error.textContent = String(node.props.error ?? ''); field.error.hidden = !field.error.textContent
-        field.input.setAttribute('aria-invalid', field.error.textContent ? 'true' : 'false')
-        field.row.toggleAttribute('data-invalid', Boolean(field.error.textContent))
-        const descriptions = [field.info, field.error].filter(item => !item.hidden).map(item => item.id)
-        if (descriptions.length) field.input.setAttribute('aria-describedby', descriptions.join(' ')); else field.input.removeAttribute('aria-describedby')
         applyValue(field)
+        field.dateError = dateError(field); paintFieldError(field)
         rows.push(field.row)
       }
       reorder(current.group, rows)
@@ -361,7 +429,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
       current.actions.replaceChildren()
       for (const action of actions.slice(0, 16)) if (typeof action.props.actionEventId === 'string') {
         const id = action.props.actionEventId
-        const control = button(String(action.props.title ?? 'Run Action'), id, () => runAction(id, sessionId))
+        const control = button(String(action.props.title ?? 'Run Action'), id, () => runAction(id, sessionId, action.props.submitForm === true ? formId : undefined))
         control.disabled = actionPending; current.actions.append(control)
       }
     }

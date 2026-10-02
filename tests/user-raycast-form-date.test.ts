@@ -31,6 +31,7 @@ const shell=(fields:string,body='',submit='setAnswer(JSON.stringify(Object.fromE
 test('date fields submit real JavaScript Dates and nulls while only canonical strings enter the renderer',async t=>{
  const initial='2026-10-02T12:34:56.789Z',edited='2026-10-03T01:02:03.456Z'
  const f=await fixture(t,shell(`React.createElement(Form.DatePicker,{id:'when',title:'When',defaultValue:new Date('${initial}')}),React.createElement(Form.DatePicker,{id:'empty',title:'Optional Date'}),React.createElement(FormDatePicker,{id:'day',title:'Day',type:Form.DatePicker.Type.Date,defaultValue:new Date('2026-10-04T00:00:00.000Z')})`))
+ assert.equal(f.nodes('raycast-action').find(node=>node.props.title==='Submit Form').props.submitForm,true)
  assert.equal(f.field('when').props.fieldKind,'date');assert.equal(f.field('when').props.value,initial);assert.equal(f.field('when').props.dateType,'date_time');assert.equal(f.field('empty').props.value,null);assert.equal(f.field('day').props.dateType,'date')
  assert.equal((await f.act()).succeeded,true);assert.deepEqual(await f.answer(),{when:{isDate:true,iso:initial},empty:null,day:{isDate:true,iso:'2026-10-04T00:00:00.000Z'}})
  await f.edit('when',edited);await f.edit('day',null);assert.equal((await f.act()).succeeded,true);assert.deepEqual(await f.answer(),{when:{isDate:true,iso:edited},empty:null,day:null});assert.deepEqual(f.errors,[])
