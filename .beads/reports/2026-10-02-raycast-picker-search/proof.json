@@ -1,0 +1,270 @@
+{
+  "passed": true,
+  "realDesktop": true,
+  "offlineFirstParty": true,
+  "nativeEffects": false,
+  "accountOperations": false,
+  "matchedRegion": [
+    "GB"
+  ],
+  "focus": {
+    "active": true,
+    "outline": "solid"
+  },
+  "widths": [
+    {
+      "label": "Search Language",
+      "type": "search",
+      "width": 1463,
+      "parent": 1463,
+      "font": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "parentFont": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    {
+      "label": "Language",
+      "type": "select-one",
+      "width": 1463,
+      "parent": 1463,
+      "font": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "parentFont": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    {
+      "label": "Search Region",
+      "type": "search",
+      "width": 1463,
+      "parent": 1463,
+      "font": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "parentFont": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    {
+      "label": "Region",
+      "type": "select-one",
+      "width": 1463,
+      "parent": 1463,
+      "font": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "parentFont": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    {
+      "label": "Search Colors",
+      "type": "search",
+      "width": 1463,
+      "parent": 1463,
+      "font": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "parentFont": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    {
+      "label": "Colors",
+      "type": "select-multiple",
+      "width": 1463,
+      "parent": 1463,
+      "font": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "parentFont": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    {
+      "label": "Notes",
+      "type": "text",
+      "width": 1463,
+      "parent": 1463,
+      "font": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+      "parentFont": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    },
+    {
+      "label": "Enable the Fake Preview",
+      "type": "checkbox",
+      "width": 16,
+      "parent": 1463,
+      "font": "Arial",
+      "parentFont": "-apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", \"Noto Sans\", Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\""
+    }
+  ],
+  "saved": {
+    "region": "GB",
+    "locale": "fr",
+    "notes": "Searched offline choices.",
+    "enabled": true,
+    "tags": [
+      "blue",
+      "red"
+    ]
+  },
+  "captures": [
+    {
+      "file": "picker-search-dark.png",
+      "state": "Remote language search, local region/keyword search and tag-name search, unskinned dark app/light system",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true
+    },
+    {
+      "file": "picker-search-filtered-dark.png",
+      "state": "Keyword result selected; local tag search retains ordered Blue/Red selection",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true
+    },
+    {
+      "file": "picker-search-loading-dark.png",
+      "state": "Extension search loading indicator with preserved selection and draft",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true
+    },
+    {
+      "file": "picker-search-saved-dark.png",
+      "state": "Exact typed choices saved after pending throttled search with Control+Enter",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "url": "file:///Users/taowang/projects/tockteam/dist/launcher.html",
+      "mode": "dark",
+      "skin": null,
+      "nativeIsolation": true
+    }
+  ],
+  "errors": [],
+  "consoleErrors": [],
+  "nonlocalRequests": [],
+  "popupKeyboardVerified": false,
+  "images": [
+    {
+      "file": "picker-search-dark.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "1fe2102490d0e217000ac13837008106500164bbffa47ef7a0ae7ff8f6a49109"
+    },
+    {
+      "file": "picker-search-filtered-dark.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "2d71072bf3f46413d1c342e5ba0d63b8162f790c24f3f6bc627770f9d0deba2e"
+    },
+    {
+      "file": "picker-search-loading-dark.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "ee4c32d93541c6322b63f492e9e47cd4a81dfb89fc11b3230150fc3002d57761"
+    },
+    {
+      "file": "picker-search-saved-dark.png",
+      "width": 3024,
+      "height": 1898,
+      "sha256": "c2a7c9b5729a1dcf6a0ac1c27287ab6603c1bea84de2389bae782a09a354afd4"
+    }
+  ],
+  "sourceAndBuildHashes": {
+    "src/user-raycast-renderer.ts": "02199cbab130269572be4164410acba7fba3e8418dc9453f4f273def5079886a",
+    "tests/user-raycast-form-renderer.test.ts": "b97284e8cc03730acd846e2f2ec703426267ecd68e9fe3048e1060265c50f395",
+    "src/user-raycast-contract.ts": "77f8c3a3d783df2f26f9142d33315bc1118e886bca84a1843c8a17f3cda85e1c",
+    "src/user-raycast-child.ts": "011443446b27954423f7c8d3e57594ea813c23acc9773a868a18a1106d00a1c5",
+    "src/user-raycast-manager.ts": "ccdd881bf339e069e50f74b7e155c64e21321a9cef5a64618ac939b03017c432",
+    "src/trusted-raycast-compat-api.ts": "7fdbadb5d96f63dbad79d9f32db46fcc402e4d35ac0bcd783c49f2a09b7ada52",
+    "dist/main.js": "c357f9a85fbea5a199026c1ac07a3ca06d5fdfacdbc977c740441eca272bc22f",
+    "dist/launcher.js": "13983998ca3411809b77e4dae195111464ad4dbf8903c55f0a1d92bc61191cf3"
+  },
+  "placement": {
+    "displayId": 17,
+    "focused": false,
+    "windows": [
+      {
+        "windowId": 1,
+        "bounds": {
+          "x": 1512,
+          "y": 30,
+          "width": 1366,
+          "height": 994
+        }
+      },
+      {
+        "windowId": 2,
+        "bounds": {
+          "x": 1820,
+          "y": 289,
+          "width": 750,
+          "height": 475
+        }
+      }
+    ]
+  },
+  "ownedRoot": {
+    "userData": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-vZanJg/user-data",
+    "homePreserved": true,
+    "mockKeychain": true
+  },
+  "cleanup": {
+    "id": "f4b0fba1-5470-4972-b4bf-c8654a24cef1",
+    "stopped": true,
+    "rootPid": 35686,
+    "recordedPids": [
+      35686,
+      35688,
+      35689,
+      35693,
+      35694,
+      35695,
+      35712,
+      35713,
+      35859,
+      35860,
+      35861,
+      35862,
+      35863,
+      35864,
+      35865,
+      35870,
+      36088,
+      39401,
+      39712,
+      39782
+    ],
+    "remaining": [],
+    "allPidsESRCH": true,
+    "cdpAndDshPortsClosed": true,
+    "playwrightDetached": true,
+    "fixtureGroups": 272,
+    "fixtureGroupsESRCH": true
+  },
+  "warning": "One existing unpackaged Electron CSP warning; no pixel-level visual approval or native popup keyboard proof",
+  "finalChecks": {
+    "focused": {
+      "pass": 64,
+      "fail": 0
+    },
+    "apiIpc": {
+      "pass": 23,
+      "fail": 0
+    },
+    "raycastLauncher": {
+      "pass": 437,
+      "skip": 6,
+      "fail": 0
+    },
+    "root": {
+      "pass": 1669,
+      "skip": 18,
+      "fail": 0
+    },
+    "typecheck": true,
+    "build": true,
+    "quickStage": true
+  }
+}

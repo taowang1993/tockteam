@@ -1,9 +1,10 @@
+import fuzzysort from 'fuzzysort'
 import type { LauncherPreloadBridge } from './launcher-preload-bridge.ts'
 import type { UserRaycastFieldEvent, UserRaycastFieldValue, UserRaycastStatus } from './user-raycast-contract.ts'
 import type { UserRaycastMessage } from './user-raycast-manager.ts'
 
 type Node = { type: string; props: Record<string, string | number | boolean | null | readonly string[]>; children: Array<Node | string> }
-type Field = { input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement; row: HTMLElement; title: HTMLElement; label: HTMLElement; info: HTMLElement; error: HTMLElement; node: Node; sessionId: string; version: number; dirty?: number; focused: number; autoFocused: boolean; selection?: readonly string[] }
+type Field = { input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement; row: HTMLElement; title: HTMLElement; label: HTMLElement; info: HTMLElement; error: HTMLElement; node: Node; sessionId: string; version: number; dirty?: number; focused: number; autoFocused: boolean; selection?: readonly string[]; search?: HTMLInputElement; results?: HTMLElement; searchTimer?: ReturnType<typeof setTimeout>; searchPending?: boolean; searchText?: string }
 
 /** Inert native controls only: extension code and React never enter the launcher renderer. */
 export function createUserRaycastView(document: Document, bridge: LauncherPreloadBridge, onClose: () => void) {
@@ -64,7 +65,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
   let queuedFields = 0
   const maxQueuedFields = 32
   let fieldQueue = Promise.resolve()
-  let fieldFailure: Error | undefined
+  const fieldFailures = new Map<string, Error>()
   const fields = new Map<string, Field>()
   const forms = new Map<string, { element: HTMLFormElement; group: HTMLElement; actions: HTMLElement }>()
   const button = (text: string, action: string, run: () => Promise<unknown> | void, disabled = false): HTMLButtonElement => {
@@ -138,31 +139,41 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     const value = field.dirty === undefined ? field.node.props.value : fieldValue(field)
     const options = new Map(Array.from(select.options).map(option => [option.value, option]))
     const groups = new Map(Array.from(select.querySelectorAll('optgroup')).map(group => [group.dataset.groupKey, group]))
-    const declared = new Set<string>()
-    const children = (nodes: Array<Node | string>, path = ''): HTMLElement[] => nodes.flatMap((node, index) => {
+    const declared = new Set<string>(), selected = Array.isArray(value) ? value : typeof value === 'string' ? [value] : []
+    const query = field.search?.value.trim() ?? '', filtering = select.multiple || field.node.props.filtering !== false
+    let matches = 0
+    // ponytail: bounded native choices retain declared order; rank menus if measured parity needs it.
+    const children = (nodes: Array<Node | string>, path = '', sectionTitle = ''): HTMLElement[] => nodes.flatMap((node, index) => {
       if (typeof node === 'string') return []
       const key = `${path}-${index}`
       if (node.type === 'raycast-section') {
         const group = groups.get(key) ?? document.createElement('optgroup'); group.label = String(node.props.title ?? ''); group.dataset.groupKey = key
-        reorder(group, children(node.children, key)); return [group]
+        reorder(group, children(node.children, key, group.label)); group.hidden = Array.from(group.children).every(option => (option as HTMLOptionElement).hidden); return [group]
       }
-      if (node.type !== 'raycast-form-dropdown-item') return children(node.children, key)
+      if (node.type !== 'raycast-form-dropdown-item') return children(node.children, key, sectionTitle)
       const id = String(node.props.value ?? '')
       const option = options.get(id) ?? document.createElement('option'); option.value = id; option.textContent = String(node.props.title ?? id)
+      let keywords: string[] = [sectionTitle]
+      if (typeof node.props.keywords === 'string') { try { const parsed: unknown = JSON.parse(node.props.keywords); keywords = Array.isArray(parsed) ? parsed.filter((word): word is string => typeof word === 'string') : [] } catch { keywords = [] } }
+      const matched = !filtering || !query || Boolean(fuzzysort.single(query, [option.textContent, ...(select.multiple ? [] : keywords)].join(' ')))
+      if (matched) matches++
+      option.hidden = !matched && !(select.multiple && selected.includes(id))
       declared.add(id); return [option]
     })
     const desired = children(field.node.children)
     for (const id of Array.isArray(value) ? value : typeof value === 'string' ? [value] : []) if (!declared.has(id)) {
       const option = options.get(id) ?? document.createElement('option'); option.value = id; option.textContent ||= id || 'No Options'
-      desired.push(option)
+      option.hidden = Boolean(query) && filtering && !select.multiple; desired.push(option)
     }
     reorder(select, desired); selectValue(field, value)
-    if (select.multiple) select.size = Math.min(6, Math.max(2, select.options.length))
+    if (select.multiple) select.size = Math.min(6, Math.max(2, Array.from(select.options).filter(option => !option.hidden).length))
+    if (field.results) { field.results.textContent = field.node.props.isLoading === true ? 'Loading Options…' : query && matches === 0 ? 'No Matching Options' : ''; field.results.hidden = !field.results.textContent }
+    field.search?.setAttribute('aria-busy', String(field.node.props.isLoading === true))
   }
   const applyValue = (field: Field): void => {
     if (field.dirty !== undefined) return
     const input = field.input
-    if (input.tagName === 'SELECT') { selectValue(field, field.node.props.value); return }
+    if (input.tagName === 'SELECT') { syncChoices(field); return }
     if (field.node.props.fieldKind === 'checkbox') { (input as HTMLInputElement).checked = field.node.props.value === true; return }
     const text = input as HTMLInputElement | HTMLTextAreaElement
     const next = String(field.node.props.value ?? '')
@@ -189,34 +200,46 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     }
     return field.node.props.fieldKind === 'checkbox' ? (field.input as HTMLInputElement).checked : field.input.value
   }
-  const enqueueField = (field: Field, kind: UserRaycastFieldEvent['kind']): void => {
-    if (disposed || actionPending || queuedFields >= maxQueuedFields || !active || active.sessionId !== field.sessionId) return
+  const enqueueField = (field: Field, kind: UserRaycastFieldEvent['kind']): boolean => {
+    if (disposed || actionPending || queuedFields >= maxQueuedFields || !active || active.sessionId !== field.sessionId || fields.get(String(field.node.props.fieldEventId)) !== field) return false
     queuedFields++
     if (queuedFields === maxQueuedFields) { feedback.textContent = 'Waiting for field edits.'; feedback.setAttribute('role', 'status') }
     setFieldAvailability()
-    const value = fieldValue(field), version = ++field.version
+    const value = kind === 'fieldSearchChanged' ? field.search?.value ?? '' : fieldValue(field), version = ++field.version
     if (kind === 'fieldChanged') field.dirty = version
     const id = String(field.node.props.fieldEventId), sessionId = field.sessionId
     fieldQueue = fieldQueue.then(async () => {
       if (disposed || active?.sessionId !== sessionId || fields.get(id) !== field) throw new Error('Extension field is no longer open')
       await bridge.userRaycastEvent({ sessionId, revision: active.revision, eventId: id, requestId: `field-request-${++fieldSequence}`, kind, value })
+      fieldFailures.delete(`${id}:${kind}`)
       if (kind === 'fieldChanged') {
-        fieldFailure = undefined
         if (field.dirty === version) { delete field.dirty; applyValue(field) }
       }
     }).catch(error => {
       if (disposed || active?.sessionId !== sessionId || fields.get(id) !== field) return
-      fieldFailure = error instanceof Error ? error : new Error('Field callback failed')
-      feedback.textContent = fieldFailure.message.slice(0, 512); feedback.setAttribute('role', 'alert')
+      const failure = error instanceof Error ? error : new Error('Field callback failed'); fieldFailures.set(`${id}:${kind}`, failure)
+      feedback.textContent = failure.message.slice(0, 512); feedback.setAttribute('role', 'alert')
     }).finally(() => {
       if (disposed || active?.sessionId !== sessionId) return
       queuedFields--; setFieldAvailability()
+      for (const current of fields.values()) if (current.searchPending && !current.searchTimer) flushSearch(current)
       if (queuedFields === 0 && feedback.textContent === 'Waiting for field edits.') feedback.textContent = 'Fields Updated'
     })
+    return true
+  }
+  const flushSearch = (field: Field): void => {
+    clearTimeout(field.searchTimer); delete field.searchTimer
+    if (field.searchPending && enqueueField(field, 'fieldSearchChanged')) delete field.searchPending
+  }
+  const retireField = (field: Field): void => {
+    clearTimeout(field.searchTimer)
+    const id = String(field.node.props.fieldEventId); fields.delete(id)
+    for (const key of fieldFailures.keys()) if (key.slice(0, key.lastIndexOf(':')) === id) fieldFailures.delete(key)
   }
   const setFieldAvailability = (): void => {
     for (const field of fields.values()) {
       field.input.disabled = actionPending || queuedFields >= maxQueuedFields
+      if (field.search) field.search.disabled = field.input.disabled
       field.row.toggleAttribute('data-disabled', field.input.disabled)
     }
   }
@@ -226,8 +249,10 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     for (const form of forms.values()) for (const control of Array.from(form.actions.querySelectorAll<HTMLButtonElement>('button'))) control.disabled = pending
   }
   const runAction = async (id: string, sessionId: string): Promise<void> => {
-    await fieldQueue
-    if (fieldFailure) throw fieldFailure
+    for (const field of fields.values()) flushSearch(field)
+    let pending: Promise<void>
+    do { pending = fieldQueue; await pending } while (pending !== fieldQueue)
+    if (fieldFailures.size) throw fieldFailures.values().next().value
     if (disposed || active?.sessionId !== sessionId) throw new Error('Extension is no longer open')
     setActionPending(true)
     try { await bridge.userRaycastEvent({ sessionId, revision: active.revision, eventId: id, kind: 'action' }) }
@@ -253,7 +278,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
         shell.append(group, actions); current = { element: shell, group, actions }; forms.set(formId, current)
         shell.addEventListener('submit', event => { event.preventDefault(); current!.actions.querySelector<HTMLButtonElement>('button')?.click() })
         shell.addEventListener('keydown', event => {
-          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); current!.actions.querySelector<HTMLButtonElement>('button')?.click() }
+          if (!event.isComposing && event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); current!.actions.querySelector<HTMLButtonElement>('button')?.click() }
         })
       }
       const projected: Node[] = []; collect(form, 'raycast-text-field', projected)
@@ -263,7 +288,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
         if (typeof id !== 'string') continue
         liveFields.add(id)
         let field = fields.get(id)
-        if (field && field.node.props.fieldKind !== node.props.fieldKind) { field.row.remove(); fields.delete(id); field = undefined }
+        if (field && field.node.props.fieldKind !== node.props.fieldKind) { field.row.remove(); retireField(field); field = undefined }
         if (!field) {
           const row = document.createElement('div'), title = document.createElement('span'), label = document.createElement('label'), info = document.createElement('p'), error = document.createElement('p')
           const input = node.props.fieldKind === 'textarea' ? document.createElement('textarea') : node.props.fieldKind === 'dropdown' || node.props.fieldKind === 'tagpicker' ? document.createElement('select') : document.createElement('input')
@@ -283,13 +308,41 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
           field = { input, row, title, label, info, error, node, sessionId, version: 0, focused: 0, autoFocused: false }; fields.set(id, field)
           const owned = field
           input.addEventListener(input.tagName === 'SELECT' || node.props.fieldKind === 'checkbox' ? 'change' : 'input', () => enqueueField(owned, 'fieldChanged'))
-          input.addEventListener('focus', () => enqueueField(owned, 'fieldFocused'))
-          input.addEventListener('blur', () => enqueueField(owned, 'fieldBlurred'))
+          row.addEventListener('focusin', event => { if (!row.contains(event.relatedTarget as globalThis.Node | null)) enqueueField(owned, 'fieldFocused') })
+          row.addEventListener('focusout', event => { if (!row.contains(event.relatedTarget as globalThis.Node | null)) enqueueField(owned, 'fieldBlurred') })
+          if (input.tagName === 'SELECT') {
+            const search = document.createElement('input'), results = document.createElement('p')
+            search.type = 'search'; search.maxLength = 16384; search.className = input.className
+            results.id = `${input.id}-results`; results.className = 'm-0 min-w-0 break-words text-xs text-muted-foreground'; results.setAttribute('role', 'status'); results.setAttribute('aria-live', 'polite')
+            search.setAttribute('aria-describedby', results.id); row.insertBefore(search, input); row.insertBefore(results, info)
+            owned.search = search; owned.results = results
+            const changed = (): void => {
+              if (disposed || active?.sessionId !== owned.sessionId || fields.get(id) !== owned || search.disabled || (owned.searchText ?? '') === search.value) return
+              owned.searchText = search.value; syncChoices(owned)
+              if (owned.node.props.searchable === true && owned.node.props.fieldKind === 'dropdown') {
+                clearTimeout(owned.searchTimer); owned.searchPending = true
+                if (owned.node.props.throttle === true) owned.searchTimer = setTimeout(() => flushSearch(owned), 300)
+                else flushSearch(owned)
+              }
+            }
+            search.addEventListener('input', event => { if (!event.isComposing) changed() })
+            search.addEventListener('compositionend', changed)
+            search.addEventListener('keydown', event => {
+              if (event.isComposing) return
+              if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey) event.preventDefault()
+              if (event.key === 'Escape' && search.value) { event.preventDefault(); event.stopPropagation(); search.value = ''; changed() }
+              if (event.key === 'ArrowDown') { event.preventDefault(); input.focus() }
+            })
+          }
         }
         field.node = node
         field.title.textContent = node.props.fieldKind === 'checkbox' ? String(node.props.title ?? '') : ''; field.title.hidden = !field.title.textContent
         field.label.textContent = String(node.props.fieldKind === 'checkbox' ? node.props.label ?? node.props.title ?? node.props.id : node.props.title ?? node.props.id ?? 'Field')
         field.input.setAttribute('aria-label', field.label.textContent)
+        if (field.search) {
+          field.search.setAttribute('aria-label', `Search ${field.label.textContent}`); field.search.placeholder = String(node.props.placeholder ?? 'Search…')
+          field.search.disabled = actionPending || queuedFields >= maxQueuedFields
+        }
         if (field.input.tagName === 'SELECT') syncChoices(field)
         else (field.input as HTMLInputElement | HTMLTextAreaElement).placeholder = String(node.props.placeholder ?? '')
         field.input.disabled = actionPending || queuedFields >= maxQueuedFields
@@ -312,7 +365,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
         control.disabled = actionPending; current.actions.append(control)
       }
     }
-    for (const [id] of fields) if (!liveFields.has(id)) fields.delete(id)
+    for (const [id, field] of fields) if (!liveFields.has(id)) retireField(field)
     for (const [id] of forms) if (!liveForms.has(id)) forms.delete(id)
     reorder(rendered, [...liveForms].map(id => forms.get(id)!.element))
     applyFocusRequests()
@@ -344,7 +397,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     if (message.type === 'toast') { feedback.textContent = message.title ?? ''; return }
     if (!message.root || typeof message.root !== 'object') return
     if (message.type === 'ready') {
-      if (active?.sessionId !== message.sessionId) { fields.clear(); forms.clear(); formMode = false; actionPending = false; fieldFailure = undefined; queuedFields = 0; fieldQueue = Promise.resolve(); rendered.replaceChildren() }
+      if (active?.sessionId !== message.sessionId) { for (const field of fields.values()) retireField(field); forms.clear(); formMode = false; actionPending = false; queuedFields = 0; fieldQueue = Promise.resolve(); rendered.replaceChildren() }
       active = { extensionId: message.extensionId, sessionId: message.sessionId, revision: message.revision }
     }
     else if (!active || active.extensionId !== message.extensionId || active.sessionId !== message.sessionId || message.revision <= active.revision) return
@@ -354,7 +407,7 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
     const root = message.root as Node
     const projectedForms: Node[] = []; collect(root, 'raycast-form', projectedForms)
     if (projectedForms.length) { renderForms(projectedForms); return }
-    if (formMode) { fields.clear(); forms.clear(); formMode = false }
+    if (formMode) { for (const field of fields.values()) retireField(field); forms.clear(); formMode = false }
     const items: Node[] = []
     collect(root, 'raycast-list-item', items)
     const searchFocused = document.activeElement === rendered.querySelector('input[aria-label="Search Extension"]')
@@ -404,5 +457,5 @@ export function createUserRaycastView(document: Document, bridge: LauncherPreloa
   element.addEventListener('keydown', event => { if (event.key !== 'Escape') return; event.preventDefault(); event.stopPropagation(); void bridge.userRaycastClose().finally(onClose) })
   paint()
   void bridge.userRaycastState().then(result => { if (!disposed) { state = result; paint() } }).catch(error => { if (!disposed) { feedback.textContent = String(error).slice(0, 512); feedback.setAttribute('role', 'alert') } })
-  return { element, focus: () => close.focus(), dispose: () => { disposed = true; unsubscribe() } }
+  return { element, focus: () => close.focus(), dispose: () => { disposed = true; for (const field of fields.values()) retireField(field); unsubscribe() } }
 }

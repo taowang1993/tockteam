@@ -132,6 +132,156 @@ test('removing choices during a pending edit does not erase accepted selections 
   } finally { finish(); f.close() }
 })
 
+test('local picker search matches titles, keywords and default sections without erasing selected values', async () => {
+  const f = await setup()
+  try {
+    const tree = choices('en', ['red']); tree.children[0]!.children[0]!.children[0]!.children[0]!.props.keywords = JSON.stringify(['British'])
+    tree.children[0]!.children[1]!.children.push({ type: 'raycast-form-dropdown-item', props: { value: 'green', title: 'Green' }, children: [] })
+    f.emit(1, tree)
+    const search = f.document.querySelector<HTMLInputElement>('input[aria-label="Search Language"]'), tagsSearch = f.document.querySelector<HTMLInputElement>('input[aria-label="Search Colors"]')!
+    assert.ok(search, 'Native choices need a labeled search control')
+    const select = f.document.querySelector<HTMLSelectElement>('select[aria-label="Language"]')!, tags = f.document.querySelector<HTMLSelectElement>('select[aria-label="Colors"]')!
+    const type = (input: HTMLInputElement, value: string) => { input.value = value; input.dispatchEvent(new f.dom.window.Event('input', { bubbles: true })) }
+    search.focus(); await flush(); type(search, 'brtsh'); await flush()
+    assert.deepEqual(Array.from(select.options).filter(o => !o.hidden).map(o => o.value), ['en'])
+    type(search, 'Languages'); search.setSelectionRange(3, 3); f.emit(2, tree)
+    assert.equal(f.document.activeElement, search); assert.equal(search.selectionStart, 3); assert.equal(search.value, 'Languages')
+    assert.deepEqual(Array.from(select.options).filter(o => !o.hidden).map(o => o.value), ['fr']); assert.equal(select.value, 'en')
+    type(tagsSearch, 'Blue'); assert.deepEqual(Array.from(tags.options).filter(o => !o.hidden).map(o => o.value), ['red', 'blue']); assert.deepEqual(Array.from(tags.selectedOptions).map(o => o.value), ['red'])
+    type(search, 'No Such Option'); assert.match(select.closest('[data-slot="field"]')!.textContent ?? '', /No Matching Options/)
+    assert.equal(select.value, 'en'); assert.equal(f.events.some(e => e.kind === 'fieldChanged' || e.kind === 'fieldSearchChanged'), false)
+    search.dispatchEvent(new f.dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); assert.equal(search.value, ''); assert.equal(select.options[0]!.hidden, false)
+  } finally { f.close() }
+})
+
+test('remote dropdown queries keep their draft and selection through loading patches and pending submission', async () => {
+  let finish!: () => void
+  const blocked = new Promise<void>(resolve => { finish = resolve })
+  const f = await setup(async event => { if (event.kind === 'fieldSearchChanged') await blocked })
+  try {
+    const tree = choices('en', ['red'], 'French', { searchable: true, filtering: false })
+    f.emit(1, tree)
+    const search = f.document.querySelector<HTMLInputElement>('input[aria-label="Search Language"]')!, select = f.document.querySelector<HTMLSelectElement>('select[aria-label="Language"]')!
+    search.focus(); await flush()
+    search.value = 'f'; search.dispatchEvent(new f.dom.window.Event('input', { bubbles: true })); await flush()
+    search.value = 'fr'; search.dispatchEvent(new f.dom.window.Event('input', { bubbles: true })); search.setSelectionRange(1, 1)
+    f.emit(2, choices('en', ['red'], 'Français', { searchable: true, filtering: false, isLoading: true }))
+    assert.equal(search.value, 'fr'); assert.equal(search.selectionStart, 1); assert.equal(f.document.activeElement, search)
+    assert.equal(search.getAttribute('aria-busy'), 'true'); assert.match(select.closest('[data-slot="field"]')!.textContent ?? '', /Loading Options/)
+    assert.equal(Array.from(select.options).some(o => o.hidden), false, 'Custom callback alone must not locally filter')
+    search.dispatchEvent(new f.dom.window.KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true })); await flush(); assert.equal(f.events.some(e => e.kind === 'action'), false)
+    f.emit(3, choices('en', ['red'], 'Français', { searchable: true, filtering: false })); finish(); await flush(); await flush()
+    assert.deepEqual(f.events.filter(e => e.kind === 'fieldSearchChanged').map(e => e.value), ['f', 'fr']); assert.equal(f.events.find(e => e.kind === 'action').revision, 3)
+    assert.equal(select.value, 'en'); assert.equal(search.value, 'fr'); assert.equal(search.disabled, true)
+  } finally { finish(); f.close() }
+})
+
+test('throttled picker search coalesces typing, flushes before submit and cancels on teardown', async () => {
+  const f = await setup()
+  try {
+    const tree = choices('en', ['red'], 'French', { searchable: true, filtering: false, throttle: true }); f.emit(1, tree)
+    const search = f.document.querySelector<HTMLInputElement>('input[aria-label="Search Language"]')!
+    for (const value of ['f', 'fr', 'fre']) { search.value = value; search.dispatchEvent(new f.dom.window.Event('input', { bubbles: true })) }
+    await flush(); assert.equal(f.events.some(e => e.kind === 'fieldSearchChanged'), false, 'A throttled callback must not run for each keystroke')
+    search.dispatchEvent(new f.dom.window.KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true })); await flush(); await flush()
+    assert.deepEqual(f.events.filter(e => e.kind === 'fieldSearchChanged').map(e => e.value), ['fre']); assert.equal(f.events.at(-1).kind, 'action')
+    f.outcome(); search.value = 'stale'; search.dispatchEvent(new f.dom.window.Event('input', { bubbles: true })); f.view.dispose()
+    await new Promise(resolve => setTimeout(resolve, 350)); assert.deepEqual(f.events.filter(e => e.kind === 'fieldSearchChanged').map(e => e.value), ['fre'])
+  } finally { f.close() }
+})
+
+test('a successful search cannot acknowledge a failed selection edit', async () => {
+  const f = await setup(async event => { if (event.kind === 'fieldChanged') throw Error('Selection was not accepted') })
+  try {
+    f.emit(1, choices('en', ['red'], 'French', { searchable: true, filtering: false }))
+    const select = f.document.querySelector<HTMLSelectElement>('select[aria-label="Language"]')!, search = f.document.querySelector<HTMLInputElement>('input[aria-label="Search Language"]')!
+    select.value = 'fr'; select.dispatchEvent(new f.dom.window.Event('change', { bubbles: true })); await flush()
+    search.value = 'French'; search.dispatchEvent(new f.dom.window.Event('input', { bubbles: true })); await flush()
+    f.document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="action-0"]')!.click(); await flush()
+    assert.equal(f.events.some(e => e.kind === 'action'), false, 'Search completion is not selection acceptance')
+    assert.match(f.view.element.textContent ?? '', /Selection was not accepted/)
+  } finally { f.close() }
+})
+
+test('accepted controlled selections remain represented after pending callbacks remove their choices', async () => {
+  let finish!: () => void
+  const blocked = new Promise<void>(resolve => { finish = resolve })
+  const f = await setup(async event => { if (event.kind === 'fieldChanged') await blocked })
+  try {
+    f.emit(1, choices())
+    const select = f.document.querySelector<HTMLSelectElement>('select[aria-label="Language"]')!, tags = f.document.querySelector<HTMLSelectElement>('select[aria-label="Colors"]')!
+    select.value = 'fr'; select.dispatchEvent(new f.dom.window.Event('change', { bubbles: true }))
+    tags.options[0]!.selected = false; tags.options[1]!.selected = true; tags.dispatchEvent(new f.dom.window.Event('change', { bubbles: true })); await flush()
+    f.emit(2, choices('new-language', ['new-color'])); finish(); await flush(); await flush()
+    assert.equal(select.value, 'new-language'); assert.deepEqual(Array.from(tags.selectedOptions).map(o => o.value), ['new-color'])
+  } finally { finish(); f.close() }
+})
+
+test('throttled search survives a full callback queue and submission waits for its accepted query', async () => {
+  let finish!: () => void
+  const blocked = new Promise<void>(resolve => { finish = resolve })
+  const f = await setup(async event => { if (event.kind === 'fieldChanged') await blocked })
+  try {
+    f.emit(1, choices('en', ['red'], 'French', { searchable: true, filtering: true, throttle: true }))
+    const search = f.document.querySelector<HTMLInputElement>('input[aria-label="Search Language"]')!, select = f.document.querySelector<HTMLSelectElement>('select[aria-label="Language"]')!
+    search.value = 'French'; search.dispatchEvent(new f.dom.window.Event('input', { bubbles: true }))
+    for (let i = 0; i < 32; i++) { select.value = i % 2 ? 'fr' : 'en'; select.dispatchEvent(new f.dom.window.Event('change', { bubbles: true })) }
+    assert.equal(search.disabled, true); await new Promise(resolve => setTimeout(resolve, 350)); assert.equal(f.events.some(e => e.kind === 'fieldSearchChanged'), false)
+    f.document.querySelector<HTMLButtonElement>('button[data-user-raycast-action="action-0"]')!.click(); finish()
+    for (let i = 0; i < 38; i++) await flush()
+    assert.deepEqual(f.events.filter(e => e.kind === 'fieldSearchChanged').map(e => e.value), ['French']); assert.equal(f.events.at(-1).kind, 'action')
+  } finally { finish(); f.close() }
+})
+
+test('throttled queries run once when idle and unmounted queries never reach the next view', async () => {
+  const f = await setup()
+  try {
+    f.emit(1, choices('en', ['red'], 'French', { searchable: true, filtering: true, throttle: true }))
+    const search = f.document.querySelector<HTMLInputElement>('input[aria-label="Search Language"]')!
+    search.value = 'French'; search.dispatchEvent(new f.dom.window.Event('input', { bubbles: true })); await new Promise(resolve => setTimeout(resolve, 350)); await flush()
+    assert.deepEqual(f.events.filter(e => e.kind === 'fieldSearchChanged').map(e => e.value), ['French'])
+    search.value = 'stale'; search.dispatchEvent(new f.dom.window.Event('input', { bubbles: true })); f.emit(2, root()); await new Promise(resolve => setTimeout(resolve, 350)); await flush()
+    search.value = 'detached'; search.dispatchEvent(new f.dom.window.Event('input', { bubbles: true })); await flush()
+    assert.deepEqual(f.events.filter(e => e.kind === 'fieldSearchChanged').map(e => e.value), ['French'])
+  } finally { f.close() }
+})
+
+test('IME composition neither submits nor searches until the completed text is committed once', async () => {
+  const f = await setup()
+  try {
+    f.emit(1, choices('en', [], 'French', { searchable: true, filtering: false }))
+    const search = f.document.querySelector<HTMLInputElement>('input[aria-label="Search Language"]')!
+    search.value = 'に'; search.dispatchEvent(new f.dom.window.InputEvent('input', { isComposing: true, bubbles: true }))
+    search.dispatchEvent(new f.dom.window.KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, isComposing: true, bubbles: true })); await flush()
+    assert.equal(f.events.some(e => e.kind === 'fieldSearchChanged' || e.kind === 'action'), false)
+    search.value = '日本'; search.dispatchEvent(new f.dom.window.CompositionEvent('compositionend', { bubbles: true })); search.dispatchEvent(new f.dom.window.InputEvent('input', { bubbles: true })); await flush()
+    assert.deepEqual(f.events.filter(e => e.kind === 'fieldSearchChanged').map(e => e.value), ['日本'])
+  } finally { f.close() }
+})
+
+test('empty remote search results announce absence without erasing the selected language', async () => {
+  const f = await setup()
+  try {
+    const tree = choices('en', [], 'French', { searchable: true, filtering: false }); tree.children[0]!.children[0]!.children = []
+    f.emit(1, tree)
+    const search = f.document.querySelector<HTMLInputElement>('input[aria-label="Search Language"]')!, select = f.document.querySelector<HTMLSelectElement>('select[aria-label="Language"]')!
+    search.value = 'Missing'; search.dispatchEvent(new f.dom.window.Event('input', { bubbles: true })); await flush()
+    assert.equal(select.value, 'en'); assert.match(select.closest('[data-slot="field"]')!.textContent ?? '', /No Matching Options/)
+    assert.deepEqual(f.events.filter(e => e.kind === 'fieldSearchChanged').map(e => e.value), ['Missing'])
+  } finally { f.close() }
+})
+
+test('undocumented filtering flags cannot disable local tag title search or enable keyword matching', async () => {
+  const f = await setup()
+  try {
+    const tree = choices('en', [], 'French', {}, { filtering: false, searchable: true }); tree.children[0]!.children[1]!.children[0]!.props.keywords = '["Blue"]'
+    f.emit(1, tree)
+    const search = f.document.querySelector<HTMLInputElement>('input[aria-label="Search Colors"]')!, select = f.document.querySelector<HTMLSelectElement>('select[aria-label="Colors"]')!
+    search.value = 'Blue'; search.dispatchEvent(new f.dom.window.Event('input', { bubbles: true })); await flush()
+    assert.deepEqual(Array.from(select.options).filter(o => !o.hidden).map(o => o.value), ['blue']); assert.equal(f.events.some(e => e.kind === 'fieldSearchChanged'), false)
+  } finally { f.close() }
+})
+
 test('duplicate section titles remain separate and refresh their labels without replacing controls', async () => {
   const f = await setup()
   try {
