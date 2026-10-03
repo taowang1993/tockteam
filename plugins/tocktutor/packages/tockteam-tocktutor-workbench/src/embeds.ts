@@ -57,6 +57,7 @@ export interface EmbedAttachmentResult {
 
 export interface EmbedResolverOptions {
   entries: readonly EmbedIndexEntry[]
+  inventoryComplete?: boolean
   isCurrent?: () => boolean
   maxDepth?: number
   maxMediaBytes?: number
@@ -174,12 +175,13 @@ function entryIdentifiers(entry: EmbedIndexEntry): Set<string> {
 }
 
 /** Resolve an authored path exactly before falling back to one unambiguous basename or alias. */
-export function resolveEmbedTargetPath(entries: readonly EmbedIndexEntry[], targetPath: string): string | null {
+export function resolveEmbedTargetPath(entries: readonly EmbedIndexEntry[], targetPath: string, inventoryComplete = true): string | null {
   const wanted = normalizeIdentifier(targetPath)
   if (!wanted) return null
   const safeEntries = entries.filter(entry => isSafeVaultRelativePath(entry.path))
   const exact = safeEntries.find(entry => normalizeIdentifier(entry.path) === wanted)
   if (exact !== undefined) return exact.path
+  if (!inventoryComplete) return null
   const extensionless = normalizeIdentifier(withoutExtension(targetPath))
   const exactStem = safeEntries.filter(entry => normalizeIdentifier(withoutExtension(entry.path)) === extensionless)
   if (exactStem.length === 1) return exactStem[0]!.path
@@ -384,9 +386,12 @@ export async function resolveEmbedGraph(options: EmbedResolverOptions): Promise<
       warn('Embed node limit reached.')
       return
     }
-    const path = resolveEmbedTargetPath(options.entries, target.path)
+    const path = resolveEmbedTargetPath(options.entries, target.path, options.inventoryComplete)
     if (path === null) {
-      warn(`Embed not found: ${target.path}`)
+      if (options.inventoryComplete === false) {
+        truncated = true
+        warn(`Embed unavailable while the vault file list is incomplete: ${target.path}`)
+      } else warn(`Embed not found: ${target.path}`)
       return
     }
     if (stack.includes(path)) {

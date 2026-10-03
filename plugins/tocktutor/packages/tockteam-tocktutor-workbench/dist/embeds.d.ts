@@ -46,6 +46,7 @@ export interface EmbedAttachmentResult {
 }
 export interface EmbedResolverOptions {
     entries: readonly EmbedIndexEntry[];
+    inventoryComplete?: boolean;
     isCurrent?: () => boolean;
     maxDepth?: number;
     maxMediaBytes?: number;
@@ -59,7 +60,7 @@ export interface EmbedResolverOptions {
 }
 export declare function collectEmbedTargets(source: string, sourcePath?: string): EmbedTarget[];
 /** Resolve an authored path exactly before falling back to one unambiguous basename or alias. */
-export declare function resolveEmbedTargetPath(entries: readonly EmbedIndexEntry[], targetPath: string): string | null;
+export declare function resolveEmbedTargetPath(entries: readonly EmbedIndexEntry[], targetPath: string, inventoryComplete?: boolean): string | null;
 export declare function resolveNoteEmbedFragment(source: string, fragment: string | null): string | null;
 /**
  * Resolve local embed content as one bounded, cancellable graph. Reads are

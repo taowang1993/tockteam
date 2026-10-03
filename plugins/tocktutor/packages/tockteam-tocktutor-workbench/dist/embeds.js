@@ -127,7 +127,7 @@ function entryIdentifiers(entry) {
     return new Set(values.map(normalizeIdentifier).filter(Boolean));
 }
 /** Resolve an authored path exactly before falling back to one unambiguous basename or alias. */
-export function resolveEmbedTargetPath(entries, targetPath) {
+export function resolveEmbedTargetPath(entries, targetPath, inventoryComplete = true) {
     const wanted = normalizeIdentifier(targetPath);
     if (!wanted)
         return null;
@@ -135,6 +135,8 @@ export function resolveEmbedTargetPath(entries, targetPath) {
     const exact = safeEntries.find(entry => normalizeIdentifier(entry.path) === wanted);
     if (exact !== undefined)
         return exact.path;
+    if (!inventoryComplete)
+        return null;
     const extensionless = normalizeIdentifier(withoutExtension(targetPath));
     const exactStem = safeEntries.filter(entry => normalizeIdentifier(withoutExtension(entry.path)) === extensionless);
     if (exactStem.length === 1)
@@ -356,9 +358,14 @@ export async function resolveEmbedGraph(options) {
             warn('Embed node limit reached.');
             return;
         }
-        const path = resolveEmbedTargetPath(options.entries, target.path);
+        const path = resolveEmbedTargetPath(options.entries, target.path, options.inventoryComplete);
         if (path === null) {
-            warn(`Embed not found: ${target.path}`);
+            if (options.inventoryComplete === false) {
+                truncated = true;
+                warn(`Embed unavailable while the vault file list is incomplete: ${target.path}`);
+            }
+            else
+                warn(`Embed not found: ${target.path}`);
             return;
         }
         if (stack.includes(path)) {

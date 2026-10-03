@@ -2422,7 +2422,7 @@ export class WorkbenchRouteController {
             const tree = await this.loadTreePages(vault, operation.signal, requestCurrent);
             if (tree === null || !requestCurrent())
                 return;
-            this.treeComplete = !tree.truncated;
+            this.treeComplete = !tree.truncated && tree.warnings.length === 0;
             const openable = new Set(tree.entries.filter(entry => entry.kind === 'document' && supportedDocument(entry.path)).map(entry => entry.path));
             let settings;
             let restoredFocusMode = false;
@@ -2601,6 +2601,17 @@ export class WorkbenchRouteController {
             void this.hydrateDocument(document);
         }
     }
+    refreshEmbeds(vault) {
+        const paths = new Set(this.shellSession.groups.flatMap(group => group.tabs.map(tab => tab.path)));
+        for (const document of this.documents.values()) {
+            if (!paths.has(document.path) || !sameVault(document.vault, vault) || document.state.documentKind !== 'markdown' || document.state.documentUnavailable)
+                continue;
+            if (this.pendingRename?.fromPath === document.path && sameVault(this.pendingRename.vault, vault))
+                continue;
+            this.publishDocument(document, { embeds: Object.freeze([]) });
+            void this.loadEmbeds(document);
+        }
+    }
     refreshRelationships(vault) {
         // Cache validity is vault-wide; live query ownership stays with each represented document.
         const paths = new Set(this.snapshot.panes.filter(pane => pane.linkedView).map(pane => pane.activePath));
@@ -2771,7 +2782,7 @@ export class WorkbenchRouteController {
                 return false;
             if (tree === null)
                 throw new RemoteCallError('invalid-result', 'The vault tree response changed generation.');
-            this.treeComplete = !tree.truncated;
+            this.treeComplete = !tree.truncated && tree.warnings.length === 0;
             const entries = Object.freeze(tree.entries.toSorted((left, right) => left.path.localeCompare(right.path)));
             const searchQuery = this.snapshot.searchQuery.trim();
             this.update({
@@ -2793,6 +2804,7 @@ export class WorkbenchRouteController {
                 this.scheduleSearch();
             if (!background)
                 this.refreshRelationships(vault);
+            this.refreshEmbeds(vault);
             this.refreshBases(vault);
             for (const pane of this.snapshot.panes) {
                 if (!pane.linkedView || !pane.activePath)
@@ -2810,6 +2822,7 @@ export class WorkbenchRouteController {
         catch (error) {
             if (requestCurrent()) {
                 this.treeComplete = false;
+                this.refreshEmbeds(vault);
                 for (const document of this.documents.values()) {
                     if (!sameVault(document.vault, vault) || document.state.documentKind !== 'base')
                         continue;
@@ -4034,10 +4047,13 @@ export class WorkbenchRouteController {
         const { vault, path: sourcePath, epoch } = document;
         const revision = document.state.revision;
         const source = document.state.source ?? '';
+        const entries = this.snapshot.entries;
+        const inventoryComplete = this.treeComplete;
         document.embedsAbort?.abort();
         const abort = new AbortController();
         document.embedsAbort = abort;
-        const current = () => this.documentCurrent(document, epoch) && document.state.revision === revision && !abort.signal.aborted;
+        const current = () => this.documentCurrent(document, epoch) && document.state.revision === revision && !abort.signal.aborted
+            && this.snapshot.entries === entries && this.treeComplete === inventoryComplete;
         let targets;
         try {
             targets = collectEmbedTargets(source, sourcePath);
@@ -4056,7 +4072,8 @@ export class WorkbenchRouteController {
         }
         try {
             const result = await resolveEmbedGraph({
-                entries: this.snapshot.entries,
+                entries,
+                inventoryComplete,
                 isCurrent: current,
                 readAttachment: async (path) => {
                     const preview = remoteValue(await this.remote.tocktutorWorkbench.previewAttachment(path, vault, abort.signal));

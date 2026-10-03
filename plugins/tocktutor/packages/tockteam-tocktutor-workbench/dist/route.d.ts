@@ -396,6 +396,7 @@ export declare class WorkbenchRouteController {
     private loadPaneDocument;
     private invalidateLinkedPath;
     private refreshBases;
+    private refreshEmbeds;
     private refreshRelationships;
     private onVaultChange;
     private loadTreePages;
