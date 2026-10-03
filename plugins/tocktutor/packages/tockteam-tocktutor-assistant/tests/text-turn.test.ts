@@ -249,6 +249,103 @@ test('an abort settles a pending provider read and closes its iterator', async (
   }
 })
 
+test('abort settles when a provider read ignores cancellation and suppresses its late output', async () => {
+  let release!: () => void
+  const blocked = new Promise<void>(resolve => { release = resolve })
+  let started!: () => void
+  const reading = new Promise<void>(resolve => { started = resolve })
+  const adapter = new FakeAdapter()
+  adapter.stream = async function* (options: GenerateOptions) {
+    this.calls.push(options)
+    started()
+    try {
+      await blocked
+      yield { type: 'text-delta', index: 0, text: 'late provider output' } as const
+    } finally {
+      this.cleaned = true
+    }
+  }
+  const { context } = await fixture(adapter)
+  const controller = new AbortController()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const events: AssistantTurnEvent[] = []
+  const runner = new AssistantTextTurnRunner(context.llm, () => true)
+  const turn = (async () => {
+    for await (const event of runner.run({
+      prompt: { message: 'Hello' },
+      provider: 'live-provider',
+      model: 'model',
+      binding,
+    }, controller.signal)) events.push(event)
+  })()
+  try {
+    await reading
+    controller.abort()
+    const settled = await Promise.race([
+      turn.then(() => true),
+      new Promise<boolean>(resolve => { timer = setTimeout(() => resolve(false), 100) }),
+    ])
+    assert.equal(settled, true, 'cancellation must finish before the provider releases its pending read')
+    assert.deepEqual(events, [{
+      type: 'error',
+      code: 'ABORTED',
+      message: 'The assistant turn was cancelled.',
+    }])
+  } finally {
+    clearTimeout(timer)
+    release()
+    await turn
+    await new Promise<void>(resolve => { setImmediate(resolve) })
+    assert.equal(adapter.cleaned, true)
+    assert.equal(events.some(event => event.type === 'text-delta'), false)
+    await context.fiber.dispose()
+  }
+})
+
+test('abort interrupts provider cleanup that is already waiting after terminal output', async () => {
+  let release!: () => void
+  const blocked = new Promise<void>(resolve => { release = resolve })
+  let started!: () => void
+  const closing = new Promise<void>(resolve => { started = resolve })
+  const adapter = new FakeAdapter()
+  adapter.stream = async function* () {
+    try {
+      yield { type: 'finish', reason: { kind: 'stop' } } as const
+    } finally {
+      started()
+      await blocked
+      this.cleaned = true
+      throw new Error('late provider cleanup failure')
+    }
+  }
+  const { context } = await fixture(adapter)
+  const controller = new AbortController()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const runner = new AssistantTextTurnRunner(context.llm, () => true)
+  const turn = collect(runner.run({
+    prompt: { message: 'Hello' },
+    provider: 'live-provider',
+    model: 'model',
+    binding,
+  }, controller.signal))
+  try {
+    await closing
+    controller.abort()
+    const events = await Promise.race([
+      turn,
+      new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), 100) }),
+    ])
+    assert.deepEqual(events, [{ type: 'finish', reason: 'stop', truncated: false }])
+  } finally {
+    clearTimeout(timer)
+    release()
+    await turn
+    await new Promise<void>(resolve => { setImmediate(resolve) })
+    assert.equal(adapter.cleaned, true)
+    await context.fiber.dispose()
+  }
+})
+
 test('abort and changed vault/child/turn bindings suppress all buffered late output', async () => {
   for (const mode of ['abort', 'stale'] as const) {
     const { adapter, context } = await fixture()

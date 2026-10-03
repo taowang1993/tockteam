@@ -783,15 +783,15 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/text-turn.d.ts.map",
-      "sha256": "9007465fbec15a39240c81bfc5e6bf4154cbf30c14323e7cd422db7edc23a154"
+      "sha256": "4ec78f343e0861bcf6ea4fa2ec468d69890ae720d4a3c6169bb27ec62ef1901a"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/text-turn.js",
-      "sha256": "42998d31d8f17068c16611627d874cafaf4ef2270d0077a9efdf5de14e498257"
+      "sha256": "597dfe11512e57905eb4cf2e24a1a50540fb459bf0c40aefc586431d71fa5335"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/text-turn.js.map",
-      "sha256": "31ce3a801ced3605a081426e3602b8aa2ffb0c27baf7068fe28fe6449fad2d2d"
+      "sha256": "9a74f08827a293c7df9d1f5855b61de4fedb59e59aa59cfebe7f13d26d475d59"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/lib/turn-bindings.d.ts",
@@ -923,7 +923,7 @@
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/text-turn.ts",
-      "sha256": "6f1ca1ffa4da553e4a642e7c3536605f9e3dc3adb702a1103b86e6f34cfe3cab"
+      "sha256": "5794f88300fc410375b5622d21c6b742b17185cb323ecbeb03c99b678001c533"
     },
     {
       "path": "packages/tockteam-tocktutor-assistant/src/turn-bindings.ts",

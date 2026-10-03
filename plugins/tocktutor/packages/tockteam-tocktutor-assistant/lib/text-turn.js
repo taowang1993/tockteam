@@ -246,8 +246,13 @@ export class AssistantTextTurnRunner {
             yield eventFor(code);
         }
         finally {
-            if (iterator?.return !== undefined)
-                await iterator.return().catch(() => undefined);
+            const close = iterator?.return?.bind(iterator);
+            if (close !== undefined) {
+                // A provider may queue return() behind a read that ignores cancellation.
+                // Request closure and observe late failures without trapping the cancelled turn.
+                const closing = Promise.resolve().then(() => close()).catch(() => undefined);
+                await nextWithAbort(closing, signal).catch(() => undefined);
+            }
         }
     }
     assertCurrent(binding) {
