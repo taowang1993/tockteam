@@ -649,7 +649,7 @@ export declare class NoteVaultRuntime extends Service {
     saveDraft(request: SaveDraftRequest, signal: AbortSignal): Promise<DraftMutationResult>;
     readDraft(request: DraftRequest, signal: AbortSignal): Promise<DraftResult>;
     clearDraft(request: DraftRequest, signal: AbortSignal): Promise<DraftMutationResult>;
-    openDocument(requestedPath: string, expectedVault: VaultReference, signal: AbortSignal): Promise<OpenDocumentResult>;
+    openDocument(requestedPath: string, expectedVault: VaultReference, signal: AbortSignal, expectedEntryRevision?: string): Promise<OpenDocumentResult>;
     listTree(request: ListTreeRequest, signal: AbortSignal): Promise<VaultTreePage>;
     listPassiveBackupEntries(request: ListPassiveBackupEntriesRequest, signal: AbortSignal): Promise<PassiveBackupListResult>;
     readPassiveBackupEntry(request: ReadPassiveBackupEntryRequest, signal: AbortSignal): Promise<PassiveBackupContentResult>;

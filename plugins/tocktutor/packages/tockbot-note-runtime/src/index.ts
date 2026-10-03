@@ -5360,16 +5360,22 @@ export class NoteVaultRuntime extends Service {
     })
   }
 
+  // Inventory-bound reads include alias identity; editor opens keep canonical save revisions.
   async openDocument(
     requestedPath: string,
     expectedVault: VaultReference,
     signal: AbortSignal,
+    expectedEntryRevision?: string,
   ): Promise<OpenDocumentResult> {
     await this.awaitWatcherStartup(signal)
     const { root, state } = this.captureExpectedVault(expectedVault)
     let document: { content: string; digest: string; modifiedAt: number; path: string; revision: string }
     try {
-      document = await readVaultDocument(root, requestedPath, this.maxReadBytes, signal)
+      document = await readVaultDocument(root, requestedPath, this.maxReadBytes, signal,
+        expectedEntryRevision !== undefined)
+      if (expectedEntryRevision !== undefined && document.revision !== expectedEntryRevision) {
+        throw new NoteVaultError('changed', 'Vault document entry changed before it could be read')
+      }
     } catch (error) {
       if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError')) {
         throw error

@@ -6,7 +6,7 @@ export interface BackupRuntimePort {
     readonly state: NoteVaultState;
     listPassiveBackupEntries(request: ListPassiveBackupEntriesRequest, signal: AbortSignal): Promise<PassiveBackupListResult>;
     listTree(request: ListTreeRequest, signal: AbortSignal): Promise<VaultTreePage>;
-    openDocument(path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<OpenDocumentResult>;
+    openDocument(path: string, expectedVault: VaultReference, signal: AbortSignal, expectedEntryRevision?: string): Promise<OpenDocumentResult>;
     previewAttachment(path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<AttachmentPreviewResult>;
     readPassiveBackupEntry(request: ReadPassiveBackupEntryRequest, signal: AbortSignal): Promise<PassiveBackupContentResult>;
 }

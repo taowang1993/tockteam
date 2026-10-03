@@ -71,7 +71,7 @@ async function captureEntries(runtime, vault, snapshot, signal) {
         if (entry.kind === 'directory')
             continue;
         if (entry.kind === 'document') {
-            const result = await runtime.openDocument(entry.path, vault, signal);
+            const result = await runtime.openDocument(entry.path, vault, signal, entry.revision);
             signal.throwIfAborted();
             assertVault(runtime.state, vault);
             const bytes = new TextEncoder().encode(result.content);

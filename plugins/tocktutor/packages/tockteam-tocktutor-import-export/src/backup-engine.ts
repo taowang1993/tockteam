@@ -55,7 +55,7 @@ export interface BackupRuntimePort {
   readonly state: NoteVaultState
   listPassiveBackupEntries(request: ListPassiveBackupEntriesRequest, signal: AbortSignal): Promise<PassiveBackupListResult>
   listTree(request: ListTreeRequest, signal: AbortSignal): Promise<VaultTreePage>
-  openDocument(path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<OpenDocumentResult>
+  openDocument(path: string, expectedVault: VaultReference, signal: AbortSignal, expectedEntryRevision?: string): Promise<OpenDocumentResult>
   previewAttachment(path: string, expectedVault: VaultReference, signal: AbortSignal): Promise<AttachmentPreviewResult>
   readPassiveBackupEntry(request: ReadPassiveBackupEntryRequest, signal: AbortSignal): Promise<PassiveBackupContentResult>
 }
@@ -179,7 +179,7 @@ async function captureEntries(
     signal.throwIfAborted()
     if (entry.kind === 'directory') continue
     if (entry.kind === 'document') {
-      const result = await runtime.openDocument(entry.path, vault, signal)
+      const result = await runtime.openDocument(entry.path, vault, signal, entry.revision)
       signal.throwIfAborted()
       assertVault(runtime.state, vault)
       const bytes = new TextEncoder().encode(result.content)
