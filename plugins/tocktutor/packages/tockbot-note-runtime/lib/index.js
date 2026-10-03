@@ -2309,6 +2309,7 @@ export class NoteVaultRuntime extends Service {
     watcherCleanup = new Set();
     watcherActive = false;
     watcherToken = 0;
+    disposed = false;
     constructor(ctx, config) {
         super(ctx, 'noteVault');
         this.context = ctx;
@@ -2392,6 +2393,7 @@ export class NoteVaultRuntime extends Service {
                 this.watcherToken = token;
             }
             return async () => {
+                this.disposed = true;
                 const desktopSelectionCompletions = [...this.activeDesktopSelectionOperations]
                     .map(operation => operation.completion);
                 for (const operation of [
@@ -2669,6 +2671,7 @@ export class NoteVaultRuntime extends Service {
         }
     }
     assertActiveVaultBound(state, root) {
+        this.assertAvailable();
         if (this.currentState !== state || this.vaultRoot !== root) {
             throw new NoteVaultError('stale-vault', 'The active vault changed before the operation could finish');
         }
@@ -2684,7 +2687,12 @@ export class NoteVaultRuntime extends Service {
             throw new NoteVaultError('changed', 'The active vault directory changed identity');
         }
     }
+    assertAvailable() {
+        if (this.disposed)
+            throw new NoteVaultError('unavailable', 'The note vault runtime became unavailable');
+    }
     captureExpectedVault(expectedVault) {
+        this.assertAvailable();
         const state = this.currentState;
         const root = this.vaultRoot;
         if (!state.active || root === null) {
@@ -3077,6 +3085,7 @@ export class NoteVaultRuntime extends Service {
         return this.activateVault(vaultRoot, expectedGeneration);
     }
     activateVault(vaultRoot, expectedGeneration, expectedIdentity, preserveDesktopSelectionClaim = false, excludedOperation, emitActivation = true) {
+        this.assertAvailable();
         if (this.vaultTransitionPending) {
             throw new NoteVaultError('unavailable', 'A vault transition is already in progress');
         }
@@ -3147,6 +3156,7 @@ export class NoteVaultRuntime extends Service {
         }));
     }
     removeRecentVault(id, expectedGeneration) {
+        this.assertAvailable();
         if (!/^vault:[0-9a-f]{64}$/u.test(id) || !Number.isSafeInteger(expectedGeneration) || expectedGeneration < 0) {
             throw new NoteVaultError('denied', 'Recent vault removal is invalid');
         }
@@ -3160,6 +3170,7 @@ export class NoteVaultRuntime extends Service {
         return this.listRecentVaults();
     }
     openSandboxVault(expectedGeneration) {
+        this.assertAvailable();
         if (!Number.isSafeInteger(expectedGeneration) || expectedGeneration < 0) {
             throw new NoteVaultError('denied', 'Sandbox activation is invalid');
         }
@@ -3195,6 +3206,7 @@ export class NoteVaultRuntime extends Service {
         return this.activate(root, expectedGeneration);
     }
     createManagedVault(name, expectedGeneration) {
+        this.assertAvailable();
         if (!Number.isSafeInteger(expectedGeneration) || expectedGeneration < 0 || this.currentState.generation !== expectedGeneration) {
             throw new NoteVaultError('stale-vault', 'The active vault changed before managed-vault creation');
         }
@@ -4296,6 +4308,7 @@ export class NoteVaultRuntime extends Service {
                     const latest = await readPropertyTypesRegistry(root, signal, this.treeConfig.maxEntries);
                     if (latest.revision !== current.revision)
                         throw new NoteVaultError('conflict', 'Property-type settings changed before they could be saved.');
+                    signal.throwIfAborted();
                     this.assertCapturedVault(state, root);
                 });
                 committed = true;

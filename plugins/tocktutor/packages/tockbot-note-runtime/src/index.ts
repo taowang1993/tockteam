@@ -3393,6 +3393,7 @@ export class NoteVaultRuntime extends Service {
   private readonly watcherCleanup = new Set<Promise<void>>()
   private watcherActive = false
   private watcherToken = 0
+  private disposed = false
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'noteVault')
@@ -3484,6 +3485,7 @@ export class NoteVaultRuntime extends Service {
         this.watcherToken = token
       }
       return async () => {
+        this.disposed = true
         const desktopSelectionCompletions = [...this.activeDesktopSelectionOperations]
           .map(operation => operation.completion)
         for (const operation of [
@@ -3771,6 +3773,7 @@ export class NoteVaultRuntime extends Service {
     state: Extract<NoteVaultState, { active: true }>,
     root: string,
   ): void {
+    this.assertAvailable()
     if (this.currentState !== state || this.vaultRoot !== root) {
       throw new NoteVaultError('stale-vault', 'The active vault changed before the operation could finish')
     }
@@ -3787,7 +3790,12 @@ export class NoteVaultRuntime extends Service {
     }
   }
 
+  private assertAvailable(): void {
+    if (this.disposed) throw new NoteVaultError('unavailable', 'The note vault runtime became unavailable')
+  }
+
   private captureExpectedVault(expectedVault: VaultReference) {
+    this.assertAvailable()
     const state = this.currentState
     const root = this.vaultRoot
     if (!state.active || root === null) {
@@ -4198,6 +4206,7 @@ export class NoteVaultRuntime extends Service {
     excludedOperation?: ActiveDesktopSelectionOperation,
     emitActivation = true,
   ): NoteVaultState {
+    this.assertAvailable()
     if (this.vaultTransitionPending) {
       throw new NoteVaultError('unavailable', 'A vault transition is already in progress')
     }
@@ -4276,6 +4285,7 @@ export class NoteVaultRuntime extends Service {
   }
 
   removeRecentVault(id: string, expectedGeneration: number): RecentVaultInfo[] {
+    this.assertAvailable()
     if (!/^vault:[0-9a-f]{64}$/u.test(id) || !Number.isSafeInteger(expectedGeneration) || expectedGeneration < 0) {
       throw new NoteVaultError('denied', 'Recent vault removal is invalid')
     }
@@ -4289,6 +4299,7 @@ export class NoteVaultRuntime extends Service {
   }
 
   openSandboxVault(expectedGeneration: number): NoteVaultState {
+    this.assertAvailable()
     if (!Number.isSafeInteger(expectedGeneration) || expectedGeneration < 0) {
       throw new NoteVaultError('denied', 'Sandbox activation is invalid')
     }
@@ -4320,6 +4331,7 @@ export class NoteVaultRuntime extends Service {
   }
 
   createManagedVault(name: string, expectedGeneration: number): NoteVaultState {
+    this.assertAvailable()
     if (!Number.isSafeInteger(expectedGeneration) || expectedGeneration < 0 || this.currentState.generation !== expectedGeneration) {
       throw new NoteVaultError('stale-vault', 'The active vault changed before managed-vault creation')
     }
@@ -5480,6 +5492,7 @@ export class NoteVaultRuntime extends Service {
           await assertDestinationParentBound(root, parent)
           const latest = await readPropertyTypesRegistry(root, signal, this.treeConfig.maxEntries)
           if (latest.revision !== current.revision) throw new NoteVaultError('conflict', 'Property-type settings changed before they could be saved.')
+          signal.throwIfAborted()
           this.assertCapturedVault(state, root)
         })
         committed = true

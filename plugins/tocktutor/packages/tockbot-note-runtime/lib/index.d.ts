@@ -568,6 +568,7 @@ export declare class NoteVaultRuntime extends Service {
     private readonly watcherCleanup;
     private watcherActive;
     private watcherToken;
+    private disposed;
     constructor(ctx: Context, config: Config);
     protected [Service.init](): Promise<void>;
     private emitVaultDeactivation;
@@ -584,6 +585,7 @@ export declare class NoteVaultRuntime extends Service {
     activeVaultName(): string | null;
     private invalidateActiveVault;
     private assertActiveVaultBound;
+    private assertAvailable;
     private captureExpectedVault;
     private assertCapturedVault;
     /** Synchronize the active runtime vault into the authenticated Desktop owner before native authorization is claimed. */

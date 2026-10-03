@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { mkdtemp, mkdir, readFile, writeFile, rm, symlink, link, open, readdir } from 'node:fs/promises'
+import fs, { mkdtemp, mkdir, readFile, writeFile, rm, symlink, link, open, readdir, realpath } from 'node:fs/promises'
+import { syncBuiltinESMExports } from 'node:module'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { Context } from '@deepseek-ai/cordis'
@@ -133,4 +134,39 @@ test('refuses linked targets, old vault generations and cancelled writes', async
   await assert.rejects(f.runtime.setObsidianPropertyType({ expectedVault: f.expectedVault, expectedRevision: null, key: 'due', type: 'date' }, f.signal), code('stale-vault'))
   assert.equal(await readFile(outside, 'utf8'), '{"types":{}}')
   await assert.rejects(readFile(f.file), { code: 'ENOENT' })
+})
+
+test('cancellation during the final missing-registry check preserves absent settings', async t => {
+  const f = await fixture(t)
+  await mkdir(join(f.vault, '.obsidian'))
+  const parent = await realpath(join(f.vault, '.obsidian'))
+  const target = join(parent, 'types.json')
+  const nativeLstat = fs.lstat
+  const controller = new AbortController()
+  let interrupted = false
+  try {
+    t.mock.method(fs, 'lstat', async (...args: Parameters<typeof nativeLstat>) => {
+      try { return await nativeLstat(...args) }
+      catch (error) {
+        if (!interrupted && args[0] === target && (error as NodeJS.ErrnoException).code === 'ENOENT'
+          && (await readdir(parent)).some(name => name.startsWith('.types.json.') && name.endsWith('.tmp'))) {
+          interrupted = true
+          controller.abort()
+        }
+        throw error
+      }
+    })
+    syncBuiltinESMExports()
+    const [result] = await Promise.allSettled([f.runtime.setObsidianPropertyType({
+      expectedVault: f.expectedVault, expectedRevision: null, key: 'due', type: 'date',
+    }, controller.signal)])
+    assert.equal(interrupted, true, 'cancellation must arrive after the settings bytes are staged')
+    await assert.rejects(readFile(f.file), { code: 'ENOENT' })
+    assert.equal(result?.status, 'rejected')
+    if (result?.status === 'rejected') assert.equal(result.reason.name, 'AbortError')
+    assert.deepEqual(await readdir(parent), [])
+  } finally {
+    t.mock.restoreAll()
+    syncBuiltinESMExports()
+  }
 })
