@@ -123,19 +123,23 @@ const captureClipboardSnapshot = (deps: TrustedRaycastNativeDeps): ClipboardSnap
   return { formats, data }
 }
 
+const clipboardMatchesSnapshot = (deps: TrustedRaycastNativeDeps, snapshot: ClipboardSnapshot): boolean => {
+  const formats = [...new Set(deps.readClipboardFormats())].sort()
+  return formats.length === snapshot.formats.length
+    && formats.every((format, index) => format === snapshot.formats[index]
+      && deps.readClipboardBuffer(format).equals(snapshot.data.get(format)!))
+}
+
 const restoreClipboardSnapshot = (deps: TrustedRaycastNativeDeps, snapshot: ClipboardSnapshot): void => {
   deps.writeClipboard('')
   for (const [format, data] of snapshot.data) deps.writeClipboardBuffer(format, data)
-  const restored = [...new Set(deps.readClipboardFormats())].sort()
-  if (restored.length !== snapshot.formats.length || restored.some((format, index) => format !== snapshot.formats[index])) throw new Error('Clipboard restoration failed')
+  if (!clipboardMatchesSnapshot(deps, snapshot)) throw new Error('Clipboard restoration failed')
 }
 
 /** Preserve newer clipboard data even when its plain text is identical to our paste. */
 const stillOwnsPasteWrite = (deps: TrustedRaycastNativeDeps, text: string, owned: ClipboardSnapshot): boolean => {
   try {
-    const formats = [...new Set(deps.readClipboardFormats())].sort()
-    return deps.readClipboard() === text && formats.length === owned.formats.length
-      && formats.every((format, index) => format === owned.formats[index] && deps.readClipboardBuffer(format).equals(owned.data.get(format)!))
+    return deps.readClipboard() === text && clipboardMatchesSnapshot(deps, owned)
   } catch { return false }
 }
 

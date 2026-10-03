@@ -223,6 +223,48 @@ test('paste preserves a newer clipboard with identical text but changed formats 
   }
 })
 
+test('paste restores exact single-format bytes and an empty clipboard', async () => {
+  for (const format of [undefined, 'text/plain', 'public.png']) {
+    const original = new Map(format === undefined ? [] : [[format, Buffer.from([0, 255, 1, 2])]])
+    let clipboard = new Map(original)
+    const result = await pasteTrustedRaycastText('translation', prior, deps({
+      fixture: 'paste',
+      readClipboard: () => clipboard.get('text/plain')?.toString() ?? '',
+      readClipboardFormats: () => [...clipboard.keys()],
+      readClipboardBuffer: format => clipboard.get(format)!,
+      writeClipboard: text => { clipboard = text === '' ? new Map() : new Map([['text/plain', Buffer.from(text)]]) },
+      writeClipboardBuffer: (format, data) => { clipboard = new Map([[format, Buffer.from(data)]]) },
+      execFile: async () => { assert.fail('fixture must not synthesize keystrokes') },
+    }))
+    assert.equal(result.restoration, 'restored')
+    assert.deepEqual(clipboard, original)
+  }
+})
+
+test('paste detects changed bytes during clipboard restoration without overwriting the new content', async () => {
+  for (const format of ['text/plain', 'public.png']) {
+    const original = Buffer.from('original clipboard bytes')
+    const replacement = Buffer.from('new clipboard bytes')
+    let clipboard = new Map([[format, original]])
+    let restoreWrites = 0
+    await assert.rejects(pasteTrustedRaycastText('translation', prior, deps({
+      fixture: 'paste',
+      readClipboard: () => clipboard.get('text/plain')?.toString() ?? '',
+      readClipboardFormats: () => [...clipboard.keys()],
+      readClipboardBuffer: format => clipboard.get(format)!,
+      writeClipboard: text => { clipboard = text === '' ? new Map() : new Map([['text/plain', Buffer.from(text)]]) },
+      writeClipboardBuffer: (format, _data) => {
+        restoreWrites += 1
+        // Another application can replace the bytes while retaining the format.
+        clipboard = new Map([[format, replacement]])
+      },
+      execFile: async () => { assert.fail('fixture must not synthesize keystrokes') },
+    })), /Clipboard restoration failed/)
+    assert.deepEqual(clipboard, new Map([[format, replacement]]))
+    assert.equal(restoreWrites, 1, 'a failed restore must not retry over the newer clipboard')
+  }
+})
+
 test('paste policy denials: no captured target, clipboard refusal, and oversized text', async () => {
   await assert.rejects(pasteTrustedRaycastText('x', undefined, deps()), /No prior application captured/)
   await assert.rejects(pasteTrustedRaycastText('x'.repeat(128 * 1024 + 1), prior, deps()), /exceeds its bound/)
