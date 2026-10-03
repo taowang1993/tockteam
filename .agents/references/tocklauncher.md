@@ -229,6 +229,8 @@ Electron 42's macOS `clipboard.writeBuffer()` replaces the pasteboard for each c
 
 `createLauncherCoreSearch()` supports `fuzzysort` and `Fuse.js`, bounded fuzziness and result counts, alphabetical empty-search behavior, instant providers, favorites, exclusions, history, rescan status, and isolated provider failures. Web-search display labels are capped at 512 characters independently of the original query used to build the browser URL. Whitespace-only queries follow empty-search behavior. A cancelled or superseded initial scan cannot publish the inert cached index. Excluding an item removes it from both favorite membership and ordering before later favorite writes.
 
+Typed-search relevance remains first, followed by pinned membership and local usage for equal-quality matches. Pin priority also applies when launch history is empty. Both engines apply those tie breakers before the visible result limit, across the complete bounded inventory, so an equally relevant pinned or previously used item cannot disappear merely because it was discovered after the first 100 candidates. Weaker pinned matches do not displace stronger ordinary matches.
+
 `LauncherActionStore` is the execution boundary:
 
 - internal items contain finite handler keys and arguments; public items contain display data and opaque `launcher-action:*` IDs;
