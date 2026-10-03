@@ -5,7 +5,25 @@ const byteLength = (value: string): number => Buffer.byteLength(value)
 
 export type TrustedRaycastPriorApp = Readonly<{ name: string; capturedAt: number; insertText?: (text: string) => Promise<void> }>
 type PasteWorkbench = Pick<BrowserWindow, 'isDestroyed' | 'isFocused' | 'show'> & {
-  webContents: Pick<WebContents, 'isDestroyed' | 'getURL' | 'insertText'>
+  webContents: Pick<WebContents, 'isDestroyed' | 'getURL' | 'insertText'> & {
+    on(event: 'did-start-navigation', listener: (_event: unknown, url: string, inPlace: boolean, isMainFrame: boolean) => void): unknown
+    on(event: 'render-process-gone', listener: () => void): unknown
+  }
+}
+
+const pasteDocuments = new WeakMap<PasteWorkbench['webContents'], { current: object }>()
+
+function pasteDocument(contents: PasteWorkbench['webContents']): { current: object } {
+  const document = pasteDocuments.get(contents)
+  if (document !== undefined) return document
+  const lifetime = { current: {} }
+  const revoke = (): void => { lifetime.current = {} }
+  contents.on('did-start-navigation', (_event, _url, inPlace, isMainFrame) => {
+    if (isMainFrame && !inPlace) revoke()
+  })
+  contents.on('render-process-gone', revoke)
+  pasteDocuments.set(contents, lifetime)
+  return lifetime
 }
 
 /** One opening owns its target; late asynchronous captures cannot restore an older target. */
@@ -45,11 +63,17 @@ export async function captureTrustedRaycastPriorApp(deps: TrustedRaycastNativeDe
   if (workbench !== undefined && !workbench.isDestroyed() && workbench.isFocused() && !workbench.webContents.isDestroyed()) {
     const contents = workbench.webContents
     const url = contents.getURL()
+    const lifetime = pasteDocument(contents)
+    const document = lifetime.current
+    const assertTarget = (): void => {
+      if (workbench.isDestroyed() || contents.isDestroyed() || lifetime.current !== document || contents.getURL() !== url) throw new Error('The captured paste target is unavailable')
+    }
     return Object.freeze({
       name: deps.ownAppNames[0] ?? 'TockTeam Desktop', capturedAt: Date.now(),
       insertText: async (text: string) => {
-        if (workbench.isDestroyed() || contents.isDestroyed() || contents.getURL() !== url) throw new Error('The captured paste target is unavailable')
+        assertTarget()
         await contents.insertText(text)
+        assertTarget()
         workbench.show()
       },
     })

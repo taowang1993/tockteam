@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { spawn, execFile } from 'node:child_process'
+import { EventEmitter } from 'node:events'
 import { isDeepStrictEqual, promisify } from 'node:util'
 import { captureTrustedRaycastPriorApp, pasteTrustedRaycastText, readTrustedRaycastSelectedText, type TrustedRaycastNativeDeps } from '../src/trusted-raycast-native.ts'
 import { isTrustedRaycastNativeRequest, isTrustedRaycastNativeOutcome, TRUSTED_RAYCAST_PREFERENCE_DEFAULTS } from '../src/trusted-raycast-contract.ts'
@@ -57,11 +58,13 @@ test('prior-app capture admits only an external frontmost application', async ()
 
 test('Kaomoji pastes into the captured TockTutor window without Apple Events or clipboard mutation', async () => {
   const inserted: string[] = []
+  const events = new EventEmitter()
   let shown = false
   const workbench = {
     isDestroyed: () => false, isFocused: () => true, show: () => { shown = true },
     webContents: {
       isDestroyed: () => false, getURL: () => 'http://localhost/tocktutor',
+      on: events.on.bind(events),
       insertText: async (text: string) => { inserted.push(text) },
     },
   }
@@ -81,12 +84,13 @@ test('Kaomoji pastes into the captured TockTutor window without Apple Events or 
 })
 
 test('own-window paste rejects closed or navigated targets instead of redirecting the paste', async () => {
+  const events = new EventEmitter()
   let destroyed = false
   let contentsDestroyed = false
   let url = 'http://localhost/tocktutor'
   const workbench = {
     isDestroyed: () => destroyed, isFocused: () => true, show: () => assert.fail('stale window shown'),
-    webContents: { isDestroyed: () => contentsDestroyed, getURL: () => url, insertText: async () => assert.fail('stale target received text') },
+    webContents: { isDestroyed: () => contentsDestroyed, getURL: () => url, insertText: async () => assert.fail('stale target received text'), on: events.on.bind(events) },
   }
   const native = deps({ execFile: async () => ({ stdout: 'TockTeam Desktop' }) })
   const target = await captureTrustedRaycastPriorApp(native, workbench)
