@@ -4095,7 +4095,13 @@ export class NoteVaultRuntime extends Service {
             }
             const recovered = { ...record, status: 'recovered' };
             const directory = (await this.mergeDirectory(request.expectedVault));
-            await writeDocumentAtomic(path.join(directory, `${record.id}.json`), encodeDocumentContent(JSON.stringify(recovered), DEFAULT_MAX_INSPECTION_BYTES), false, async () => { this.assertCapturedVault(state, root); signal.throwIfAborted(); await this.mergeDirectory(request.expectedVault); });
+            await writeDocumentAtomic(path.join(directory, `${record.id}.json`), encodeDocumentContent(JSON.stringify(recovered), DEFAULT_MAX_INSPECTION_BYTES), false, async () => {
+                this.assertCapturedVault(state, root);
+                signal.throwIfAborted();
+                await this.mergeDirectory(request.expectedVault);
+                signal.throwIfAborted();
+                this.assertCapturedVault(state, root);
+            });
             return this.mergeResult(recovered, state.generation);
         });
     }
