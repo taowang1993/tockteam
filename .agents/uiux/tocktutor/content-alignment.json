@@ -3582,16 +3582,19 @@
       "surface": "live-preview",
       "tocktutor": {
         "screenshot": "tocktutor-editor-live-preview.png",
-        "path": "UIUX Comparison.md",
+        "path": "comparison.md",
         "mode": "live-preview",
-        "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
+        "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2"
       },
       "obsidian": {
         "screenshot": "obsidian-main-editor.png",
         "path": "UIUX Comparison.md",
         "mode": "live-preview",
         "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
-      }
+      },
+      "referenceStatus": "historical-frontmatter-and-filename",
+      "sameNoteBytes": false,
+      "sameMarkdownBody": true
     },
     {
       "surface": "live-preview-lower",
@@ -6083,15 +6086,15 @@
     "tocktutor-editor-live-preview.png": {
       "product": "TockTutor Source-Built Desktop",
       "captureScope": "real-desktop",
-      "refreshId": "tockteam-tigk-2026-10-03",
-      "sourceCommit": "f635857ba26d37feafaa72bde25fe168bed5f7da",
+      "refreshId": "tockteam-e8rn-2026-10-03",
+      "sourceCommit": "1b2f1cbb75f7d4e41da2165ca79eec4ca07a526d",
       "sourceDirty": true,
-      "sourceProvenance": "Reused frozen working-tree build; not a pristine commit build. See tocktutorGalleryRefresh.builtArtifactHashes.",
-      "route": "/tocktutor/UIUX%20Comparison.md",
-      "path": "UIUX Comparison.md",
+      "sourceProvenance": "Isolated source-built Desktop with the completed-task fix later saved in b3213772. This gallery update reuses that verified capture without rebuilding or recapturing the app.",
+      "route": "/tocktutor/comparison.md",
+      "path": "comparison.md",
       "mode": "live-preview",
-      "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "noteBytes": 1324,
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
       "geometry": {
         "width": 1512,
         "height": 949,
@@ -6099,9 +6102,9 @@
       },
       "theme": "dark",
       "skin": null,
-      "capturedAt": "2026-10-03T00:04:01.725Z",
-      "sha256": "648069caffb10e2f2536fd2dac414a690f0ea6fd9c2c68d24d681cdb871c49d0",
-      "bytes": 286761,
+      "capturedAt": "2026-10-03",
+      "sha256": "32e49c9d5226e66000e2fe3837cb2988f2bf816d86ba29240ab3c67d525a02d7",
+      "bytes": 266751,
       "visibleState": {
         "geometry": [
           1512,
@@ -6111,36 +6114,28 @@
         "rootColorScheme": "dark",
         "rootSkin": null,
         "bodySkin": null,
-        "systemDark": false,
-        "route": "/tocktutor/UIUX%20Comparison.md",
-        "path": "UIUX Comparison.md",
+        "route": "/tocktutor/comparison.md",
+        "path": "comparison.md",
         "documentMode": "live-preview",
-        "status": "UIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters",
         "sourceVisible": false,
         "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
-        "visibleHeadings": [
-          "Files",
-          "UIUX Comparison",
-          "",
-          "Properties",
-          "Markdown Rendering Lab",
-          "Structure",
-          "Lists"
-        ],
-        "menus": [],
-        "fontsReady": true,
-        "assertedText": "Markdown Rendering Lab",
-        "assertionPassed": true,
-        "textExcerpt": "Markdown Rendering Lab",
-        "codeEditorVisible": false
+        "completedTask": {
+          "text": "Completed task",
+          "decoration": "line-through",
+          "visible": true
+        },
+        "pendingTask": {
+          "decoration": "none"
+        },
+        "assertionPassed": true
       },
       "runtimeErrors": [],
-      "runtimeErrorMonitoring": "Playwright pageerror and console-error listeners installed before opening TockTutor; startup console and guard placement recorded separately.",
-      "failedRequests": [],
+      "runtimeErrorMonitoring": "Playwright pageerror and console-error listeners during 14 completed-task checks and eight appearance checks; see the archived capture proof for the owned Desktop run and cleanup.",
       "warnings": [
-        "Feature flags __VUE_OPTIONS_API__, __VUE_PROD_DEVTOOLS__, __VUE_PROD_HYDRATION_MISMATCH_DETAILS__ are not explicitly defined. You are running the esm-bundler build of Vue, which expects these compile-time feature flags to be globally injected via the bundler config in order to get better tree-shaking in the production bundle.\n\nFor more details, see https://link.vuejs.org/feature-flags."
+        "Existing development Electron CSP warning.",
+        "Existing Vue feature-flags warning."
       ],
-      "proofFile": "batch1/proof.json"
+      "proofFile": ".beads/reports/2026-10-03-tocktutor-completed-task/proof.json"
     },
     "tocktutor-editor-reading.png": {
       "product": "TockTutor Source-Built Desktop",
@@ -9701,6 +9696,120 @@
       "run": "b800bf20-42a6-48a5-a81b-a94497922e07",
       "rootPid": 96228,
       "remaining": []
+    }
+  },
+  "completedTaskRefresh": {
+    "id": "tockteam-e8rn-2026-10-03",
+    "status": "verified-current",
+    "publicationAllowlist": [
+      "tocktutor-editor-live-preview.png"
+    ],
+    "unrelatedExistingCapturesUnchanged": 61,
+    "reusesVerifiedCapture": true,
+    "applicationLaunchedForGalleryUpdate": false,
+    "sourceFeatureCommit": "b32137721d33aa5b7289cfa59e2c97e1fa9b24aa",
+    "captureProof": ".beads/reports/2026-10-03-tocktutor-completed-task/proof.json",
+    "galleryVerification": {
+      "route": "/.agents/uiux/tocktutor/tocktutor.html#live-preview",
+      "mode": "gallery-preview",
+      "geometry": [1512, 949, 2],
+      "pixels": [3024, 1898],
+      "theme": "dark",
+      "rootSkin": null,
+      "bodySkin": null,
+      "imageCount": 61,
+      "bothImagesDecoded": true,
+      "bothImagesFullyVisible": true,
+      "currentImageSha256": "32e49c9d5226e66000e2fe3837cb2988f2bf816d86ba29240ab3c67d525a02d7",
+      "referenceImageSha256": "886b4cddfaa7d6db2129ce9e9f359f46a4c3408a66ad4e98cc15f3140420d604",
+      "referenceBadge": "Earlier Reference",
+      "horizontalOverflow": false,
+      "runtimeErrors": [],
+      "failedRequests": [],
+      "screenshot": ".beads/reports/2026-10-03-tocktutor-completed-task-gallery.png",
+      "screenshotSha256": "2960449840759be17770bd1054d01228f285c770dc3682213c349442f0549174",
+      "checkCommand": "node --test tests/tocktutor-gallery.test.ts tests/tocktutor-content-alignment.test.ts"
+    },
+    "galleryCleanup": {
+      "browser": {
+        "id": "e5ab3b76-8a39-44c2-a501-103752ca1484",
+        "displayId": 24,
+        "focused": false,
+        "rootPid": 4433,
+        "recordedPids": [4433, 4435, 4436, 4437],
+        "stopped": true,
+        "remaining": []
+      },
+      "server": {
+        "rootPid": 4426,
+        "stopped": true,
+        "remaining": [],
+        "descendantsSpawned": false,
+        "boundedToMilliseconds": 180000,
+        "cleanup": "SIGTERM resolved server lifecycle; finally closed its listener; kill(pid,0) verified ESRCH."
+      }
+    },
+    "previousCapture": {
+      "product": "TockTutor Source-Built Desktop",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-tigk-2026-10-03",
+      "sourceCommit": "f635857ba26d37feafaa72bde25fe168bed5f7da",
+      "sourceDirty": true,
+      "sourceProvenance": "Reused frozen working-tree build; not a pristine commit build. See tocktutorGalleryRefresh.builtArtifactHashes.",
+      "route": "/tocktutor/UIUX%20Comparison.md",
+      "path": "UIUX Comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+      "noteBytes": 1324,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-03T00:04:01.725Z",
+      "sha256": "648069caffb10e2f2536fd2dac414a690f0ea6fd9c2c68d24d681cdb871c49d0",
+      "bytes": 286761,
+      "visibleState": {
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "systemDark": false,
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "documentMode": "live-preview",
+        "status": "UIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters",
+        "sourceVisible": false,
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
+        "visibleHeadings": [
+          "Files",
+          "UIUX Comparison",
+          "",
+          "Properties",
+          "Markdown Rendering Lab",
+          "Structure",
+          "Lists"
+        ],
+        "menus": [],
+        "fontsReady": true,
+        "assertedText": "Markdown Rendering Lab",
+        "assertionPassed": true,
+        "textExcerpt": "Markdown Rendering Lab",
+        "codeEditorVisible": false
+      },
+      "runtimeErrors": [],
+      "runtimeErrorMonitoring": "Playwright pageerror and console-error listeners installed before opening TockTutor; startup console and guard placement recorded separately.",
+      "failedRequests": [],
+      "warnings": [
+        "Feature flags __VUE_OPTIONS_API__, __VUE_PROD_DEVTOOLS__, __VUE_PROD_HYDRATION_MISMATCH_DETAILS__ are not explicitly defined. You are running the esm-bundler build of Vue, which expects these compile-time feature flags to be globally injected via the bundler config in order to get better tree-shaking in the production bundle.\n\nFor more details, see https://link.vuejs.org/feature-flags."
+      ],
+      "proofFile": "batch1/proof.json"
     }
   },
   "tocktutorGalleryRefresh": {

@@ -39,6 +39,16 @@ test('compares matching content and includes the installed Claudian assistant', 
       assert.equal(left.visibleState.loading, false)
       assert.equal(pair.tocktutor.mode, pair.obsidian.mode)
       assert.deepEqual(right, proof.tocktutorGalleryRefresh.previousProof.captures[pair.obsidian.screenshot])
+    } else if (pair.surface === 'live-preview') {
+      assert.equal(pair.referenceStatus, 'historical-frontmatter-and-filename')
+      assert.equal(pair.sameNoteBytes, false)
+      assert.equal(pair.sameMarkdownBody, true)
+      assert.equal(pair.tocktutor.path, 'comparison.md')
+      assert.equal(pair.obsidian.path, 'UIUX Comparison.md')
+      assert.equal(left.contentSha256, proof.comparisonNoteRevision.current.contentSha256)
+      assert.equal(right.contentSha256, proof.comparisonNoteRevision.previous.contentSha256)
+      const source = readFileSync(`${root}/comparison.md`, 'utf8')
+      assert.equal(createHash('sha256').update(source.slice(source.indexOf('\n---\n') + 5)).digest('hex'), proof.comparisonNoteRevision.previous.bodySha256)
     } else if (pair.surface === 'note-actions') {
       assert.equal(pair.tocktutor.path, 'comparison.md')
       assert.equal(pair.obsidian.path, 'UIUX Comparison.md')
@@ -53,7 +63,7 @@ test('compares matching content and includes the installed Claudian assistant', 
     } else {
       assert.equal(pair.tocktutor.path, pair.obsidian.path, pair.surface)
     }
-    if (pair.surface !== 'web-viewer') assert.equal(pair.tocktutor.contentSha256, pair.obsidian.contentSha256, pair.surface)
+    if (!['web-viewer', 'live-preview'].includes(pair.surface)) assert.equal(pair.tocktutor.contentSha256, pair.obsidian.contentSha256, pair.surface)
     assert.equal(pair.tocktutor.mode, pair.obsidian.mode, pair.surface)
   }
 })

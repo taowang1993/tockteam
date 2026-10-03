@@ -42,7 +42,7 @@ test('refreshes every retained TockTutor image without changing Obsidian and rem
   for (const name of refresh.publicationAllowlist) {
     const capture = proof.captures[name]
     assert.equal(capture.captureScope, 'real-desktop', name)
-    assert.equal(capture.refreshId, refresh.id, name)
+    assert.equal(capture.refreshId, proof.completedTaskRefresh?.publicationAllowlist.includes(name) ? proof.completedTaskRefresh.id : refresh.id, name)
     assert.ok(Date.parse(capture.capturedAt) >= Date.parse(refresh.startedAt), name)
     assert.deepEqual(capture.geometry, { width: 1512, height: 949, deviceScaleFactor: 2 }, name)
     assert.equal(capture.theme, 'dark', name)
@@ -70,6 +70,34 @@ test('refreshes every retained TockTutor image without changing Obsidian and rem
   assert.equal(proof.readerViewRefresh.status, 'verified-historical')
   assert.ok(refresh.cleanup.length > 0)
   assert.ok(refresh.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
+})
+
+test('shows the verified completed-task capture with an honestly labeled earlier reference', () => {
+  const name = 'tocktutor-editor-live-preview.png'
+  const verified = JSON.parse(readFileSync(resolve('.beads/reports/2026-10-03-tocktutor-completed-task/proof.json'), 'utf8'))
+  assert.equal(sha256(readFileSync(resolve(root, 'screenshots', name))), verified.screenshot.sha256)
+  const refresh = proof.completedTaskRefresh
+  assert.equal(refresh.status, 'verified-current')
+  assert.deepEqual(refresh.publicationAllowlist, [name])
+  assert.equal(refresh.unrelatedExistingCapturesUnchanged, 61)
+  assert.equal(refresh.reusesVerifiedCapture, true)
+  assert.equal(refresh.applicationLaunchedForGalleryUpdate, false)
+  assert.equal(refresh.galleryVerification.bothImagesDecoded, true)
+  assert.deepEqual(refresh.galleryVerification.geometry, [1512, 949, 2])
+  assert.deepEqual(refresh.galleryVerification.runtimeErrors, [])
+  assert.equal(sha256(readFileSync(resolve(refresh.galleryVerification.screenshot))), refresh.galleryVerification.screenshotSha256)
+  for (const run of Object.values(refresh.galleryCleanup) as { stopped: boolean; remaining: number[] }[]) {
+    assert.equal(run.stopped, true)
+    assert.deepEqual(run.remaining, [])
+  }
+  assert.equal(proof.captures[name].contentSha256, verified.comparisonFixture.sha256)
+  assert.equal(proof.captures[name].visibleState.completedTask.decoration, 'line-through')
+  assert.equal(proof.captures[name].visibleState.pendingTask.decoration, 'none')
+  assert.notEqual(refresh.previousCapture.sha256, verified.screenshot.sha256)
+  assert.equal(sha256(readFileSync(resolve(root, 'screenshots/obsidian-main-editor.png'))), proof.tocktutorGalleryRefresh.preservedReferenceHashes['obsidian-main-editor.png'])
+  const section = /<section class="surface" id="live-preview">([\s\S]*?)<\/section>/u.exec(html)![1]!
+  assert.match(section, /completed tasks[\s\S]*pending tasks/u)
+  assert.match(section, /Obsidian · Live Preview<\/span><span class="badge">Earlier Reference/u)
 })
 
 test('accounts for every gallery and supplemental capture without stale links', () => {
@@ -770,6 +798,6 @@ test('binds shared Markdown and structured documents to the captured content', (
   assert.equal(proof.graphAlignment.obsidianSettings.globalSearch, '-file:Lessons.base')
   assert.ok(proof.pairs.length >= 23)
   for (const pair of proof.pairs) {
-    if (['comparison.md', 'UIUX Comparison.md'].includes(pair.tocktutor.path)) assert.equal(pair.tocktutor.contentSha256, pair.surface === 'imported-properties' ? sharedHash : historicalHash, pair.surface)
+    if (['comparison.md', 'UIUX Comparison.md'].includes(pair.tocktutor.path)) assert.equal(pair.tocktutor.contentSha256, ['imported-properties', 'live-preview'].includes(pair.surface) ? sharedHash : historicalHash, pair.surface)
   }
 })
