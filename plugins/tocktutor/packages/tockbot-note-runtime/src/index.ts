@@ -5834,6 +5834,8 @@ export class NoteVaultRuntime extends Service {
         manifestConfig,
         signal,
       )
+      signal.throwIfAborted()
+      this.assertCapturedVault(state, root)
       if (
         folderManifestFingerprint(verifiedSource) !== sourceFingerprint
         || folderContentFingerprint(verifiedDestination) !== contentFingerprint
@@ -5846,6 +5848,7 @@ export class NoteVaultRuntime extends Service {
         await rename(sourceRoot, quarantinePath)
         try {
           const quarantined = await buildFolderManifest(root, quarantinePath, manifestConfig, signal)
+          signal.throwIfAborted()
           this.assertCapturedVault(state, root)
           if (folderContentFingerprint(quarantined) !== contentFingerprint) {
             throw new NoteVaultError('changed', 'Folder contents changed before source removal')
