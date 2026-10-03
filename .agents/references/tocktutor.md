@@ -107,6 +107,8 @@ Draft saves, reads, and clears join one queue per vault and note before resolvin
 
 Merge recovery rechecks cancellation, vault ownership, and Runtime lifetime after its final asynchronous storage validation, before marking the journal `recovered`. An interrupted completion preserves the previous journal and already-created recovery copies, so a fresh request can safely finish recovery without overwriting notes. Cancellation after the journal has been published retains the successful result. Real-filesystem cancellation, vault replacement, unload, retry, and committed-result coverage is in `tockbot-note-runtime/tests/merge-recovery-cancellation.test.ts`.
 
+Reviewed note merges retain their five-minute deadline through asynchronous preflight and unfinished Runtime writes. Reaching the deadline before the durable journal rejects the review without changing notes; expiry after journaling stops the remaining mutations and returns `recovery-required`. Already committed changes remain in place, and the journal's original bytes can be restored as exclusive recovery copies. The deadline timer is released when the operation settles. Real-filesystem coverage is in `tockbot-note-runtime/tests/merge-expiry.test.ts`.
+
 #### Persistent Search
 
 Filesystem observation uses `chokidar@5.0.0` so atomic note replacement does not strand Linux watches on retired inodes. Initial reads wait for watcher startup; rapid edits settle for 50 ms, and generation/path/symlink checks still guard every publication. Provider disposal awaits current and retired watcher cleanup. Both workspaces apply `patches/chokidar@5.0.0.patch` under `plugins/tocktutor/`: it forwards nonpersistent native errors and cancels write-finish polling on close. Keep both patch bindings/locks and the staged/Nix dependency closure aligned; `tests/tocktutor-watcher.test.ts` runs the packaged-runtime regressions in the root platform matrix.
@@ -140,6 +142,8 @@ The browser client mounts that Remote and contributes the single `tockteam.tockt
 The route accepts only Markdown, Canvas, and Base documents. Reading and inert export render a bounded static raw-HTML subset after stack-based sanitization; scripts, handlers, unsafe URLs, active resources, malformed markup, and exhausted budgets remain inert. Local, credential-bearing, and executable links remain inert. Credential-free external content is admitted only through the isolated Web Viewer boundary.
 
 Workbench embeds use short-name, extensionless-stem, and alias fallback only after a complete file inventory without scan warnings. A bounded or failed inventory leaves those embeds unresolved with an explicit warning; an exactly indexed vault-relative path remains available. File-list refreshes withdraw earlier embed projections and resolve them again for open notes. Pending reads are bound to the inventory they used, so a late read cannot revive an embed that has become ambiguous. Real Cordis/Runtime/Host and filesystem coverage is in `tests/embed-inventory.test.ts`.
+
+Empty or malformed Canvas documents display a stable error without changing the document or repeatedly resetting an already-empty selection. A previously selected card is cleared once, and navigation can reopen a valid board normally. Focused coverage is in `tockteam-tocktutor-workbench/tests/canvas-invalid.test.tsx`.
 
 Nested slots:
 
