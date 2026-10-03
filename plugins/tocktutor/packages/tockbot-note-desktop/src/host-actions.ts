@@ -97,9 +97,14 @@ async function resolveExportEmbeds(
     const page = await runtime.listTree({ cursor, expectedVault, limit: 500 }, signal)
     assertCurrentVault(runtime, expectedVault)
     if (page.generation !== expectedVault.generation) throw new Error('The active vault changed while resolving embeds.')
+    const paginated = !page.complete && page.truncated && page.truncationReason === 'result-limit'
+      && page.cursor !== null && page.cursor !== cursor
+    if (page.warnings.length > 0 || (!page.complete || page.truncated || page.truncationReason !== null) && !paginated) {
+      throw new Error('The embed inventory is incomplete. The note was not printed or exported.')
+    }
     entries.push(...page.entries)
-    if (page.complete || page.cursor === null) break
-    if (page.cursor === cursor || pageIndex === 9) throw new Error('The bounded embed tree scan did not complete.')
+    if (page.complete) break
+    if (pageIndex === 9) throw new Error('The bounded embed tree scan did not complete.')
     cursor = page.cursor
   }
 
