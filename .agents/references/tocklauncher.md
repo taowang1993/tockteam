@@ -186,9 +186,9 @@ Production compatibility invocation is currently macOS-only; the runtime depends
 
 One Desktop-only `@tockteam/trusted-raycast` Cordis plugin holds a bearer-authenticated loopback activation stream. Its disconnect removes discovery authority and closes the active child. This is a lifecycle lease, not generic RPC or another composition system; generated endpoint/token values stay Host/main-owned.
 
-User-selected command teardown revokes input immediately and retains the child PID and runtime workspace until its entire owned process group has stopped and workspace cleanup succeeds. A failed stop remains retryable through the same owner or application shutdown; another command cannot start while cleanup is pending. Dismissing an active menu command still preserves its explicitly activated lifetime.
-
 The activation listener owns its startup as well as its live stream. Stopping it while the loopback socket binds rejects the pending startup, so Desktop shutdown can finish waiting for runtime startup. A canceled startup cannot publish an endpoint or stop a replacement listener; error cleanup applies only to its captured server.
+
+User-selected command teardown revokes input immediately and retains the child PID and runtime workspace until its entire owned process group has stopped and workspace cleanup succeeds. A failed stop remains retryable through the same owner or application shutdown; another command cannot start while cleanup is pending. Dismissing an active menu command still preserves its explicitly activated lifetime.
 
 User-selected extension folder admission streams directory entries with one 1,152-entry budget across the complete tree, including empty directories, alongside the existing 128-file, 16 MiB and depth-eight limits. An interrupted install with a retained previous version must be explicitly recovered before another approval can rotate it away; this also applies when new current bytes were published but the approval record was not saved. Recovery and later installation leave the command disabled until separately enabled.
 

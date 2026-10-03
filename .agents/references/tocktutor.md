@@ -97,9 +97,9 @@ Snapshot retention reserves one slot for the newly captured recovery copy, even 
 
 Snapshot body and metadata publication use exclusive writes. A filename collision rejects the new capture while preserving earlier recovery files; an unsuccessful metadata write removes only the body created by that attempt. A complete recovery copy survives a temporary-file cleanup failure after publication. If recovery capture fails before a note save, the note keeps its original bytes. Collision, cleanup-failure, and retry coverage is in `tockbot-note-runtime/tests/snapshot-collision.test.ts`.
 
-Document moves and attachment trash/restore also recheck cancellation and the captured vault after their final source validation, immediately before removing the original entry. Rejection at that boundary preserves the original bytes and removes the exclusively staged destination when its identity is unchanged; unsafe rollback reports the retained destination as a partial result. `tockbot-note-runtime/tests/move-cancellation.test.ts` covers cancellation and vault replacement at that boundary.
-
 Document creation, saves, attachment storage, and passive-configuration restores recheck cancellation and the captured vault after their final asynchronous filesystem validation, before publishing bytes. Cancelling or switching vaults during that validation preserves existing note bytes and removes staged temporary files. The real-filesystem regressions are in `tockbot-note-runtime/tests/write-cancellation.test.ts`.
+
+Document moves and attachment trash/restore also recheck cancellation and the captured vault after their final source validation, immediately before removing the original entry. Rejection at that boundary preserves the original bytes and removes the exclusively staged destination when its identity is unchanged; unsafe rollback reports the retained destination as a partial result. `tockbot-note-runtime/tests/move-cancellation.test.ts` covers cancellation and vault replacement at that boundary.
 
 Folder moves and copies recheck cancellation and vault ownership after destination verification. A move also checks after its final quarantine verification, before deleting the original folder. An interrupted operation restores any quarantined source and reports the retained destination as `partial`; it does not claim that a completed copy was rolled back. Real-filesystem coverage is in `tockbot-note-runtime/tests/folder-cancellation.test.ts`.
 
@@ -107,9 +107,9 @@ Runtime unload withdraws vault authority before asynchronous cleanup starts. Pen
 
 Draft saves, reads, and clears join one queue per vault and note before resolving recovery-storage directories. This preserves their call order even before the first draft directory exists: a clear cannot finish ahead of an older pending save, and a read observes earlier accepted saves. Different notes remain independent; failed saves release the queue, and waiting operations recheck cancellation and vault ownership. Real-filesystem coverage is in `tockbot-note-runtime/tests/draft-ordering.test.ts`.
 
-Merge recovery rechecks cancellation, vault ownership, and Runtime lifetime after its final asynchronous storage validation, before marking the journal `recovered`. An interrupted completion preserves the previous journal and already-created recovery copies, so a fresh request can safely finish recovery without overwriting notes. Cancellation after the journal has been published retains the successful result. Real-filesystem cancellation, vault replacement, unload, retry, and committed-result coverage is in `tockbot-note-runtime/tests/merge-recovery-cancellation.test.ts`.
-
 Reviewed note merges retain their five-minute deadline through asynchronous preflight and unfinished Runtime writes. Reaching the deadline before the durable journal rejects the review without changing notes; expiry after journaling stops the remaining mutations and returns `recovery-required`. Already committed changes remain in place, and the journal's original bytes can be restored as exclusive recovery copies. The deadline timer is released when the operation settles. Real-filesystem coverage is in `tockbot-note-runtime/tests/merge-expiry.test.ts`.
+
+Merge recovery rechecks cancellation, vault ownership, and Runtime lifetime after its final asynchronous storage validation, before marking the journal `recovered`. An interrupted completion preserves the previous journal and already-created recovery copies, so a fresh request can safely finish recovery without overwriting notes. Cancellation after the journal has been published retains the successful result. Real-filesystem cancellation, vault replacement, unload, retry, and committed-result coverage is in `tockbot-note-runtime/tests/merge-recovery-cancellation.test.ts`.
 
 #### Persistent Search
 
@@ -145,11 +145,11 @@ The route accepts only Markdown, Canvas, and Base documents. Reading and inert e
 
 External-embed admission distinguishes IPv6 addresses from ordinary DNS names before applying private IPv6 prefix checks. Public names beginning with `fc` or `fd` remain admissible for the Web Viewer; private addresses and credential-bearing URLs remain inert. Host fetching still performs independent DNS/address validation. `tests/external-embed-hostnames.test.ts` covers the classifier and Reading output.
 
+Attachment transport, embed resolution, and Markdown media rendering share the Base64 syntax check in `src/base64.ts`. It checks complete quartet length, allowed characters, and trailing padding without a repeated-group regular expression, so valid larger attachments do not exhaust the JavaScript stack. Existing transport, 25 MiB attachment, aggregate media, and smaller static-export limits remain independent and unchanged. Real Runtime/Host coverage in `tests/attachment-transport.test.ts` checks exact bytes, 5 MiB previews and rendering, the 25 MiB boundary, malformed and oversized data, cancellation, stale vaults, and exhausted media budgets.
+
 Workbench embeds use short-name, extensionless-stem, and alias fallback only after a complete file inventory without scan warnings. A bounded or failed inventory leaves those embeds unresolved with an explicit warning; an exactly indexed vault-relative path remains available. File-list refreshes withdraw earlier embed projections and resolve them again for open notes. Pending reads are bound to the inventory they used, so a late read cannot revive an embed that has become ambiguous. Real Cordis/Runtime/Host and filesystem coverage is in `tests/embed-inventory.test.ts`.
 
 Empty or malformed Canvas documents display a stable error without changing the document or repeatedly resetting an already-empty selection. A previously selected card is cleared once, and navigation can reopen a valid board normally. Focused coverage is in `tockteam-tocktutor-workbench/tests/canvas-invalid.test.tsx`.
-
-Attachment transport, embed resolution, and Markdown media rendering share the Base64 syntax check in `src/base64.ts`. It checks complete quartet length, allowed characters, and trailing padding without a repeated-group regular expression, so valid larger attachments do not exhaust the JavaScript stack. Existing transport, 25 MiB attachment, aggregate media, and smaller static-export limits remain independent and unchanged. Real Runtime/Host coverage in `tests/attachment-transport.test.ts` checks exact bytes, 5 MiB previews and rendering, the 25 MiB boundary, malformed and oversized data, cancellation, stale vaults, and exhausted media budgets.
 
 Nested slots:
 
@@ -266,11 +266,11 @@ The seven model-facing Pennivo read adapters are `list_files`, `read_file`, `sea
 
 Queue and permission epoch persist in the version-1 DSH storage domain `tocktutor_assistant`, separate from vault files. Defaults are 100 pending proposals, 500 audit records, and five-minute expiry (at most ten minutes); proposal content is capped at 1 MiB and serialized queue state at 8 MiB. Ordinary TockDriver proposals can survive assistant restart after revalidation; child-bound live-turn state is not resumed. The browser reviews a redacted 1,000-character summary, not the full proposed content or a complete diff. Summary previews stay below transport limits, and a stage rejected by aggregate serialization limits leaves the accepted queue and audit intact. The assistant panel reloads proposals/audit as the selected conversation's running/tool state changes, so asynchronously staged writes become reviewable without leaving the note.
 
+An accepted assistant approval retains its original proposal deadline through persistence, source/target reads, and the Runtime write. Deadline cancellation uses the queue's clock and reaches the Runtime's precommit check, so waiting for a save cannot extend approval authority. The timer is released when the decision settles. A successful Runtime commit remains `applied` when its response arrives after expiry.
+
 Assistant unload also withdraws ordinary TockDriver proposal-staging authority immediately. A pending `notes_stage_write` or `notes_organize_capture` source read cannot publish a new proposal once unload has begun; already accepted durable proposals retain their existing restart behavior. Real Runtime, DSH tool, and storage coverage is in `tests/settings-context.test.ts`.
 
 The text-only provider runner used by search expansion and Quick Answer requests iterator closure when a turn ends. Cancellation also interrupts a pending cleanup wait, so a provider that ignores `AbortSignal` cannot keep the cancelled turn open. Its eventual output stays suppressed and late cleanup failures remain observed; actual provider resource release still depends on the provider honoring cancellation or settling its pending work.
-
-An accepted assistant approval retains its original proposal deadline through persistence, source/target reads, and the Runtime write. Deadline cancellation uses the queue's clock and reaches the Runtime's precommit check, so waiting for a save cannot extend approval authority. The timer is released when the decision settles. A successful Runtime commit remains `applied` when its response arrives after expiry.
 
 ### `@tockteam/tocktutor-import-export`
 
