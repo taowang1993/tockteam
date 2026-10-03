@@ -203,6 +203,8 @@ Discovery is bounded by item, file-size, directory-visit, output, and time limit
 - Simple File Search applies one rescan-wide deadline across all configured roots rather than a full timeout per root;
 - configured roots and discovered paths are normalized, bounded, and revalidated within their allowed scope.
 
+Simple File Search also checks each returned path against its selected folder before publishing a result. Being inside the home folder alone is insufficient: sibling folders and normalized parent escapes cannot acquire result actions. Dot-prefixed child names remain valid; native action revalidation still checks canonical scope and file identity immediately before opening or revealing a result.
+
 Native helpers never rely on a writable current-directory search:
 
 - Windows application scan and elevation use absolute `%SystemRoot%` PowerShell paths;
@@ -350,6 +352,7 @@ The first-party, offline Desktop proof covers defaults/bounds/required validatio
 `LauncherLifecycleController` maps compatibility settings onto one Desktop owner:
 
 - one optional tray, dock visibility, the launcher shortcut, always-on-top, visible-on-all-workspaces, and startup visibility;
+- shutdown fences unfinished Dock updates and startup display: late completions cannot recreate the tray, re-enable launcher controls, or execute a queued overlay toggle;
 - `show` and `centerWindow` reuse the overlay;
 - About, Extensions, and Settings route to the existing workbench;
 - rescan invalidates provider/action state before rebuilding the index;
