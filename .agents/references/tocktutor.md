@@ -139,6 +139,8 @@ The browser client mounts that Remote and contributes the single `tockteam.tockt
 
 The route accepts only Markdown, Canvas, and Base documents. Reading and inert export render a bounded static raw-HTML subset after stack-based sanitization; scripts, handlers, unsafe URLs, active resources, malformed markup, and exhausted budgets remain inert. Local, credential-bearing, and executable links remain inert. Credential-free external content is admitted only through the isolated Web Viewer boundary.
 
+Workbench embeds use short-name, extensionless-stem, and alias fallback only after a complete file inventory without scan warnings. A bounded or failed inventory leaves those embeds unresolved with an explicit warning; an exactly indexed vault-relative path remains available. File-list refreshes withdraw earlier embed projections and resolve them again for open notes. Pending reads are bound to the inventory they used, so a late read cannot revive an embed that has become ambiguous. Real Cordis/Runtime/Host and filesystem coverage is in `tests/embed-inventory.test.ts`.
+
 Nested slots:
 
 - `tockteam.tocktutor.workbench.assistant`
