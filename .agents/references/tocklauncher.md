@@ -256,6 +256,8 @@ Host resolution must contain only public addresses and is capped at 32 results. 
 
 DeepL keys stay encrypted and main-owned. They never enter renderer snapshots, logs, exports, result labels, or error payloads.
 
+The user-selected Linear sign-in helper binds its loopback callback before offering authorization and checks cancellation again after binding. Malformed callback targets receive a bounded HTTP 400 response while valid sign-in can continue. Success, cancellation, timeout and failure close the listener and its connections; authorization codes and PKCE verifiers remain outside the launcher renderer.
+
 ## Settings and Persistence
 
 ### Per-Extension Settings

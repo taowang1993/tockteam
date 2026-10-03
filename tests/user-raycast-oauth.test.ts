@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { createServer } from 'node:http'
+import { createServer, request, Server } from 'node:http'
 import { test } from 'node:test'
 import { authorizeUserRaycastPkce } from '../src/user-raycast-oauth.ts'
 
@@ -56,6 +56,30 @@ test('a fake Linear provider redirects a read-only PKCE login to the owned callb
   } finally { await new Promise<void>(resolve => provider.close(() => resolve())) }
 })
 
+test('a malformed callback target is rejected without interrupting sign-in', async () => {
+  const result = await authorizeUserRaycastPkce({
+    clientId: 'public-test-client', endpoint: 'https://linear.app/oauth/authorize', port: 0,
+    onAuthorizeUrl: async address => {
+      const authorization = new URL(address)
+      const callback = new URL(authorization.searchParams.get('redirect_uri')!)
+      const status = await new Promise<number | undefined>((resolve, reject) => {
+        const malformed = request({ hostname: callback.hostname, port: callback.port, path: 'http://%' }, response => {
+          response.resume()
+          response.once('end', () => resolve(response.statusCode))
+          response.once('error', reject)
+        })
+        malformed.once('error', reject)
+        malformed.end()
+      })
+      assert.equal(status, 400)
+      callback.searchParams.set('code', 'test-code')
+      callback.searchParams.set('state', authorization.searchParams.get('state')!)
+      assert.equal((await fetch(callback)).status, 200)
+    },
+  })
+  assert.equal(result.code, 'test-code')
+})
+
 test('a denied or stalled sign-in cannot leave its callback listener running', async () => {
   let callback = ''
   await assert.rejects(authorizeUserRaycastPkce({
@@ -85,4 +109,24 @@ test('canceled sign-in rejects and releases the callback listener', async () => 
   }), /canceled/i)
   assert.ok(callback)
   assert.equal(await fetch(callback!).then(response => response.status).catch(() => 'closed'), 'closed')
+})
+
+test('sign-in canceled while binding the callback listener never offers authorization', async t => {
+  const abort = new AbortController()
+  const listen = Server.prototype.listen
+  let listener: Server | undefined
+  let offered = false
+  t.mock.method(Server.prototype, 'listen', function (this: Server, ...args: Parameters<typeof listen>) {
+    listener = this
+    const result = Reflect.apply(listen, this, args)
+    abort.abort()
+    return result
+  })
+  await assert.rejects(authorizeUserRaycastPkce({
+    clientId: 'public-test-client', endpoint: 'https://linear.app/oauth/authorize', port: 0,
+    signal: abort.signal, timeoutMs: 20,
+    onAuthorizeUrl: () => { offered = true },
+  }), /canceled/i)
+  assert.equal(offered, false)
+  assert.equal(listener?.listening, false)
 })

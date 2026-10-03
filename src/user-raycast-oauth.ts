@@ -25,7 +25,9 @@ export async function authorizeUserRaycastPkce(options: PkceOptions): Promise<Re
   const received = new Promise<string>((resolve, reject) => { resolveCode = resolve; rejectCode = reject })
   const server = createServer((request, response) => {
     if (request.method !== 'GET' || !request.url || request.url.length > 4096 || request.headers.host !== `127.0.0.1:${String((server.address() as { port: number }).port)}`) { response.writeHead(404).end(); return }
-    const callback = new URL(request.url, 'http://127.0.0.1')
+    let callback: URL
+    try { callback = new URL(request.url, 'http://127.0.0.1') }
+    catch { response.writeHead(400).end('Invalid sign-in response'); return }
     if (callback.pathname !== '/linear/callback' || callback.searchParams.getAll('state').length !== 1) { response.writeHead(404).end(); return }
     const supplied = Buffer.from(callback.searchParams.get('state')!)
     const expected = Buffer.from(state)
@@ -50,7 +52,10 @@ export async function authorizeUserRaycastPkce(options: PkceOptions): Promise<Re
   options.signal?.addEventListener('abort', cancel, { once: true })
   const timeout = setTimeout(() => rejectCode(new Error('OAuth sign-in timed out')), options.timeoutMs ?? 120_000)
   try {
-    await Promise.race([Promise.resolve().then(() => options.onAuthorizeUrl(endpoint.href)), received.then(() => undefined)])
+    await Promise.race([Promise.resolve().then(() => {
+      if (options.signal?.aborted) throw new Error('OAuth sign-in was canceled')
+      return options.onAuthorizeUrl(endpoint.href)
+    }), received.then(() => undefined)])
     const code = await received
     return { code, codeVerifier, redirectURI }
   } finally {
