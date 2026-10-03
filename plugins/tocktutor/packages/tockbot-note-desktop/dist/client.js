@@ -14717,7 +14717,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_activateVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 312, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 319, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/activateVaultTarget",
@@ -14753,7 +14753,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_activateVaultTarget_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 359, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 366, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/closeAllPopOuts",
@@ -14789,7 +14789,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_closeAllPopOuts_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 479, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 494, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/closePopOut",
@@ -14835,7 +14835,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_closePopOut_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 434, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 449, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/copyAbsolutePath",
@@ -14881,7 +14881,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_copyAbsolutePath_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 654, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 669, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/exportNote",
@@ -14937,7 +14937,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_exportNote_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 549, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 564, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/moveVault",
@@ -14973,7 +14973,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_moveVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 754, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 769, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/openInDefaultApp",
@@ -15019,7 +15019,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_openInDefaultApp_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 628, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 643, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/openPopOut",
@@ -15065,7 +15065,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_openPopOut_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 402, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 409, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/printNote",
@@ -15111,7 +15111,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_printNote_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 516, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 531, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/removeVault",
@@ -15147,7 +15147,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_removeVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 787, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 802, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/renameVault",
@@ -15193,7 +15193,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_renameVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 728, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 743, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/requestMicrophone",
@@ -15229,7 +15229,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_requestMicrophone_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 605, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 620, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/revealEntry",
@@ -15275,7 +15275,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_revealEntry_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 679, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 694, "column": 9 }
     },
     {
       id: "tockbot-note-desktop#tocktutorDesktop/revealVault",
@@ -15311,7 +15311,7 @@ var TYPERT_REMOTE = {
         typeSymbol: "tockbot-note-desktop/types#NativeActionResult",
         schema: tockbot_note_desktop_tocktutorDesktop_revealVault_result$schema
       },
-      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 708, "column": 9 }
+      sourceLocation: { "file": "packages/desktop-adapter/src/host-actions.ts", "line": 723, "column": 9 }
     }
   ]
 };
@@ -16224,6 +16224,10 @@ function desktopBridge() {
 }
 async function apply(ctx) {
   assertDesktopSurface(ctx.get(TOCKTEAM_SURFACE_SERVICE));
+  if (window.dshDesktop?.windowKind === "note-popout") {
+    return async () => {
+    };
+  }
   const bridge = desktopBridge();
   const disposeRemote = await ctx.remote.$mount(typert_remote_client_default);
   let slotFiber;
