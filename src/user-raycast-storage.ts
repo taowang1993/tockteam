@@ -57,6 +57,7 @@ export function createUserRaycastStorage(path: string) {
   const storage = cache()
   return {
     ...storage, cache,
+    allItems: async (): Promise<Record<string, string>> => Object.fromEntries([...load()].filter(([key]) => key.length <= 128)),
     getItem: async (key: string): Promise<string | undefined> => storage.get(key),
     setItem: async (key: string, value: string): Promise<void> => { storage.set(key, value) },
     removeItem: async (key: string): Promise<void> => { storage.remove(key) },

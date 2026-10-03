@@ -47,7 +47,7 @@ export const Grid = Object.assign(searchableCollection('raycast-grid'), {
   EmptyView: component('raycast-empty'),
 })
 type NativeEffectRequest = { kind: 'copy' | 'openGoogleTranslate' | 'paste' | 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>>; text?: string; url?: string }
-type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; authUrl?: (url: string) => void | Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void; hud?: (message: string) => void; storage?: { getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void>; clear: () => Promise<void> }; cache?: (namespace?: string) => { get: (key: string) => string | undefined; set: (key: string, value: string) => void; remove: (key: string) => void; clear: () => void; subscribe: (listener: () => void) => () => void } }
+type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; authUrl?: (url: string) => void | Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void; hud?: (message: string) => void; storage?: { allItems?: () => Promise<Record<string, string>>; getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void>; clear: () => Promise<void> }; cache?: (namespace?: string) => { get: (key: string) => string | undefined; set: (key: string, value: string) => void; remove: (key: string) => void; clear: () => void; subscribe: (listener: () => void) => () => void } }
 let compatibility: Compatibility
 export let queryEpoch = 0
 export let queryText = ''
@@ -368,11 +368,14 @@ export class Cache {
   subscribe = (listener: () => void): (() => void) => this.store.subscribe(listener)
 }
 export const LocalStorage = {
+  allItems: async (): Promise<Record<string, string>> => compatibility.storage?.allItems ? compatibility.storage.allItems() : unsupported('LocalStorage.allItems'),
   getItem: async (key: string): Promise<string | undefined> => compatibility.storage ? compatibility.storage.getItem(key) : unsupported('LocalStorage.getItem'),
   setItem: async (key: string, value: string): Promise<void> => compatibility.storage ? compatibility.storage.setItem(key, value) : unsupported('LocalStorage.setItem'),
   removeItem: async (key: string): Promise<void> => compatibility.storage ? compatibility.storage.removeItem(key) : unsupported('LocalStorage.removeItem'),
   clear: async (): Promise<void> => compatibility.storage ? compatibility.storage.clear() : unsupported('LocalStorage.clear'),
 }
+export const allLocalStorageItems = LocalStorage.allItems, getLocalStorageItem = LocalStorage.getItem, setLocalStorageItem = LocalStorage.setItem
+export const removeLocalStorageItem = LocalStorage.removeItem, clearLocalStorage = LocalStorage.clear
 export const Clipboard = { copy: async (text: string) => compatibility.native({ kind: 'copy', text }), paste: async (_value: string) => unsupported('Clipboard.paste') }
 export function openExtensionPreferences(): void { compatibility.openPreferences?.() }
 let preferences: Record<string, unknown> | undefined
