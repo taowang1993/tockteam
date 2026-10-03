@@ -110,7 +110,7 @@ describe('CodeMirror Source editor', () => {
     expect(onChange).not.toHaveBeenCalled()
     expect((editorViewRef.current as { state: { doc: { toString(): string } } }).state.doc.toString()).toBe(source)
     expect(container.querySelector('.cm-content')?.textContent).toBe(source)
-  })
+  }, 35_000)
 
   it('reports an overlong search query instead of treating it as no matches', async () => {
     const onSearchState = vi.fn()

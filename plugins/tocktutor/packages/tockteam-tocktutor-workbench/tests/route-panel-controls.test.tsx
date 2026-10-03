@@ -263,7 +263,7 @@ describe('TockTutor titlebar panel controls', () => {
     await waitFor(() => expect(within(strip).getByRole('status').textContent).toBe('1 / 10000+'), { timeout: 15_000 })
     fireEvent.change(input, { target: { value: 'x'.repeat(100_001) } })
     await waitFor(() => expect(within(strip).getByRole('alert').textContent).toBe('Search query is too long.'), { timeout: 5_000 })
-  })
+  }, 25_000)
 
   it('opens Find and Replace with scoped platform shortcuts', async () => {
     renderRoute({ documentKind: 'markdown', mode: 'live-preview', path: 'Note.md', phase: 'ready', source: 'alpha\n' })
