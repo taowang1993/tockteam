@@ -70,6 +70,8 @@ The package accepts a root plus read, search-byte, search-entry, per-file, and r
 
 The aggregate bundle does not activate this package's tool row. It retains the package for `tockbot-note-vault/inspection` and contract parity tests.
 
+Both standalone and active-runtime `vault_search` tools project inspection results into the same strict DSH output contract. Internal match IDs and revisions remain available to inspection consumers but are omitted from model-facing tool results. Real-filesystem coverage in `tockteam-note-vault-tools/tests/standalone-search-output.test.ts` uses the pinned DSH validator for literal, query, related, paged, empty, and cancelled searches, checks all eight read-tool outputs, and executes successful searches through DSH's actual tool registry.
+
 ### `tockbot-note-runtime`
 
 `src/index.ts` provides the `noteVault` Cordis service. It is the sole active-vault filesystem writer and owns:
