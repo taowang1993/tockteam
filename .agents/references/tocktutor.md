@@ -368,7 +368,7 @@ Runtime storage, standalone/shared inspection, and backup agree on `.ico` and `.
 
 The assistant panel intentionally uses a render-time route epoch to prevent an aborted decision from reviving across an A → B → A navigation. Its component regression test protects that behavior; do not replace it with a route-key-only comparison.
 
-The shared static renderer can consume bounded recursive embed projections and never fetches network resources, but the native print/export adapter currently supplies only first-level resolutions. Explicitly relative and nested native-export embeds remain a follow-up, not live/static parity. Audio, video, PDF, BMP, and other non-allowlisted data-image payloads remain labeled metadata because the Desktop print/export owner accepts only bounded AVIF, GIF, JPEG, PNG, and WebP data URLs.
+The shared static renderer and native print/export adapter consume bounded recursive embed projections and never fetch network resources. Focused gateway tests cover explicitly relative and nested projections, cycle/depth limits, combined read budgets, and stale/cancelled reads; they do not independently prove a real Electron print or PDF transaction. Audio, video, PDF, BMP, and other non-allowlisted data-image payloads remain labeled metadata because the Desktop print/export owner accepts only bounded AVIF, GIF, JPEG, PNG, and WebP data URLs.
 
 ## Generated and Release Payloads
 
