@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { UserRaycastInstall } from '../src/user-raycast-install.ts'
+import { readFiles, UserRaycastInstall } from '../src/user-raycast-install.ts'
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'user-raycast-install-'))
@@ -114,4 +114,71 @@ test('an interrupted or tampered current install is not discarded by a later upd
     assert.throws(() => f.store.approve(next.digest), /recover|invalid/i)
     assert.equal(readFileSync(join(f.data, 'current/favorite-colors.js'), 'utf8'), 'user data, not an admitted candidate')
   } finally { f.close() }
+})
+
+for (const published of [false, true]) {
+  test(`an interrupted update ${published ? 'after' : 'before'} publication preserves the approved previous install`, () => {
+    const f = fixture()
+    try {
+      const first = f.store.prepare(f.source)
+      f.store.approve(first.digest)
+      f.store.enable()
+      const approvedBytes = readFileSync(join(f.data, 'current/favorite-colors.js'))
+      writeFileSync(f.module, 'interrupted version')
+      f.store.prepare(f.source)
+      // Crash points in approve(): current moved aside, then optionally stage published,
+      // while trust.json still authorizes the old version.
+      renameSync(join(f.data, 'current'), join(f.data, 'previous'))
+      if (published) renameSync(join(f.data, 'stage'), join(f.data, 'current'))
+      const resumed = new UserRaycastInstall(f.data)
+      writeFileSync(f.module, 'later version')
+      const next = resumed.prepare(f.source)
+      assert.throws(() => resumed.approve(next.digest), /recover|interrupted/i)
+      assert.deepEqual(readFileSync(join(f.data, 'previous/favorite-colors.js')), approvedBytes)
+      assert.equal(resumed.status().hasPrevious, true)
+      assert.equal(resumed.runtimeDir(), undefined)
+      resumed.recoverPrevious()
+      assert.equal(resumed.status().digest, first.digest)
+      assert.equal(resumed.status().enabled, false)
+      resumed.approve(next.digest)
+      assert.equal(resumed.status().hasPrevious, true)
+      assert.equal(resumed.status().installed, true)
+      assert.equal(resumed.status().enabled, false)
+      resumed.recoverPrevious()
+      assert.equal(resumed.status().digest, first.digest)
+    } finally { f.close() }
+  })
+}
+
+test('too many empty extension folders are rejected without replacing an installed or staged version', () => {
+  const f = fixture()
+  try {
+    const first = f.store.prepare(f.source)
+    f.store.approve(first.digest)
+    f.store.enable()
+    writeFileSync(f.module, 'pending reviewed version')
+    const staged = f.store.prepare(f.source)
+    for (let index = 0; index < 1200; index++) mkdirSync(join(f.source, `empty-${index}`))
+    assert.throws(() => f.store.prepare(f.source), /entry|directory.*bound/i)
+    assert.equal(f.store.status().digest, first.digest)
+    assert.equal(f.store.status().enabled, true)
+    assert.equal(f.store.status().candidate?.digest, staged.digest)
+    f.store.approve(staged.digest)
+    f.store.recoverPrevious()
+    assert.equal(f.store.status().digest, first.digest)
+  } finally { f.close() }
+})
+
+test('extension folder admission keeps the full file allowance at the deepest supported paths', () => {
+  const root = mkdtempSync(join(tmpdir(), 'user-raycast-deep-files-'))
+  try {
+    for (let index = 0; index < 128; index++) {
+      const directory = join(root, `branch-${index}`, ...Array<string>(7).fill('child'))
+      mkdirSync(directory, { recursive: true })
+      writeFileSync(join(directory, 'data.json'), '{}')
+    }
+    assert.equal(readFiles(root).size, 128)
+    mkdirSync(join(root, 'overflow'))
+    assert.throws(() => readFiles(root), /entry.*bound/i)
+  } finally { rmSync(root, { recursive: true, force: true }) }
 })

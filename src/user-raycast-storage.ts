@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { closeSync, existsSync, fsyncSync, lstatSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { closeSync, existsSync, fsyncSync, lstatSync, openSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute } from 'node:path'
+import { readBoundedRegularFile } from './trusted-raycast-bounded-file.ts'
 
 /** First-party managed API storage, not a filesystem sandbox for approved code. */
 export function createUserRaycastStorage(path: string) {
@@ -8,9 +9,10 @@ export function createUserRaycastStorage(path: string) {
   const listeners = new Map<string, Set<() => void>>()
   const load = (): Map<string, string> => {
     if (!existsSync(path)) return new Map()
-    const stat = lstatSync(path)
-    if (!stat.isFile() || stat.size > 65536) throw new Error('Extension storage is invalid or oversized')
-    const value: unknown = JSON.parse(readFileSync(path, 'utf8'))
+    let raw: string
+    try { raw = readBoundedRegularFile(path, 65536) }
+    catch { throw new Error('Extension storage is invalid or oversized') }
+    const value: unknown = JSON.parse(raw)
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length > 256 || Object.values(value).some(entry => typeof entry !== 'string')) throw new Error('Extension storage is invalid')
     return new Map(Object.entries(value as Record<string, string>))
   }

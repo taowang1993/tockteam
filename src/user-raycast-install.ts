@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, opendirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 import { readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
 import { validMenuIcon } from './user-raycast-menu.ts'
@@ -7,6 +7,8 @@ import { validMenuIcon } from './user-raycast-menu.ts'
 const ID = /^[a-z0-9][a-z0-9_-]{0,63}$/
 const COMMAND = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/
 const MAX_FILES = 128
+// Enough entries for every admitted file to have a distinct path at the depth limit.
+const MAX_ENTRIES = MAX_FILES * 9
 const MAX_BYTES = 16 * 1024 * 1024
 export type UserRaycastCandidate = Readonly<{ command: string; digest: string; extensionId: string; title: string; mode?: 'no-view' | 'menu-bar'; version?: string; license?: string; source?: string }>
 type Decision = { digest: string; enabled: boolean }
@@ -15,9 +17,18 @@ export function readFiles(directory: string): Map<string, Buffer> {
   if (!isAbsolute(directory) || !lstatSync(directory).isDirectory()) throw new Error('Extension folder must be a real directory')
   const files = new Map<string, Buffer>()
   let total = 0
+  let entries = 0
   const walk = (relative: string, depth: number): void => {
     if (depth > 8) throw new Error('Extension folder exceeds its depth bound')
-    for (const name of readdirSync(join(directory, relative)).sort()) {
+    const names: string[] = []
+    const folder = opendirSync(join(directory, relative))
+    try {
+      for (let entry = folder.readSync(); entry !== null; entry = folder.readSync()) {
+        if (++entries > MAX_ENTRIES) throw new Error('Extension folder exceeds its directory-entry bound')
+        names.push(entry.name)
+      }
+    } finally { folder.closeSync() }
+    for (const name of names.sort()) {
       if (name === '.' || name === '..' || name.includes('/') || name.includes('\\') || name.length > 128) throw new Error('Invalid extension file name')
       const child = relative ? `${relative}/${name}` : name
       const path = join(directory, child)
@@ -151,8 +162,10 @@ export class UserRaycastInstall {
     if (!staged || staged.digest !== expectedDigest) throw new Error('Candidate digest changed; review it again')
     this.ensureRoot()
     const current = this.inspect('current')
+    const previous = this.inspect('previous')
     if (existsSync(this.path('current')) && !current) throw new Error('Current installation is invalid; recover it before updating')
-    if (existsSync(this.path('previous')) && !this.inspect('previous')) throw new Error('Previous installation is invalid; recover it before updating')
+    if (existsSync(this.path('previous')) && !previous) throw new Error('Previous installation is invalid; recover it before updating')
+    if (previous && current?.digest !== this.readDecision().digest) throw new Error('Interrupted installation; recover the previous version before updating')
     // State is written last. On interruption the old current remains recoverable in previous.
     rmSync(this.path('previous'), { recursive: true, force: true })
     if (existsSync(this.path('current'))) renameSync(this.path('current'), this.path('previous'))
