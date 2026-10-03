@@ -11,6 +11,35 @@ import { createUserRaycastStorage } from '../src/user-raycast-storage.ts'
 
 const owner = { webContentsId: 17 }
 
+test('Cache presence and emptiness inspect only their namespace without writing or notifying', t => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-cache-presence-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const path = join(root, 'state.json')
+  writeFileSync(path, JSON.stringify({ legacy: '' }), { mode: 0o600 })
+  const storage = createUserRaycastStorage(path), plain = storage.cache(), named = storage.cache('named'), other = storage.cache('other')
+  assert.equal(named.isEmpty, true)
+  assert.equal(plain.isEmpty, false); assert.equal(plain.has('legacy'), true); assert.equal(plain.has('missing'), false)
+  named.set('empty', '')
+  const before = readFileSync(path)
+  let notifications = 0
+  named.subscribe(() => { notifications++ })
+  assert.equal(named.isEmpty, false); assert.equal(named.has('empty'), true); assert.equal(named.has('missing'), false)
+  assert.equal(other.isEmpty, true); assert.equal(other.has('empty'), false); assert.equal(plain.has('empty'), false)
+  const cold = createUserRaycastStorage(path).cache('named')
+  assert.equal(cold.isEmpty, false); assert.equal(cold.has('empty'), true)
+  assert.equal(createUserRaycastStorage(join(root, 'second.json')).cache('named').isEmpty, true)
+  assert.deepEqual(readFileSync(path), before); assert.equal(notifications, 0)
+  named.remove('empty'); assert.equal(named.isEmpty, true); assert.equal(named.has('empty'), false)
+  assert.equal(plain.isEmpty, false)
+  plain.clear(); assert.equal(storage.isEmpty, true)
+  storage.set('again', ''); assert.equal(storage.isEmpty, false); assert.equal(storage.has('again'), true)
+  for (const key of ['', 1, 'x'.repeat(129)]) assert.throws(() => named.has(key as never), /key/)
+  rmSync(path); symlinkSync(join(root, 'outside.json'), path); writeFileSync(join(root, 'outside.json'), '{}')
+  assert.throws(() => named.has('empty'), /invalid/)
+  assert.throws(() => named.isEmpty, /invalid/)
+  assert.equal(readFileSync(join(root, 'outside.json'), 'utf8'), '{}')
+})
+
 test('managed Cache scopes isolate keys, notifications and clearing while preserving legacy default data', async t => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-cache-scopes-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
@@ -104,8 +133,12 @@ test('offline view and no-view commands share persistent Cache only within their
           const named = new Cache({ namespace: '0123456789abcdef0123456789abcdef01234567' });
           function update() {
             const next = Number(plain.get('runs') ?? '0') + 1;
+            if (plain.isEmpty !== (next === 1) || named.isEmpty !== (next === 1)) throw Error('Cache emptiness is incorrect');
+            if (plain.has('runs') !== (next > 1) || named.has('runs') !== (next > 1)) throw Error('Cache presence is incorrect');
+            if (!new Cache({ namespace: 'other' }).isEmpty || new Cache({ namespace: 'other' }).has('runs')) throw Error('Cache existence leaked between namespaces');
             if (Number(named.get('runs') ?? '0') !== next - 1) throw Error('Cache namespaces collided');
             plain.set('runs', String(next)); named.set('runs', String(next));
+            named.set('empty', ''); if (!named.has('empty') || named.isEmpty) throw Error('Empty strings must still exist'); named.remove('empty');
             if (plain.get('runs') !== String(next) || named.get('runs') !== String(next)) throw Error('Cache round trip failed');
             return next;
           }
@@ -145,4 +178,34 @@ test('offline view and no-view commands share persistent Cache only within their
       }
     }
   }
+})
+
+test('Cache existence APIs fail explicitly for older providers without affecting their reads', async t => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-cache-provider-')), runtime = join(root, 'host'), source = join(root, 'source')
+  const install = new UserRaycastInstall(join(root, 'installed')), messages: UserRaycastMessage[] = [], errors: string[] = [], pids: number[] = []
+  const manager = new UserRaycastManager({ install, runtime, nodePath: process.execPath, artifact: resolve('plugins/trusted-raycast/vendor/google-translate.tar'),
+    onMessage: (_owner, message) => messages.push(message), onError: (_owner, error) => errors.push(error.message),
+  })
+  t.after(async () => {
+    try { await manager.close(); for (const pid of pids) assert.throws(() => process.kill(-pid, 0), /ESRCH/); t.diagnostic(`Stopped owned process groups: ${pids.join(', ')}`) }
+    finally { rmSync(root, { recursive: true, force: true }) }
+  })
+  await buildUserRaycast(runtime); mkdirSync(source)
+  writeFileSync(join(source, 'package.json'), JSON.stringify({ name: 'legacy-cache', title: 'Offline Cache Provider', commands: [{ name: 'run', mode: 'view' }] }))
+  writeFileSync(join(source, 'run.js'), `
+    const React = require('react'), { Cache, List, configureCompatibility } = require('@raycast/api'); global.fetch = () => { throw Error('Network prohibited'); };
+    configureCompatibility({ native: async () => { throw Error('Native prohibited'); }, selection: async () => '', toast: () => {},
+      cache: () => ({ get: () => '', set: () => {}, remove: () => {}, clear: () => {}, subscribe: () => () => {} }) });
+    exports.default = function Browse() {
+      const cache = new Cache(), failure = action => { try { action(); return 'unexpected success'; } catch (error) { return error.message; } };
+      return React.createElement(List, null, React.createElement(List.Item, { title: JSON.stringify({ value: cache.get('old'), has: failure(() => cache.has('old')), empty: failure(() => cache.isEmpty) }) }));
+    };
+  `)
+  const selected = install.prepare(source, 'run'); install.approve(selected.digest); install.enable()
+  const opening = manager.start(owner); if (manager.childPid) pids.push(manager.childPid); await opening
+  const titles = (node: any): string[] => node && typeof node === 'object' && Array.isArray(node.children) ? [...(node.type === 'raycast-list-item' ? [String(node.props.title)] : []), ...node.children.flatMap(titles)] : []
+  const value = messages.flatMap(message => titles(message.root)).at(-1)
+  assert.ok(value)
+  assert.deepEqual(JSON.parse(value), { value: '', has: 'Raycast API Cache.has is not admitted by this capability', empty: 'Raycast API Cache.isEmpty is not admitted by this capability' })
+  assert.deepEqual(errors, [])
 })

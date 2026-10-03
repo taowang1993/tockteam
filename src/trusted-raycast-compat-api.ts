@@ -47,7 +47,7 @@ export const Grid = Object.assign(searchableCollection('raycast-grid'), {
   EmptyView: component('raycast-empty'),
 })
 type NativeEffectRequest = { kind: 'copy' | 'openGoogleTranslate' | 'paste' | 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>>; text?: string; url?: string }
-type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; authUrl?: (url: string) => void | Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void; hud?: (message: string) => void; storage?: { allItems?: () => Promise<Record<string, string>>; getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void>; clear: () => Promise<void> }; cache?: (namespace?: string) => { get: (key: string) => string | undefined; set: (key: string, value: string) => void; remove: (key: string) => void; clear: () => void; subscribe: (listener: () => void) => () => void } }
+type Compatibility = { native: (request: NativeEffectRequest) => Promise<void>; authUrl?: (url: string) => void | Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void; hud?: (message: string) => void; storage?: { allItems?: () => Promise<Record<string, string>>; getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void>; clear: () => Promise<void> }; cache?: (namespace?: string) => { get: (key: string) => string | undefined; has?: (key: string) => boolean; readonly isEmpty?: boolean; set: (key: string, value: string) => void; remove: (key: string) => void; clear: () => void; subscribe: (listener: () => void) => () => void } }
 let compatibility: Compatibility
 export let queryEpoch = 0
 export let queryText = ''
@@ -362,6 +362,8 @@ export class Cache {
     this.store = createCache(options.namespace)
   }
   get = (key: string): string | undefined => this.store.get(key)
+  has = (key: string): boolean => this.store.has ? this.store.has(key) : unsupported('Cache.has')
+  get isEmpty(): boolean { const value = this.store.isEmpty; return typeof value === 'boolean' ? value : unsupported('Cache.isEmpty') }
   set = (key: string, value: string): void => this.store.set(key, value)
   remove = (key: string): void => this.store.remove(key)
   clear = (): void => this.store.clear()

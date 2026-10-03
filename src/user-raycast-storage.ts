@@ -40,6 +40,7 @@ export function createUserRaycastStorage(path: string) {
     }
     const belongs = (key: string): boolean => prefix ? key.startsWith(prefix) : key.length <= 128
     const get = (key: string): string | undefined => load().get(encoded(key))
+    const has = (key: string): boolean => load().has(encoded(key))
     const set = (key: string, value: string): void => {
       const id = encoded(key)
       if (typeof value !== 'string' || Buffer.byteLength(value) > 4096) throw new Error('Invalid extension storage value')
@@ -52,11 +53,12 @@ export function createUserRaycastStorage(path: string) {
       current.add(listener); listeners.set(prefix, current)
       return () => { current.delete(listener); if (!current.size) listeners.delete(prefix) }
     }
-    return { get, set, remove, clear, subscribe }
+    return { get, has, get isEmpty(): boolean { return ![...load().keys()].some(belongs) }, set, remove, clear, subscribe }
   }
   const storage = cache()
   return {
-    ...storage, cache,
+    get: storage.get, has: storage.has, set: storage.set, remove: storage.remove, subscribe: storage.subscribe, cache,
+    get isEmpty(): boolean { return storage.isEmpty },
     allItems: async (): Promise<Record<string, string>> => Object.fromEntries([...load()].filter(([key]) => key.length <= 128)),
     getItem: async (key: string): Promise<string | undefined> => storage.get(key),
     setItem: async (key: string, value: string): Promise<void> => { storage.set(key, value) },
