@@ -3600,16 +3600,19 @@
       "surface": "live-preview-lower",
       "tocktutor": {
         "screenshot": "tocktutor-live-preview-lower.png",
-        "path": "UIUX Comparison.md",
+        "path": "comparison.md",
         "mode": "live-preview",
-        "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
+        "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2"
       },
       "obsidian": {
         "screenshot": "obsidian-live-preview-lower.png",
         "path": "UIUX Comparison.md",
         "mode": "live-preview",
         "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
-      }
+      },
+      "referenceStatus": "historical-frontmatter-and-filename",
+      "sameNoteBytes": false,
+      "sameMarkdownBody": true
     },
     {
       "surface": "source",
@@ -6086,10 +6089,10 @@
     "tocktutor-editor-live-preview.png": {
       "product": "TockTutor Source-Built Desktop",
       "captureScope": "real-desktop",
-      "refreshId": "tockteam-e8rn-2026-10-03",
+      "refreshId": "tockteam-a5dz-2026-10-03",
       "sourceCommit": "1b2f1cbb75f7d4e41da2165ca79eec4ca07a526d",
       "sourceDirty": true,
-      "sourceProvenance": "Isolated source-built Desktop with the completed-task fix later saved in b3213772. This gallery update reuses that verified capture without rebuilding or recapturing the app.",
+      "sourceProvenance": "Reused the frozen source-built Desktop from the completed-task fix saved in b3213772; artifact hashes checked without rebuilding. This is not a build of the later Raycast source changes.",
       "route": "/tocktutor/comparison.md",
       "path": "comparison.md",
       "mode": "live-preview",
@@ -6102,40 +6105,53 @@
       },
       "theme": "dark",
       "skin": null,
-      "capturedAt": "2026-10-03",
-      "sha256": "32e49c9d5226e66000e2fe3837cb2988f2bf816d86ba29240ab3c67d525a02d7",
-      "bytes": 266751,
+      "capturedAt": "2026-10-03T12:28:29.211Z",
+      "sha256": "262a51305be53909e43b17a7950c827fb485b993127ea7c4856f4faeb2e7bf81",
+      "bytes": 258035,
       "visibleState": {
-        "geometry": [
-          1512,
-          949,
-          2
-        ],
-        "rootColorScheme": "dark",
-        "rootSkin": null,
-        "bodySkin": null,
+        "region": "upper",
+        "capturedAt": "2026-10-03T12:28:29.211Z",
         "route": "/tocktutor/comparison.md",
         "path": "comparison.md",
         "documentMode": "live-preview",
-        "sourceVisible": false,
-        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
+        "geometry": [1512, 949, 2],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "propertiesExpanded": true,
+        "propertiesVisible": true,
+        "propertyCount": 9,
+        "scrollTop": 0,
+        "visibleHeadings": ["Markdown Rendering Lab", "Structure", "Lists"],
+        "headingPositions": [
+          { "text": "Markdown Rendering Lab", "top": 596.59375 },
+          { "text": "Structure", "top": 735.59375 },
+          { "text": "Lists", "top": 788.59375 }
+        ],
         "completedTask": {
           "text": "Completed task",
           "decoration": "line-through",
-          "visible": true
+          "visible": false
         },
         "pendingTask": {
-          "decoration": "none"
+          "text": "Pending task with Welcome",
+          "decoration": "none",
+          "visible": false
         },
-        "assertionPassed": true
+        "sourceVisible": false,
+        "fontsReady": true,
+        "assertionPassed": true,
+        "sha256": "262a51305be53909e43b17a7950c827fb485b993127ea7c4856f4faeb2e7bf81",
+        "bytes": 258035
       },
       "runtimeErrors": [],
-      "runtimeErrorMonitoring": "Playwright pageerror and console-error listeners during 14 completed-task checks and eight appearance checks; see the archived capture proof for the owned Desktop run and cleanup.",
+      "runtimeErrorMonitoring": "Playwright pageerror, console-error and failed-request listeners installed before navigating into TockTutor; cold-start console and owned guard placement recorded separately.",
       "warnings": [
         "Existing development Electron CSP warning.",
         "Existing Vue feature-flags warning."
       ],
-      "proofFile": ".beads/reports/2026-10-03-tocktutor-completed-task/proof.json"
+      "proofFile": ".beads/reports/2026-10-03-tocktutor-live-preview-expanded/proof.json",
+      "failedRequests": []
     },
     "tocktutor-editor-reading.png": {
       "product": "TockTutor Source-Built Desktop",
@@ -6736,15 +6752,15 @@
     "tocktutor-live-preview-lower.png": {
       "product": "TockTutor Source-Built Desktop",
       "captureScope": "real-desktop",
-      "refreshId": "tockteam-tigk-2026-10-03",
-      "sourceCommit": "f635857ba26d37feafaa72bde25fe168bed5f7da",
+      "refreshId": "tockteam-a5dz-2026-10-03",
+      "sourceCommit": "1b2f1cbb75f7d4e41da2165ca79eec4ca07a526d",
       "sourceDirty": true,
-      "sourceProvenance": "Reused frozen working-tree build; not a pristine commit build. See tocktutorGalleryRefresh.builtArtifactHashes.",
-      "route": "/tocktutor/UIUX%20Comparison.md",
-      "path": "UIUX Comparison.md",
+      "sourceProvenance": "Reused the frozen source-built Desktop from the completed-task fix saved in b3213772; artifact hashes checked without rebuilding. This is not a build of the later Raycast source changes.",
+      "route": "/tocktutor/comparison.md",
+      "path": "comparison.md",
       "mode": "live-preview",
-      "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "noteBytes": 1324,
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
       "geometry": {
         "width": 1512,
         "height": 949,
@@ -6752,46 +6768,53 @@
       },
       "theme": "dark",
       "skin": null,
-      "capturedAt": "2026-10-03T00:04:04.582Z",
-      "sha256": "d744a24d14da9ffbed1385ea487a42efae4cdf866ad9c475902b765a4d62d9f2",
-      "bytes": 278380,
+      "capturedAt": "2026-10-03T12:28:29.327Z",
+      "sha256": "02786a3427bb2118bdcbb80cd46a0cac4785203f1bc3057081aa02fae7ba3b31",
+      "bytes": 276596,
       "visibleState": {
-        "geometry": [
-          1512,
-          949,
-          2
-        ],
+        "region": "lower",
+        "capturedAt": "2026-10-03T12:28:29.327Z",
+        "route": "/tocktutor/comparison.md",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [1512, 949, 2],
         "rootColorScheme": "dark",
         "rootSkin": null,
         "bodySkin": null,
-        "systemDark": false,
-        "route": "/tocktutor/UIUX%20Comparison.md",
-        "path": "UIUX Comparison.md",
-        "documentMode": "live-preview",
-        "status": "UIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters",
-        "sourceVisible": false,
-        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
-        "visibleHeadings": [
-          "Files",
-          "UIUX Comparison",
-          "Data",
-          "Code and Notes",
-          "Small Heading"
+        "propertiesExpanded": true,
+        "propertiesVisible": false,
+        "propertyCount": 9,
+        "scrollTop": 910.5,
+        "visibleHeadings": ["Data", "Code and Notes", "Small Heading"],
+        "headingPositions": [
+          { "text": "Data", "top": 210.09375 },
+          { "text": "Code and Notes", "top": 448.09375 },
+          { "text": "Small Heading", "top": 759.6171875 }
         ],
-        "menus": [],
+        "completedTask": {
+          "text": "Completed task",
+          "decoration": "line-through",
+          "visible": false
+        },
+        "pendingTask": {
+          "text": "Pending task with Welcome",
+          "decoration": "none",
+          "visible": true
+        },
+        "sourceVisible": false,
         "fontsReady": true,
-        "assertedText": "Small Heading",
         "assertionPassed": true,
-        "textExcerpt": "Small Heading",
-        "codeEditorVisible": true
+        "sha256": "02786a3427bb2118bdcbb80cd46a0cac4785203f1bc3057081aa02fae7ba3b31",
+        "bytes": 276596
       },
       "runtimeErrors": [],
-      "runtimeErrorMonitoring": "Playwright pageerror and console-error listeners installed before opening TockTutor; startup console and guard placement recorded separately.",
+      "runtimeErrorMonitoring": "Playwright pageerror, console-error and failed-request listeners installed before navigating into TockTutor; cold-start console and owned guard placement recorded separately.",
       "failedRequests": [],
       "warnings": [
-        "Feature flags __VUE_OPTIONS_API__, __VUE_PROD_DEVTOOLS__, __VUE_PROD_HYDRATION_MISMATCH_DETAILS__ are not explicitly defined. You are running the esm-bundler build of Vue, which expects these compile-time feature flags to be globally injected via the bundler config in order to get better tree-shaking in the production bundle.\n\nFor more details, see https://link.vuejs.org/feature-flags."
+        "Existing development Electron CSP warning.",
+        "Existing Vue feature-flags warning."
       ],
-      "proofFile": "batch1/proof.json"
+      "proofFile": ".beads/reports/2026-10-03-tocktutor-live-preview-expanded/proof.json"
     },
     "tocktutor-marketplace.png": {
       "product": "TockTutor Source-Built Desktop",
@@ -9698,9 +9721,45 @@
       "remaining": []
     }
   },
+  "livePreviewExpandedRefresh": {
+    "id": "tockteam-a5dz-2026-10-03",
+    "status": "verified-current",
+    "publicationAllowlist": [
+      "tocktutor-editor-live-preview.png",
+      "tocktutor-live-preview-lower.png"
+    ],
+    "unrelatedExistingCapturesUnchanged": 60,
+    "propertiesDisclosureToggled": false,
+    "reusesExistingBuild": true,
+    "appSourceEdits": false,
+    "rebuild": false,
+    "captureProof": ".beads/reports/2026-10-03-tocktutor-live-preview-expanded/proof.json",
+    "previousCaptures": {
+      "tocktutor-editor-live-preview.png": {
+        "sha256": "32e49c9d5226e66000e2fe3837cb2988f2bf816d86ba29240ab3c67d525a02d7",
+        "path": "comparison.md",
+        "proofFile": ".beads/reports/2026-10-03-tocktutor-live-preview-expanded/proof.json"
+      },
+      "tocktutor-live-preview-lower.png": {
+        "sha256": "d744a24d14da9ffbed1385ea487a42efae4cdf866ad9c475902b765a4d62d9f2",
+        "path": "UIUX Comparison.md",
+        "proofFile": ".beads/reports/2026-10-03-tocktutor-live-preview-expanded/proof.json"
+      }
+    },
+    "cleanup": {
+      "id": "32164096-2549-45db-8500-df35a471b05e",
+      "stopped": true,
+      "rootPid": 7784,
+      "recordedPids": [7784,7786,7787,7788,7790,7795,7799,7800,7801,7802,7803,7804,7805,7806,8014,8016,8018,8019,8020,8021,8257,8258,8259,8260,8261,8262,8263,8264,8416,8417,8418,8419],
+      "remaining": [],
+      "artifacts": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-CCs0s6"
+    }
+  },
   "completedTaskRefresh": {
     "id": "tockteam-e8rn-2026-10-03",
-    "status": "verified-current",
+    "status": "verified-historical",
+    "supersededBy": "tockteam-a5dz-2026-10-03",
+    "supersededReason": "The reused task-focused screenshot collapsed Properties; default-expanded upper and lower comparisons supersede it.",
     "publicationAllowlist": [
       "tocktutor-editor-live-preview.png"
     ],

@@ -1,0 +1,501 @@
+{
+  "id": "tockteam-a5dz-2026-10-03",
+  "status": "verified-current",
+  "date": "2026-10-03",
+  "publicationAllowlist": [
+    "tocktutor-editor-live-preview.png",
+    "tocktutor-live-preview-lower.png"
+  ],
+  "propertiesDisclosureToggled": false,
+  "defaultPropertiesExpanded": true,
+  "reusesExistingBuild": true,
+  "appSourceEdits": false,
+  "rebuild": false,
+  "builtArtifactHashes": {
+    "dist/main.js": "708946aa6698d07792b79b31ef4c0dc244abb63614ec69640330e60f30441eaf",
+    "dist/preload.cjs": "25d98976c8fb9b14a7c1d69af79b281251e3bfbc4a0b7088b1a03cbb2e98818b",
+    "dist/client.js": "bc2baa9098ad7583adcde659407aa151ae27249e7eab19c95899cb4391d8ed41",
+    "dist/cordis.patch.yml": "9a5f4723b282aea6f24dcd616b6af884d2216142bdd76ff1ded3ae1e979847a4",
+    ".stage/dsh-runtime/package.json": "4404688d5b8230457b18bf37f71f5915f6fe96ba9214215afae45e52a54abd0b",
+    "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/live-preview-editor.js": "654f96a2a539e83b59e421f97ea6538e3219ad17fe76505260e752a7394030d0",
+    "dist/plugins/skins/client.js": "fcbde4ad4d55410eb27b0662b7a0d28566687f224c58abdaf9b481213c112f36",
+    ".stage/dsh-runtime/node_modules/@tockteam/tocktutor-workbench/dist/live-preview-editor.js": "654f96a2a539e83b59e421f97ea6538e3219ad17fe76505260e752a7394030d0",
+    ".stage/dsh-runtime/node_modules/@tockteam/tocktutor-workbench/dist/client.js": "2867bde7a61e1febd6247a2bef0eb894908228c30eac1cfc154573cfa3f719e4"
+  },
+  "initialArtifactHashesUnchanged": true,
+  "comparisonFixture": {
+    "path": ".agents/uiux/tocktutor/comparison.md",
+    "bytes": 1413,
+    "sha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+    "isolatedCopyByteIdenticalAfterVerification": true
+  },
+  "captures": {
+    "tocktutor-editor-live-preview.png": {
+      "product": "TockTutor Source-Built Desktop",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-a5dz-2026-10-03",
+      "sourceCommit": "1b2f1cbb75f7d4e41da2165ca79eec4ca07a526d",
+      "sourceDirty": true,
+      "sourceProvenance": "Reused the frozen source-built Desktop from the completed-task fix saved in b3213772; artifact hashes checked without rebuilding. This is not a build of the later Raycast source changes.",
+      "route": "/tocktutor/comparison.md",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-03T12:28:29.211Z",
+      "sha256": "262a51305be53909e43b17a7950c827fb485b993127ea7c4856f4faeb2e7bf81",
+      "bytes": 258035,
+      "visibleState": {
+        "region": "upper",
+        "capturedAt": "2026-10-03T12:28:29.211Z",
+        "route": "/tocktutor/comparison.md",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "propertiesExpanded": true,
+        "propertiesVisible": true,
+        "propertyCount": 9,
+        "scrollTop": 0,
+        "visibleHeadings": [
+          "Markdown Rendering Lab",
+          "Structure",
+          "Lists"
+        ],
+        "headingPositions": [
+          {
+            "text": "Markdown Rendering Lab",
+            "top": 596.59375
+          },
+          {
+            "text": "Structure",
+            "top": 735.59375
+          },
+          {
+            "text": "Lists",
+            "top": 788.59375
+          }
+        ],
+        "completedTask": {
+          "text": "Completed task",
+          "decoration": "line-through",
+          "visible": false
+        },
+        "pendingTask": {
+          "text": "Pending task with Welcome",
+          "decoration": "none",
+          "visible": false
+        },
+        "sourceVisible": false,
+        "fontsReady": true,
+        "assertionPassed": true,
+        "sha256": "262a51305be53909e43b17a7950c827fb485b993127ea7c4856f4faeb2e7bf81",
+        "bytes": 258035
+      },
+      "runtimeErrors": [],
+      "runtimeErrorMonitoring": "Playwright pageerror, console-error and failed-request listeners installed before navigating into TockTutor; cold-start console and owned guard placement recorded separately.",
+      "warnings": [
+        "Existing development Electron CSP warning.",
+        "Existing Vue feature-flags warning."
+      ],
+      "proofFile": ".beads/reports/2026-10-03-tocktutor-live-preview-expanded/proof.json",
+      "failedRequests": []
+    },
+    "tocktutor-live-preview-lower.png": {
+      "product": "TockTutor Source-Built Desktop",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-a5dz-2026-10-03",
+      "sourceCommit": "1b2f1cbb75f7d4e41da2165ca79eec4ca07a526d",
+      "sourceDirty": true,
+      "sourceProvenance": "Reused the frozen source-built Desktop from the completed-task fix saved in b3213772; artifact hashes checked without rebuilding. This is not a build of the later Raycast source changes.",
+      "route": "/tocktutor/comparison.md",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-03T12:28:29.327Z",
+      "sha256": "02786a3427bb2118bdcbb80cd46a0cac4785203f1bc3057081aa02fae7ba3b31",
+      "bytes": 276596,
+      "visibleState": {
+        "region": "lower",
+        "capturedAt": "2026-10-03T12:28:29.327Z",
+        "route": "/tocktutor/comparison.md",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "propertiesExpanded": true,
+        "propertiesVisible": false,
+        "propertyCount": 9,
+        "scrollTop": 910.5,
+        "visibleHeadings": [
+          "Data",
+          "Code and Notes",
+          "Small Heading"
+        ],
+        "headingPositions": [
+          {
+            "text": "Data",
+            "top": 210.09375
+          },
+          {
+            "text": "Code and Notes",
+            "top": 448.09375
+          },
+          {
+            "text": "Small Heading",
+            "top": 759.6171875
+          }
+        ],
+        "completedTask": {
+          "text": "Completed task",
+          "decoration": "line-through",
+          "visible": false
+        },
+        "pendingTask": {
+          "text": "Pending task with Welcome",
+          "decoration": "none",
+          "visible": true
+        },
+        "sourceVisible": false,
+        "fontsReady": true,
+        "assertionPassed": true,
+        "sha256": "02786a3427bb2118bdcbb80cd46a0cac4785203f1bc3057081aa02fae7ba3b31",
+        "bytes": 276596
+      },
+      "runtimeErrors": [],
+      "runtimeErrorMonitoring": "Playwright pageerror, console-error and failed-request listeners installed before navigating into TockTutor; cold-start console and owned guard placement recorded separately.",
+      "failedRequests": [],
+      "warnings": [
+        "Existing development Electron CSP warning.",
+        "Existing Vue feature-flags warning."
+      ],
+      "proofFile": ".beads/reports/2026-10-03-tocktutor-live-preview-expanded/proof.json"
+    }
+  },
+  "previousCaptures": {
+    "tocktutor-editor-live-preview.png": {
+      "product": "TockTutor Source-Built Desktop",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-e8rn-2026-10-03",
+      "sourceCommit": "1b2f1cbb75f7d4e41da2165ca79eec4ca07a526d",
+      "sourceDirty": true,
+      "sourceProvenance": "Isolated source-built Desktop with the completed-task fix later saved in b3213772. This gallery update reuses that verified capture without rebuilding or recapturing the app.",
+      "route": "/tocktutor/comparison.md",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-03",
+      "sha256": "32e49c9d5226e66000e2fe3837cb2988f2bf816d86ba29240ab3c67d525a02d7",
+      "bytes": 266751,
+      "visibleState": {
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "route": "/tocktutor/comparison.md",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "sourceVisible": false,
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
+        "completedTask": {
+          "text": "Completed task",
+          "decoration": "line-through",
+          "visible": true
+        },
+        "pendingTask": {
+          "decoration": "none"
+        },
+        "assertionPassed": true
+      },
+      "runtimeErrors": [],
+      "runtimeErrorMonitoring": "Playwright pageerror and console-error listeners during 14 completed-task checks and eight appearance checks; see the archived capture proof for the owned Desktop run and cleanup.",
+      "warnings": [
+        "Existing development Electron CSP warning.",
+        "Existing Vue feature-flags warning."
+      ],
+      "proofFile": ".beads/reports/2026-10-03-tocktutor-completed-task/proof.json"
+    },
+    "tocktutor-live-preview-lower.png": {
+      "product": "TockTutor Source-Built Desktop",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-tigk-2026-10-03",
+      "sourceCommit": "f635857ba26d37feafaa72bde25fe168bed5f7da",
+      "sourceDirty": true,
+      "sourceProvenance": "Reused frozen working-tree build; not a pristine commit build. See tocktutorGalleryRefresh.builtArtifactHashes.",
+      "route": "/tocktutor/UIUX%20Comparison.md",
+      "path": "UIUX Comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+      "noteBytes": 1324,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-03T00:04:04.582Z",
+      "sha256": "d744a24d14da9ffbed1385ea487a42efae4cdf866ad9c475902b765a4d62d9f2",
+      "bytes": 278380,
+      "visibleState": {
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "systemDark": false,
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "documentMode": "live-preview",
+        "status": "UIUX Comparison.md opened.\n1 backlink\nLive Preview\n171 words\n1322 characters",
+        "sourceVisible": false,
+        "renderedParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.",
+        "visibleHeadings": [
+          "Files",
+          "UIUX Comparison",
+          "Data",
+          "Code and Notes",
+          "Small Heading"
+        ],
+        "menus": [],
+        "fontsReady": true,
+        "assertedText": "Small Heading",
+        "assertionPassed": true,
+        "textExcerpt": "Small Heading",
+        "codeEditorVisible": true
+      },
+      "runtimeErrors": [],
+      "runtimeErrorMonitoring": "Playwright pageerror and console-error listeners installed before opening TockTutor; startup console and guard placement recorded separately.",
+      "failedRequests": [],
+      "warnings": [
+        "Feature flags __VUE_OPTIONS_API__, __VUE_PROD_DEVTOOLS__, __VUE_PROD_HYDRATION_MISMATCH_DETAILS__ are not explicitly defined. You are running the esm-bundler build of Vue, which expects these compile-time feature flags to be globally injected via the bundler config in order to get better tree-shaking in the production bundle.\n\nFor more details, see https://link.vuejs.org/feature-flags."
+      ],
+      "proofFile": "batch1/proof.json"
+    }
+  },
+  "preservedCaptureHashes": {
+    "obsidian-assistant.png": "0d8b6b156c77089f93773f73d30e1e2ed947bdfc7d7003f433baa30287888f73",
+    "obsidian-attachments-embeds.png": "9a80e504c2ebf66df4a91bddc235dae1b4c371ed2fc2ed136a1576887662ac89",
+    "obsidian-backlinks-unlinked-expanded.png": "c77977cf403b7fd611a9e10fe3cb4d9e65459bd6e4ce19adfcc0eb8f3d92744e",
+    "obsidian-base.png": "59e539ec93ba1973ff059fb43d034e219cb9b213d7fa66d8bbb51c72b333e6f5",
+    "obsidian-bookmarks.png": "990830e335903258b8048ae4b4f2fe89046069ebf44cb70b3a5d270dc509311e",
+    "obsidian-canvas.png": "ad64a2546cee12b440e23dc5e237217cae74354f2fac9e29c61aa9199308f2f5",
+    "obsidian-command-palette.png": "8833e31f6b3885f750029f2ae8ce162c90a35ffbc6de0eca24f1691c949b7498",
+    "obsidian-file-recovery.png": "ae8f9cbc5023cf36dd88e9188577fd30464e6569bf8f8dde25b8295fa5982d3a",
+    "obsidian-graph-global.png": "204c7ee69315270c1e93ba2ca8a67800c6452d196f71be96fd9b41a92ec84baa",
+    "obsidian-graph-local.png": "a24817e90019ff20308b67ee084f0bd48975c6fc570e0adc1bb31bb0d1928df4",
+    "obsidian-image-resizing.png": "0f6facd1f69a7de6a9b9b6c3bc003122fb8982c200a11ddea028eae289136a35",
+    "obsidian-image-viewer.png": "ff17a09d1b236882acc3b233427e608540821a937cc05390c2e901f59d9bc945",
+    "obsidian-imported-properties.png": "22c5efa5ffe4dfa97c1a0f29b23dca62f3757c1dc0b9e1c64e3799c7044fa236",
+    "obsidian-live-preview-lower.png": "46a142ca48251b754909bad157a6c2f431986710a01c238c93da59aa1351e027",
+    "obsidian-main-editor.png": "886b4cddfaa7d6db2129ce9e9f359f46a4c3408a66ad4e98cc15f3140420d604",
+    "obsidian-mermaid-editing.png": "15c5292142e21b2f09e83247e77dcc897868039c846b2c288c7c0b38f4028975",
+    "obsidian-new-note.png": "347c50dd184b1ef28ac9c0466e6aee4348788b85c39ca07f2c55629742b8235b",
+    "obsidian-note-actions.png": "905955a1f28a5695eab6b6652912950fdb3cee26fe13c8d66c533a8160201288",
+    "obsidian-note-tools.png": "3f30581007db3b17733ba39d95c23387153a0625b6ecf6a7ab5ec265d1d64114",
+    "obsidian-properties.png": "fa987f76a48797f19707f33734398bf305eda53c8c24691e449bacf952d894bb",
+    "obsidian-reading-view.png": "4d4f8565f983eadfcc238af3851092c9a14bc28da6186d8b51484f3f07a0e543",
+    "obsidian-search.png": "b7a1f61049b6fb005354b12d2eabc56f4e0c47972307cbeff48a0345adf12eaf",
+    "obsidian-settings-community-plugins.png": "ea2785f94ac4731a40b6f22502f85520530b93ff175b603789ee56ea82181132",
+    "obsidian-settings-general.png": "8a656a2c352a02df037db235bcb84a5448a8f96be1eb2300eced6de5401ba0a0",
+    "obsidian-source-mode.png": "aba333f988d0abcb156a856237a67dfabaf55becbb14fa2dc9f8b953625d2ac9",
+    "obsidian-tags.png": "73e231f020aaad3a24ad13f8759ae0ce22bff9a95de7cbc0553b8549f50163ab",
+    "obsidian-vault-switcher.png": "f58cde64836f5b5e91142949b97a49f5caf21c394423d5467fbab64d8520764b",
+    "obsidian-web-viewer.png": "e7e1f12317d33479aef00a2e25647665887fd0195c44e37133d21d3ccbf33b34",
+    "obsidian-workspaces-panes.png": "c7550e8bf635f0e15b3d8e72b2936788f7c4e62e0bb4daab734268c14deb3007",
+    "tocktutor-assistant.png": "82b205274a1e9d9c438e47f48098a4a63ee75363b48e64660ff337d33cea7b74",
+    "tocktutor-attachments-embeds.png": "7e4eb93c3a9eeede4c640da19d31df39fc45133518f4f0f46dcf1a542dd10d60",
+    "tocktutor-backlinks-unlinked-expanded.png": "44e5478a22ff1fe566741a63a74f40e012e7c3ab0ba6fda2e0669d636bbd39a4",
+    "tocktutor-base.png": "aa1a09fa8a160134e86de5df9d93460378197d0d05d8f6afa749ec9926849c3a",
+    "tocktutor-bookmarks.png": "912750f81fb131d4d20a594ee7db80a37f54be31a3b242afb629470d61808308",
+    "tocktutor-canvas.png": "517a66cfafcebb3f18cfd0162627ee56cc1d702fbf5a04ecc6850c74a644b30b",
+    "tocktutor-command-palette.png": "c6060837ff5f479727bdcfd4bc6dd8d4efbcd0e6533eae94fc267b53edc746c3",
+    "tocktutor-editor-reading.png": "6a771b46281eb441ebe9f26251444afab31799519f1f7a1ee69c4100ab3e4862",
+    "tocktutor-editor-source.png": "91648e172b5fee52750c7fda86f88f0620ef50f679d9f3af4adbc83ff9e45c78",
+    "tocktutor-file-recovery.png": "83d08061801d4167d002af76d015b1a8182537428d0402893cdab222c4b15606",
+    "tocktutor-graph-global.png": "16a70566b334b07928b039a3aa90f9c0ee30332dbfc820b1aea67e6b8bd5277b",
+    "tocktutor-graph.png": "d50ed238381bb1d82598e64583fc97724073843bfa0f26b987c03ec5c0668242",
+    "tocktutor-image-resizing.png": "acc4efe65a531110d23a460c1862b524270e78e9affe0f78646c15d6cd8ec185",
+    "tocktutor-image-viewer.png": "bd11c7edb1699a25c1fb9e507f6fa8b6b044ba0ceb4be622b585e034416a8344",
+    "tocktutor-imported-properties.png": "b1f542750c1afee4590789f33c742b991aa1e16c59814bcd6d1a032959542a74",
+    "tocktutor-marketplace.png": "8b484c040870bdd84f133ce29fecb93fd0d1577bd182e2ae5b2fa7efe4155e9e",
+    "tocktutor-mermaid-editing.png": "5aed671e0747503d9b250c90879e7131448f768aaa696738880f543f62f9ad0e",
+    "tocktutor-mermaid-live-preview.png": "c4ff04da3ffccf5e7bdd1cb0e1c957da90fbede5e1057c8400c58582a5dc0959",
+    "tocktutor-mermaid-reading.png": "5bb406e545ccffd84b93eaaea08c0882c01921b67b94f2350e3a89e02137c47b",
+    "tocktutor-new-note.png": "90627e0155fc780d33a48cfbd83f6c1a20d9cca9790b4b04b51bc2c0ad102af0",
+    "tocktutor-note-actions-menu.png": "3dcb13a9a7706366216155570684cbb0fefee0a485f9bcb2bd6c57effebdf9ff",
+    "tocktutor-note-tools.png": "4e88d634c2d76e88d7b88028321a4fa06ec8b464adf361488598be8c6ccfa51e",
+    "tocktutor-properties.png": "d8178a57f87a7d1ae83d5268ed1fb8cf06d1af4a25ac7fd483158ef95cbb7b61",
+    "tocktutor-reviews-actions.png": "e539b83a2ba50708d11b8c5b31b3477abcd7d17c9cb2672226ecf967aced2a9b",
+    "tocktutor-search.png": "c11b570706b8d77035179e9e4f8882a4d07f88a1e372af1061c16522fb4f2f47",
+    "tocktutor-settings.png": "12db4040f69bd91ddfff8065781af2ff81423ccff5280e58fc50e839e191ad10",
+    "tocktutor-tags.png": "71e604ce56f3c6c53a4548fdec8368591aff5404b1b78e3bf8a02d0e1f2003a7",
+    "tocktutor-vault-switcher.png": "46fe52165c64d8fa5f9f7b0e3d6512151f7c3ee4c07d497556f03bd1a893d10e",
+    "tocktutor-web-viewer-reader.png": "a65a7849dbc3b9be9480ff34194f63720f97900b6cbe96d16d31ee3f6caa512e",
+    "tocktutor-web-viewer.png": "a4a083772f9cc333dd78ecf88bb6e5eb2cc4af04ad7f6c673216675e6b0a88f7",
+    "tocktutor-workspaces-panes.png": "65d784a11ebf9097cc4d1af5f7caf62f13fc8bdc301e96221f362532cbef32b2"
+  },
+  "unrelatedExistingCapturesUnchanged": 60,
+  "runtimeErrors": [],
+  "failedRequests": [],
+  "placement": {
+    "displayId": 24,
+    "nonMain": true,
+    "focused": false,
+    "nativeBounds": {
+      "x": 1512,
+      "y": 30,
+      "width": 1366,
+      "height": 994
+    },
+    "cssViewport": [
+      1512,
+      949
+    ],
+    "deviceScaleFactor": 2
+  },
+  "cleanup": {
+    "id": "32164096-2549-45db-8500-df35a471b05e",
+    "stopped": true,
+    "rootPid": 7784,
+    "recordedPids": [
+      7784,
+      7786,
+      7787,
+      7788,
+      7790,
+      7795,
+      7799,
+      7800,
+      7801,
+      7802,
+      7803,
+      7804,
+      7805,
+      7806,
+      8014,
+      8016,
+      8018,
+      8019,
+      8020,
+      8021,
+      8257,
+      8258,
+      8259,
+      8260,
+      8261,
+      8262,
+      8263,
+      8264,
+      8416,
+      8417,
+      8418,
+      8419
+    ],
+    "remaining": [],
+    "artifacts": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-CCs0s6"
+  },
+  "galleryVerification": {
+    "route": "/.agents/uiux/tocktutor/tocktutor.html#live-preview",
+    "mode": "gallery-preview",
+    "viewport": [1512, 949, 2],
+    "theme": "dark",
+    "rootSkin": null,
+    "imageCount": 61,
+    "bothPairsDecodedAndFullyVisible": true,
+    "actualImageHashes": [
+      "262a51305be53909e43b17a7950c827fb485b993127ea7c4856f4faeb2e7bf81",
+      "886b4cddfaa7d6db2129ce9e9f359f46a4c3408a66ad4e98cc15f3140420d604",
+      "02786a3427bb2118bdcbb80cd46a0cac4785203f1bc3057081aa02fae7ba3b31",
+      "46a142ca48251b754909bad157a6c2f431986710a01c238c93da59aa1351e027"
+    ],
+    "referencesLabeled": "Earlier Reference",
+    "expandedCopyPresent": true,
+    "obsoleteCollapsedCopyPresent": false,
+    "horizontalOverflow": false,
+    "runtimeErrors": [],
+    "failedRequests": []
+  },
+  "galleryCleanup": {
+    "browser": {
+      "id": "7a32446b-69e1-4a2c-abf7-8e46d8a7166c",
+      "stopped": true,
+      "rootPid": 9660,
+      "recordedPids": [9660, 9662, 9663, 9664],
+      "remaining": []
+    },
+    "server": {
+      "rootPid": 9651,
+      "stopped": true,
+      "remaining": [],
+      "descendantsSpawned": false,
+      "boundedToMilliseconds": 180000,
+      "cleanup": "SIGTERM resolved the bounded server lifecycle; finally closed the listener; kill(pid,0) verified ESRCH."
+    }
+  },
+  "gates": [
+    {
+      "command": "node --test tests/tocktutor-gallery.test.ts tests/tocktutor-content-alignment.test.ts",
+      "red": "Three expected evidence/binding failures before the correction",
+      "result": "26 passed, 0 failed"
+    },
+    {
+      "command": "playwright-cli --raw -s=tocktutor-expanded run-code --filename=/tmp/tocktutor-live-preview-expanded.ZN00ZK/capture.js",
+      "result": "Two real Desktop captures; default-expanded Properties retained without toggling; exact geometry/theme/route; zero runtime or request errors"
+    },
+    {
+      "command": "playwright-cli --raw -s=tocktutor-expanded-gallery run-code --filename=/tmp/tocktutor-live-preview-expanded.ZN00ZK/gallery-checks.js",
+      "result": "Both updated gallery pairs decode and display the expected actual PNG hashes; no overflow, obsolete collapsed copy, runtime or request errors"
+    }
+  ],
+  "limitations": [
+    "Properties stays expanded in both captures; it is offscreen in the lower view because the document is scrolled, not because the section was closed.",
+    "The current comparison.md has nine properties; the preserved Obsidian references have their earlier filename and five properties, with the same Markdown body.",
+    "The upper view starts at scrollTop=0. The lower view aligns Data at 210 CSS pixels and includes Code and Notes and Small Heading. No zoom, CSS injection, document edits or Properties toggles were used to force more content into either screenshot.",
+    "The completed task retains line-through in the DOM but is outside both captured document viewports; the earlier focused task-styling proof remains unchanged.",
+    "Existing Electron CSP and Vue feature-flags startup warnings remain; capture-time runtime and request errors are zero.",
+    "This is a source-built isolated Desktop capture using the earlier frozen artifacts, not an installed-release smoke or acceptance of the later Raycast changes."
+  ]
+}

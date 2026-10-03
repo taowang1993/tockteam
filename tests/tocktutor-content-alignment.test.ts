@@ -39,7 +39,7 @@ test('compares matching content and includes the installed Claudian assistant', 
       assert.equal(left.visibleState.loading, false)
       assert.equal(pair.tocktutor.mode, pair.obsidian.mode)
       assert.deepEqual(right, proof.tocktutorGalleryRefresh.previousProof.captures[pair.obsidian.screenshot])
-    } else if (pair.surface === 'live-preview') {
+    } else if (['live-preview', 'live-preview-lower'].includes(pair.surface)) {
       assert.equal(pair.referenceStatus, 'historical-frontmatter-and-filename')
       assert.equal(pair.sameNoteBytes, false)
       assert.equal(pair.sameMarkdownBody, true)
@@ -63,7 +63,7 @@ test('compares matching content and includes the installed Claudian assistant', 
     } else {
       assert.equal(pair.tocktutor.path, pair.obsidian.path, pair.surface)
     }
-    if (!['web-viewer', 'live-preview'].includes(pair.surface)) assert.equal(pair.tocktutor.contentSha256, pair.obsidian.contentSha256, pair.surface)
+    if (!['web-viewer', 'live-preview', 'live-preview-lower'].includes(pair.surface)) assert.equal(pair.tocktutor.contentSha256, pair.obsidian.contentSha256, pair.surface)
     assert.equal(pair.tocktutor.mode, pair.obsidian.mode, pair.surface)
   }
 })

@@ -42,7 +42,8 @@ test('refreshes every retained TockTutor image without changing Obsidian and rem
   for (const name of refresh.publicationAllowlist) {
     const capture = proof.captures[name]
     assert.equal(capture.captureScope, 'real-desktop', name)
-    assert.equal(capture.refreshId, proof.completedTaskRefresh?.publicationAllowlist.includes(name) ? proof.completedTaskRefresh.id : refresh.id, name)
+    const focused = proof.livePreviewExpandedRefresh ?? proof.completedTaskRefresh
+    assert.equal(capture.refreshId, focused?.publicationAllowlist.includes(name) ? focused.id : refresh.id, name)
     assert.ok(Date.parse(capture.capturedAt) >= Date.parse(refresh.startedAt), name)
     assert.deepEqual(capture.geometry, { width: 1512, height: 949, deviceScaleFactor: 2 }, name)
     assert.equal(capture.theme, 'dark', name)
@@ -72,12 +73,50 @@ test('refreshes every retained TockTutor image without changing Obsidian and rem
   assert.ok(refresh.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
 })
 
-test('shows the verified completed-task capture with an honestly labeled earlier reference', () => {
+test('keeps Properties expanded in both upper and lower Live Preview captures', () => {
+  const refresh = proof.livePreviewExpandedRefresh
+  assert.ok(refresh, 'The corrected captures have expanded-Properties evidence')
+  const verified = JSON.parse(readFileSync(resolve(refresh.captureProof), 'utf8'))
+  assert.equal(refresh.status, 'verified-current')
+  assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-editor-live-preview.png', 'tocktutor-live-preview-lower.png'])
+  assert.equal(refresh.unrelatedExistingCapturesUnchanged, 60)
+  assert.equal(refresh.propertiesDisclosureToggled, false)
+  assert.equal(refresh.rebuild, false)
+  for (const name of refresh.publicationAllowlist) {
+    const capture = proof.captures[name]
+    assert.equal(capture.refreshId, refresh.id, name)
+    assert.equal(capture.visibleState.propertiesExpanded, true, name)
+    assert.deepEqual(capture, verified.captures[name], name)
+    assert.equal(capture.path, 'comparison.md', name)
+    assert.equal(capture.contentSha256, proof.comparisonNoteRevision.current.contentSha256, name)
+    assert.equal(sha256(readFileSync(resolve(root, 'screenshots', name))), capture.sha256, name)
+    assert.notEqual(capture.sha256, refresh.previousCaptures[name].sha256, name)
+  }
+  const upper = proof.captures['tocktutor-editor-live-preview.png'].visibleState
+  assert.equal(upper.scrollTop, 0)
+  assert.equal(upper.propertiesVisible, true)
+  assert.equal(upper.propertyCount, 9)
+  const lower = proof.captures['tocktutor-live-preview-lower.png'].visibleState
+  assert.ok(lower.scrollTop > 0)
+  for (const heading of ['Data', 'Code and Notes', 'Small Heading']) assert.ok(lower.visibleHeadings.includes(heading), heading)
+  assert.deepEqual(refresh.cleanup.remaining, [])
+  assert.equal(refresh.cleanup.stopped, true)
+  assert.equal(verified.galleryVerification.bothPairsDecodedAndFullyVisible, true)
+  for (const run of Object.values(verified.galleryCleanup) as { stopped: boolean; remaining: number[] }[]) {
+    assert.equal(run.stopped, true)
+    assert.deepEqual(run.remaining, [])
+  }
+  const section = /<section class="surface" id="live-preview">([\s\S]*?)<\/section>/u.exec(html)![1]!
+  assert.match(section, /Properties expanded/u)
+  assert.doesNotMatch(section, /Properties collapsed|No app rebuild or recapture/u)
+})
+
+test('preserves the completed-task verification and honestly labeled earlier reference', () => {
   const name = 'tocktutor-editor-live-preview.png'
   const verified = JSON.parse(readFileSync(resolve('.beads/reports/2026-10-03-tocktutor-completed-task/proof.json'), 'utf8'))
-  assert.equal(sha256(readFileSync(resolve(root, 'screenshots', name))), verified.screenshot.sha256)
+  assert.equal(sha256(readFileSync(resolve('.beads/reports/2026-10-03-tocktutor-completed-task/live-preview.png'))), verified.screenshot.sha256)
   const refresh = proof.completedTaskRefresh
-  assert.equal(refresh.status, 'verified-current')
+  assert.equal(refresh.status, 'verified-historical')
   assert.deepEqual(refresh.publicationAllowlist, [name])
   assert.equal(refresh.unrelatedExistingCapturesUnchanged, 61)
   assert.equal(refresh.reusesVerifiedCapture, true)
@@ -694,11 +733,10 @@ test('preserves the historical Source Mode and note-history verification', () =>
 
 test('preserves the historical lower Live Preview comparison verification', () => {
   const proof = historical
-  const pair = proof.pairs.find((candidate: { surface: string }) => candidate.surface === 'live-preview-lower')
-  assert.ok(pair)
+  const pair = proof.lowerNoteComparison.apps
+  assert.ok(pair.tocktutor && pair.obsidian)
   assert.equal(pair.tocktutor.path, 'UIUX Comparison.md')
   assert.equal(pair.obsidian.path, 'UIUX Comparison.md')
-  assert.equal(pair.tocktutor.contentSha256, pair.obsidian.contentSha256)
   assert.equal(pair.tocktutor.mode, 'live-preview')
   assert.equal(pair.obsidian.mode, 'live-preview')
   assert.deepEqual(proof.lowerNoteComparison.visibleHeadings, ['Data', 'Code and Notes', 'Small Heading'])
@@ -711,6 +749,7 @@ test('preserves the historical lower Live Preview comparison verification', () =
     assert.equal(capture.theme, 'dark', name)
     assert.equal(capture.skin, null, name)
     assert.equal(capture.mode, 'live-preview', name)
+    assert.equal(capture.contentSha256, proof.lowerNoteComparison.contentSha256, name)
     assert.deepEqual(capture.visibleState.visibleHeadings, proof.lowerNoteComparison.visibleHeadings, name)
     assert.deepEqual(capture.runtimeErrors, [], name)
   }
@@ -798,6 +837,6 @@ test('binds shared Markdown and structured documents to the captured content', (
   assert.equal(proof.graphAlignment.obsidianSettings.globalSearch, '-file:Lessons.base')
   assert.ok(proof.pairs.length >= 23)
   for (const pair of proof.pairs) {
-    if (['comparison.md', 'UIUX Comparison.md'].includes(pair.tocktutor.path)) assert.equal(pair.tocktutor.contentSha256, ['imported-properties', 'live-preview'].includes(pair.surface) ? sharedHash : historicalHash, pair.surface)
+    if (['comparison.md', 'UIUX Comparison.md'].includes(pair.tocktutor.path)) assert.equal(pair.tocktutor.contentSha256, ['imported-properties', 'live-preview', 'live-preview-lower'].includes(pair.surface) ? sharedHash : historicalHash, pair.surface)
   }
 })
