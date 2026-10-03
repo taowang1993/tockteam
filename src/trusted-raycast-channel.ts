@@ -50,12 +50,31 @@ export class DesktopTrustedRaycastChannel {
     })
     this.server = server
     try {
-      await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve) })
+      await new Promise<void>((resolve, reject) => {
+        const finish = (error?: Error): void => {
+          server.removeListener('close', onClose)
+          server.removeListener('error', onError)
+          server.removeListener('listening', onListening)
+          if (error) reject(error)
+          else resolve()
+        }
+        const onClose = (): void => finish(new Error('Translate activation stopped while starting'))
+        const onError = (error: Error): void => finish(error)
+        const onListening = (): void => finish()
+        server.once('close', onClose)
+        server.once('error', onError)
+        server.once('listening', onListening)
+        server.listen(0, '127.0.0.1')
+      })
+      if (this.server !== server) throw new Error('Translate activation stopped while starting')
       const address = server.address()
       if (!address || typeof address === 'string') throw new Error('Translate activation has no address')
       this.environment = { endpoint: `http://127.0.0.1:${address.port}${TRUSTED_RAYCAST_ACTIVATION_PATH}`, token }
       return this.environment
-    } catch (error) { await this.stop(); throw error }
+    } catch (error) {
+      if (this.server === server) await this.stop()
+      throw error
+    }
   }
   async stop(): Promise<void> {
     const server = this.server

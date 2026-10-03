@@ -3,6 +3,46 @@ import assert from 'node:assert/strict'
 import { DesktopTrustedRaycastChannel } from '../src/trusted-raycast-channel.ts'
 import { activateTrustedRaycast } from '../src/trusted-raycast-provider.ts'
 
+test('stopping activation during listener startup settles the startup without publishing authority', async t => {
+  const states: boolean[] = []
+  const channel = new DesktopTrustedRaycastChannel(async active => { states.push(active) })
+  t.after(() => channel.stop())
+  const starting = channel.start().then(() => 'started', () => 'stopped')
+  await channel.stop()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    const settled = await Promise.race([
+      starting,
+      new Promise<string>(resolve => { timer = setTimeout(() => resolve('pending'), 250) }),
+    ])
+    assert.equal(settled, 'stopped', 'shutdown must settle an in-flight listener startup')
+    assert.equal(channel.environment, undefined)
+    assert.equal(channel.active, false)
+    assert.deepEqual(states, [])
+  } finally { clearTimeout(timer) }
+})
+
+test('a stopped activation startup cannot close its replacement listener', async t => {
+  const states: boolean[] = []
+  const channel = new DesktopTrustedRaycastChannel(async active => { states.push(active) })
+  t.after(() => channel.stop())
+  const starting = channel.start().then(() => 'started', () => 'stopped')
+  const stopping = channel.stop()
+  const restarting = channel.start()
+  const host = activateTrustedRaycast(await restarting)
+  t.after(() => host.dispose())
+  await host.ready
+  await stopping
+  assert.equal(await starting, 'stopped')
+  assert.equal(channel.active, true)
+  assert.deepEqual(states, [true])
+  await channel.stop()
+  await host.dispose()
+  assert.equal(channel.active, false)
+  assert.equal(channel.environment, undefined)
+  assert.deepEqual(states, [true, false])
+})
+
 test('only authenticated live Host activation exposes capability and disconnect revokes it', async () => {
   const states: boolean[] = []
   const channel = new DesktopTrustedRaycastChannel(async active => { states.push(active) })

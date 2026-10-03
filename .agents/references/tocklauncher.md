@@ -184,6 +184,8 @@ Production compatibility invocation is currently macOS-only; the runtime depends
 
 One Desktop-only `@tockteam/trusted-raycast` Cordis plugin holds a bearer-authenticated loopback activation stream. Its disconnect removes discovery authority and closes the active child. This is a lifecycle lease, not generic RPC or another composition system; generated endpoint/token values stay Host/main-owned.
 
+The activation listener owns its startup as well as its live stream. Stopping it while the loopback socket binds rejects the pending startup, so Desktop shutdown can finish waiting for runtime startup. A canceled startup cannot publish an endpoint or stop a replacement listener; error cleanup applies only to its captured server.
+
 Both bundled and user-selected recovery save the validated previous version's approval before removing current bytes or promoting the backup. A failed approval save leaves the previous copy available for retry. A failure during promotion remains recoverable; after promotion, a restarted Desktop already has the restored version's approval instead of consuming or discarding its only backup on another recovery attempt. Bundled recovery preserves saved enablement, while user-selected recovery remains disabled until separately enabled.
 
 Unsupported behavior is isolated rather than emulated:
@@ -423,6 +425,8 @@ The root `node:test` suite contains focused contracts for IPC, ownership, provid
 Fresh-profile compatibility proofs must open the bundled command directly, not wait for an obsolete **Approve and Open** screen; explicit removal/disablement recovery is a separate scenario. The Translate tracer supplies its extension identity and explicit Chinese target languages, with an offline admitted-source success regression. Installed compatibility proofs skip non-macOS platforms. Historical TTS proof cannot satisfy a current playback gate: a responding upstream without observed playback fails; an unavailable upstream records a partial/inconclusive result, not a current TTS pass.
 
 Standalone overlay proofs must verify the real `750 × 475` window size and centered placement after guarded display placement, without stretching the launcher to fill the `1512 × 949` capture viewport. A native-size overlay screenshot is supplementary and does not by itself satisfy the project-wide `3024 × 1898` Desktop screenshot contract. Source-contract tests are not fresh visual evidence. The September 26 audit passed typecheck/build and focused regressions, but its broad launcher run retained three environment-denied process-inspection failures; see `.beads/reports/2026-09-26-tocklauncher-audit.md` for exact commands and limits.
+
+The October 2 activation follow-up repaired a reproduced shutdown race during listener startup and tested an immediate replacement listener. The combined launcher/Raycast/CLI/Ueli source gate passed 1,206 tests with 14 explicit skips; direct Desktop build and typecheck passed. Electron 42.3.0's Node runtime also exercised cancellation, replacement activation and complete loopback closure without creating a window or performing a native effect. This is runtime evidence, not a visual or installed-release proof. Exact commands and process cleanup are in `.beads/reports/2026-10-02-tocklauncher-activation-review.md`.
 
 ## Maintenance Rules
 
