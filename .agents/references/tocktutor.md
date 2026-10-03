@@ -95,6 +95,8 @@ Document moves and attachment trash/restore also recheck cancellation and the ca
 
 Document creation, saves, attachment storage, and passive-configuration restores recheck cancellation and the captured vault after their final asynchronous filesystem validation, before publishing bytes. Cancelling or switching vaults during that validation preserves existing note bytes and removes staged temporary files. The real-filesystem regressions are in `tockbot-note-runtime/tests/write-cancellation.test.ts`.
 
+Folder moves and copies recheck cancellation and vault ownership after destination verification. A move also checks after its final quarantine verification, before deleting the original folder. An interrupted operation restores any quarantined source and reports the retained destination as `partial`; it does not claim that a completed copy was rolled back. Real-filesystem coverage is in `tockbot-note-runtime/tests/folder-cancellation.test.ts`.
+
 #### Persistent Search
 
 Filesystem observation uses `chokidar@5.0.0` so atomic note replacement does not strand Linux watches on retired inodes. Initial reads wait for watcher startup; rapid edits settle for 50 ms, and generation/path/symlink checks still guard every publication. Provider disposal awaits current and retired watcher cleanup. Both workspaces apply `patches/chokidar@5.0.0.patch` under `plugins/tocktutor/`: it forwards nonpersistent native errors and cancels write-finish polling on close. Keep both patch bindings/locks and the staged/Nix dependency closure aligned; `tests/tocktutor-watcher.test.ts` runs the packaged-runtime regressions in the root platform matrix.
