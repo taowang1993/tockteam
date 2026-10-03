@@ -443,6 +443,11 @@ export class ReviewedBackupEngine {
     record.state = 'used'
     if (record.expiryTimer !== undefined) clearTimeout(record.expiryTimer)
     record.expiryTimer = undefined
+    const deadline = new AbortController()
+    const deadlineTimer = setTimeout(() => deadline.abort(new ImportExportError('expired')),
+      Math.max(0, record.view.expiresAt - this.options.now()))
+    deadlineTimer.unref()
+    combined = AbortSignal.any([combined, deadline.signal])
     let finalizing = false
     let session: BeginDesktopDestinationResult['session'] | undefined
     try {
@@ -459,6 +464,7 @@ export class ReviewedBackupEngine {
       }
       assertVault(this.options.runtime.state, vault)
       combined.throwIfAborted()
+      if (record.view.expiresAt <= this.options.now()) throw new ImportExportError('expired')
       const begun = await this.options.desktop.beginDestination({
         ...destinationPlan,
         authorization: record.authorization,
@@ -468,6 +474,7 @@ export class ReviewedBackupEngine {
       session = begun.session
       combined.throwIfAborted()
       assertVault(this.options.runtime.state, vault)
+      if (record.view.expiresAt <= this.options.now()) throw new ImportExportError('expired')
       if (stableJson(begun.expectedState) !== stableJson(record.expectedState)) throw new ImportExportError('invalid-plan')
       let offset = 0
       while (offset < record.archive.byteLength) {
@@ -483,6 +490,7 @@ export class ReviewedBackupEngine {
         }, combined)
         combined.throwIfAborted()
         assertVault(this.options.runtime.state, vault)
+        if (record.view.expiresAt <= this.options.now()) throw new ImportExportError('expired')
         if (result.acceptedBytes !== bytes.byteLength || result.nextOffset !== offset + bytes.byteLength) {
           throw new ImportExportError('invalid-plan')
         }
@@ -559,8 +567,10 @@ export class ReviewedBackupEngine {
       } else {
         await this.options.desktop.abortDestination({ session }).catch(() => undefined)
       }
-      throw error
+      throw deadline.signal.aborted && combined.reason === deadline.signal.reason
+        ? new ImportExportError('expired') : error
     } finally {
+      clearTimeout(deadlineTimer)
       this.operations.delete(request.operationId)
       this.rememberUsed(request.operationId)
     }

@@ -463,6 +463,112 @@ test('revalidates the current runtime after awaiting source identity', async () 
   assert.deepEqual(runtime.created, [])
 })
 
+test('expired import approval cannot start writing after asynchronous preflight', async t => {
+  for (const phase of ['source', 'destinations'] as const) {
+    await t.test(phase, async t => {
+      const picker = new FakePicker()
+      const runtime = new FakeRuntime()
+      let now = 1_000
+      const service = new ReviewedOperationEngine({
+        now: () => now,
+        picker,
+        randomToken: () => 'expiry-review',
+        runtime,
+      })
+      try {
+        const preview = await service.inspect({ format: 'markdown-folder', identity }, AbortSignal.timeout(5_000))
+        const binding = { operationId: identity.operationId, planDigest: preview.planDigest, reviewToken: preview.reviewToken }
+        await service.approve(binding)
+        if (phase === 'source') picker.afterRevalidate = () => { now = preview.expiresAt }
+        else {
+          const list = runtime.listPassiveBackupEntries.bind(runtime)
+          t.mock.method(runtime, 'listPassiveBackupEntries', async () => {
+            const result = await list()
+            now = preview.expiresAt
+            return result
+          })
+        }
+        await assert.rejects(service.commit(binding, AbortSignal.timeout(5_000)),
+          (error: unknown) => error instanceof ImportExportError && error.code === 'expired')
+        assert.deepEqual(runtime.created, [])
+        assert.deepEqual(runtime.passiveRestored, [])
+        assert.equal(picker.released, 1)
+        await assert.rejects(service.commit(binding, AbortSignal.timeout(5_000)),
+          (error: unknown) => error instanceof ImportExportError && error.code === 'replayed')
+      } finally {
+        await service.dispose()
+      }
+    })
+  }
+})
+
+test('import expiry cancels a runtime write that has not committed', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  let now = 1_000
+  const picker = new FakePicker()
+  const runtime = new FakeRuntime()
+  const service = new ReviewedOperationEngine({ now: () => now, picker, randomToken: () => 'review-secret', runtime })
+  const preview = await service.inspect({ format: 'markdown-folder', identity }, new AbortController().signal)
+  const binding = { operationId: preview.operationId, planDigest: preview.planDigest, reviewToken: preview.reviewToken }
+  await service.approve(binding)
+  const started = Promise.withResolvers<void>()
+  const release = Promise.withResolvers<void>()
+  const create = runtime.createDocument.bind(runtime)
+  t.mock.method(runtime, 'createDocument', async (request: Parameters<RuntimePort['createDocument']>[0], signal: AbortSignal) => {
+    started.resolve()
+    await release.promise
+    signal.throwIfAborted()
+    return await create(request)
+  })
+  const commit = service.commit(binding, new AbortController().signal)
+  try {
+    await started.promise
+    t.mock.timers.tick(preview.expiresAt - now)
+    now = preview.expiresAt
+    release.resolve()
+    const result = await commit
+    assert.deepEqual(runtime.created, [])
+    assert.deepEqual(result.committed, [])
+    assert.deepEqual(result.failed, [{ destination: 'A.md', reason: 'expired' }])
+    assert.deepEqual(result.skipped, [{ destination: 'image.png', reason: 'cancelled' }])
+    assert.equal(result.recovery.status, 'not-needed')
+    assert.equal(picker.released, 1)
+  } finally {
+    release.resolve()
+    await commit.catch(() => undefined)
+    await service.dispose()
+  }
+})
+
+test('import expiry after a committed file stops further writes and retains honest partial results', async t => {
+  const picker = new FakePicker()
+  const runtime = new FakeRuntime()
+  let now = 1_000
+  const service = new ReviewedOperationEngine({ now: () => now, picker, randomToken: () => 'expiry-review', runtime })
+  try {
+    const preview = await service.inspect({ format: 'markdown-folder', identity }, AbortSignal.timeout(5_000))
+    const binding = { operationId: identity.operationId, planDigest: preview.planDigest, reviewToken: preview.reviewToken }
+    await service.approve(binding)
+    const create = runtime.createDocument.bind(runtime)
+    t.mock.method(runtime, 'createDocument', async (request: { content: string; path: string }) => {
+      const result = await create(request)
+      now = preview.expiresAt
+      return result
+    })
+    const result = await service.commit(binding, AbortSignal.timeout(5_000))
+    assert.equal(result.status, 'partial')
+    assert.deepEqual(result.committed.map(item => item.destination), ['A.md'])
+    assert.deepEqual(result.failed, [{ destination: 'image.png', reason: 'expired' }])
+    assert.deepEqual(result.skipped, [])
+    assert.equal(result.recovery.status, 'not-needed')
+    assert.deepEqual(runtime.created, ['A.md'])
+    assert.equal(picker.released, 1)
+    assert.deepEqual(await service.commit(binding, AbortSignal.timeout(5_000)), result)
+  } finally {
+    await service.dispose()
+  }
+})
+
 test('preflights commit-time collisions, preserves them, and commits remaining files', async () => {
   const { runtime, service } = engine()
   const preview = await service.inspect({ format: 'markdown-folder', identity }, AbortSignal.timeout(5_000))

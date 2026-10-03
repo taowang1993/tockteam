@@ -161,6 +161,99 @@ test('backup captures every ordinary runtime cursor page before publishing', asy
   }
 })
 
+test('expired backup approval cannot open a destination after asynchronous preflight', async t => {
+  const runtime = new FakeRuntime()
+  const desktop = new FakeDesktop()
+  let now = 1_000
+  const service = new ReviewedBackupEngine({ desktop, now: () => now, randomToken: () => 'expiry-review', runtime })
+  try {
+    const preview = await service.prepare({ identity }, AbortSignal.timeout(5_000))
+    const binding = { operationId: identity.operationId, planDigest: preview.planDigest, reviewToken: preview.reviewToken }
+    await service.approve(binding)
+    const list = runtime.listPassiveBackupEntries.bind(runtime)
+    t.mock.method(runtime, 'listPassiveBackupEntries', async () => {
+      const result = await list()
+      now = preview.expiresAt
+      return result
+    })
+    await assert.rejects(service.commit(binding, AbortSignal.timeout(5_000)),
+      (error: unknown) => error instanceof ImportExportError && error.code === 'expired')
+    assert.deepEqual(desktop.calls, ['pick', 'lock', 'revoke'])
+    assert.equal(desktop.written.byteLength, 0)
+    await assert.rejects(service.commit(binding, AbortSignal.timeout(5_000)),
+      (error: unknown) => error instanceof ImportExportError && error.code === 'replayed')
+  } finally {
+    await service.dispose()
+  }
+})
+
+test('backup expiry cancels an unfinished destination write before publication', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  let now = 1_000
+  const desktop = new FakeDesktop()
+  const runtime = new FakeRuntime()
+  const service = new ReviewedBackupEngine({ desktop, now: () => now, randomToken: () => 'backup-secret', runtime })
+  const preview = await service.prepare({ identity }, new AbortController().signal)
+  const binding = { operationId: preview.operationId, planDigest: preview.planDigest, reviewToken: preview.reviewToken }
+  await service.approve(binding)
+  const started = Promise.withResolvers<void>()
+  const release = Promise.withResolvers<void>()
+  const write = desktop.writeDestinationChunk.bind(desktop)
+  t.mock.method(desktop, 'writeDestinationChunk', async (request: Parameters<BackupDesktopPort['writeDestinationChunk']>[0], signal: AbortSignal) => {
+    started.resolve()
+    await release.promise
+    signal.throwIfAborted()
+    return await write(request)
+  })
+  const commit = service.commit(binding, new AbortController().signal)
+  const rejected = assert.rejects(commit, error => error instanceof ImportExportError && error.code === 'expired')
+  try {
+    await started.promise
+    t.mock.timers.tick(preview.expiresAt - now)
+    now = preview.expiresAt
+    release.resolve()
+    await rejected
+    assert.equal(desktop.written.byteLength, 0)
+    assert.deepEqual(desktop.calls, ['pick', 'lock', 'begin', 'abort'])
+  } finally {
+    release.resolve()
+    await commit.catch(() => undefined)
+    await service.dispose()
+  }
+})
+
+test('backup expiry during destination staging prevents publication and scrubs staged bytes', async t => {
+  for (const phase of ['destination', 'chunk'] as const) {
+    await t.test(phase, async t => {
+      const runtime = new FakeRuntime()
+      const desktop = new FakeDesktop()
+      let now = 1_000
+      const service = new ReviewedBackupEngine({ desktop, now: () => now, randomToken: () => 'expiry-review', runtime })
+      try {
+        const preview = await service.prepare({ identity }, AbortSignal.timeout(5_000))
+        const binding = { operationId: identity.operationId, planDigest: preview.planDigest, reviewToken: preview.reviewToken }
+        await service.approve(binding)
+        if (phase === 'destination') desktop.afterBegin = () => { now = preview.expiresAt }
+        else {
+          const write = desktop.writeDestinationChunk.bind(desktop)
+          t.mock.method(desktop, 'writeDestinationChunk', async (request: { bytes: Uint8Array }) => {
+            const result = await write(request)
+            now = preview.expiresAt
+            return result
+          })
+        }
+        await assert.rejects(service.commit(binding, AbortSignal.timeout(5_000)),
+          (error: unknown) => error instanceof ImportExportError && error.code === 'expired')
+        assert.deepEqual(desktop.calls, ['pick', 'lock', 'begin', ...phase === 'chunk' ? ['write'] : [], 'abort'])
+        await assert.rejects(service.commit(binding, AbortSignal.timeout(5_000)),
+          (error: unknown) => error instanceof ImportExportError && error.code === 'replayed')
+      } finally {
+        await service.dispose()
+      }
+    })
+  }
+})
+
 for (const reason of ['entry-limit', 'depth-limit', 'result-limit'] as const) {
   test(`backup rejects an incomplete tree without a resumable cursor (${reason})`, async t => {
     const { desktop, runtime, service } = setup()

@@ -599,6 +599,11 @@ export class ReviewedOperationEngine {
     record.state = 'used'
     if (record.expiryTimer !== undefined) clearTimeout(record.expiryTimer)
     record.expiryTimer = undefined
+    const deadline = new AbortController()
+    const deadlineTimer = setTimeout(() => deadline.abort(new ImportExportError('expired')),
+      Math.max(0, record.plan.summary.expiresAt - this.options.now()))
+    deadlineTimer.unref()
+    combined = AbortSignal.any([combined, deadline.signal])
     try {
       if (record.plan.summary.expiresAt <= this.options.now()) throw new ImportExportError('expired')
       assertPlanContent(record.plan)
@@ -608,12 +613,14 @@ export class ReviewedOperationEngine {
           session: record.source.session,
         }, combined)
       } catch (error) {
+        combined.throwIfAborted()
         return sourceError(error)
       }
       combined.throwIfAborted()
       const vault = record.plan.summary.vault
       assertVault(this.options.runtime.state, vault)
       const existing = await existingDestinations(this.options.runtime, vault, combined)
+      if (record.plan.summary.expiresAt <= this.options.now()) throw new ImportExportError('expired')
       const committed: CommitEntryResult[] = []
       const failed: CommitFailedResult[] = []
       const skipped: CommitSkippedResult[] = []
@@ -625,7 +632,7 @@ export class ReviewedOperationEngine {
           skipped.push({ destination: file.destination, reason: 'exists' })
           continue
         }
-        if (combined.aborted) {
+        if (combined.aborted && combined.reason !== deadline.signal.reason) {
           for (const remaining of record.plan.files.slice(index)) {
             skipped.push({ destination: remaining.destination, reason: 'cancelled' })
           }
@@ -633,6 +640,7 @@ export class ReviewedOperationEngine {
         }
         try {
           combined.throwIfAborted()
+          if (record.plan.summary.expiresAt <= this.options.now()) throw new ImportExportError('expired')
           const result = file.kind === 'document'
             ? await this.options.runtime.createDocument({
                 content: new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(file.bytes),
@@ -663,11 +671,14 @@ export class ReviewedOperationEngine {
           }
         } catch (error) {
           const code = errorCode(error)
-          if (code === 'exists') skipped.push({ destination: file.destination, reason: 'exists' })
+          const reason = deadline.signal.aborted && combined.reason === deadline.signal.reason
+            && (code === 'aborted' || (error instanceof Error && error.name === 'AbortError'))
+            ? 'expired' : code
+          if (reason === 'exists') skipped.push({ destination: file.destination, reason: 'exists' })
           else {
-            failed.push({ destination: file.destination, reason: code })
-            if (code === 'partial') {
-              recoveryRequired = true
+            failed.push({ destination: file.destination, reason })
+            if (reason === 'partial' || reason === 'expired') {
+              recoveryRequired = reason === 'partial'
               for (const remaining of record.plan.files.slice(index + 1)) {
                 skipped.push({ destination: remaining.destination, reason: 'cancelled' })
               }
@@ -692,6 +703,7 @@ export class ReviewedOperationEngine {
       this.rememberCompleted(request, result)
       return result
     } finally {
+      clearTimeout(deadlineTimer)
       await this.options.picker.releaseSource({ session: record.source.session }).catch(() => undefined)
       this.operations.delete(request.operationId)
       this.rememberUsed(request.operationId)
