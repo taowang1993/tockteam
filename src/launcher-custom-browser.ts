@@ -289,7 +289,7 @@ async function readGrant(
     }
     if (before.isSymbolicLink() || !before.isFile()) throw new Error('Custom browser grant file is invalid')
     if (!candidate.anchored) await validateRawGrantParent(parentBinding, platform)
-    try { handle = await open(candidate.path, HAS_NOFOLLOW ? constants.O_RDONLY | NOFOLLOW : constants.O_RDONLY) }
+    try { handle = await open(candidate.path, constants.O_RDONLY | (HAS_NOFOLLOW ? NOFOLLOW : 0) | (constants.O_NONBLOCK ?? 0)) }
     catch (error) { throw new Error('Custom browser grant file is unavailable', { cause: error }) }
     const stats = await handle.stat({ bigint: true })
     if (!stats.isFile() || stats.size > BigInt(MAX_GRANT_BYTES) || !identityMatches(stats, before)) throw new Error('Custom browser grant file is invalid')
