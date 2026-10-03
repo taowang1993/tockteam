@@ -27,6 +27,7 @@ import {
   type ReaderViewResult,
 } from './reader.ts'
 import {
+  ClipReviewError,
   ClipReviewStore,
   type ClipApproval,
   type ClipPreview,
@@ -331,11 +332,28 @@ export class WebClipHost extends Service {
     signal.throwIfAborted()
     const consumed = this.consumeClipReview(approval, vault)
     if (this.runtimeEpoch !== epoch) throw new ClipRuntimeError('stale-vault', 'The active vault changed before apply')
-    const result = await runtime.createDocument({
-      content: consumed.content,
-      expectedVault: consumed.expectedVault,
-      path: consumed.path,
-    }, signal)
+    const remainingMs = approval.expiresAt - Date.now()
+    if (remainingMs <= 0) throw new ClipReviewError('expired', 'Clip review expired')
+    const deadline = new AbortController()
+    const timer = setTimeout(() => {
+      deadline.abort(new DOMException('Clip review expired', 'AbortError'))
+    }, remainingMs)
+    timer.unref()
+    let result: WriteDocumentResult
+    try {
+      result = await runtime.createDocument({
+        content: consumed.content,
+        expectedVault: consumed.expectedVault,
+        path: consumed.path,
+      }, AbortSignal.any([signal, deadline.signal]))
+    } catch (error) {
+      if (deadline.signal.aborted && error === deadline.signal.reason) {
+        throw new ClipReviewError('expired', 'Clip review expired')
+      }
+      throw error
+    } finally {
+      clearTimeout(timer)
+    }
     if (result.status !== 'created'
       || result.path !== consumed.path
       || result.digest !== consumed.contentDigest

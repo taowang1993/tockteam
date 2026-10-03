@@ -2,7 +2,7 @@ import { Service } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
 import { defaultPublicFetchLimits, defaultPublicImageMaxBytes, fetchPublicText, fetchPublicImage, readBoundedText, responseHeaderBytes, maximumPublicFetchLimits, WebFetchError, } from "./fetch.js";
 import { defaultReaderViewLimits, maximumReaderViewLimits, projectReaderView, } from "./reader.js";
-import { ClipReviewStore, } from "./review.js";
+import { ClipReviewError, ClipReviewStore, } from "./review.js";
 import { WEB_CLIP_APPLY_API_PATH, WEB_CLIP_CANCEL_API_PATH, WEB_CLIP_READER_API_PATH, WEB_CLIP_REVIEW_API_PATH, WEB_CLIP_VIEWER_API_PATH, WEB_CLIP_IMAGE_API_PATH, createImageHandler, createClipApplyHandler, createClipCancelHandler, createClipReviewHandler, createReaderHandler, createViewerHandler, } from "./server.js";
 export * from "./fetch.js";
 export * from "./reader.js";
@@ -243,11 +243,31 @@ export class WebClipHost extends Service {
         const consumed = this.consumeClipReview(approval, vault);
         if (this.runtimeEpoch !== epoch)
             throw new ClipRuntimeError('stale-vault', 'The active vault changed before apply');
-        const result = await runtime.createDocument({
-            content: consumed.content,
-            expectedVault: consumed.expectedVault,
-            path: consumed.path,
-        }, signal);
+        const remainingMs = approval.expiresAt - Date.now();
+        if (remainingMs <= 0)
+            throw new ClipReviewError('expired', 'Clip review expired');
+        const deadline = new AbortController();
+        const timer = setTimeout(() => {
+            deadline.abort(new DOMException('Clip review expired', 'AbortError'));
+        }, remainingMs);
+        timer.unref();
+        let result;
+        try {
+            result = await runtime.createDocument({
+                content: consumed.content,
+                expectedVault: consumed.expectedVault,
+                path: consumed.path,
+            }, AbortSignal.any([signal, deadline.signal]));
+        }
+        catch (error) {
+            if (deadline.signal.aborted && error === deadline.signal.reason) {
+                throw new ClipReviewError('expired', 'Clip review expired');
+            }
+            throw error;
+        }
+        finally {
+            clearTimeout(timer);
+        }
         if (result.status !== 'created'
             || result.path !== consumed.path
             || result.digest !== consumed.contentDigest

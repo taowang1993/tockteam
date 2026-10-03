@@ -274,7 +274,7 @@ Fetched HTML is reduced to bounded inert Reader text. Viewer HTML escapes the pr
 
 TockTeam's `src/web-clip-frame.ts` and `src/main.ts` own the isolated guest partition, exact one-document authorization, restrictive CSP, credential-header stripping, and denied network/navigation/download/permission behavior. The viewer displays Host-fetched inert projections, not an unrestricted browser session.
 
-Clipping initializes the configured folder with a timestamped Markdown filename, not a bare directory. It creates a one-use, expiring, digest-bound, destination-bound, vault-generation-bound preview. The browser must approve the exact preview before the runtime performs an exclusive Markdown create.
+Clipping initializes the configured folder with a timestamped Markdown filename, not a bare directory. It creates a one-use, expiring, digest-bound, destination-bound, vault-generation-bound preview. The browser must approve the exact preview before the runtime performs an exclusive Markdown create. Its reviewed deadline cancels a pending runtime write, including final filesystem validation; consumed approvals remain one-use after expiry. A file committed before the deadline retains its successful result even if the response arrives later. Caller cancellation and Host/runtime disposal still abort pending writes, and each apply clears its deadline timer when it settles.
 
 ### `@tockteam/tocktutor`
 
