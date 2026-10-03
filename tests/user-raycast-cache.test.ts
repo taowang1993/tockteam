@@ -11,6 +11,65 @@ import { createUserRaycastStorage } from '../src/user-raycast-storage.ts'
 
 const owner = { webContentsId: 17 }
 
+test('Cache removal reports whether an entry was removed without changing other namespaces', t => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-cache-remove-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const storage = createUserRaycastStorage(join(root, 'state.json')), cache = storage.cache('first'), other = storage.cache('second')
+  cache.set('empty', ''); other.set('empty', 'other'); storage.set('empty', 'legacy')
+  assert.equal(cache.remove('empty'), true)
+  assert.equal(cache.get('empty'), undefined); assert.equal(other.get('empty'), 'other'); assert.equal(storage.get('empty'), 'legacy')
+  assert.equal(cache.remove('empty'), false)
+  assert.equal(storage.remove('empty'), true); assert.equal(storage.remove('empty'), false)
+  assert.equal(other.remove('empty'), true)
+})
+
+test('Cache subscribers receive public keys and saved data only for their namespace', t => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-cache-notification-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const path = join(root, 'state.json'), storage = createUserRaycastStorage(path), cache = storage.cache('named'), same = storage.cache('named'), other = storage.cache('other')
+  const events: Array<[string | undefined, string | undefined]> = [], shared: typeof events = [], unrelated: typeof events = [], saved: Array<string | undefined> = []
+  const unsubscribe = cache.subscribe((key, value) => { events.push([key, value]); saved.push(createUserRaycastStorage(path).cache('named').get('__proto__')) })
+  const unshare = same.subscribe((key, value) => shared.push([key, value]))
+  other.subscribe((key, value) => unrelated.push([key, value])); storage.subscribe((key, value) => unrelated.push([key, value]))
+  cache.set('__proto__', '')
+  assert.deepEqual(events, [['__proto__', '']]); assert.deepEqual(shared, events); assert.deepEqual(saved, ['']); assert.deepEqual(unrelated, [])
+  cache.set('__proto__', 'new'); assert.equal(cache.remove('__proto__'), true); cache.set('left', 'value'); cache.clear()
+  assert.deepEqual(events, [['__proto__', ''], ['__proto__', 'new'], ['__proto__', undefined], ['left', 'value'], [undefined, undefined]])
+  assert.deepEqual(shared, events); assert.deepEqual(saved, ['', 'new', undefined, undefined, undefined]); assert.deepEqual(unrelated, [])
+  unsubscribe(); unshare(); cache.set('after', 'unsubscribed')
+  assert.equal(events.length, 5); assert.equal(shared.length, 5)
+  const failures: typeof events = []
+  cache.subscribe((key, value) => failures.push([key, value]))
+  unsubscribe(); unshare(); cache.set('fresh', 'still subscribed')
+  assert.deepEqual(failures, [['fresh', 'still subscribed']], 'Repeating an old unsubscribe must not erase new listeners')
+  failures.length = 0
+  const before = readFileSync(path)
+  assert.throws(() => cache.set('oversized', 'x'.repeat(4097)), /value/)
+  assert.deepEqual(readFileSync(path), before); assert.deepEqual(failures, [])
+  const target = join(root, 'outside.json'); writeFileSync(target, '{}'); rmSync(path); symlinkSync(target, path)
+  assert.throws(() => cache.remove('after'), /invalid/); assert.throws(() => cache.clear(), /invalid/)
+  assert.equal(readFileSync(target, 'utf8'), '{}'); assert.deepEqual(failures, [])
+})
+
+test('quiet Cache clearing persists only the selected namespace without notifying subscribers', t => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-cache-quiet-clear-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const path = join(root, 'state.json'), storage = createUserRaycastStorage(path), cache = storage.cache('named'), other = storage.cache('other')
+  storage.set('legacy', 'keep'); other.set('kept', 'other'); cache.set('removed', 'value')
+  const events: Array<[string | undefined, string | undefined]> = []
+  cache.subscribe((key, value) => events.push([key, value]))
+  cache.clear({ notifySubscribers: false })
+  assert.deepEqual(events, []); assert.equal(cache.isEmpty, true)
+  assert.equal(createUserRaycastStorage(path).cache('named').get('removed'), undefined)
+  assert.equal(storage.get('legacy'), 'keep'); assert.equal(other.get('kept'), 'other')
+  cache.set('again', 'value'); cache.clear({ notifySubscribers: true })
+  assert.deepEqual(events, [['again', 'value'], [undefined, undefined]])
+  cache.clear(); assert.deepEqual(events.at(-1), [undefined, undefined]); assert.equal(events.length, 3)
+  storage.cache().clear({ notifySubscribers: false })
+  assert.equal(storage.get('legacy'), undefined); assert.equal(other.get('kept'), 'other')
+  assert.equal(events.length, 3); assert.equal(lstatSync(path).mode & 0o777, 0o600)
+})
+
 test('Cache presence and emptiness inspect only their namespace without writing or notifying', t => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-cache-presence-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
@@ -138,7 +197,26 @@ test('offline view and no-view commands share persistent Cache only within their
             if (!new Cache({ namespace: 'other' }).isEmpty || new Cache({ namespace: 'other' }).has('runs')) throw Error('Cache existence leaked between namespaces');
             if (Number(named.get('runs') ?? '0') !== next - 1) throw Error('Cache namespaces collided');
             plain.set('runs', String(next)); named.set('runs', String(next));
-            named.set('empty', ''); if (!named.has('empty') || named.isEmpty) throw Error('Empty strings must still exist'); named.remove('empty');
+            named.set('empty', ''); if (!named.has('empty') || named.isEmpty) throw Error('Empty strings must still exist');
+            if (named.remove('empty') !== true || named.remove('empty') !== false) throw Error('Cache removal results are incorrect');
+            const mutations = new Cache({ namespace: 'sdk-notifications' }), events = [];
+            const unsubscribe = mutations.subscribe((key, data) => {
+              if (key !== undefined && mutations.get(key) !== data) throw Error('Cache notified before persistence');
+              events.push([key, data]);
+            });
+            mutations.set('__proto__', '');
+            if (events.length !== 1 || events[0][0] !== '__proto__' || events[0][1] !== '') throw Error('Cache set notification lost its public key or empty data');
+            if (mutations.remove('__proto__') !== true || events.length !== 2 || events[1][0] !== '__proto__' || events[1][1] !== undefined) throw Error('Cache removal notification is incorrect');
+            mutations.set('quiet', 'saved'); mutations.clear({ notifySubscribers: false });
+            if (!mutations.isEmpty || events.length !== 3) throw Error('Cache quiet clear notified subscribers');
+            mutations.set('clear', 'saved'); mutations.clear();
+            if (!mutations.isEmpty || events.length !== 5 || events[4][0] !== undefined || events[4][1] !== undefined) throw Error('Cache clear notification is incorrect');
+            unsubscribe(); mutations.set('after', 'saved'); mutations.clear({ notifySubscribers: false });
+            if (events.length !== 5) throw Error('Cache unsubscribe retained a listener');
+            const renewed = [], stopRenewed = mutations.subscribe((key, data) => renewed.push([key, data]));
+            unsubscribe(); mutations.set('fresh', 'still subscribed');
+            if (renewed.length !== 1 || renewed[0][0] !== 'fresh' || renewed[0][1] !== 'still subscribed') throw Error('Old Cache cleanup erased a new listener');
+            stopRenewed(); mutations.clear({ notifySubscribers: false });
             if (plain.get('runs') !== String(next) || named.get('runs') !== String(next)) throw Error('Cache round trip failed');
             return next;
           }
