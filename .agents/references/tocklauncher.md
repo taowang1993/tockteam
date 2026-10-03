@@ -212,7 +212,7 @@ Discovery is bounded by item, file-size, directory-visit, output, and time limit
 - Firefox and VS Code SQLite reads run in killable worker threads, not on Electron's event loop;
 - unresolved icon and identity operations are capped across rescans so repeated timeouts cannot accumulate unbounded native work;
 - macOS application icons are individually capped at 64 KiB and the cache prunes from 128 entries to 96 entries;
-- Simple File Search applies one rescan-wide deadline across all configured roots rather than a full timeout per root;
+- Simple File Search applies one rescan-wide deadline across all configured roots rather than a full timeout per root; once that budget's timer expires, no further root starts, even if clock rounding or a wall-clock change still appears to leave time;
 - configured roots and discovered paths are normalized, bounded, and revalidated within their allowed scope; a child name such as `..notes` is valid, while an actual parent component (`../` or `..\\`) remains outside that scope;
 - Simple File Search uses Windows path semantics for both drive-letter and UNC home folders, retaining the same home/root, canonical-path, symlink and file-identity checks.
 
@@ -376,6 +376,7 @@ The first-party, offline Desktop proof covers defaults/bounds/required validatio
 
 - one optional tray, dock visibility, the launcher shortcut, always-on-top, visible-on-all-workspaces, and startup visibility;
 - shutdown fences unfinished Dock updates and startup display: late completions cannot recreate the tray, re-enable launcher controls, or execute a queued overlay toggle;
+- overlapping workbench readiness signals share one startup attempt, waiting for native setup and any startup display or queued toggle. They observe the same failure, and a later readiness signal can retry a retained intent; a second signal cannot prematurely mark startup complete;
 - `show` and `centerWindow` reuse the overlay;
 - About, Extensions, and Settings route to the existing workbench;
 - rescan invalidates provider/action state before rebuilding the index;
