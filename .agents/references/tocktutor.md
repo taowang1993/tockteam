@@ -147,6 +147,8 @@ Workbench embeds use short-name, extensionless-stem, and alias fallback only aft
 
 Empty or malformed Canvas documents display a stable error without changing the document or repeatedly resetting an already-empty selection. A previously selected card is cleared once, and navigation can reopen a valid board normally. Focused coverage is in `tockteam-tocktutor-workbench/tests/canvas-invalid.test.tsx`.
 
+Attachment transport, embed resolution, and Markdown media rendering share the Base64 syntax check in `src/base64.ts`. It checks complete quartet length, allowed characters, and trailing padding without a repeated-group regular expression, so valid larger attachments do not exhaust the JavaScript stack. Existing transport, 25 MiB attachment, aggregate media, and smaller static-export limits remain independent and unchanged. Real Runtime/Host coverage in `tests/attachment-transport.test.ts` checks exact bytes, 5 MiB previews and rendering, the 25 MiB boundary, malformed and oversized data, cancellation, stale vaults, and exhausted media budgets.
+
 Nested slots:
 
 - `tockteam.tocktutor.workbench.assistant`
