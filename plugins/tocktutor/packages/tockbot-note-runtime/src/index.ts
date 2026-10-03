@@ -2198,11 +2198,13 @@ async function captureSnapshotRecord(
   const info: SnapshotInfo = { createdAt, digest, id, path: relativePath, reason, size: body.byteLength }
   const bodyPath = path.join(directory, `${id}.body`)
   const metaPath = path.join(directory, `${id}.json`)
+  let bodyCreated = false
   try {
     await writeDocumentAtomic(bodyPath, body, true, async () => {
       signal.throwIfAborted()
       assertCurrent()
     })
+    bodyCreated = true
     await writeDocumentAtomic(
       metaPath,
       Buffer.from(JSON.stringify(info), 'utf8'),
@@ -2213,8 +2215,10 @@ async function captureSnapshotRecord(
       },
     )
   } catch (error) {
-    await rm(bodyPath, { force: true }).catch(() => undefined)
-    await rm(metaPath, { force: true }).catch(() => undefined)
+    // Collisions belong to an earlier capture; partial publication retains recovery evidence.
+    if (bodyCreated && !(error instanceof NoteVaultError && error.code === 'partial')) {
+      await rm(bodyPath, { force: true }).catch(() => undefined)
+    }
     throw error
   }
 
