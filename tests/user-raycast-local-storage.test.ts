@@ -60,7 +60,7 @@ async function commandFixture(t: TestContext) {
   })
   await buildUserRaycast(runtime)
   const prepare = (extensionId: string, mode: 'view' | 'no-view', body: string) => {
-    const source = join(root, extensionId); mkdirSync(source)
+    const source = join(root, extensionId); mkdirSync(source, { recursive: true })
     writeFileSync(join(source, 'package.json'), JSON.stringify({ name: extensionId, title: 'Offline Storage Fixture', commands: [{ name: 'run', title: 'Run', mode }] }))
     writeFileSync(join(source, 'run.js'), `
       const React = require('react'), { List, LocalStorage, Cache, showHUD, configureCompatibility, allLocalStorageItems, getLocalStorageItem, setLocalStorageItem, removeLocalStorageItem, clearLocalStorage } = require('@raycast/api');
@@ -91,7 +91,7 @@ async function commandFixture(t: TestContext) {
     assert.deepEqual(copies, [], 'Storage APIs acquire no native effect authority')
     return value
   }
-  return { prepare, run }
+  return { prepare, run, install, manager }
 }
 
 for (const mode of ['view', 'no-view'] as const) test(`${mode} commands enumerate exact private data across cold opens without exposing Cache namespaces`, async t => {
@@ -113,6 +113,75 @@ for (const mode of ['view', 'no-view'] as const) test(`${mode} commands enumerat
       assert.deepEqual(await f.run(mode), { previous, values: Object.fromEntries([['runs', next], ['__proto__', extensionId]]), named: 'fake named value' })
     }
   }
+})
+
+test('selected-command import, startup and read-only cold runs create no LocalStorage or Cache file', async t => {
+  const f = await commandFixture(t)
+  f.prepare('read-only-storage', 'no-view', `
+    const cache = new Cache(), values = await LocalStorage.allItems();
+    return { values, absent: await LocalStorage.getItem('saved') === undefined, cached: cache.has('saved'), empty: cache.isEmpty };
+  `)
+  const path = f.install.statePath('read-only-storage'), snapshot = `${path}.local-storage.v1.json`
+  for (let cold = 0; cold < 2; cold++) {
+    assert.deepEqual(await f.run('no-view'), { values: {}, absent: true, cached: false, empty: true })
+    assert.equal(existsSync(path), false); assert.equal(existsSync(snapshot), false)
+  }
+})
+
+for (const mode of ['view', 'no-view'] as const) test(`${mode} commands preserve typed LocalStorage and legacy strings through Cache-first writes and independent cold sessions`, async t => {
+  const f = await commandFixture(t)
+  for (const extensionId of ['typed-first', 'typed-second']) {
+    f.prepare(extensionId, mode, `
+      const previous = await LocalStorage.allItems(), runs = (previous.runs ?? 0) + 1;
+      const cache = new Cache(); cache.set('legacyBoolean', 'Cache-only value');
+      await LocalStorage.setItem('runs', runs); await LocalStorage.setItem('boolean', false);
+      await setLocalStorageItem('zero', 0); await LocalStorage.setItem('negativeZero', -0);
+      await LocalStorage.setItem('empty', ''); await LocalStorage.setItem('__proto__', false);
+      const named = new Cache({ namespace: 'private' }); named.set('hidden', 'named string');
+      const beforeInvalid = JSON.stringify(await allLocalStorageItems()), failures = [];
+      for (const value of [null, {}, NaN, Infinity, undefined]) { try { await LocalStorage.setItem('bad', value); failures.push(false); } catch { failures.push(true); } }
+      if (JSON.stringify(await LocalStorage.allItems()) !== beforeInvalid) throw Error('Invalid request changed saved data');
+      const snapshot = await allLocalStorageItems(); snapshot.boolean = 'caller change';
+      return { previous, values: await LocalStorage.allItems(), failures, boolean: await getLocalStorageItem('boolean'), negativeZero: Object.is(await LocalStorage.getItem('negativeZero'), -0), cache: cache.get('legacyBoolean'), named: named.get('hidden') };
+    `)
+    const path = f.install.statePath(extensionId), legacy = { legacyBoolean: 'false', legacyNumber: '0' }
+    writeFileSync(path, JSON.stringify(legacy), { mode: 0o600 })
+    for (const runs of extensionId === 'typed-first' ? [1, 2] : [1]) {
+      const values = Object.fromEntries([...Object.entries(legacy), ['runs', runs], ['boolean', false], ['zero', 0], ['negativeZero', 0], ['empty', ''], ['__proto__', false]])
+      const previous = runs === 1 ? legacy : { ...values, runs: 1 }
+      assert.deepEqual(await f.run(mode), { previous, values, failures: [true, true, true, true, true], boolean: false, negativeZero: true, cache: 'Cache-only value', named: 'named string' })
+      assert.ok(Object.values(JSON.parse(readFileSync(path, 'utf8'))).every(value => typeof value === 'string'), 'Raw Cache data remains strictly strings')
+    }
+  }
+})
+
+test('typed LocalStorage survives disable, update and rollback, then is removed with its owning installation', async t => {
+  const f = await commandFixture(t), extensionId = 'typed-lifecycle'
+  const body = (version: number) => `
+    const count = (await LocalStorage.getItem('count') ?? 0) + 1;
+    const legacy = await LocalStorage.getItem('legacy');
+    await LocalStorage.setItem('count', count); await LocalStorage.setItem('boolean', false);
+    const cache = new Cache(); cache.set('cache', 'string-only');
+    return { version: ${version}, count, legacy: legacy ?? 'missing', boolean: await LocalStorage.getItem('boolean'), cache: cache.get('cache') };
+  `
+  const expected = (version: number, count: number, legacy = 'false') => ({ version, count, legacy, boolean: false, cache: 'string-only' })
+  f.prepare(extensionId, 'no-view', body(1))
+  const path = f.install.statePath(extensionId), snapshot = `${path}.local-storage.v1.json`
+  writeFileSync(path, '{ "legacy": "false" }\n', { mode: 0o600 })
+  assert.deepEqual(await f.run('no-view'), expected(1, 1))
+  const disabledBytes = readFileSync(snapshot)
+  f.install.disable(); await assert.rejects(f.manager.start(owner))
+  assert.deepEqual(readFileSync(snapshot), disabledBytes)
+  f.install.enable(); assert.deepEqual(await f.run('no-view'), expected(1, 2))
+  f.prepare(extensionId, 'no-view', body(2)); assert.equal(f.install.status().hasPrevious, true)
+  assert.deepEqual(await f.run('no-view'), expected(2, 3))
+  const rollbackBytes = readFileSync(snapshot), rawBytes = readFileSync(path)
+  f.install.recoverPrevious(); assert.equal(f.install.status().enabled, false)
+  assert.deepEqual(readFileSync(snapshot), rollbackBytes); assert.deepEqual(readFileSync(path), rawBytes)
+  f.install.enable(); assert.deepEqual(await f.run('no-view'), expected(1, 4))
+  f.install.remove(); assert.equal(existsSync(path), false); assert.equal(existsSync(snapshot), false)
+  f.prepare(extensionId, 'no-view', body(1))
+  assert.deepEqual(await f.run('no-view'), expected(1, 1, 'missing'))
 })
 
 test('legacy LocalStorage names share exact set, get, enumerate, remove and clear semantics', async t => {
@@ -145,6 +214,26 @@ for (const invalid of ['symlink', 'oversized', 'malformed', 'non-string', 'too m
   await assert.rejects(createUserRaycastStorage(path).allItems())
   assert.deepEqual(readFileSync(path), before)
   assert.deepEqual(readFileSync(target), outside)
+})
+
+test('typed LocalStorage operations explicitly reject legacy-only providers without calling their string writer', async t => {
+  const f = await commandFixture(t)
+  f.prepare('typed-provider-check', 'view', `
+    const calls = [], base = { native: async () => {}, selection: async () => '', toast: () => {} };
+    const failure = async (write) => { try { await write(); return 'unexpected success'; } catch (error) { return error.message; } };
+    configureCompatibility(base);
+    const unavailable = await failure(() => LocalStorage.setItem('saved', false));
+    configureCompatibility({ ...base, storage: { getItem: async () => 'legacy', setItem: async (key, value) => { calls.push([key, value]); }, removeItem: async () => {}, clear: async () => {} } });
+    const boolean = await failure(() => LocalStorage.setItem('saved', false)), number = await failure(() => setLocalStorageItem('saved', 0));
+    await LocalStorage.setItem('saved', 'string');
+    return { unavailable, boolean, number, calls, legacy: await getLocalStorageItem('saved') };
+  `)
+  assert.deepEqual(await f.run('view'), {
+    unavailable: 'Raycast API LocalStorage.setItem is not admitted by this capability',
+    boolean: 'Raycast API LocalStorage.setItem typed values is not admitted by this capability',
+    number: 'Raycast API LocalStorage.setItem typed values is not admitted by this capability',
+    calls: [['saved', 'string']], legacy: 'legacy',
+  })
 })
 
 test('LocalStorage enumeration explicitly rejects unavailable and legacy-only providers', async t => {

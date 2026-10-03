@@ -185,15 +185,16 @@ test('unsupported no-view APIs fail visibly and cancellation stops the owned chi
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
-test('an approved menu command projects saved colors, refreshes and copies only after an owned action', async () => {
+test('an approved menu command projects saved colors, refreshes and copies only after an owned action', async t => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-user-raycast-menu-'))
   const folder = join(root, 'source'), runtime = join(root, 'host')
   mkdirSync(folder)
   writeFileSync(join(folder, 'package.json'), JSON.stringify({ name: 'color-picker', title: 'Color Picker', commands: [{ name: 'menu-bar', mode: 'menu-bar' }] }))
   writeFileSync(join(folder, 'icon.png'), readFileSync(resolve('assets/icon.png')))
-  writeFileSync(join(folder, 'menu-bar.js'), `const React=require('react');const {MenuBarExtra,Clipboard,Cache}=require('@raycast/api');exports.default=function Command(){const cache=React.useMemo(()=>new Cache(),[]);const saved=React.useSyncExternalStore(cache.subscribe,()=>cache.get('history')??'[]');const changed=JSON.parse(saved).length>0;return React.createElement(MenuBarExtra,{icon:'EyeDropper'},React.createElement(MenuBarExtra.Item,{title:'Pick Color',onAction:()=>{throw Error('unsupported native picker')}}),React.createElement(MenuBarExtra.Section,{title:'Favorites'},React.createElement(MenuBarExtra.Item,{title:'#FF6363',onAction:()=>Clipboard.copy('#FF6363')})),React.createElement(MenuBarExtra.Section,{title:'Recent Colors'},React.createElement(MenuBarExtra.Item,{title:changed?'#334455':'#112233',onAction:event=>{if(event?.type!=='left-click')throw Error('Menu action was not a left click');cache.set('history',JSON.stringify(['#334455']))}})))}`)
+  writeFileSync(join(folder, 'menu-bar.js'), `const React=require('react');const {MenuBarExtra,Clipboard,Cache}=require('@raycast/api');exports.default=function Command(){const cache=React.useMemo(()=>new Cache(),[]);const saved=React.useSyncExternalStore(cache.subscribe,()=>cache.get('history')??'[]');const changed=JSON.parse(saved).length>0;return React.createElement(MenuBarExtra,{icon:'EyeDropper'},React.createElement(MenuBarExtra.Item,{title:'Pick Color',onAction:()=>{throw Error('unsupported native picker')}}),React.createElement(MenuBarExtra.Section,{title:'Favorites'},React.createElement(MenuBarExtra.Item,{title:'#FF6363',onAction:()=>Clipboard.copy('#FF6363')})),React.createElement(MenuBarExtra.Section,{title:'Recent Colors'},React.createElement(MenuBarExtra.Item,{title:changed?'#334455':'#112233',onAction:async event=>{if(event?.type!=='left-click')throw Error('Menu action was not a left click');cache.set('history',JSON.stringify(['#334455']));await new Promise(resolve=>setTimeout(resolve,50))}})))}`)
   const install = new UserRaycastInstall(join(root, 'installed'))
   const copied: string[] = [], messages: any[] = []
+  let pid: number | undefined
   const manager = new UserRaycastManager({ install, runtime, nodePath: process.execPath, artifact, onMessage: (_owner, message) => messages.push(message), copyText: (_owner, text) => { copied.push(text) } })
   try {
     await buildUserRaycast(runtime)
@@ -202,33 +203,40 @@ test('an approved menu command projects saved colors, refreshes and copies only 
     install.approve(selected.digest)
     await assert.rejects(manager.start(owner), /not enabled/i)
     install.enable()
-    await manager.start(owner)
+    await manager.start(owner); pid = manager.childPid
     const ready = messages.find(message => message.type === 'ready')
     assert.ok(ready)
     assert.match(JSON.stringify(ready.root), /#112233/, `Menu render failed: ${JSON.stringify(messages)}`)
     assert.deepEqual(manager.menuIcon().subarray(0, 8), readFileSync(resolve('assets/icon.png')).subarray(0, 8))
     const invoke = (message: any, title: string) => {
-      const menu = colorPickerMenu(message.root, eventId => manager.send(owner, { revision: message.revision, eventId, kind: 'action' }))
+      let clicked: string | undefined
+      const menu = colorPickerMenu(message.root, eventId => { manager.send(owner, { revision: message.revision, eventId, kind: 'action' }); clicked = eventId })
       const item = menu.flatMap(entry => entry.submenu ?? []).find(entry => entry.label === title)
       assert.ok(item?.click, `Missing saved color ${title}`)
-      item.click()
+      item.click(); assert.ok(clicked); return clicked
     }
-    invoke(ready, '#112233')
-    const deadline = Date.now() + 5000
-    while (!messages.some(message => message.type === 'patch') && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
-    const patch = messages.find(message => message.type === 'patch')
+    const firstAction = invoke(ready, '#112233'), deadline = Date.now() + 5000
+    const outcome = (revision: number, eventId: string) => messages.find(message => message.type === 'outcome' && message.revision === revision && message.eventId === eventId)
+    while ((!messages.some(message => message.type === 'patch') || !outcome(ready.revision, firstAction)) && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
+    assert.equal(outcome(ready.revision, firstAction)?.succeeded, true)
+    const patch = messages.findLast(message => message.type === 'patch')
     assert.ok(patch)
     assert.match(JSON.stringify(patch.root), /#334455/)
     assert.equal(JSON.parse(readFileSync(install.statePath('color-picker'), 'utf8')).history, '["#334455"]')
-    invoke(patch, '#FF6363')
-    while (copied.length === 0 && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
+    const copyAction = invoke(patch, '#FF6363'), copyDeadline = Date.now() + 5000
+    while ((copied.length === 0 || !outcome(patch.revision, copyAction)) && Date.now() < copyDeadline) await new Promise(resolve => setTimeout(resolve, 10))
+    assert.equal(outcome(patch.revision, copyAction)?.succeeded, true)
     assert.deepEqual(copied, ['#FF6363'])
     await manager.closeOwner(owner)
     assert.ok(manager.childPid, 'the explicitly activated menu outlives a dismissed launcher')
     await manager.close()
     assert.equal(manager.childPid, undefined)
     assert.throws(() => manager.menuIcon(), /menu|active/i)
-  } finally { await manager.close(); rmSync(root, { recursive: true, force: true }) }
+  } finally {
+    await manager.close()
+    if (pid) { assert.throws(() => process.kill(-pid!, 0), /ESRCH/); t.diagnostic(`Stopped owned fixture process group: ${pid}`) }
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 test('a selected local List stays inert until approved and enabled, then runs in an owned child', async t => {

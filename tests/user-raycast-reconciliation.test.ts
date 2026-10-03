@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
@@ -7,6 +7,7 @@ import { test } from 'node:test'
 import { buildUserRaycast } from '../scripts/user-raycast-build.mjs'
 import { UserRaycastInstall } from '../src/user-raycast-install.ts'
 import { UserRaycastManager, type UserRaycastMessage } from '../src/user-raycast-manager.ts'
+import { createUserRaycastStorage } from '../src/user-raycast-storage.ts'
 
 type ViewNode = { type: string; props: Record<string, unknown>; children: Array<ViewNode | string> }
 const visit = (node: ViewNode): ViewNode[] => [node, ...node.children.flatMap(child => typeof child === 'string' ? [] : visit(child))]
@@ -77,6 +78,6 @@ for (const layout of ['rows', 'root-lists'] as const) {
     while (!messages.some(message => message.type === 'outcome' && message.revision === revision) && !errors.length && Date.now() < end) await new Promise(resolve => setTimeout(resolve, 10))
     assert.deepEqual(errors, [])
     assert.equal(messages.findLast(message => message.type === 'outcome')?.succeeded, true)
-    assert.equal(JSON.parse(readFileSync(install.statePath('offline-order'), 'utf8')).chosen, 'Gamma', 'A moved result keeps its own action')
+    assert.equal(await createUserRaycastStorage(install.statePath('offline-order')).getItem('chosen'), 'Gamma', 'A moved result keeps its own action')
   })
 }

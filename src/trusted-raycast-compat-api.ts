@@ -1,6 +1,7 @@
 import React from 'react'
 import { afterSucceededEffect } from './trusted-raycast-effect-callback.ts'
 import { authorizeUserRaycastPkce } from './user-raycast-oauth.ts'
+import type { UserRaycastLocalStorageValue } from './user-raycast-storage.ts'
 import { isUserRaycastFieldValue, isUserRaycastOAuthCleanupCounts, isUserRaycastOAuthCleanupReasons, type UserRaycastFieldKind, type UserRaycastFieldValue, type UserRaycastOAuthCleanupReason } from './user-raycast-contract.ts'
 
 const element = (type: string, props: Record<string, unknown> | null, children: React.ReactNode[] = []) => React.createElement(type, props, ...children)
@@ -49,7 +50,11 @@ export const Grid = Object.assign(searchableCollection('raycast-grid'), {
 export const LaunchType = Object.freeze({ UserInitiated: 'userInitiated', Background: 'background' } as const)
 type CommandEnvironment = Readonly<{ extensionName: string; entryPointName: string; entryPointMode: 'no-view' | 'view' | 'menu-bar'; launchType?: typeof LaunchType[keyof typeof LaunchType] }>
 type NativeEffectRequest = { kind: 'copy' | 'openGoogleTranslate' | 'paste' | 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>>; text?: string; url?: string }
-type Compatibility = { environment?: CommandEnvironment; native: (request: NativeEffectRequest) => Promise<void>; authUrl?: (url: string) => void | Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void; hud?: (message: string) => void; storage?: { allItems?: () => Promise<Record<string, string>>; getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void>; clear: () => Promise<void> }; cache?: (namespace?: string) => { get: (key: string) => string | undefined; has?: (key: string) => boolean; readonly isEmpty?: boolean; set: (key: string, value: string) => void; remove: (key: string) => boolean; clear: (options?: { notifySubscribers: boolean }) => void; subscribe: (listener: (key: string | undefined, data: string | undefined) => void) => () => void } }
+type CompatibilityStorage = { removeItem: (key: string) => Promise<void>; clear: () => Promise<void> } & (
+  { typed?: false; allItems?: () => Promise<Record<string, string>>; getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void> }
+  | { typed: true; allItems?: () => Promise<Record<string, UserRaycastLocalStorageValue>>; getItem: (key: string) => Promise<UserRaycastLocalStorageValue | undefined>; setItem: (key: string, value: UserRaycastLocalStorageValue) => Promise<void> }
+)
+type Compatibility = { environment?: CommandEnvironment; native: (request: NativeEffectRequest) => Promise<void>; authUrl?: (url: string) => void | Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void; hud?: (message: string) => void; storage?: CompatibilityStorage; cache?: (namespace?: string) => { get: (key: string) => string | undefined; has?: (key: string) => boolean; readonly isEmpty?: boolean; set: (key: string, value: string) => void; remove: (key: string) => boolean; clear: (options?: { notifySubscribers: boolean }) => void; subscribe: (listener: (key: string | undefined, data: string | undefined) => void) => () => void } }
 let compatibility: Compatibility
 let commandEnvironment: CommandEnvironment | undefined
 export let queryEpoch = 0
@@ -391,9 +396,14 @@ export class Cache {
   subscribe = (listener: (key: string | undefined, data: string | undefined) => void): (() => void) => this.store.subscribe(listener)
 }
 export const LocalStorage = {
-  allItems: async (): Promise<Record<string, string>> => compatibility.storage?.allItems ? compatibility.storage.allItems() : unsupported('LocalStorage.allItems'),
-  getItem: async (key: string): Promise<string | undefined> => compatibility.storage ? compatibility.storage.getItem(key) : unsupported('LocalStorage.getItem'),
-  setItem: async (key: string, value: string): Promise<void> => compatibility.storage ? compatibility.storage.setItem(key, value) : unsupported('LocalStorage.setItem'),
+  allItems: async <T extends Record<string, UserRaycastLocalStorageValue> = Record<string, UserRaycastLocalStorageValue>>(): Promise<T> => compatibility.storage?.allItems ? await compatibility.storage.allItems() as T : unsupported('LocalStorage.allItems'),
+  getItem: async <T extends UserRaycastLocalStorageValue = UserRaycastLocalStorageValue>(key: string): Promise<T | undefined> => compatibility.storage ? await compatibility.storage.getItem(key) as T | undefined : unsupported('LocalStorage.getItem'),
+  setItem: async (key: string, value: UserRaycastLocalStorageValue): Promise<void> => {
+    const store = compatibility.storage ?? unsupported('LocalStorage.setItem')
+    if (store.typed === true) return store.setItem(key, value)
+    if (typeof value !== 'string') return unsupported('LocalStorage.setItem typed values')
+    return store.setItem(key, value)
+  },
   removeItem: async (key: string): Promise<void> => compatibility.storage ? compatibility.storage.removeItem(key) : unsupported('LocalStorage.removeItem'),
   clear: async (): Promise<void> => compatibility.storage ? compatibility.storage.clear() : unsupported('LocalStorage.clear'),
 }
