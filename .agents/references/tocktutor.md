@@ -93,6 +93,8 @@ Snapshot body and metadata publication use exclusive writes. A filename collisio
 
 Document moves and attachment trash/restore also recheck cancellation and the captured vault after their final source validation, immediately before removing the original entry. Rejection at that boundary preserves the original bytes and removes the exclusively staged destination when its identity is unchanged; unsafe rollback reports the retained destination as a partial result. `tockbot-note-runtime/tests/move-cancellation.test.ts` covers cancellation and vault replacement at that boundary.
 
+Document creation, saves, attachment storage, and passive-configuration restores recheck cancellation and the captured vault after their final asynchronous filesystem validation, before publishing bytes. Cancelling or switching vaults during that validation preserves existing note bytes and removes staged temporary files. The real-filesystem regressions are in `tockbot-note-runtime/tests/write-cancellation.test.ts`.
+
 #### Persistent Search
 
 Filesystem observation uses `chokidar@5.0.0` so atomic note replacement does not strand Linux watches on retired inodes. Initial reads wait for watcher startup; rapid edits settle for 50 ms, and generation/path/symlink checks still guard every publication. Provider disposal awaits current and retired watcher cleanup. Both workspaces apply `patches/chokidar@5.0.0.patch` under `plugins/tocktutor/`: it forwards nonpersistent native errors and cancels write-finish polling on close. Keep both patch bindings/locks and the staged/Nix dependency closure aligned; `tests/tocktutor-watcher.test.ts` runs the packaged-runtime regressions in the root platform matrix.
@@ -241,6 +243,8 @@ The seven model-facing Pennivo read adapters are `list_files`, `read_file`, `sea
 Queue and permission epoch persist in the version-1 DSH storage domain `tocktutor_assistant`, separate from vault files. Defaults are 100 pending proposals, 500 audit records, and five-minute expiry (at most ten minutes); proposal content is capped at 1 MiB and serialized queue state at 8 MiB. Ordinary TockDriver proposals can survive assistant restart after revalidation; child-bound live-turn state is not resumed. The browser reviews a redacted 1,000-character summary, not the full proposed content or a complete diff. Summary previews stay below transport limits, and a stage rejected by aggregate serialization limits leaves the accepted queue and audit intact. The assistant panel reloads proposals/audit as the selected conversation's running/tool state changes, so asynchronously staged writes become reviewable without leaving the note.
 
 The text-only provider runner used by search expansion and Quick Answer requests iterator closure when a turn ends. Cancellation also interrupts a pending cleanup wait, so a provider that ignores `AbortSignal` cannot keep the cancelled turn open. Its eventual output stays suppressed and late cleanup failures remain observed; actual provider resource release still depends on the provider honoring cancellation or settling its pending work.
+
+An accepted assistant approval retains its original proposal deadline through persistence, source/target reads, and the Runtime write. Deadline cancellation uses the queue's clock and reaches the Runtime's precommit check, so waiting for a save cannot extend approval authority. The timer is released when the decision settles. A successful Runtime commit remains `applied` when its response arrives after expiry.
 
 ### `@tockteam/tocktutor-import-export`
 
@@ -391,6 +395,8 @@ pnpm run smoke:app
 On macOS, use `pnpm test:launcher:electron` while iterating; it rebuilds TockTutor and the root, quick-stages, and runs the Electron launcher/route checks. Run `pnpm test:launcher:installed` only after focused checks pass, once per final commit, never concurrently, with `TOCKTEAM_INSTALLED_SMOKE_TEMP_ROOT` inside a `.noindex` cache directory. Those launcher checks do not cover every TockTutor native feature.
 
 TockTutor Desktop behavior that depends on a real Electron window still needs the applicable packed Loader and Desktop smoke path; unit tests and `--dump-config` do not prove native authorization, isolated Web Viewer frames, picker, microphone, attachment ingestion, pop-out, print, export, managed-vault creation, or restart recovery. Packaged Desktop preserves Electron's standard `--user-data-dir` switch for copied-profile acceptance; without that explicit switch it retains the compatibility data root. Use copied disposable user data for destructive cutover proof and stop every Electron/runtime process afterward. For temporary macOS Electron/Chromium verification, preserve `HOME` where possible and isolate application data; pass `--use-mock-keychain` before any `HOME` override and never interact with the user's Keychain.
+
+The client-graph smoke uses `scripts/smoke-client-preload.cjs`, whose isolated Desktop bridge includes the first-run `onboarding.status()` and `onboarding.complete()` methods. It reports setup complete so this gate can reach the TockTutor clients; first-run setup behavior has separate `desktop-onboarding-*.test.ts` coverage.
 
 ## Change Checklist
 
