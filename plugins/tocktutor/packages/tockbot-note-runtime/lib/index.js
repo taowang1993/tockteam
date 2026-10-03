@@ -1241,7 +1241,9 @@ async function captureSnapshotRecord(stateRoot, vault, relativePath, content, re
     signal.throwIfAborted();
     assertCurrent();
     const cutoff = createdAt - retentionDays * 24 * 60 * 60_000;
-    for (const record of records.filter((candidate, index) => (index >= limit || candidate.info.createdAt < cutoff))) {
+    // The returned recovery copy must survive timestamp ties or a backwards clock.
+    const olderRecords = records.filter(record => record.info.id !== id);
+    for (const record of olderRecords.filter((candidate, index) => (index >= limit - 1 || candidate.info.createdAt < cutoff))) {
         signal.throwIfAborted();
         assertCurrent();
         await rm(record.bodyPath, { force: true });
@@ -4965,12 +4967,13 @@ export class NoteVaultRuntime extends Service {
     }
     async captureRecoverySnapshot(path, content, state, reason, signal = POST_COMMIT_SIGNAL) {
         const root = this.vaultRoot;
-        if (this.stateRoot === null || root === null) {
+        const stateRoot = this.stateRoot;
+        if (stateRoot === null || root === null) {
             throw new NoteVaultError('recovery-unavailable', 'Recovery storage is required before overwriting documents');
         }
         const assertCurrent = () => { this.assertCapturedVault(state, root); };
         try {
-            return await captureSnapshotRecord(this.stateRoot, { id: state.id, generation: state.generation }, path, content, reason, this.maxReadBytes, this.snapshotLimit, this.snapshotRetentionDays, signal, assertCurrent);
+            return await this.runDraftOperation(`snapshot:${state.id}:${path}`, () => captureSnapshotRecord(stateRoot, { id: state.id, generation: state.generation }, path, content, reason, this.maxReadBytes, this.snapshotLimit, this.snapshotRetentionDays, signal, assertCurrent));
         }
         catch (error) {
             if (error instanceof NoteVaultError || (error instanceof Error && error.name === 'AbortError'))
@@ -4981,30 +4984,40 @@ export class NoteVaultRuntime extends Service {
     async listSnapshots(request, signal) {
         const { root, state } = this.captureExpectedVault(request.expectedVault);
         signal.throwIfAborted();
-        if (this.stateRoot === null) {
+        const stateRoot = this.stateRoot;
+        if (stateRoot === null) {
             throw new NoteVaultError('recovery-unavailable', 'Recovery storage is not configured');
         }
         const relativePath = normalizeDocumentPath(request.path);
-        const records = await listSnapshotRecords(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, this.maxReadBytes, signal);
-        this.assertCapturedVault(state, root);
-        signal.throwIfAborted();
-        return { generation: state.generation, snapshots: records.map(record => record.info) };
+        return await this.runDraftOperation(`snapshot:${state.id}:${relativePath}`, async () => {
+            signal.throwIfAborted();
+            this.assertCapturedVault(state, root);
+            const records = await listSnapshotRecords(stateRoot, { id: state.id, generation: state.generation }, relativePath, this.maxReadBytes, signal);
+            this.assertCapturedVault(state, root);
+            signal.throwIfAborted();
+            return { generation: state.generation, snapshots: records.map(record => record.info) };
+        });
     }
     async readSnapshot(request, signal) {
         const { root, state } = this.captureExpectedVault(request.expectedVault);
         signal.throwIfAborted();
-        if (this.stateRoot === null) {
+        const stateRoot = this.stateRoot;
+        if (stateRoot === null) {
             throw new NoteVaultError('recovery-unavailable', 'Recovery storage is not configured');
         }
         const relativePath = normalizeDocumentPath(request.path);
-        const record = await readSnapshotRecord(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, request.snapshotId, this.maxReadBytes, signal);
-        this.assertCapturedVault(state, root);
-        signal.throwIfAborted();
-        return {
-            content: record.body.toString('utf8'),
-            generation: state.generation,
-            snapshot: record.info,
-        };
+        return await this.runDraftOperation(`snapshot:${state.id}:${relativePath}`, async () => {
+            signal.throwIfAborted();
+            this.assertCapturedVault(state, root);
+            const record = await readSnapshotRecord(stateRoot, { id: state.id, generation: state.generation }, relativePath, request.snapshotId, this.maxReadBytes, signal);
+            this.assertCapturedVault(state, root);
+            signal.throwIfAborted();
+            return {
+                content: record.body.toString('utf8'),
+                generation: state.generation,
+                snapshot: record.info,
+            };
+        });
     }
     async captureSnapshot(request, signal) {
         const { root, state } = this.captureExpectedVault(request.expectedVault);
@@ -5021,18 +5034,23 @@ export class NoteVaultRuntime extends Service {
     async clearSnapshots(request, signal) {
         const { root, state } = this.captureExpectedVault(request.expectedVault);
         signal.throwIfAborted();
-        if (this.stateRoot === null)
+        const stateRoot = this.stateRoot;
+        if (stateRoot === null)
             throw new NoteVaultError('recovery-unavailable', 'Recovery storage is not configured');
         const relativePath = normalizeDocumentPath(request.path);
-        const records = await listSnapshotRecords(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, this.maxReadBytes, signal);
-        for (const record of records) {
+        return await this.runDraftOperation(`snapshot:${state.id}:${relativePath}`, async () => {
             signal.throwIfAborted();
             this.assertCapturedVault(state, root);
-            await rm(record.bodyPath, { force: true });
-            await rm(record.metaPath, { force: true });
-        }
-        this.assertCapturedVault(state, root);
-        return { generation: state.generation, removed: records.length };
+            const records = await listSnapshotRecords(stateRoot, { id: state.id, generation: state.generation }, relativePath, this.maxReadBytes, signal);
+            for (const record of records) {
+                signal.throwIfAborted();
+                this.assertCapturedVault(state, root);
+                await rm(record.bodyPath, { force: true });
+                await rm(record.metaPath, { force: true });
+            }
+            this.assertCapturedVault(state, root);
+            return { generation: state.generation, removed: records.length };
+        });
     }
     async restoreSnapshot(request, signal) {
         const snapshot = await this.readSnapshot(request, signal);
