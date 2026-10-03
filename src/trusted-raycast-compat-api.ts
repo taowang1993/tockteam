@@ -89,9 +89,17 @@ export function useNavigation(): { push: (view: unknown) => void; pop: () => voi
 
 // Each mounted Form owns its values; no process-global registry outlives that form.
 type StoredFormValue = readonly [UserRaycastFieldKind, UserRaycastFieldValue]
-const FormContext = React.createContext<{ values: Map<string, UserRaycastFieldValue>; dates: Set<string>; stored: Map<string, UserRaycastFieldKind>; load(): Map<string, StoredFormValue>; save?: (value: string) => void } | null>(null)
+const FormContext = React.createContext<{ values: Map<string, UserRaycastFieldValue>; dates: Map<string, unknown>; stored: Map<string, UserRaycastFieldKind>; load(): Map<string, StoredFormValue>; save?: (value: string) => void } | null>(null)
 const DropdownDefaultContext = React.createContext<((value: string) => void) | null>(null)
 const copyFormValue = (value: UserRaycastFieldValue): UserRaycastFieldValue => Array.isArray(value) ? [...value] : value
+// Picker intent belongs only to our fresh Date objects, never to an inferred clock or persisted bit.
+const formDateMeaning = new WeakMap<Date, { time: number; fullDay: boolean }>()
+const isFullDayFormDate = (date?: Date | null): boolean => {
+  if (date === null || date === undefined) return false
+  const known = formDateMeaning.get(date)
+  if (!known || Date.prototype.getTime.call(date) !== known.time) return unsupported('Form.DatePicker.isFullDay for unknown or changed dates')
+  return known.fullDay
+}
 const encodeFormDate = (value: unknown): string | null => {
   if (value === null) return null
   if (value instanceof Date) {
@@ -99,9 +107,13 @@ const encodeFormDate = (value: unknown): string | null => {
   }
   throw new Error('Invalid date field value')
 }
-const decodeFormDate = (value: UserRaycastFieldValue): Date | null => {
+const decodeFormDate = (value: UserRaycastFieldValue, dateType: unknown): Date | null => {
   if (!isUserRaycastFieldValue('date', value)) throw new Error('Invalid date field value')
-  return typeof value === 'string' ? new Date(value) : null
+  if (dateType !== 'date' && dateType !== 'date_time') throw new Error('Invalid date field type')
+  if (typeof value !== 'string') return null
+  const date = new Date(value)
+  formDateMeaning.set(date, { time: Date.prototype.getTime.call(date), fullDay: dateType === 'date' })
+  return date
 }
 const formDateKey = (value: string, type: unknown): number => {
   const date = new Date(value)
@@ -123,7 +135,7 @@ const form = (props: Record<string, unknown>) => {
   const [state] = React.useState(() => {
     const cache = process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? undefined : compatibility.cache?.(`form:${process.env.TOCKTEAM_USER_RAYCAST_COMMAND}`)
     let previous: Map<string, StoredFormValue> | undefined
-    return { values: new Map<string, UserRaycastFieldValue>(), dates: new Set<string>(), stored: new Map<string, UserRaycastFieldKind>(), load: () => previous ??= readStoredForm(cache?.get(formId)), ...(cache ? { save: (value: string) => { cache.set(formId, value); previous = readStoredForm(value) } } : {}) }
+    return { values: new Map<string, UserRaycastFieldValue>(), dates: new Map<string, unknown>(), stored: new Map<string, UserRaycastFieldKind>(), load: () => previous ??= readStoredForm(cache?.get(formId)), ...(cache ? { save: (value: string) => { cache.set(formId, value); previous = readStoredForm(value) } } : {}) }
   })
   return React.createElement(FormContext.Provider, { value: state }, element('raycast-form', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? {} : { formId }, [props.actions as React.ReactNode, ...React.Children.toArray(props.children as React.ReactNode)]))
 }
@@ -172,10 +184,10 @@ const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFi
     if (!collected) return
     if (collected.values.has(id)) throw new Error('Form field IDs must be unique')
     collected.values.set(id, copyFormValue(value))
-    if (fieldKind === 'date') collected.dates.add(id)
+    if (fieldKind === 'date') collected.dates.set(id, props.dateType)
     if (props.storeValue === true) collected.stored.set(id, fieldKind)
     return () => { collected.values.delete(id); collected.dates.delete(id); collected.stored.delete(id) }
-  }, [collected, id, value, props.storeValue])
+  }, [collected, id, value, props.storeValue, props.dateType])
   // The reviewed bundled projection remains unchanged; callbacks stay in the private child.
   const field = element('raycast-text-field', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? props : {
     ...props, ref: undefined, fieldKind, value, fieldEventId, focusRequest, ...(fieldKind === 'date' ? { resetRequest } : {}),
@@ -230,9 +242,9 @@ const datePicker = (props: Record<string, unknown>) => {
     ...props, ...bounds, dateType,
     defaultValue: props.defaultValue === undefined ? undefined : encodeFormDate(props.defaultValue),
     value: props.value === undefined ? undefined : encodeFormDate(props.value),
-    onChange: (value: UserRaycastFieldValue) => typeof props.onChange === 'function' ? props.onChange(decodeFormDate(value)) : undefined,
-    onFocus: (event: { target: { id: string; value: UserRaycastFieldValue }; type: string }) => typeof props.onFocus === 'function' ? props.onFocus({ ...event, target: { id: event.target.id, value: decodeFormDate(event.target.value) } }) : undefined,
-    onBlur: (event: { target: { id: string; value: UserRaycastFieldValue }; type: string }) => typeof props.onBlur === 'function' ? props.onBlur({ ...event, target: { id: event.target.id, value: decodeFormDate(event.target.value) } }) : undefined,
+    onChange: (value: UserRaycastFieldValue) => typeof props.onChange === 'function' ? props.onChange(decodeFormDate(value, dateType)) : undefined,
+    onFocus: (event: { target: { id: string; value: UserRaycastFieldValue }; type: string }) => typeof props.onFocus === 'function' ? props.onFocus({ ...event, target: { id: event.target.id, value: decodeFormDate(event.target.value, dateType) } }) : undefined,
+    onBlur: (event: { target: { id: string; value: UserRaycastFieldValue }; type: string }) => typeof props.onBlur === 'function' ? props.onBlur({ ...event, target: { id: event.target.id, value: decodeFormDate(event.target.value, dateType) } }) : undefined,
   })
 }
 const formDescription = (props: Record<string, unknown>) => {
@@ -242,7 +254,7 @@ const formDescription = (props: Record<string, unknown>) => {
 const formSeparator = () => element('raycast-form-separator', {})
 export const Form = Object.assign(form, {
   Description: formDescription, Separator: formSeparator,
-  DatePicker: Object.assign(datePicker, { Type: Object.freeze({ Date: 'date', DateTime: 'date_time' }), isFullDay: (_date?: Date | null): never => unsupported('Form.DatePicker.isFullDay') }),
+  DatePicker: Object.assign(datePicker, { Type: Object.freeze({ Date: 'date', DateTime: 'date_time' }), isFullDay: isFullDayFormDate }),
   TextField: basicFormField('text', ''), PasswordField: basicFormField('password', ''),
   TextArea: basicFormField('textarea', ''), Checkbox: basicFormField('checkbox', false),
   Dropdown: Object.assign(process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? formDropdown : basicFormField('dropdown', ''), { Item: dropdownItem, Section: section }),
@@ -362,7 +374,7 @@ export const Action = Object.assign(action, {
   SubmitForm: (props: Record<string, unknown>) => {
     const collected = React.useContext(FormContext)
     return element('raycast-action', { title: props.title ?? 'Submit', ...(process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? {} : { submitForm: true }), shortcut: JSON.stringify(props.shortcut ?? null), onAction: async () => {
-      const values = Object.fromEntries(Array.from(collected?.values ?? [], ([id, value]) => [id, collected?.dates.has(id) ? decodeFormDate(value) : copyFormValue(value)]))
+      const values = Object.fromEntries(Array.from(collected?.values ?? [], ([id, value]) => [id, collected?.dates.has(id) ? decodeFormDate(value, collected.dates.get(id)) : copyFormValue(value)]))
       const stored = collected?.save && collected.stored.size ? new Map(collected.load()) : undefined
       if (stored) for (const [id, kind] of collected!.stored) stored.set(id, [kind, copyFormValue(collected!.values.get(id)!)])
       const snapshot = stored ? JSON.stringify(Array.from(stored, ([id, [kind, value]]) => [id, kind, value])) : undefined
