@@ -70,8 +70,9 @@ const emitAfterLayout = (): void => {
   queueMicrotask(() => { emitScheduled = false; try { emit() } catch (error) { reportError(error) } })
 }
 const storage = createUserRaycastStorage(process.env.TOCKTEAM_USER_RAYCAST_STATE!)
+const launchProps = Object.freeze({ launchType: api.LaunchType.UserInitiated, arguments: Object.freeze({}) })
 api.configureCompatibility({
-  environment: { extensionName: extensionId, entryPointName: command, entryPointMode: mode },
+  environment: { extensionName: extensionId, entryPointName: command, entryPointMode: mode, launchType: launchProps.launchType },
   authUrl: (url: string) => send({ type: 'auth-url', extensionId, sessionId, revision: Math.max(0, revision), url }),
   native: (request: { kind: string; text?: string }) => new Promise<void>((resolve, reject) => {
     if (request.kind !== 'copy') { reject(new Error(`Raycast native effect ${request.kind} is unsupported for user extensions`)); return }
@@ -130,7 +131,7 @@ const Command = typeof imported.default === 'function' ? imported.default : impo
 if (typeof Command !== 'function') throw new Error('Selected command has no callable default export')
 let searchHandler: ((value: string) => void) | undefined
 if (mode === 'view' || mode === 'menu-bar') {
-  const mount = (view?: unknown): void => renderer.updateContainer(view ?? React.createElement(Command), container, null, () => {
+  const mount = (view?: unknown): void => renderer.updateContainer(view ?? React.createElement(Command, launchProps), container, null, () => {
     searchHandler = (globalThis as { __trustedRaycastSearch?: (value: string) => void }).__trustedRaycastSearch
   })
   if (mode === 'view') api.registerNavigationRenderer(mount)
@@ -138,7 +139,7 @@ if (mode === 'view' || mode === 'menu-bar') {
 } else {
   activeAction = { eventId: 'run', revision: 0 }
   emit()
-  Promise.resolve().then(() => Command({ arguments: {} })).then(() => send({ type: 'outcome', extensionId, sessionId, revision: 0, eventId: 'run', succeeded: true, message: '' }), error => send({ type: 'outcome', extensionId, sessionId, revision: 0, eventId: 'run', succeeded: false, message: String(error).slice(0, 512) })).finally(() => { activeAction = undefined })
+  Promise.resolve().then(() => Command(launchProps)).then(() => send({ type: 'outcome', extensionId, sessionId, revision: 0, eventId: 'run', succeeded: true, message: '' }), error => send({ type: 'outcome', extensionId, sessionId, revision: 0, eventId: 'run', succeeded: false, message: String(error).slice(0, 512) })).finally(() => { activeAction = undefined })
 }
 process.stdin.setEncoding('utf8')
 const readLines = createTrustedRaycastLineReader(TRUSTED_RAYCAST_INPUT_FRAME_BYTES)

@@ -46,7 +46,8 @@ export const Grid = Object.assign(searchableCollection('raycast-grid'), {
   Section: section,
   EmptyView: component('raycast-empty'),
 })
-type CommandEnvironment = Readonly<{ extensionName: string; entryPointName: string; entryPointMode: 'no-view' | 'view' | 'menu-bar' }>
+export const LaunchType = Object.freeze({ UserInitiated: 'userInitiated', Background: 'background' } as const)
+type CommandEnvironment = Readonly<{ extensionName: string; entryPointName: string; entryPointMode: 'no-view' | 'view' | 'menu-bar'; launchType?: typeof LaunchType[keyof typeof LaunchType] }>
 type NativeEffectRequest = { kind: 'copy' | 'openGoogleTranslate' | 'paste' | 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>>; text?: string; url?: string }
 type Compatibility = { environment?: CommandEnvironment; native: (request: NativeEffectRequest) => Promise<void>; authUrl?: (url: string) => void | Promise<void>; openPreferences?: () => void; selection: () => Promise<string>; toast: (toast: { title: string; message: string; style: 'failure' | 'success' | 'animated' }) => void; hud?: (message: string) => void; storage?: { allItems?: () => Promise<Record<string, string>>; getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void>; removeItem: (key: string) => Promise<void>; clear: () => Promise<void> }; cache?: (namespace?: string) => { get: (key: string) => string | undefined; has?: (key: string) => boolean; readonly isEmpty?: boolean; set: (key: string, value: string) => void; remove: (key: string) => boolean; clear: (options?: { notifySubscribers: boolean }) => void; subscribe: (listener: (key: string | undefined, data: string | undefined) => void) => () => void } }
 let compatibility: Compatibility
@@ -58,7 +59,8 @@ export function configureCompatibility(value: Compatibility): void {
   const next = value.environment === undefined ? undefined : { ...value.environment }
   if (next && (typeof next.extensionName !== 'string' || !next.extensionName || next.extensionName.length > 128
     || typeof next.entryPointName !== 'string' || !next.entryPointName || next.entryPointName.length > 128
-    || !['view', 'no-view', 'menu-bar'].includes(next.entryPointMode))) throw new Error('Invalid command environment')
+    || !['view', 'no-view', 'menu-bar'].includes(next.entryPointMode)
+    || next.launchType !== undefined && !Object.values(LaunchType).includes(next.launchType))) throw new Error('Invalid command environment')
   const snapshot = next ? Object.freeze(next) : undefined
   compatibility = value
   commandEnvironment = snapshot
@@ -333,6 +335,7 @@ export const environment = Object.freeze({
   get entryPointName(): string { return commandEnvironment?.entryPointName ?? unsupported('environment.entryPointName') },
   get entryPointType(): 'command' { return commandEnvironment ? 'command' : unsupported('environment.entryPointType') },
   get entryPointMode(): CommandEnvironment['entryPointMode'] { return commandEnvironment?.entryPointMode ?? unsupported('environment.entryPointMode') },
+  get launchType(): NonNullable<CommandEnvironment['launchType']> { return commandEnvironment?.launchType ?? unsupported('environment.launchType') },
   get commandName(): string { return environment.entryPointName },
   get commandMode(): CommandEnvironment['entryPointMode'] { return environment.entryPointMode },
 })
