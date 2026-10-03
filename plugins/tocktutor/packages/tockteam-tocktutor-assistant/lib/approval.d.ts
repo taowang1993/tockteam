@@ -26,6 +26,7 @@ export declare class ProposalApprovalExecutor {
     private readonly persist;
     constructor(proposals: ProposalQueue, runtime: ApprovalRuntime, currentContext: () => ApprovalContext, persist?: () => Promise<void>);
     approve(proposalId: string, signal: AbortSignal): Promise<ApprovalResult>;
+    private apply;
     private persistOutcome;
     private assertCurrent;
     private openRequired;

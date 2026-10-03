@@ -105,12 +105,18 @@ function isAbort(error: unknown, signal: AbortSignal): boolean {
   return signal.aborted || (error instanceof Error && error.name === 'AbortError')
 }
 
+function cancellationFailure(signal: AbortSignal): ApprovalError {
+  return failure(signal.reason instanceof ApprovalError && signal.reason.code === 'EXPIRED'
+    ? 'EXPIRED'
+    : 'ABORTED')
+}
+
 function runtimeFailure(
   error: unknown,
   signal: AbortSignal,
   phase: 'source' | 'target' | 'create' | 'update',
 ): ApprovalError {
-  if (isAbort(error, signal)) return failure('ABORTED')
+  if (isAbort(error, signal)) return cancellationFailure(signal)
   if (!isRuntimeError(error)) return failure('RUNTIME_FAILURE')
   switch (error.code) {
     case 'inactive':
@@ -222,6 +228,18 @@ export class ProposalApprovalExecutor {
       await this.persistOutcome()
       throw error
     }
+    const deadline = new AbortController()
+    const timer = setTimeout(() => deadline.abort(failure('EXPIRED')),
+      this.proposals.approvalTimeRemaining(record))
+    timer.unref()
+    try {
+      return await this.apply(record, AbortSignal.any([signal, deadline.signal]))
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  private async apply(record: ConsumedProposal, signal: AbortSignal): Promise<ApprovalResult> {
     let written: WriteDocumentResult
     try {
       await this.persist()
@@ -296,7 +314,7 @@ export class ProposalApprovalExecutor {
   }
 
   private assertCurrent(record: ConsumedProposal, signal: AbortSignal): void {
-    if (signal.aborted) throw failure('ABORTED')
+    if (signal.aborted) throw cancellationFailure(signal)
     if (!this.proposals.approvalIsFresh(record)) throw failure('EXPIRED')
     let current: ApprovalContext
     let state: NoteVaultState

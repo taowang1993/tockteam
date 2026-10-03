@@ -443,6 +443,96 @@ test('approval crossing its queue-clock expiry fails before mutation', async () 
   assert.equal(proposals.audit().at(-1)?.reason, 'EXPIRED')
 })
 
+for (const operation of ['create', 'update'] as const) {
+  test(`proposal expiry cancels a pending runtime ${operation} before it commits`, async t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] })
+    let now = 1_000
+    const proposals = new ProposalQueue({ clock: () => now, randomId: ids() })
+    const revision = `file:${'a'.repeat(64)}`
+    const proposal = stage(proposals, {
+      expiresInMs: 10,
+      ...(operation === 'create' ? {} : {
+        destination: 'notes/existing.md',
+        operation: 'update',
+        expectedTarget: { exists: true, identity: revision },
+      }),
+    })
+    const runtime = new FakeApprovalRuntime()
+    runtime.documents.set('notes/existing.md', document('notes/existing.md', revision))
+    const started = Promise.withResolvers<void>()
+    const release = Promise.withResolvers<void>()
+    const committed: Array<CreateDocumentRequest | SaveDocumentRequest> = []
+    const mutate = async (request: CreateDocumentRequest | SaveDocumentRequest, signal: AbortSignal) => {
+      started.resolve()
+      await release.promise
+      signal.throwIfAborted()
+      committed.push(request)
+      return {
+        ...(operation === 'create' ? runtime.createResult : runtime.saveResult),
+        digest: `sha256:${proposal.contentDigest}`,
+      }
+    }
+    runtime.createDocument = mutate
+    runtime.saveDocument = mutate
+    const approval = executor(proposals, runtime).approve(proposal.proposalId, new AbortController().signal)
+    const rejected = assert.rejects(approval, error => expectApprovalCode(error, 'EXPIRED'))
+    await started.promise
+    now = proposal.expiresAt
+    t.mock.timers.tick(10)
+    release.resolve()
+
+    await rejected
+    assert.deepEqual(committed, [])
+    assert.deepEqual(proposals.list(), [])
+    assert.equal(proposals.audit().at(-1)?.reason, 'EXPIRED')
+    await assert.rejects(
+      executor(proposals, runtime).approve(proposal.proposalId, new AbortController().signal),
+      error => error instanceof ProposalError && error.code === 'INVALID_PROPOSAL',
+    )
+  })
+}
+
+test('a committed result remains applied when its response arrives after the proposal deadline', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  let now = 1_000
+  const proposals = new ProposalQueue({ clock: () => now, randomId: ids() })
+  const proposal = stage(proposals, { expiresInMs: 10 })
+  const runtime = new FakeApprovalRuntime()
+  runtime.createResult = { ...runtime.createResult, digest: `sha256:${proposal.contentDigest}` }
+  const create = runtime.createDocument.bind(runtime)
+  runtime.createDocument = async (request, signal) => {
+    const result = await create(request, signal)
+    now = proposal.expiresAt
+    t.mock.timers.tick(10)
+    return result
+  }
+
+  const result = await executor(proposals, runtime).approve(proposal.proposalId, new AbortController().signal)
+  assert.equal(result.status, 'created')
+  assert.equal(proposals.audit().at(-1)?.outcome, 'applied')
+})
+
+test('settled approvals release their deadline cancellation', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  for (const fails of [false, true]) {
+    const proposals = queue()
+    const proposal = stage(proposals, { expiresInMs: 10 })
+    const runtime = new FakeApprovalRuntime()
+    let observedSignal: AbortSignal | undefined
+    runtime.createDocument = async (_request, signal) => {
+      observedSignal = signal
+      if (fails) throw noteError('exists')
+      return { ...runtime.createResult, digest: `sha256:${proposal.contentDigest}` }
+    }
+    const approval = executor(proposals, runtime).approve(proposal.proposalId, new AbortController().signal)
+    if (fails) await assert.rejects(approval, error => expectApprovalCode(error, 'CREATE_CONFLICT'))
+    else await approval
+    assert.ok(observedSignal)
+    t.mock.timers.tick(10)
+    assert.equal(observedSignal.aborted, false)
+  }
+})
+
 test('a committed mutation surfaces durable-audit failure without inventing approval-failed', async () => {
   const proposals = queue()
   const proposal = stage(proposals)

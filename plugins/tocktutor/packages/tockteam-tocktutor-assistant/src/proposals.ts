@@ -617,12 +617,16 @@ export class ProposalQueue {
   }
 
   approvalIsFresh(candidate: ConsumedProposal): boolean {
+    return this.approvalTimeRemaining(candidate) > 0
+  }
+
+  approvalTimeRemaining(candidate: ConsumedProposal): number {
     const record = this.approvals.get(candidate.proposalId)
-    return record !== undefined
-      && record.token === candidate.token
-      && record.auditCorrelationId === candidate.auditCorrelationId
-      && record.contentDigest === candidate.contentDigest
-      && this.clock() < record.expiresAt
+    if (record === undefined
+      || record.token !== candidate.token
+      || record.auditCorrelationId !== candidate.auditCorrelationId
+      || record.contentDigest !== candidate.contentDigest) return 0
+    return Math.max(0, record.expiresAt - this.clock())
   }
 
   recordApprovalOutcome(

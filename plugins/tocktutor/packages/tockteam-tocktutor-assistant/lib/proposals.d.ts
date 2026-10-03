@@ -152,6 +152,7 @@ export declare class ProposalQueue {
     auditStatus(): ProposalAuditStatus;
     consumeForApproval(proposalId: string, context: ApprovalContext): ConsumedProposal;
     approvalIsFresh(candidate: ConsumedProposal): boolean;
+    approvalTimeRemaining(candidate: ConsumedProposal): number;
     recordApprovalOutcome(candidate: ConsumedProposal, outcome: 'applied' | 'approval-failed', reason?: string): void;
     invalidateForChild(currentInstanceId: string | null): number;
     invalidateVault(current: {

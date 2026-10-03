@@ -47,9 +47,14 @@ function isRuntimeError(error) {
 function isAbort(error, signal) {
     return signal.aborted || (error instanceof Error && error.name === 'AbortError');
 }
+function cancellationFailure(signal) {
+    return failure(signal.reason instanceof ApprovalError && signal.reason.code === 'EXPIRED'
+        ? 'EXPIRED'
+        : 'ABORTED');
+}
 function runtimeFailure(error, signal, phase) {
     if (isAbort(error, signal))
-        return failure('ABORTED');
+        return cancellationFailure(signal);
     if (!isRuntimeError(error))
         return failure('RUNTIME_FAILURE');
     switch (error.code) {
@@ -153,6 +158,17 @@ export class ProposalApprovalExecutor {
             await this.persistOutcome();
             throw error;
         }
+        const deadline = new AbortController();
+        const timer = setTimeout(() => deadline.abort(failure('EXPIRED')), this.proposals.approvalTimeRemaining(record));
+        timer.unref();
+        try {
+            return await this.apply(record, AbortSignal.any([signal, deadline.signal]));
+        }
+        finally {
+            clearTimeout(timer);
+        }
+    }
+    async apply(record, signal) {
         let written;
         try {
             await this.persist();
@@ -223,7 +239,7 @@ export class ProposalApprovalExecutor {
     }
     assertCurrent(record, signal) {
         if (signal.aborted)
-            throw failure('ABORTED');
+            throw cancellationFailure(signal);
         if (!this.proposals.approvalIsFresh(record))
             throw failure('EXPIRED');
         let current;

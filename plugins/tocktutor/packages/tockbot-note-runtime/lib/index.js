@@ -4341,6 +4341,8 @@ export class NoteVaultRuntime extends Service {
                 this.assertCapturedVault(state, root);
                 await assertDestinationParentBound(root, parent);
                 await assertPassiveDestinationUnaliased(root, relativePath, this.treeConfig.maxEntries);
+                signal.throwIfAborted();
+                this.assertCapturedVault(state, root);
             });
             committed = true;
             const claimed = await lstat(candidate, { bigint: true });
@@ -5277,6 +5279,8 @@ export class NoteVaultRuntime extends Service {
                 signal.throwIfAborted();
                 this.assertCapturedVault(state, root);
                 await assertDestinationParentBound(root, parentBinding);
+                signal.throwIfAborted();
+                this.assertCapturedVault(state, root);
             });
             committed = true;
             const attachment = await inspectVaultAttachment(root, relativePath, this.maxAttachmentBytes, POST_COMMIT_SIGNAL, false);
@@ -5317,6 +5321,8 @@ export class NoteVaultRuntime extends Service {
                 signal.throwIfAborted();
                 this.assertCapturedVault(state, root);
                 await assertDestinationParentBound(root, target.parentBinding);
+                signal.throwIfAborted();
+                this.assertCapturedVault(state, root);
             });
         }
         catch (error) {
@@ -5370,6 +5376,8 @@ export class NoteVaultRuntime extends Service {
                     signal.throwIfAborted();
                     this.assertCapturedVault(state, root);
                     await assertWriteTargetUnchanged(root, target, request.expectedRevision);
+                    signal.throwIfAborted();
+                    this.assertCapturedVault(state, root);
                 });
             }
             catch (error) {
