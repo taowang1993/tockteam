@@ -209,6 +209,7 @@ Unsupported behavior is isolated rather than emulated:
 Discovery is bounded by item, file-size, directory-visit, output, and time limits:
 
 - regular text reads use no-follow and nonblocking file opens where the platform supports them, then validate the opened handle as a bounded regular file;
+- custom-browser approval reads use the same nonblocking open policy before checking the opened handle; replacing an approved regular file with a named pipe between selection and opening rejects the grant instead of leaving Desktop startup waiting for a writer;
 - Firefox and VS Code SQLite reads run in killable worker threads, not on Electron's event loop;
 - unresolved icon and identity operations are capped across rescans so repeated timeouts cannot accumulate unbounded native work;
 - macOS application icons are individually capped at 64 KiB and the cache prunes from 128 entries to 96 entries;
