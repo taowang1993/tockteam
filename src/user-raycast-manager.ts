@@ -55,10 +55,11 @@ const validNode = (value: unknown, state = { nodes: 0, text: 0, actions: new Set
 /** The approved code has account authority; this child protects the renderer and owns teardown, not a sandbox. */
 export class UserRaycastManager {
   private session: Session | undefined
+  private cleanupSession: Session | undefined
   private stopping: Promise<void> | undefined
   private readonly options: Readonly<{ install: UserRaycastInstall; runtime: string; nodePath: string; artifact: string; onMessage: (owner: UserRaycastOwner, message: UserRaycastMessage) => void; onError?: (owner: UserRaycastOwner, error: Error) => void; copyText?: (owner: UserRaycastOwner, text: string) => void | Promise<void>; linearClientId?: string }>
   constructor(options: Readonly<{ install: UserRaycastInstall; runtime: string; nodePath: string; artifact: string; onMessage: (owner: UserRaycastOwner, message: UserRaycastMessage) => void; onError?: (owner: UserRaycastOwner, error: Error) => void; copyText?: (owner: UserRaycastOwner, text: string) => void | Promise<void>; linearClientId?: string }>) { this.options = options }
-  get childPid(): number | undefined { return this.session?.child.pid }
+  get childPid(): number | undefined { return (this.session ?? this.cleanupSession)?.child.pid }
   get menuActive(): boolean { return this.session?.candidate.mode === 'menu-bar' }
   menuIcon(): Buffer {
     if (!this.menuActive) throw new Error('Menu is not active')
@@ -67,7 +68,7 @@ export class UserRaycastManager {
     return icon
   }
   async start(owner: UserRaycastOwner): Promise<void> {
-    if (this.session || this.stopping) throw new Error('User extension is busy')
+    if (this.session || this.cleanupSession || this.stopping) throw new Error('User extension is busy')
     if (!Number.isSafeInteger(owner.webContentsId) || ![this.options.nodePath, this.options.runtime, this.options.artifact].every(isAbsolute) || !existsSync(this.options.nodePath)) throw new Error('Invalid user extension owner or runtime')
     if (!this.options.install.runtimeDir()) throw new Error('Approved extension is not enabled')
     const workspace = mkdtempSync(join(tmpdir(), 'tockteam-user-raycast-'))
@@ -210,11 +211,13 @@ export class UserRaycastManager {
     if (event.kind === 'action') session.action = { eventId: event.eventId, revision: event.revision, nativeUsed: false }
     session.child.stdin.write(`${JSON.stringify({ type: 'event', ...event })}\n`)
   }
-  async closeOwner(owner: UserRaycastOwner): Promise<void> { if (this.session?.owner.webContentsId === owner.webContentsId && !this.menuActive) await this.close() }
+  async closeOwner(owner: UserRaycastOwner): Promise<void> { if ((this.session ?? this.cleanupSession)?.owner.webContentsId === owner.webContentsId && !this.menuActive) await this.close() }
   async close(): Promise<void> {
     if (this.stopping) return this.stopping
-    const session = this.session
+    const session = this.session ?? this.cleanupSession
     if (!session) return
+    // Revoke command input immediately, but keep ownership until teardown succeeds.
+    this.cleanupSession = session
     this.session = undefined
     if (session.field) { clearTimeout(session.field.timer); session.field.reject(new Error('Extension closed before the field callback completed')); delete session.field }
     if (!session.settled) { session.settled = true; session.reject(new Error('Extension was closed before readiness')) }
@@ -227,6 +230,7 @@ export class UserRaycastManager {
         this.options.onError?.(session.owner, error)
       }
       rmSync(session.workspace, { recursive: true, force: true })
+      this.cleanupSession = undefined
     })()
     try { await this.stopping } finally { this.stopping = undefined }
   }
