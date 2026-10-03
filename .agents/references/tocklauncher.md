@@ -186,6 +186,8 @@ Production compatibility invocation is currently macOS-only; the runtime depends
 
 One Desktop-only `@tockteam/trusted-raycast` Cordis plugin holds a bearer-authenticated loopback activation stream. Its disconnect removes discovery authority and closes the active child. This is a lifecycle lease, not generic RPC or another composition system; generated endpoint/token values stay Host/main-owned.
 
+User-selected command teardown revokes input immediately and retains the child PID and runtime workspace until its entire owned process group has stopped and workspace cleanup succeeds. A failed stop remains retryable through the same owner or application shutdown; another command cannot start while cleanup is pending. Dismissing an active menu command still preserves its explicitly activated lifetime.
+
 The activation listener owns its startup as well as its live stream. Stopping it while the loopback socket binds rejects the pending startup, so Desktop shutdown can finish waiting for runtime startup. A canceled startup cannot publish an endpoint or stop a replacement listener; error cleanup applies only to its captured server.
 
 Both bundled and user-selected recovery save the validated previous version's approval before removing current bytes or promoting the backup. A failed approval save leaves the previous copy available for retry. A failure during promotion remains recoverable; after promotion, a restarted Desktop already has the restored version's approval instead of consuming or discarding its only backup on another recovery attempt. Bundled recovery preserves saved enablement, while user-selected recovery remains disabled until separately enabled.
@@ -209,7 +211,8 @@ Discovery is bounded by item, file-size, directory-visit, output, and time limit
 - unresolved icon and identity operations are capped across rescans so repeated timeouts cannot accumulate unbounded native work;
 - macOS application icons are individually capped at 64 KiB and the cache prunes from 128 entries to 96 entries;
 - Simple File Search applies one rescan-wide deadline across all configured roots rather than a full timeout per root;
-- configured roots and discovered paths are normalized, bounded, and revalidated within their allowed scope.
+- configured roots and discovered paths are normalized, bounded, and revalidated within their allowed scope; a child name such as `..notes` is valid, while an actual parent component (`../` or `..\\`) remains outside that scope;
+- Simple File Search uses Windows path semantics for both drive-letter and UNC home folders, retaining the same home/root, canonical-path, symlink and file-identity checks.
 
 Simple File Search also checks each returned path against its selected folder before publishing a result. Being inside the home folder alone is insufficient: sibling folders and normalized parent escapes cannot acquire result actions. Dot-prefixed child names remain valid; native action revalidation still checks canonical scope and file identity immediately before opening or revealing a result.
 
@@ -269,6 +272,8 @@ Main-owned JSON requests are limited to the built-in HTTPS provider destinations
 Host resolution must contain only public addresses and is capped at 32 results. The DNS preflight is not a transport-level address pin, so it is not treated as the sole SSRF defense: fetched origins are immutable built-in HTTPS hosts, TLS validates the requested hostname, and user-defined Custom Web Search engines are opened as browser navigation rather than fetched or read by Electron main. Do not generalize `requestJson()` to accept user-configured origins without adding connection-bound address validation.
 
 DeepL keys stay encrypted and main-owned. They never enter renderer snapshots, logs, exports, result labels, or error payloads.
+
+DuckDuckGo suggestions and browser search use the same reviewed region mapping for all seven offered locales: English, Swiss German, French, Japanese, Korean, Simplified Chinese and Traditional Chinese. The supported-locale set derives from that mapping so a saved offered locale cannot silently fall back to the English region.
 
 The user-selected Linear sign-in helper binds its loopback callback before offering authorization and checks cancellation again after binding. Malformed callback targets receive a bounded HTTP 400 response while valid sign-in can continue. Success, cancellation, timeout and failure close the listener and its connections; authorization codes and PKCE verifiers remain outside the launcher renderer.
 
@@ -331,11 +336,13 @@ Persistence rules:
 - the managed launcher root must be a real directory, never a pre-existing symlink; POSIX establishes `0700` through a checked directory handle, while Windows relies on inherited app-data ACLs rather than claiming to establish an owner-only ACL;
 - exports retain existing user-selected directory permissions while creating private files; managed writes still enforce private directory permissions;
 - settings, index, logs, usage ranking, grants, and transactions are bounded and independently validated;
+- provider log text replaces NUL, carriage returns and line breaks before persistence so logs remain valid for Settings snapshots and restart recovery;
 - managed writes use exclusive no-follow temporary files, file synchronization, atomic rename, directory synchronization, and validated backups;
 - a successful managed settings reset clears both the primary and recovery copy; later missing/corrupt-primary recovery must not resurrect cleared settings or secrets;
 - mutations are serialized; usage ranking updates in memory before best-effort persistence so opening-screen search never waits on disk, and reset fencing prevents stale writes from restoring cleared usage;
 - the inert cached index drops dynamic image data and acquires no authority until current actions are republished;
 - external grants bind canonical path, canonical parent, device, and inode;
+- external selection reopens and parses the selected settings inside the serialized adoption operation; same-inode editor changes made while selection waits are adopted from their current valid bytes, and invalid content rejects adoption;
 - startup revalidates path/handle identity and canonical parent path; grants do not persist a parent-directory inode;
 - same-inode external content drift durably retires the stale grant rather than overwriting editor changes or re-adopting the file on restart; reselection is required;
 - export rejects the active external file and hard-link aliases;
@@ -367,7 +374,7 @@ The first-party, offline Desktop proof covers defaults/bounds/required validatio
 - About, Extensions, and Settings route to the existing workbench;
 - rescan invalidates provider/action state before rebuilding the index;
 - main-frame document navigation, including a same-URL reload, revokes actions and provider ownership without discarding the reusable window; same-document and subframe navigations do not count as document replacement;
-- Workflow cancellation awaits the command effect's bounded cleanup before returning; POSIX shell exit also drains its process group, preventing ordinary background children from keeping inherited pipes alive. This is not confinement against escaped process groups, nor a Windows Job Object guarantee;
+- Workflow cancellation awaits the command effect's bounded cleanup before returning; POSIX shell exit also drains its process group, preventing ordinary background children from keeping inherited pipes alive. A failed group stop or unconfirmed drain is reported and audited as failed cleanup even if the shell closes, cancellation arrives, or the output limit was exceeded. This is not confinement against escaped process groups, nor a Windows Job Object guarantee;
 - import and reset synchronize settings and queue a secure relaunch;
 - quit uses TockTeam's existing secure shutdown;
 - `--toggle` is queued before readiness and drained after the workbench is ready;
