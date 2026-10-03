@@ -19,26 +19,38 @@ export const inject = ['remote', 'slots']
 
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const disposeRemote = await ctx.remote.$mount(importExportRemote)
-  let disposePanel: (() => void) | undefined
+  let panelFiber: ReturnType<Context['inject']> | undefined
   try {
-    disposePanel = ctx.slots.inject(
-      TOCKTUTOR_REVIEW_PANEL_SLOT,
-      () => ctx.slots.register({
-        id: 'tocktutor-import-export',
-        name: TOCKTUTOR_REVIEW_PANEL_SLOT,
-        order: 10,
-        registrant: name,
-      }, (props: TockTutorReviewPanelOwnerProps) => createElement(ImportExportReviewPanel, {
-        ...props,
-        remote: ctx.remote as unknown as ReviewPanelRemote,
-      })),
+    panelFiber = ctx.inject(
+      ['remote', 'remote.tocktutor-import-export', 'slots'],
+      child => {
+        const mountedRemote = child.remote as unknown as ReviewPanelRemote
+        const remote: ReviewPanelRemote = {
+          'tocktutor-import-export': mountedRemote['tocktutor-import-export'],
+        }
+        const slots = (child as Context).slots
+        return slots.inject(
+          TOCKTUTOR_REVIEW_PANEL_SLOT,
+          () => slots.register({
+            id: 'tocktutor-import-export',
+            name: TOCKTUTOR_REVIEW_PANEL_SLOT,
+            order: 10,
+            registrant: name,
+          }, (props: TockTutorReviewPanelOwnerProps) => createElement(ImportExportReviewPanel, {
+            ...props,
+            remote,
+          })),
+        )
+      },
     )
+    await panelFiber
   } catch (error) {
+    await panelFiber?.dispose()
     await disposeRemote()
     throw error
   }
   return async () => {
-    disposePanel?.()
+    await panelFiber.dispose()
     await disposeRemote()
   }
 }

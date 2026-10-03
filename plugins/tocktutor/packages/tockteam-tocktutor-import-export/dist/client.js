@@ -15747,26 +15747,38 @@ var name = "@tockteam/tocktutor-import-export";
 var inject = ["remote", "slots"];
 async function apply(ctx) {
   const disposeRemote = await ctx.remote.$mount(typert_remote_client_default);
-  let disposePanel;
+  let panelFiber;
   try {
-    disposePanel = ctx.slots.inject(
-      import_client.TOCKTUTOR_REVIEW_PANEL_SLOT,
-      () => ctx.slots.register({
-        id: "tocktutor-import-export",
-        name: import_client.TOCKTUTOR_REVIEW_PANEL_SLOT,
-        order: 10,
-        registrant: name
-      }, (props) => (0, import_react4.createElement)(ImportExportReviewPanel, {
-        ...props,
-        remote: ctx.remote
-      }))
+    panelFiber = ctx.inject(
+      ["remote", "remote.tocktutor-import-export", "slots"],
+      (child) => {
+        const mountedRemote = child.remote;
+        const remote = {
+          "tocktutor-import-export": mountedRemote["tocktutor-import-export"]
+        };
+        const slots = child.slots;
+        return slots.inject(
+          import_client.TOCKTUTOR_REVIEW_PANEL_SLOT,
+          () => slots.register({
+            id: "tocktutor-import-export",
+            name: import_client.TOCKTUTOR_REVIEW_PANEL_SLOT,
+            order: 10,
+            registrant: name
+          }, (props) => (0, import_react4.createElement)(ImportExportReviewPanel, {
+            ...props,
+            remote
+          }))
+        );
+      }
     );
+    await panelFiber;
   } catch (error51) {
+    await panelFiber?.dispose();
     await disposeRemote();
     throw error51;
   }
   return async () => {
-    disposePanel?.();
+    await panelFiber.dispose();
     await disposeRemote();
   };
 }

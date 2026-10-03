@@ -6,24 +6,33 @@ export const name = '@tockteam/tocktutor-import-export';
 export const inject = ['remote', 'slots'];
 export async function apply(ctx) {
     const disposeRemote = await ctx.remote.$mount(importExportRemote);
-    let disposePanel;
+    let panelFiber;
     try {
-        disposePanel = ctx.slots.inject(TOCKTUTOR_REVIEW_PANEL_SLOT, () => ctx.slots.register({
-            id: 'tocktutor-import-export',
-            name: TOCKTUTOR_REVIEW_PANEL_SLOT,
-            order: 10,
-            registrant: name,
-        }, (props) => createElement(ImportExportReviewPanel, {
-            ...props,
-            remote: ctx.remote,
-        })));
+        panelFiber = ctx.inject(['remote', 'remote.tocktutor-import-export', 'slots'], child => {
+            const mountedRemote = child.remote;
+            const remote = {
+                'tocktutor-import-export': mountedRemote['tocktutor-import-export'],
+            };
+            const slots = child.slots;
+            return slots.inject(TOCKTUTOR_REVIEW_PANEL_SLOT, () => slots.register({
+                id: 'tocktutor-import-export',
+                name: TOCKTUTOR_REVIEW_PANEL_SLOT,
+                order: 10,
+                registrant: name,
+            }, (props) => createElement(ImportExportReviewPanel, {
+                ...props,
+                remote,
+            })));
+        });
+        await panelFiber;
     }
     catch (error) {
+        await panelFiber?.dispose();
         await disposeRemote();
         throw error;
     }
     return async () => {
-        disposePanel?.();
+        await panelFiber.dispose();
         await disposeRemote();
     };
 }

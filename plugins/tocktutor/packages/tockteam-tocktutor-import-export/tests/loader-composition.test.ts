@@ -21,6 +21,16 @@ import {
 } from '../../../test-utils.ts'
 
 const exec = promisify(execFile)
+
+function namespaceContext<T extends object>(context: T): T & { inject: unknown } {
+  return Object.assign(context, {
+    inject(dependencies: string[], callback: (child: T) => (() => void)) {
+      assert.deepEqual(dependencies, ['remote', 'remote.tocktutor-import-export', 'slots'])
+      const settled = Promise.resolve().then(() => callback(context))
+      return Object.assign(settled, { async dispose() { (await settled)() } })
+    },
+  })
+}
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 const packageName = '@tockteam/tocktutor-import-export'
 const runtimeName = 'tockbot-note-runtime'
@@ -275,8 +285,9 @@ async function verifyPackedClient(require: NodeJS.Require): Promise<void> {
 
     const cleanup: string[] = []
     let declaration: (() => () => void) | undefined
-    const dispose = await client.apply({
+    const dispose = await client.apply(namespaceContext({
       remote: {
+        'tocktutor-import-export': {},
         async $mount(contribution: { package?: string }) {
           assert.equal(contribution.package, packageName)
           return async () => { cleanup.push('remote') }
@@ -299,7 +310,7 @@ async function verifyPackedClient(require: NodeJS.Require): Promise<void> {
           return () => { cleanup.push('panel') }
         },
       },
-    })
+    }))
     assert.ok(declaration)
     const off = declaration()
     off()
@@ -307,8 +318,9 @@ async function verifyPackedClient(require: NodeJS.Require): Promise<void> {
     assert.deepEqual(cleanup, ['panel', 'inject', 'remote'])
 
     const reload: string[] = []
-    const disposeReload = await client.apply({
+    const disposeReload = await client.apply(namespaceContext({
       remote: {
+        'tocktutor-import-export': {},
         async $mount(contribution: { package?: string }) {
           assert.equal(contribution.package, packageName)
           reload.push('mount')
@@ -327,7 +339,7 @@ async function verifyPackedClient(require: NodeJS.Require): Promise<void> {
           return () => { reload.push('panel') }
         },
       },
-    })
+    }))
     await disposeReload()
     assert.deepEqual(reload, ['mount', 'panel', 'inject', 'remote'])
   } finally {
