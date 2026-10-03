@@ -122,6 +122,18 @@ export class TrustedRaycastTrustStore {
   }
   private candidateIdentity(): TrustedRaycastBuildIdentity | undefined { return this.readIdentity(this.options.candidateDir, false) }
 
+  private readStage(): Readonly<{ identity?: TrustedRaycastBuildIdentity; previewed: boolean }> {
+    try {
+      const parsed = JSON.parse(readTrustedRaycastFile(join(this.stageDir(), 'stage.json'), 4096).toString('utf8')) as Record<string, unknown>
+      if (parsed.extensionId !== this.descriptor.extensionId || parsed.digest !== this.descriptor.artifactSha256 || typeof parsed.previewed !== 'boolean') return { previewed: false }
+      const identity = this.readIdentity(this.stageDir(), false)
+      return {
+        ...(identity === undefined ? {} : { identity }),
+        previewed: identity !== undefined && parsed.previewed && parsed.metadataSha256 === identity.metadataSha256,
+      }
+    } catch { return { previewed: false } }
+  }
+
   status(): TrustedRaycastDiskTrustState {
     const trust = readTrustFile(this.options.stateFile, this.descriptor)
     const journalPresent = existsSync(this.journalPath())
@@ -131,7 +143,7 @@ export class TrustedRaycastTrustStore {
     const current = this.readIdentity(this.currentDir(), true, true) ?? this.readExact(this.currentDir(), approvedIdentity)
     const currentApproved = current !== undefined && (sameIdentity(current, approvedIdentity) || (approvedIdentity === undefined && current.artifactSha256 === trust.approvedSha256))
     const previous = this.readExact(this.previousDir(), previousIdentity)
-    const stage = (() => { try { const parsed = JSON.parse(readTrustedRaycastFile(join(this.stageDir(), 'stage.json'), 4096).toString('utf8')) as Record<string, unknown>; return parsed.extensionId === this.descriptor.extensionId && typeof parsed.digest === 'string' && SHA256_PATTERN.test(parsed.digest) && typeof parsed.previewed === 'boolean' ? { digest: parsed.digest, previewed: parsed.previewed } : { digest: '', previewed: false } } catch { return { digest: '', previewed: false } } })()
+    const stage = this.readStage()
     const candidate = this.candidateIdentity()
     const currentPresent = existsSync(this.currentDir())
     let recovery: TrustedRaycastTrustRecovery = ''
@@ -146,9 +158,9 @@ export class TrustedRaycastTrustStore {
       enabled: trust.enabled,
       hasPrevious: previous !== undefined,
       installed: currentApproved && !journalPresent,
-      previewed: stage.previewed && stage.digest === this.descriptor.artifactSha256,
+      previewed: stage.previewed,
       recovery,
-      staged: stage.digest === this.descriptor.artifactSha256 && this.readIdentity(this.stageDir(), false) !== undefined,
+      staged: stage.identity !== undefined,
     })
     return value
   }
@@ -168,20 +180,22 @@ export class TrustedRaycastTrustStore {
   }
 
   async preview(): Promise<TrustedRaycastDiskTrustState> {
-    const status = this.status()
-    if (!status.staged) throw new Error('No pinned Translate candidate is staged')
+    const stage = this.readStage()
+    if (stage.identity === undefined) throw new Error('No pinned Translate candidate is staged')
     const failure = await (this.options.preview ? this.options.preview(this.stageDir()) : Promise.resolve('')).catch(error => error instanceof Error ? error.message : 'Translate preview failed')
     if (failure !== '') throw new Error(failure.slice(0, 512))
-    writeAtomic(join(this.stageDir(), 'stage.json'), Buffer.from(JSON.stringify({ digest: this.descriptor.artifactSha256, extensionId: this.descriptor.extensionId, previewed: true })))
+    if (this.readExact(this.stageDir(), stage.identity) === undefined) throw new Error('Staged trusted extension candidate changed during preview')
+    writeAtomic(join(this.stageDir(), 'stage.json'), Buffer.from(JSON.stringify({ digest: this.descriptor.artifactSha256, extensionId: this.descriptor.extensionId, previewed: true, metadataSha256: stage.identity.metadataSha256 })))
     return this.status()
   }
 
   apply(enabledOverride?: boolean): TrustedRaycastDiskTrustState {
     const status = this.status()
-    if (!status.staged) throw new Error('No pinned Translate candidate is staged')
-    if (!status.previewed) throw new Error('The staged Translate candidate has not passed its isolated preview')
-    const candidate = this.readIdentity(this.stageDir(), false)
-    if (candidate === undefined) throw new Error('Staged Translate candidate failed its digest check')
+    if (status.recovery !== '') throw new Error('Recover the installation before applying an update')
+    const stage = this.readStage()
+    if (stage.identity === undefined) throw new Error('No pinned Translate candidate is staged')
+    if (!stage.previewed) throw new Error('The staged Translate candidate has not passed its isolated preview')
+    const candidate = stage.identity
     const trust = readTrustFile(this.options.stateFile, this.descriptor)
     const previous = this.readIdentity(this.currentDir(), true, true)
     writeAtomic(this.journalPath(), Buffer.from(JSON.stringify({ extensionId: this.descriptor.extensionId, candidate, ...(previous === undefined ? {} : { previous }) })))

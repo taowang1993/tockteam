@@ -52,6 +52,101 @@ const install = async (fixture: Fixture) => {
   return store.apply()
 }
 
+for (const published of [false, true]) {
+  test(`a bundled update preserves interrupted recovery ${published ? 'after' : 'before'} publication until explicit recovery`, async () => {
+    const fixture = makeFixture()
+    try {
+      await install(fixture)
+      const store = fixture.store()
+      store.enable()
+      const previousIdentity = JSON.parse(readFileSync(join(fixture.install, 'current', 'build.json'), 'utf8'))
+      writeFileSync(join(fixture.candidate, 'child.mjs'), 'child-v1-host-fix')
+      const refreshedIdentity = { artifactSha256: DIGEST_V1, childSha256: digestOf('child-v1-host-fix'), command: 'translate' as const, extensionId: 'google-translate' as const, react: '19.0.0', reconciler: '0.31.0', resolutionSha256: digestOf('resolution-v1') }
+      writeFileSync(join(fixture.candidate, 'build.json'), JSON.stringify({ ...refreshedIdentity, metadataSha256: attestTrustedRaycastBuildIdentity(refreshedIdentity) }))
+      store.stage()
+      await store.preview()
+      const candidateIdentity = JSON.parse(readFileSync(join(fixture.install, 'stage', 'build.json'), 'utf8'))
+      const journal = join(fixture.install, 'rotation.json')
+      writeFileSync(journal, JSON.stringify({ extensionId: 'google-translate', candidate: candidateIdentity, previous: previousIdentity }))
+      renameSync(join(fixture.install, 'current'), join(fixture.install, 'previous'))
+      if (published) renameSync(join(fixture.install, 'stage'), join(fixture.install, 'current'))
+
+      // An explicit retry can restage and preview, but must retain the prior recovery decision.
+      store.stage()
+      await store.preview()
+      assert.equal(store.status().recovery, 'interrupted-rotation')
+      const trustBytes = readFileSync(fixture.state)
+      const journalBytes = readFileSync(journal)
+      assert.throws(() => store.apply(), /recover/i)
+      assert.deepEqual(readFileSync(fixture.state), trustBytes)
+      assert.deepEqual(readFileSync(journal), journalBytes)
+      assert.equal(readFileSync(join(fixture.install, 'previous', 'child.mjs'), 'utf8'), 'child-v1')
+      assert.equal(store.runtimeDir(), undefined)
+
+      const recovered = store.recover()
+      assert.equal(recovered.installed, true)
+      assert.equal(recovered.enabled, true)
+      assert.equal(readFileSync(join(fixture.install, 'current', 'child.mjs'), 'utf8'), 'child-v1')
+      assert.equal(store.apply().installed, true, 'the same reviewed update may proceed after recovery')
+      assert.equal(readFileSync(join(fixture.install, 'previous', 'child.mjs'), 'utf8'), 'child-v1')
+      assert.equal(readFileSync(join(fixture.install, 'current', 'child.mjs'), 'utf8'), 'child-v1-host-fix')
+    } finally { rmSync(fixture.root, { recursive: true, force: true }) }
+  })
+}
+
+for (const duringPreview of [false, true]) {
+  test(`bundled preview approval rejects changed derived code ${duringPreview ? 'during' : 'after'} preview`, async () => {
+    let release!: () => void
+    const pending = new Promise<string>(resolve => { release = () => resolve('') })
+    const fixture = makeFixture(DIGEST_V1, duringPreview ? () => pending : async () => '')
+    try {
+      const store = fixture.store()
+      store.stage()
+      const preview = store.preview()
+      if (!duringPreview) await preview
+      const stage = join(fixture.install, 'stage')
+      const changedChild = 'child-not-previewed'
+      const { metadataSha256: _metadataSha256, ...identity } = JSON.parse(readFileSync(join(stage, 'build.json'), 'utf8'))
+      const changedIdentity = { ...identity, childSha256: digestOf(changedChild) }
+      writeFileSync(join(stage, 'child.mjs'), changedChild)
+      writeFileSync(join(stage, 'build.json'), JSON.stringify({ ...changedIdentity, metadataSha256: attestTrustedRaycastBuildIdentity(changedIdentity) }))
+      if (duringPreview) {
+        release()
+        await assert.rejects(preview, /changed|preview/i)
+      }
+      assert.equal(store.status().staged, true, 'changed code still has a valid build identity for the pinned archive')
+      assert.equal(store.status().previewed, false, 'a preview cannot authorize other derived bytes')
+      assert.throws(() => store.apply(), /preview/i)
+      assert.equal(existsSync(fixture.state), false)
+      assert.equal(existsSync(join(fixture.install, 'current')), false)
+      assert.equal(store.runtimeDir(), undefined)
+      release()
+      await store.preview()
+      assert.equal(store.apply().installed, true, 'an explicit fresh preview can approve the current candidate')
+      assert.equal(readFileSync(join(fixture.install, 'current', 'child.mjs'), 'utf8'), changedChild)
+    } finally { release(); rmSync(fixture.root, { recursive: true, force: true }) }
+  })
+}
+
+test('a legacy staged preview receipt requires a fresh preview without discarding its candidate', async () => {
+  const fixture = makeFixture()
+  try {
+    const store = fixture.store()
+    store.stage()
+    await store.preview()
+    const receipt = join(fixture.install, 'stage', 'stage.json')
+    const { metadataSha256: _metadataSha256, ...legacy } = JSON.parse(readFileSync(receipt, 'utf8'))
+    writeFileSync(receipt, JSON.stringify(legacy))
+    assert.equal(store.status().staged, true)
+    assert.equal(store.status().previewed, false)
+    assert.throws(() => store.apply(), /preview/i)
+    assert.equal(readFileSync(join(fixture.install, 'stage', 'child.mjs'), 'utf8'), 'child-v1')
+    assert.equal(existsSync(fixture.state), false)
+    await store.preview()
+    assert.equal(store.apply().installed, true)
+  } finally { rmSync(fixture.root, { recursive: true, force: true }) }
+})
+
 test('digest rejection: nothing loads from an unreviewed candidate or wrong staged bytes', () => {
   const fixture = makeFixture()
   try {
