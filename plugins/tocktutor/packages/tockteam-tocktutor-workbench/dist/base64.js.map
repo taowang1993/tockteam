@@ -1,0 +1,1 @@
+{"version":3,"file":"base64.js","sourceRoot":"","sources":["../src/base64.ts"],"names":[],"mappings":"AAAA,+EAA+E;AAC/E,MAAM,UAAU,QAAQ,CAAC,KAAc;IACrC,OAAO,OAAO,KAAK,KAAK,QAAQ;WAC3B,KAAK,CAAC,MAAM,GAAG,CAAC,KAAK,CAAC;WACtB,yBAAyB,CAAC,IAAI,CAAC,KAAK,CAAC,CAAA;AAC5C,CAAC"}

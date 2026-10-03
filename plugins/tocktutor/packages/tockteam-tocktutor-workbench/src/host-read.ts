@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type { NoteVaultRuntime } from 'tockbot-note-runtime'
 import { isSafeVaultRelativePath } from './session.ts'
+import { isBase64 } from './base64.ts'
 import type {
   ActiveVaultResult,
   PrepareMergeRequest, PreparedMergeResult, ApplyMergeRequest, MergeRequest, MergeResult, MergeListResult, MergeListRequest,
@@ -162,7 +163,7 @@ function assertStoreAttachmentRequest(value: StoreAttachmentRequest): void {
   assertRecord(value, 'Attachment request')
   assertVaultReference(value.expectedVault)
   assertAttachmentPath(value.path)
-  if (typeof value.dataBase64 !== 'string' || value.dataBase64.length > 35_000_000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(value.dataBase64)) throw new TypeError('Attachment data must be bounded base64.')
+  if (typeof value.dataBase64 !== 'string' || value.dataBase64.length > 35_000_000 || !isBase64(value.dataBase64)) throw new TypeError('Attachment data must be bounded base64.')
 }
 
 function assertContent(value: string): void {

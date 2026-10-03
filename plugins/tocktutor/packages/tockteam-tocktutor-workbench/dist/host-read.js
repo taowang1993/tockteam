@@ -34,6 +34,7 @@ var __esDecorate = (this && this.__esDecorate) || function (ctor, descriptorIn, 
 };
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import { isSafeVaultRelativePath } from "./session.js";
+import { isBase64 } from "./base64.js";
 export const MAX_DOCUMENT_CONTENT_BYTES = 2_000_000;
 export const MAX_TREE_CURSOR_LENGTH = 512;
 export const MAX_TREE_PAGE_SIZE = 200;
@@ -82,7 +83,7 @@ function assertStoreAttachmentRequest(value) {
     assertRecord(value, 'Attachment request');
     assertVaultReference(value.expectedVault);
     assertAttachmentPath(value.path);
-    if (typeof value.dataBase64 !== 'string' || value.dataBase64.length > 35_000_000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(value.dataBase64))
+    if (typeof value.dataBase64 !== 'string' || value.dataBase64.length > 35_000_000 || !isBase64(value.dataBase64))
         throw new TypeError('Attachment data must be bounded base64.');
 }
 function assertContent(value) {

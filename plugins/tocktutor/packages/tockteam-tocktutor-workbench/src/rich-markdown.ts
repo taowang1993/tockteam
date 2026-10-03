@@ -5,6 +5,7 @@ import {
 } from './external-embeds.ts'
 import { isSafeVaultRelativePath } from './session.ts'
 import { MAX_EMBED_DEPTH } from './embeds.ts'
+import { isBase64 } from './base64.ts'
 
 // Bounded TockTeam renderer informed by Tockbot's source-detached NotesExportHtml contract.
 export const MAX_RICH_MARKDOWN_BYTES = 2000_000
@@ -157,7 +158,7 @@ function renderResolvedEmbed(embed: StaticMarkdownEmbed, externalEmbedMode: 'ine
     return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="${embed.target.kind}" data-embed-path="${path}"><pre>${escapeMarkdownHtml(embed.content)}</pre></span>`
   }
   const mimeType = resolvedEmbedMime(embed.mimeType)
-  if (mimeType === null || bytes(embed.content) > 64 * 1024 * 1024 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(embed.content)) return ''
+  if (mimeType === null || bytes(embed.content) > 64 * 1024 * 1024 || !isBase64(embed.content)) return ''
   const source = `data:${escapeMarkdownHtml(mimeType)};base64,${escapeMarkdownHtml(embed.content)}`
   const sizing = dimensions === null ? '' : `${dimensions.height === undefined ? '' : ` height="${String(dimensions.height)}"`} width="${String(dimensions.width)}"`
   if (mimeType.startsWith('image/')) return `<span class="tocktutor-local-embed inline-block max-w-full align-middle" data-embed-kind="media" data-embed-path="${path}"><img alt="${label}" class="max-h-80 max-w-full object-contain" loading="lazy"${sizing} src="${source}"></span>`
@@ -739,7 +740,7 @@ function renderStaticEmbed(embed: StaticMarkdownEmbed): string {
   const mimeType = embed.mimeType?.toLowerCase() ?? ''
   if (/^image\/(?:avif|gif|jpeg|png|webp)$/u.test(mimeType)
     && embed.content.length <= 2_000_000
-    && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(embed.content)) {
+    && isBase64(embed.content)) {
     return `<figure data-embed-kind="media" data-embed-path="${path}"><img alt="${label}" src="data:${mimeType};base64,${embed.content}"><figcaption>${label}</figcaption></figure>`
   }
   const media = mimeType.startsWith('audio/') ? 'Audio' : mimeType.startsWith('video/') ? 'Video' : mimeType === 'application/pdf' ? 'PDF' : 'Media'

@@ -1,4 +1,5 @@
 import { isSafeVaultRelativePath } from './session.ts'
+import { isBase64 } from './base64.ts'
 
 export const MAX_EMBED_TARGETS = 100
 export const MAX_EMBED_CONTENT_BYTES = 2_000_000
@@ -328,11 +329,6 @@ function allowedMime(mimeType: string, target: EmbedTarget): string | null {
     : null
 }
 
-function validBase64(value: unknown): value is string {
-  return typeof value === 'string'
-    && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(value)
-}
-
 function freezeTarget(target: EmbedTarget): EmbedTarget {
   return Object.freeze({ ...target })
 }
@@ -410,7 +406,7 @@ export async function resolveEmbedGraph(options: EmbedResolverOptions): Promise<
           warn(`Unsupported media type: ${path}`)
           return
         }
-        if (!validBase64(value.dataBase64)) {
+        if (!isBase64(value.dataBase64)) {
           warn(`Invalid media encoding: ${path}`)
           return
         }

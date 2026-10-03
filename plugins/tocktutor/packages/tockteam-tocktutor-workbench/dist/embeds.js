@@ -1,4 +1,5 @@
 import { isSafeVaultRelativePath } from "./session.js";
+import { isBase64 } from "./base64.js";
 export const MAX_EMBED_TARGETS = 100;
 export const MAX_EMBED_CONTENT_BYTES = 2_000_000;
 export const MAX_EMBED_DEPTH = 3;
@@ -297,10 +298,6 @@ function allowedMime(mimeType, target) {
         ? mime
         : null;
 }
-function validBase64(value) {
-    return typeof value === 'string'
-        && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(value);
-}
 function freezeTarget(target) {
     return Object.freeze({ ...target });
 }
@@ -381,7 +378,7 @@ export async function resolveEmbedGraph(options) {
                     warn(`Unsupported media type: ${path}`);
                     return;
                 }
-                if (!validBase64(value.dataBase64)) {
+                if (!isBase64(value.dataBase64)) {
                     warn(`Invalid media encoding: ${path}`);
                     return;
                 }

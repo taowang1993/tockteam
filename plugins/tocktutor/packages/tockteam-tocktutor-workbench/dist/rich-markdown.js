@@ -1,6 +1,7 @@
 import { classifyExternalEmbed, externalEmbedButtonHtml, externalEmbedInertHtml, } from "./external-embeds.js";
 import { isSafeVaultRelativePath } from "./session.js";
 import { MAX_EMBED_DEPTH } from "./embeds.js";
+import { isBase64 } from "./base64.js";
 // Bounded TockTeam renderer informed by Tockbot's source-detached NotesExportHtml contract.
 export const MAX_RICH_MARKDOWN_BYTES = 2000_000;
 export const MAX_RICH_MARKDOWN_BLOCKS = 20000;
@@ -118,7 +119,7 @@ function renderResolvedEmbed(embed, externalEmbedMode, resolvedEmbeds, ancestors
         return `<span class="tocktutor-local-embed inline-block max-w-full align-top" data-embed-kind="${embed.target.kind}" data-embed-path="${path}"><pre>${escapeMarkdownHtml(embed.content)}</pre></span>`;
     }
     const mimeType = resolvedEmbedMime(embed.mimeType);
-    if (mimeType === null || bytes(embed.content) > 64 * 1024 * 1024 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(embed.content))
+    if (mimeType === null || bytes(embed.content) > 64 * 1024 * 1024 || !isBase64(embed.content))
         return '';
     const source = `data:${escapeMarkdownHtml(mimeType)};base64,${escapeMarkdownHtml(embed.content)}`;
     const sizing = dimensions === null ? '' : `${dimensions.height === undefined ? '' : ` height="${String(dimensions.height)}"`} width="${String(dimensions.width)}"`;
@@ -701,7 +702,7 @@ function renderStaticEmbed(embed) {
     const mimeType = embed.mimeType?.toLowerCase() ?? '';
     if (/^image\/(?:avif|gif|jpeg|png|webp)$/u.test(mimeType)
         && embed.content.length <= 2_000_000
-        && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(embed.content)) {
+        && isBase64(embed.content)) {
         return `<figure data-embed-kind="media" data-embed-path="${path}"><img alt="${label}" src="data:${mimeType};base64,${embed.content}"><figcaption>${label}</figcaption></figure>`;
     }
     const media = mimeType.startsWith('audio/') ? 'Audio' : mimeType.startsWith('video/') ? 'Video' : mimeType === 'application/pdf' ? 'PDF' : 'Media';
