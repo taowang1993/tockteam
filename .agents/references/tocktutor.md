@@ -99,6 +99,8 @@ Folder moves and copies recheck cancellation and vault ownership after destinati
 
 Runtime unload withdraws vault authority before asynchronous cleanup starts. Pending note, attachment, and configuration writes must pass the same lifetime check before publication; retained Runtime references cannot reactivate a vault, create a sandbox or managed vault, or change recent selections after unload. Real-filesystem coverage is in `tockbot-note-runtime/tests/disposal-cancellation.test.ts`.
 
+Draft saves, reads, and clears join one queue per vault and note before resolving recovery-storage directories. This preserves their call order even before the first draft directory exists: a clear cannot finish ahead of an older pending save, and a read observes earlier accepted saves. Different notes remain independent; failed saves release the queue, and waiting operations recheck cancellation and vault ownership. Real-filesystem coverage is in `tockbot-note-runtime/tests/draft-ordering.test.ts`.
+
 #### Persistent Search
 
 Filesystem observation uses `chokidar@5.0.0` so atomic note replacement does not strand Linux watches on retired inodes. Initial reads wait for watcher startup; rapid edits settle for 50 ms, and generation/path/symlink checks still guard every publication. Provider disposal awaits current and retired watcher cleanup. Both workspaces apply `patches/chokidar@5.0.0.patch` under `plugins/tocktutor/`: it forwards nonpersistent native errors and cancels write-finish polling on close. Keep both patch bindings/locks and the staged/Nix dependency closure aligned; `tests/tocktutor-watcher.test.ts` runs the packaged-runtime regressions in the root platform matrix.
