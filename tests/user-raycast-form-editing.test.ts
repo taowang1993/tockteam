@@ -188,6 +188,28 @@ test('clipboard copy from field change is denied without active action', async t
  assert.ok(f.manager.childPid)
 })
 
+test('duplicate IDs within one Form reject before an existing value can be overwritten', async t => {
+ const f = await fixture(t, shell("React.createElement(React.Fragment,null,React.createElement(Form.TextField,{id:'name',defaultValue:'Keep'}),duplicate?React.createElement(Form.Checkbox,{id:'name',defaultValue:false}):null)", "const [duplicate,setDuplicate]=React.useState(false)", "React.createElement(Action.SubmitForm,{title:'Submit Form',onSubmit:values=>setAnswer(JSON.stringify(values))}),React.createElement(Action,{title:'Add Duplicate',onAction:()=>setDuplicate(true)})"))
+ assert.deepEqual(await f.submit(),{name:'Keep'})
+ const action=f.nodes('raycast-action').find(node=>node.props.title==='Add Duplicate')!,submitAction=f.nodes('raycast-action').find(node=>node.props.title==='Submit Form')!
+ f.manager.send(owner,{sessionId:f.latest().sessionId,revision:f.latest().revision,eventId:action.props.actionEventId,kind:'action'})
+ const deadline=Date.now()+2500
+ while(!f.errors.length&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,10))
+ assert.match(f.errors.join('\n'),/Form field IDs must be unique/)
+ await assert.rejects(async()=>await f.manager.send(owner,{sessionId:f.latest().sessionId,revision:f.latest().revision,eventId:submitAction.props.actionEventId,kind:'action'}))
+})
+
+test('field IDs are scoped to each Form and can be reused or renamed after lifetime changes', async t => {
+ const f = await fixture(t, `const React=require('react');const {Form,Action,ActionPanel,List}=require('@raycast/api');global.fetch=()=>{throw Error('Network prohibited')};exports.default=function Edit(){const [answer,setAnswer]=React.useState('Ready'),[round,setRound]=React.useState(0);return React.createElement(React.Fragment,null,React.createElement(Form,{actions:React.createElement(ActionPanel,null,React.createElement(Action.SubmitForm,{title:'Submit First Form',onSubmit:values=>setAnswer(JSON.stringify(values))}),React.createElement(Action,{title:'Replace First Field',onAction:()=>setRound(1)}),React.createElement(Action,{title:'Rename First Field',onAction:()=>setRound(2)}))},React.createElement(Form.TextField,{key:round?'new':'old',id:round===2?'renamed':'name',defaultValue:round?'Replacement':'First'})),React.createElement(Form,{actions:React.createElement(Action.SubmitForm,{title:'Submit Second Form',onSubmit:values=>setAnswer(JSON.stringify(values))})},React.createElement(Form.TextField,{id:'name',defaultValue:'Second'})),React.createElement(List,null,React.createElement(List.Item,{title:answer})));}`)
+ const answer=()=>JSON.parse(f.nodes('raycast-list-item')[0].props.title)
+ await f.edit(f.field('name'),'Edited');await f.act('Submit First Form');assert.deepEqual(answer(),{name:'Edited'})
+ await f.act('Submit Second Form');assert.deepEqual(answer(),{name:'Second'})
+ await f.act('Replace First Field');await f.act('Submit First Form');assert.deepEqual(answer(),{name:'Replacement'})
+ await f.act('Rename First Field');await f.act('Submit First Form');assert.deepEqual(answer(),{renamed:'Replacement'})
+ await f.act('Submit Second Form');assert.deepEqual(answer(),{name:'Second'})
+ assert.deepEqual(f.errors,[])
+})
+
 test('closing session rejects pending field request and stops child group', async t => {
  const f = await fixture(t, shell("React.createElement(Form.TextField,{id:'name',title:'Name',defaultValue:'safe',onChange:()=>new Promise(()=>{})})",''))
  const pending=f.edit(f.field('name'),'hang'); const observed=assert.rejects(Promise.resolve(pending))

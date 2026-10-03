@@ -143,6 +143,7 @@ const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFi
   }))
   React.useLayoutEffect(() => {
     if (!collected) return
+    if (collected.values.has(id)) throw new Error('Form field IDs must be unique')
     collected.values.set(id, copyFormValue(value))
     if (fieldKind === 'date') collected.dates.add(id)
     if (props.storeValue === true) collected.stored.set(id, fieldKind)
