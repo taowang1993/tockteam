@@ -156,6 +156,8 @@ The settings shortcut opens the canonical workbench settings page. There is no s
 | Terminal | Terminal Launcher | A finite macOS/Windows terminal catalog with confirmation and trusted executables. |
 | Workflow | Workflow | Ordered Open File, Open URL, Open Terminal, and Execute Command actions with bounded validation and audit metadata. |
 
+Quick Formatter's deep XML mode decodes decimal and hexadecimal numeric references as full Unicode code points. Supplementary characters (including emoji and CJK extension characters) stay intact in both the displayed and copied result; out-of-range references leave the input unchanged instead of wrapping into another character or NUL.
+
 ### Bundled Trusted Compatibility Features
 
 The distribution contains three reviewed Raycast compatibility artifacts. Google Translate is `plugins/trusted-raycast/vendor/google-translate.tar`, SHA-256 `7a27b1a75d4ee978fab04281dd93e187a6c32fd1de5de1f01eb66ce7682ea3ac`; Kaomoji Search and Can I Use have their exact pins in `src/trusted-raycast-descriptors.ts`. Each preserves its reviewed source and dependency closure, and each is admitted before it can run.
