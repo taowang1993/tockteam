@@ -200,7 +200,7 @@ function PropertyListEditor(props: { name: string; values: string[]; onSet: (val
     }
   }
   return <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-    {props.values.map((value, index) => <span className="inline-flex min-h-5 max-w-full items-center gap-1 rounded bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_10%,transparent)] px-1 leading-5 text-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_85%,var(--tt-text))]" key={`${index}:${value}`}>
+    {props.values.map((value, index) => <span className="box-border inline-flex min-h-5 max-w-full items-center gap-1 rounded bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_10%,transparent)] px-1 leading-5 text-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_85%,var(--tt-text))]" key={`${index}:${value}`}>
       {editingIndex === index
         ? <Input aria-label={`Edit ${value} in ${props.name}`} autoFocus className="h-6 min-w-12 max-w-48 border-0 bg-transparent px-0 py-0 text-xs" onBlur={commitEdit} onChange={event => { setCurrentEditDraft(event.currentTarget.value) }} onKeyDown={event => {
             if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancelEdit() }
@@ -402,7 +402,7 @@ function MarkdownDocumentProperty(props: {
       if (checkbox) return <Checkbox aria-label={property.key} checked={property.value === true} className="size-4 cursor-default disabled:opacity-100 data-[state=checked]:!border-[var(--dsw-specific-markdown-accent)] data-[state=checked]:!bg-[var(--dsw-specific-markdown-accent)] data-[state=checked]:!text-[#000]" disabled={!props.editable} onCheckedChange={checked => { if (!props.onSetProperty?.(property.key, checked === true)) props.setError('This property could not be changed.') }} />
       return <span className="min-w-0 [overflow-wrap:anywhere]">{Array.isArray(property.value) ? property.value.join(', ') : String(property.value ?? '')}</span>
     }
-    return tags.map((tag, index) => <span className="inline-flex min-h-6 max-w-full items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_10%,transparent)] px-2 text-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_85%,var(--tt-text))]" key={`${index}:${tag}`}>
+    return tags.map((tag, index) => <span className="box-border inline-flex min-h-6 max-w-full items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_10%,transparent)] px-2 text-[color-mix(in_srgb,var(--dsw-specific-markdown-accent)_85%,var(--tt-text))]" key={`${index}:${tag}`}>
       <span className="min-w-0 [overflow-wrap:anywhere]">{tag}</span>
       {props.onSetProperty !== undefined && <Button unstyled aria-label={`Remove ${tag} tag`} className="inline-flex size-5 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-current focus-visible:outline focus-visible:outline-[var(--tt-accent)]" onClick={() => { props.onSetProperty?.(property.key, tags.filter((_value, valueIndex) => valueIndex !== index)) }} type="button"><X aria-hidden="true" className="size-3" /></Button>}
     </span>)
@@ -537,7 +537,7 @@ export function MarkdownDocumentHeader(props: {
           <div hidden={!propertiesExpanded} id={propertiesId}>
             {properties.length > 0 && (
               <dl aria-label="Document Properties" className="m-0">
-                {properties.map(property => <div className={cn('group/property grid min-h-[29px] gap-x-2 rounded hover:bg-muted/50 focus-within:bg-muted/50', props.compact ? 'grid-cols-[minmax(96px,32%)_minmax(0,1fr)]' : 'grid-cols-[minmax(96px,140px)_minmax(0,1fr)]')} key={property.key}>
+                {properties.map(property => <div className={cn('group/property grid min-h-[29px] gap-x-2 rounded hover:bg-muted/50 focus-within:bg-muted/50', props.compact ? 'grid-cols-[minmax(96px,32%)_minmax(0,1fr)]' : 'grid-cols-[minmax(96px,min(140px,32%))_minmax(0,1fr)]')} key={property.key}>
                   <MarkdownDocumentProperty
                     editable={props.editableProperties === true}
                     error={error}

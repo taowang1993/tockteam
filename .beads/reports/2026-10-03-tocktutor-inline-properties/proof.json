@@ -1,0 +1,1753 @@
+{
+  "id": "tockteam-ae0l-2026-10-03",
+  "status": "verified-current",
+  "captures": {
+    "tocktutor-editor-live-preview.png": {
+      "product": "TockTutor Source-Built Desktop",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-ae0l-2026-10-03",
+      "sourceCommit": "fdde9d0d",
+      "sourceDirty": true,
+      "sourceProvenance": "Built and staged the saved borderless Properties fix plus the tested narrow-window clamp/tag-box correction. Exact source and staged artifact hashes are archived; Raycast source custody and build inclusion do not constitute Raycast acceptance.",
+      "route": "/tocktutor/comparison.md",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-03T14:08:43.266Z",
+      "sha256": "a89f030f3dd6ca3c9a625bb6a11b46ba0fafb699a080bb2a8973d897875b2583",
+      "bytes": 273955,
+      "visibleState": {
+        "region": "upper",
+        "capturedAt": "2026-10-03T14:08:43.266Z",
+        "route": "/tocktutor/comparison.md",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "propertiesExpanded": true,
+        "propertiesVisible": true,
+        "propertyCount": 9,
+        "scrollTop": 0,
+        "visibleHeadings": [
+          "Markdown Rendering Lab",
+          "Structure",
+          "Lists"
+        ],
+        "headingPositions": [
+          {
+            "text": "Markdown Rendering Lab",
+            "top": 498.5
+          },
+          {
+            "text": "Structure",
+            "top": 637.5
+          },
+          {
+            "text": "Lists",
+            "top": 690.5
+          }
+        ],
+        "completedTask": {
+          "text": "Completed task",
+          "decoration": "line-through",
+          "visible": true
+        },
+        "pendingTask": {
+          "text": "Pending task with Welcome",
+          "decoration": "none",
+          "visible": true
+        },
+        "sourceVisible": false,
+        "fontsReady": true,
+        "assertionPassed": true,
+        "sha256": "a89f030f3dd6ca3c9a625bb6a11b46ba0fafb699a080bb2a8973d897875b2583",
+        "bytes": 273955
+      },
+      "runtimeErrors": [],
+      "runtimeErrorMonitoring": "Playwright pageerror, console-error and failed-request listeners installed before navigating into TockTutor; cold-start console and owned guard placement recorded separately.",
+      "warnings": [],
+      "proofFile": ".beads/reports/2026-10-03-tocktutor-inline-properties/proof.json",
+      "failedRequests": []
+    },
+    "tocktutor-live-preview-lower.png": {
+      "product": "TockTutor Source-Built Desktop",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-ae0l-2026-10-03",
+      "sourceCommit": "fdde9d0d",
+      "sourceDirty": true,
+      "sourceProvenance": "Built and staged the saved borderless Properties fix plus the tested narrow-window clamp/tag-box correction. Exact source and staged artifact hashes are archived; Raycast source custody and build inclusion do not constitute Raycast acceptance.",
+      "route": "/tocktutor/comparison.md",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-03T14:08:43.392Z",
+      "sha256": "e41771bc7f07f80e935a6a38d1134dafc026fb399e6a800a3ed9532f67bba97c",
+      "bytes": 281346,
+      "visibleState": {
+        "region": "lower",
+        "capturedAt": "2026-10-03T14:08:43.392Z",
+        "route": "/tocktutor/comparison.md",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "propertiesExpanded": true,
+        "propertiesVisible": false,
+        "propertyCount": 9,
+        "scrollTop": 812.5,
+        "visibleHeadings": [
+          "Data",
+          "Code and Notes",
+          "Small Heading"
+        ],
+        "headingPositions": [
+          {
+            "text": "Data",
+            "top": 210
+          },
+          {
+            "text": "Code and Notes",
+            "top": 448
+          },
+          {
+            "text": "Small Heading",
+            "top": 759.5234375
+          }
+        ],
+        "completedTask": {
+          "text": "Completed task",
+          "decoration": "line-through",
+          "visible": false
+        },
+        "pendingTask": {
+          "text": "Pending task with Welcome",
+          "decoration": "none",
+          "visible": true
+        },
+        "sourceVisible": false,
+        "fontsReady": true,
+        "assertionPassed": true,
+        "sha256": "e41771bc7f07f80e935a6a38d1134dafc026fb399e6a800a3ed9532f67bba97c",
+        "bytes": 281346
+      },
+      "runtimeErrors": [],
+      "runtimeErrorMonitoring": "Playwright pageerror, console-error and failed-request listeners installed before navigating into TockTutor; cold-start console and owned guard placement recorded separately.",
+      "failedRequests": [],
+      "warnings": [],
+      "proofFile": ".beads/reports/2026-10-03-tocktutor-inline-properties/proof.json"
+    }
+  },
+  "previousCaptures": {
+    "tocktutor-editor-live-preview.png": {
+      "product": "TockTutor Source-Built Desktop",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-a5dz-2026-10-03",
+      "sourceCommit": "1b2f1cbb75f7d4e41da2165ca79eec4ca07a526d",
+      "sourceDirty": true,
+      "sourceProvenance": "Reused the frozen source-built Desktop from the completed-task fix saved in b3213772; artifact hashes checked without rebuilding. This is not a build of the later Raycast source changes.",
+      "route": "/tocktutor/comparison.md",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-03T12:28:29.211Z",
+      "sha256": "262a51305be53909e43b17a7950c827fb485b993127ea7c4856f4faeb2e7bf81",
+      "bytes": 258035,
+      "visibleState": {
+        "region": "upper",
+        "capturedAt": "2026-10-03T12:28:29.211Z",
+        "route": "/tocktutor/comparison.md",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "propertiesExpanded": true,
+        "propertiesVisible": true,
+        "propertyCount": 9,
+        "scrollTop": 0,
+        "visibleHeadings": [
+          "Markdown Rendering Lab",
+          "Structure",
+          "Lists"
+        ],
+        "headingPositions": [
+          {
+            "text": "Markdown Rendering Lab",
+            "top": 596.59375
+          },
+          {
+            "text": "Structure",
+            "top": 735.59375
+          },
+          {
+            "text": "Lists",
+            "top": 788.59375
+          }
+        ],
+        "completedTask": {
+          "text": "Completed task",
+          "decoration": "line-through",
+          "visible": false
+        },
+        "pendingTask": {
+          "text": "Pending task with Welcome",
+          "decoration": "none",
+          "visible": false
+        },
+        "sourceVisible": false,
+        "fontsReady": true,
+        "assertionPassed": true,
+        "sha256": "262a51305be53909e43b17a7950c827fb485b993127ea7c4856f4faeb2e7bf81",
+        "bytes": 258035
+      },
+      "runtimeErrors": [],
+      "runtimeErrorMonitoring": "Playwright pageerror, console-error and failed-request listeners installed before navigating into TockTutor; cold-start console and owned guard placement recorded separately.",
+      "warnings": [
+        "Existing development Electron CSP warning.",
+        "Existing Vue feature-flags warning."
+      ],
+      "proofFile": ".beads/reports/2026-10-03-tocktutor-live-preview-expanded/proof.json",
+      "failedRequests": []
+    },
+    "tocktutor-live-preview-lower.png": {
+      "product": "TockTutor Source-Built Desktop",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-a5dz-2026-10-03",
+      "sourceCommit": "1b2f1cbb75f7d4e41da2165ca79eec4ca07a526d",
+      "sourceDirty": true,
+      "sourceProvenance": "Reused the frozen source-built Desktop from the completed-task fix saved in b3213772; artifact hashes checked without rebuilding. This is not a build of the later Raycast source changes.",
+      "route": "/tocktutor/comparison.md",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-03T12:28:29.327Z",
+      "sha256": "02786a3427bb2118bdcbb80cd46a0cac4785203f1bc3057081aa02fae7ba3b31",
+      "bytes": 276596,
+      "visibleState": {
+        "region": "lower",
+        "capturedAt": "2026-10-03T12:28:29.327Z",
+        "route": "/tocktutor/comparison.md",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "propertiesExpanded": true,
+        "propertiesVisible": false,
+        "propertyCount": 9,
+        "scrollTop": 910.5,
+        "visibleHeadings": [
+          "Data",
+          "Code and Notes",
+          "Small Heading"
+        ],
+        "headingPositions": [
+          {
+            "text": "Data",
+            "top": 210.09375
+          },
+          {
+            "text": "Code and Notes",
+            "top": 448.09375
+          },
+          {
+            "text": "Small Heading",
+            "top": 759.6171875
+          }
+        ],
+        "completedTask": {
+          "text": "Completed task",
+          "decoration": "line-through",
+          "visible": false
+        },
+        "pendingTask": {
+          "text": "Pending task with Welcome",
+          "decoration": "none",
+          "visible": true
+        },
+        "sourceVisible": false,
+        "fontsReady": true,
+        "assertionPassed": true,
+        "sha256": "02786a3427bb2118bdcbb80cd46a0cac4785203f1bc3057081aa02fae7ba3b31",
+        "bytes": 276596
+      },
+      "runtimeErrors": [],
+      "runtimeErrorMonitoring": "Playwright pageerror, console-error and failed-request listeners installed before navigating into TockTutor; cold-start console and owned guard placement recorded separately.",
+      "failedRequests": [],
+      "warnings": [
+        "Existing development Electron CSP warning.",
+        "Existing Vue feature-flags warning."
+      ],
+      "proofFile": ".beads/reports/2026-10-03-tocktutor-live-preview-expanded/proof.json"
+    }
+  },
+  "publicationAllowlist": [
+    "tocktutor-editor-live-preview.png",
+    "tocktutor-live-preview-lower.png"
+  ],
+  "unrelatedExistingCapturesUnchanged": 60,
+  "propertiesDisclosureToggled": false,
+  "interaction": {
+    "inline": {
+      "inputs": [
+        {
+          "name": "Note title",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 37.5
+        },
+        {
+          "name": "Property status",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 24
+        },
+        {
+          "name": "Property area",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 24
+        },
+        {
+          "name": "New tags Value",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 24
+        },
+        {
+          "name": "Property difficulty",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 24
+        },
+        {
+          "name": "Property due",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 24
+        },
+        {
+          "name": "Property meeting",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 24
+        },
+        {
+          "name": "Property rating",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 24
+        }
+      ],
+      "rows": [
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "140px 552px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "140px 552px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "140px 552px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "140px 552px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "140px 552px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "140px 552px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "140px 552px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "140px 552px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "140px 552px"
+        }
+      ],
+      "heading": {
+        "font": "13px",
+        "weight": "400"
+      },
+      "disclosureExpanded": "true"
+    },
+    "sidebar": {
+      "inputs": [
+        {
+          "name": "Property status",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 24
+        },
+        {
+          "name": "Property area",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 24
+        },
+        {
+          "name": "New tags Value",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 24
+        },
+        {
+          "name": "Property difficulty",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 24
+        },
+        {
+          "name": "Property due",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 24
+        },
+        {
+          "name": "Property meeting",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 24
+        },
+        {
+          "name": "Property rating",
+          "border": "0px",
+          "background": "rgba(0, 0, 0, 0)",
+          "height": 24
+        }
+      ],
+      "rows": [
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "96px 172px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "96px 172px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "96px 172px"
+        },
+        {
+          "display": "grid",
+          "height": 48,
+          "columns": "96px 172px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "96px 172px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "96px 172px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "96px 172px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "96px 172px"
+        },
+        {
+          "display": "grid",
+          "height": 29,
+          "columns": "96px 172px"
+        }
+      ],
+      "heading": {
+        "font": "19.5px",
+        "weight": "700"
+      },
+      "disclosureExpanded": "false"
+    },
+    "state": {
+      "route": "/tocktutor/comparison.md",
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "theme": "dark",
+      "rootSkin": null,
+      "bodySkin": null
+    },
+    "errors": [],
+    "expectedMatchingAppearance": true,
+    "editSaveReopen": true,
+    "draftRetention": true,
+    "collapseHidesControls": true,
+    "typeMenuFocusRestored": true
+  },
+  "focusAndNarrow": {
+    "focus": {
+      "active": true,
+      "visible": true,
+      "outline": "2px",
+      "border": "0px"
+    },
+    "narrow": {
+      "width": 224,
+      "scrollWidth": 224,
+      "rows": [
+        {
+          "width": 224,
+          "scrollWidth": 224
+        },
+        {
+          "width": 224,
+          "scrollWidth": 224
+        },
+        {
+          "width": 224,
+          "scrollWidth": 224
+        },
+        {
+          "width": 224,
+          "scrollWidth": 224
+        },
+        {
+          "width": 224,
+          "scrollWidth": 224
+        },
+        {
+          "width": 224,
+          "scrollWidth": 224
+        },
+        {
+          "width": 224,
+          "scrollWidth": 224
+        },
+        {
+          "width": 224,
+          "scrollWidth": 224
+        },
+        {
+          "width": 224,
+          "scrollWidth": 224
+        }
+      ]
+    },
+    "restoredViewport": [
+      1512,
+      949,
+      2
+    ]
+  },
+  "appearances": {
+    "appearances": [
+      {
+        "name": "Default",
+        "systemTheme": "dark",
+        "route": "/tocktutor/comparison.md",
+        "theme": "light",
+        "skin": null,
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 18.896452054380127,
+        "sourceHintContrast": 18.896452054380127,
+        "horizontalOverflow": false
+      },
+      {
+        "name": "Default",
+        "systemTheme": "light",
+        "route": "/tocktutor/comparison.md",
+        "theme": "dark",
+        "skin": null,
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 17.45095194843412,
+        "sourceHintContrast": 8.491415116500356,
+        "horizontalOverflow": false
+      },
+      {
+        "name": "Navy",
+        "systemTheme": "dark",
+        "route": "/tocktutor/comparison.md",
+        "theme": "light",
+        "skin": "tockteam-skin-navy",
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 12.220961192426797,
+        "sourceHintContrast": 12.220961192426797,
+        "horizontalOverflow": false
+      },
+      {
+        "name": "Navy",
+        "systemTheme": "light",
+        "route": "/tocktutor/comparison.md",
+        "theme": "dark",
+        "skin": "tockteam-skin-navy",
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 16.4495170055241,
+        "sourceHintContrast": 11.123957395229967,
+        "horizontalOverflow": false
+      },
+      {
+        "name": "Jade",
+        "systemTheme": "dark",
+        "route": "/tocktutor/comparison.md",
+        "theme": "light",
+        "skin": "tockteam-skin-jade",
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 11.738037009519548,
+        "sourceHintContrast": 11.738037009519548,
+        "horizontalOverflow": false
+      },
+      {
+        "name": "Jade",
+        "systemTheme": "light",
+        "route": "/tocktutor/comparison.md",
+        "theme": "dark",
+        "skin": "tockteam-skin-jade",
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 16.739293071487573,
+        "sourceHintContrast": 11.432484222399433,
+        "horizontalOverflow": false
+      },
+      {
+        "name": "Ember",
+        "systemTheme": "dark",
+        "route": "/tocktutor/comparison.md",
+        "theme": "light",
+        "skin": "tockteam-skin-ember",
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 12.308616434429975,
+        "sourceHintContrast": 12.308616434429975,
+        "horizontalOverflow": false
+      },
+      {
+        "name": "Ember",
+        "systemTheme": "light",
+        "route": "/tocktutor/comparison.md",
+        "theme": "dark",
+        "skin": "tockteam-skin-ember",
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 16.769128719932493,
+        "sourceHintContrast": 11.746441709118434,
+        "horizontalOverflow": false
+      }
+    ],
+    "errors": []
+  },
+  "artifactHashes": {
+    "dist/main.js": "708946aa6698d07792b79b31ef4c0dc244abb63614ec69640330e60f30441eaf",
+    "dist/preload.cjs": "25d98976c8fb9b14a7c1d69af79b281251e3bfbc4a0b7088b1a03cbb2e98818b",
+    "dist/client.js": "bc2baa9098ad7583adcde659407aa151ae27249e7eab19c95899cb4391d8ed41",
+    "dist/cordis.patch.yml": "9a5f4723b282aea6f24dcd616b6af884d2216142bdd76ff1ded3ae1e979847a4",
+    ".stage/dsh-runtime/package.json": "4404688d5b8230457b18bf37f71f5915f6fe96ba9214215afae45e52a54abd0b",
+    "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/live-preview-editor.js": "dbb2f5e582bf969970f2bdb8e793e835e2da7f41f13fa9a341b4c4a71b535cd7",
+    "dist/plugins/skins/client.js": "5d3141bb06cbbf93e35a8d148a110fbde2e679519f2dcd315342d80f44bb14f4",
+    ".stage/dsh-runtime/node_modules/@tockteam/tocktutor-workbench/dist/live-preview-editor.js": "dbb2f5e582bf969970f2bdb8e793e835e2da7f41f13fa9a341b4c4a71b535cd7",
+    ".stage/dsh-runtime/node_modules/@tockteam/tocktutor-workbench/dist/client.js": "9d685a9fc73325f6013ba55c2cff3a81126a30b01b9c2118bf94be608685054f",
+    "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/live-preview-editor.tsx": "2d9ade3f70456385312c56946b28406a8264509b4b8a0d21fa94b7f7a4933059"
+  },
+  "sourceNoteUnchanged": true,
+  "savedTestNoteBytesVerified": true,
+  "sidebarGeometryAndControlStylesUnchanged": true,
+  "sdkSourceFrozenAtHandback": {
+    "recordedAt": "2026-10-03T13:30:38.193Z",
+    "records": [
+      {
+        "path": "src/trusted-raycast-compat-api.ts",
+        "sha256": "308502a961caea57d43feb6b695e94daaf47fb1b7f8049ae89e84a05788d2e8c"
+      },
+      {
+        "path": "src/user-raycast-child.ts",
+        "sha256": "00be80aabfeeabac412293efda1fde5ccc5948a61c2f76413ba4cc91b45b291d"
+      },
+      {
+        "path": "tests/user-raycast-launch.test.ts",
+        "sha256": "89ce7313e492ecb327949b80d89e040e39f84142eb29ed05b91c29830aac4570"
+      }
+    ]
+  },
+  "sdkAcceptanceClaim": false,
+  "cleanup": {
+    "stopped": true,
+    "remaining": [],
+    "runs": [
+      {
+        "rootPid": 12851,
+        "placementArtifact": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-j9TSSv/placement.json",
+        "stopped": true,
+        "remaining": [],
+        "processGroupAbsent": true,
+        "detailedStopResponse": "Earlier phase; not persisted in this proof"
+      },
+      {
+        "id": "62bb0d9b-8f5d-4891-8b67-6164905f0809",
+        "rootPid": 31614,
+        "recordedPids": [
+          31614,
+          31684,
+          31686,
+          31772,
+          31773,
+          31890,
+          31903,
+          31928,
+          31929,
+          32138,
+          32169,
+          32170,
+          32171,
+          32172,
+          32173,
+          32174,
+          32175,
+          32176,
+          32404,
+          32405,
+          32406,
+          32407,
+          32408,
+          32409,
+          32410,
+          32411,
+          32584,
+          32585,
+          32725
+        ],
+        "stopped": true,
+        "remaining": []
+      },
+      {
+        "id": "4ca0ee92-0bda-4b3b-a981-ab91e0bed9ab",
+        "rootPid": 33333,
+        "recordedPids": [
+          33333,
+          33339,
+          33340,
+          33341,
+          33342,
+          33345,
+          33347,
+          33351,
+          33550,
+          33552,
+          33567,
+          33800,
+          33801,
+          33802,
+          33803,
+          33804,
+          33805,
+          33806,
+          33807,
+          33955,
+          33956,
+          33957,
+          33958,
+          33959,
+          35789
+        ],
+        "stopped": true,
+        "remaining": []
+      },
+      {
+        "id": "7255b75c-affd-476c-99c9-571586532e9b",
+        "rootPid": 36247,
+        "recordedPids": [
+          36247,
+          36249,
+          36250,
+          36251,
+          36252,
+          36255,
+          36263,
+          36416,
+          36417,
+          36418,
+          36419,
+          36420,
+          36421,
+          36426,
+          36662,
+          36663,
+          36664,
+          36665,
+          36666,
+          36667,
+          36668,
+          36669,
+          36829,
+          36830,
+          36831,
+          36832,
+          36833,
+          36834,
+          36835,
+          36836,
+          37171
+        ],
+        "stopped": true,
+        "remaining": []
+      },
+      {
+        "id": "077306be-5381-435d-9e70-e50b957f401d",
+        "rootPid": 48204,
+        "recordedPids": [
+          48204,
+          48206,
+          48207,
+          48209,
+          48210,
+          48213,
+          48228,
+          48380,
+          48381,
+          48382,
+          48383,
+          48384,
+          48385,
+          48409,
+          48616,
+          48617,
+          48618,
+          48619,
+          48620,
+          48621,
+          48622,
+          48623,
+          48785,
+          48786,
+          49498,
+          49499
+        ],
+        "stopped": true,
+        "remaining": []
+      },
+      {
+        "id": "736d5104-3c0f-491b-a4dc-191cd321f310",
+        "rootPid": 49523,
+        "recordedPids": [
+          49523,
+          49525,
+          49526,
+          49527,
+          49528,
+          49535,
+          49539,
+          49737,
+          49741,
+          49979,
+          49980,
+          49981,
+          49982,
+          49983,
+          49984,
+          49985,
+          49986,
+          50146,
+          50147,
+          50148,
+          50149,
+          50332
+        ],
+        "stopped": true,
+        "remaining": []
+      }
+    ],
+    "playwrightSessions": "No attached browsers"
+  },
+  "doctor": {
+    "baseline": {
+      "schemaVersion": 3,
+      "mode": "full",
+      "reactDetected": true,
+      "version": "0.9.14",
+      "ok": true,
+      "directory": "/tmp/tocktutor-inline-properties.jrqZHJ/doctor-base",
+      "diff": null,
+      "projects": [
+        {
+          "directory": "/tmp/tocktutor-inline-properties.jrqZHJ/doctor-base",
+          "packageRoot": "/tmp/tocktutor-inline-properties.jrqZHJ/doctor-base",
+          "framework": "unknown",
+          "project": {
+            "rootDirectory": "/tmp/tocktutor-inline-properties.jrqZHJ/doctor-base",
+            "projectName": "@tockteam/tocktutor-workbench",
+            "reactVersion": "^18.2.0",
+            "reactMajorVersion": 18,
+            "tailwindVersion": null,
+            "zodVersion": "4.4.3",
+            "zodMajorVersion": 4,
+            "mobxVersion": null,
+            "mobxMajorVersion": null,
+            "hasMobxReact": false,
+            "mobxReactVersion": null,
+            "hasMobxReactLite": false,
+            "mobxReactLiteVersion": null,
+            "hasMobxStateTree": false,
+            "hasMobxReactObserver": false,
+            "zustandVersion": null,
+            "zustandMajorVersion": null,
+            "framework": "unknown",
+            "hasTypeScript": false,
+            "hasReactCompiler": false,
+            "hasReactCompilerLintPlugin": false,
+            "hasTanStackQuery": false,
+            "hasI18nLibrary": false,
+            "hasRadixUi": true,
+            "hasBaseUi": false,
+            "hasReactAriaComponents": false,
+            "hasTanstackTable": false,
+            "hasTanstackVirtual": false,
+            "hasTanstackForm": false,
+            "tanstackQueryVersion": null,
+            "styledComponentsVersion": null,
+            "valtioVersion": null,
+            "valtioMajorVersion": null,
+            "hasRemotion": false,
+            "remotionVersion": null,
+            "remotionMajorVersion": null,
+            "hasThree": false,
+            "threeVersion": null,
+            "threeRelease": null,
+            "hasReactThreeFiber": false,
+            "reactThreeFiberVersion": null,
+            "reactThreeFiberMajorVersion": null,
+            "hasSsrDependency": false,
+            "preactVersion": null,
+            "preactMajorVersion": null,
+            "hasReactNativeWorkspace": false,
+            "nextjsVersion": null,
+            "nextjsMajorVersion": null,
+            "reactRouterVersion": null,
+            "hasReactRouterFramework": false,
+            "expoVersion": null,
+            "shopifyFlashListVersion": null,
+            "shopifyFlashListMajorVersion": null,
+            "hasReanimated": false,
+            "reanimatedVersion": null,
+            "hasShadcnUi": false,
+            "isPreES2023Target": false,
+            "isStaticExport": false,
+            "sourceFileCount": 1
+          },
+          "diagnostics": [
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-array-index-as-key",
+              "severity": "warning",
+              "title": "Array index used as a key",
+              "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+              "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+              "line": 203,
+              "column": 344,
+              "offset": 9534,
+              "length": 25,
+              "endLine": 203,
+              "category": "Bugs",
+              "id": "src/live-preview-editor.tsx::203:344::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": []
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "js-set-map-lookups",
+              "severity": "warning",
+              "title": "Array lookup inside a loop",
+              "message": "This scales poorly because `array.includes()` inside a loop scans the whole list every time. Use a Set for constant-time lookups.",
+              "help": "Use a `Set` or `Map` when you check for the same items over and over. `Array.includes`/`find` scans the whole list each time",
+              "line": 222,
+              "column": 137,
+              "offset": 11947,
+              "length": 66,
+              "endLine": 222,
+              "category": "Performance",
+              "id": "src/live-preview-editor.tsx::222:137::react-doctor/js-set-map-lookups::8ca162272c84d42896a45c0a801007a712bbbc2697f9f8e1c400af6faf47fe70",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": [
+                "test-noise"
+              ]
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-high-complexity-react-function",
+              "severity": "warning",
+              "title": "React function has high control-flow complexity",
+              "message": "`MarkdownDocumentProperty` has cyclomatic complexity 43, cognitive complexity 41, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+              "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+              "line": 229,
+              "column": 1,
+              "offset": 12808,
+              "length": 19671,
+              "endLine": 471,
+              "category": "Maintainability",
+              "id": "src/live-preview-editor.tsx::229:1::react-doctor/no-high-complexity-react-function::80ef75a6a4682672c97ecb40ba96c0a04f63feab2e551c5080bae4cd67b41599",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": [
+                "react-jsx-only",
+                "test-noise"
+              ]
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-array-index-as-key",
+              "severity": "warning",
+              "title": "Array index used as a key",
+              "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+              "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+              "line": 408,
+              "column": 280,
+              "offset": 24994,
+              "length": 23,
+              "endLine": 408,
+              "category": "Bugs",
+              "id": "src/live-preview-editor.tsx::408:280::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": []
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-high-complexity-react-function",
+              "severity": "warning",
+              "title": "React function has high control-flow complexity",
+              "message": "`MarkdownDocumentHeader` has cyclomatic complexity 28, cognitive complexity 26, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+              "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+              "line": 480,
+              "column": 8,
+              "offset": 32940,
+              "length": 8306,
+              "endLine": 606,
+              "category": "Maintainability",
+              "id": "src/live-preview-editor.tsx::480:8::react-doctor/no-high-complexity-react-function::5de19b70dbf5067c3a7bac3075e58f919be3ab4a6816a1ff8031f4ebf8c84045",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": [
+                "react-jsx-only",
+                "test-noise"
+              ]
+            }
+          ],
+          "score": null,
+          "skippedChecks": [],
+          "analyzedFiles": [
+            "src/live-preview-editor.tsx"
+          ],
+          "analyzedFileCount": 1,
+          "complete": true,
+          "scannedFileCount": 1,
+          "elapsedMilliseconds": 283.533917
+        }
+      ],
+      "diagnostics": [
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-array-index-as-key",
+          "severity": "warning",
+          "title": "Array index used as a key",
+          "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+          "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+          "line": 203,
+          "column": 344,
+          "offset": 9534,
+          "length": 25,
+          "endLine": 203,
+          "category": "Bugs",
+          "id": "src/live-preview-editor.tsx::203:344::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": []
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "js-set-map-lookups",
+          "severity": "warning",
+          "title": "Array lookup inside a loop",
+          "message": "This scales poorly because `array.includes()` inside a loop scans the whole list every time. Use a Set for constant-time lookups.",
+          "help": "Use a `Set` or `Map` when you check for the same items over and over. `Array.includes`/`find` scans the whole list each time",
+          "line": 222,
+          "column": 137,
+          "offset": 11947,
+          "length": 66,
+          "endLine": 222,
+          "category": "Performance",
+          "id": "src/live-preview-editor.tsx::222:137::react-doctor/js-set-map-lookups::8ca162272c84d42896a45c0a801007a712bbbc2697f9f8e1c400af6faf47fe70",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": [
+            "test-noise"
+          ]
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-high-complexity-react-function",
+          "severity": "warning",
+          "title": "React function has high control-flow complexity",
+          "message": "`MarkdownDocumentProperty` has cyclomatic complexity 43, cognitive complexity 41, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+          "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+          "line": 229,
+          "column": 1,
+          "offset": 12808,
+          "length": 19671,
+          "endLine": 471,
+          "category": "Maintainability",
+          "id": "src/live-preview-editor.tsx::229:1::react-doctor/no-high-complexity-react-function::80ef75a6a4682672c97ecb40ba96c0a04f63feab2e551c5080bae4cd67b41599",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": [
+            "react-jsx-only",
+            "test-noise"
+          ]
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-array-index-as-key",
+          "severity": "warning",
+          "title": "Array index used as a key",
+          "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+          "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+          "line": 408,
+          "column": 280,
+          "offset": 24994,
+          "length": 23,
+          "endLine": 408,
+          "category": "Bugs",
+          "id": "src/live-preview-editor.tsx::408:280::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": []
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-high-complexity-react-function",
+          "severity": "warning",
+          "title": "React function has high control-flow complexity",
+          "message": "`MarkdownDocumentHeader` has cyclomatic complexity 28, cognitive complexity 26, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+          "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+          "line": 480,
+          "column": 8,
+          "offset": 32940,
+          "length": 8306,
+          "endLine": 606,
+          "category": "Maintainability",
+          "id": "src/live-preview-editor.tsx::480:8::react-doctor/no-high-complexity-react-function::5de19b70dbf5067c3a7bac3075e58f919be3ab4a6816a1ff8031f4ebf8c84045",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": [
+            "react-jsx-only",
+            "test-noise"
+          ]
+        }
+      ],
+      "summary": {
+        "errorCount": 0,
+        "warningCount": 5,
+        "affectedFileCount": 1,
+        "totalDiagnosticCount": 5,
+        "score": null,
+        "scoreLabel": null
+      },
+      "elapsedMilliseconds": 287.35741699999994,
+      "error": null
+    },
+    "current": {
+      "schemaVersion": 3,
+      "mode": "full",
+      "reactDetected": true,
+      "version": "0.9.14",
+      "ok": true,
+      "directory": "/tmp/tocktutor-inline-properties.jrqZHJ/doctor-current",
+      "diff": null,
+      "projects": [
+        {
+          "directory": "/tmp/tocktutor-inline-properties.jrqZHJ/doctor-current",
+          "packageRoot": "/tmp/tocktutor-inline-properties.jrqZHJ/doctor-current",
+          "framework": "unknown",
+          "project": {
+            "rootDirectory": "/tmp/tocktutor-inline-properties.jrqZHJ/doctor-current",
+            "projectName": "@tockteam/tocktutor-workbench",
+            "reactVersion": "^18.2.0",
+            "reactMajorVersion": 18,
+            "tailwindVersion": null,
+            "zodVersion": "4.4.3",
+            "zodMajorVersion": 4,
+            "mobxVersion": null,
+            "mobxMajorVersion": null,
+            "hasMobxReact": false,
+            "mobxReactVersion": null,
+            "hasMobxReactLite": false,
+            "mobxReactLiteVersion": null,
+            "hasMobxStateTree": false,
+            "hasMobxReactObserver": false,
+            "zustandVersion": null,
+            "zustandMajorVersion": null,
+            "framework": "unknown",
+            "hasTypeScript": false,
+            "hasReactCompiler": false,
+            "hasReactCompilerLintPlugin": false,
+            "hasTanStackQuery": false,
+            "hasI18nLibrary": false,
+            "hasRadixUi": true,
+            "hasBaseUi": false,
+            "hasReactAriaComponents": false,
+            "hasTanstackTable": false,
+            "hasTanstackVirtual": false,
+            "hasTanstackForm": false,
+            "tanstackQueryVersion": null,
+            "styledComponentsVersion": null,
+            "valtioVersion": null,
+            "valtioMajorVersion": null,
+            "hasRemotion": false,
+            "remotionVersion": null,
+            "remotionMajorVersion": null,
+            "hasThree": false,
+            "threeVersion": null,
+            "threeRelease": null,
+            "hasReactThreeFiber": false,
+            "reactThreeFiberVersion": null,
+            "reactThreeFiberMajorVersion": null,
+            "hasSsrDependency": false,
+            "preactVersion": null,
+            "preactMajorVersion": null,
+            "hasReactNativeWorkspace": false,
+            "nextjsVersion": null,
+            "nextjsMajorVersion": null,
+            "reactRouterVersion": null,
+            "hasReactRouterFramework": false,
+            "expoVersion": null,
+            "shopifyFlashListVersion": null,
+            "shopifyFlashListMajorVersion": null,
+            "hasReanimated": false,
+            "reanimatedVersion": null,
+            "hasShadcnUi": false,
+            "isPreES2023Target": false,
+            "isStaticExport": false,
+            "sourceFileCount": 1
+          },
+          "diagnostics": [
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-array-index-as-key",
+              "severity": "warning",
+              "title": "Array index used as a key",
+              "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+              "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+              "line": 203,
+              "column": 300,
+              "offset": 9459,
+              "length": 25,
+              "endLine": 203,
+              "category": "Bugs",
+              "id": "src/live-preview-editor.tsx::203:300::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": []
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "js-set-map-lookups",
+              "severity": "warning",
+              "title": "Array lookup inside a loop",
+              "message": "This scales poorly because `array.includes()` inside a loop scans the whole list every time. Use a Set for constant-time lookups.",
+              "help": "Use a `Set` or `Map` when you check for the same items over and over. `Array.includes`/`find` scans the whole list each time",
+              "line": 222,
+              "column": 137,
+              "offset": 11758,
+              "length": 66,
+              "endLine": 222,
+              "category": "Performance",
+              "id": "src/live-preview-editor.tsx::222:137::react-doctor/js-set-map-lookups::8ca162272c84d42896a45c0a801007a712bbbc2697f9f8e1c400af6faf47fe70",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": [
+                "test-noise"
+              ]
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-high-complexity-react-function",
+              "severity": "warning",
+              "title": "React function has high control-flow complexity",
+              "message": "`MarkdownDocumentProperty` has cyclomatic complexity 40, cognitive complexity 38, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+              "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+              "line": 229,
+              "column": 1,
+              "offset": 12508,
+              "length": 19369,
+              "endLine": 468,
+              "category": "Maintainability",
+              "id": "src/live-preview-editor.tsx::229:1::react-doctor/no-high-complexity-react-function::9ebaa4b7e26852eff0e955fc0ff19727acac35100c5b025418626081654b2c9e",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": [
+                "react-jsx-only",
+                "test-noise"
+              ]
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-array-index-as-key",
+              "severity": "warning",
+              "title": "Array index used as a key",
+              "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+              "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+              "line": 405,
+              "column": 291,
+              "offset": 24503,
+              "length": 23,
+              "endLine": 405,
+              "category": "Bugs",
+              "id": "src/live-preview-editor.tsx::405:291::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": []
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-high-complexity-react-function",
+              "severity": "warning",
+              "title": "React function has high control-flow complexity",
+              "message": "`MarkdownDocumentHeader` has cyclomatic complexity 25, cognitive complexity 22, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+              "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+              "line": 477,
+              "column": 8,
+              "offset": 32338,
+              "length": 8164,
+              "endLine": 602,
+              "category": "Maintainability",
+              "id": "src/live-preview-editor.tsx::477:8::react-doctor/no-high-complexity-react-function::b44968e42c8479e5b979bb37135d7368064ff19b16f867c3bba0bddad37df86f",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": [
+                "react-jsx-only",
+                "test-noise"
+              ]
+            }
+          ],
+          "score": null,
+          "skippedChecks": [],
+          "analyzedFiles": [
+            "src/live-preview-editor.tsx"
+          ],
+          "analyzedFileCount": 1,
+          "complete": true,
+          "scannedFileCount": 1,
+          "elapsedMilliseconds": 282.721625
+        }
+      ],
+      "diagnostics": [
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-array-index-as-key",
+          "severity": "warning",
+          "title": "Array index used as a key",
+          "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+          "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+          "line": 203,
+          "column": 300,
+          "offset": 9459,
+          "length": 25,
+          "endLine": 203,
+          "category": "Bugs",
+          "id": "src/live-preview-editor.tsx::203:300::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": []
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "js-set-map-lookups",
+          "severity": "warning",
+          "title": "Array lookup inside a loop",
+          "message": "This scales poorly because `array.includes()` inside a loop scans the whole list every time. Use a Set for constant-time lookups.",
+          "help": "Use a `Set` or `Map` when you check for the same items over and over. `Array.includes`/`find` scans the whole list each time",
+          "line": 222,
+          "column": 137,
+          "offset": 11758,
+          "length": 66,
+          "endLine": 222,
+          "category": "Performance",
+          "id": "src/live-preview-editor.tsx::222:137::react-doctor/js-set-map-lookups::8ca162272c84d42896a45c0a801007a712bbbc2697f9f8e1c400af6faf47fe70",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": [
+            "test-noise"
+          ]
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-high-complexity-react-function",
+          "severity": "warning",
+          "title": "React function has high control-flow complexity",
+          "message": "`MarkdownDocumentProperty` has cyclomatic complexity 40, cognitive complexity 38, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+          "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+          "line": 229,
+          "column": 1,
+          "offset": 12508,
+          "length": 19369,
+          "endLine": 468,
+          "category": "Maintainability",
+          "id": "src/live-preview-editor.tsx::229:1::react-doctor/no-high-complexity-react-function::9ebaa4b7e26852eff0e955fc0ff19727acac35100c5b025418626081654b2c9e",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": [
+            "react-jsx-only",
+            "test-noise"
+          ]
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-array-index-as-key",
+          "severity": "warning",
+          "title": "Array index used as a key",
+          "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+          "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+          "line": 405,
+          "column": 291,
+          "offset": 24503,
+          "length": 23,
+          "endLine": 405,
+          "category": "Bugs",
+          "id": "src/live-preview-editor.tsx::405:291::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": []
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-high-complexity-react-function",
+          "severity": "warning",
+          "title": "React function has high control-flow complexity",
+          "message": "`MarkdownDocumentHeader` has cyclomatic complexity 25, cognitive complexity 22, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+          "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+          "line": 477,
+          "column": 8,
+          "offset": 32338,
+          "length": 8164,
+          "endLine": 602,
+          "category": "Maintainability",
+          "id": "src/live-preview-editor.tsx::477:8::react-doctor/no-high-complexity-react-function::b44968e42c8479e5b979bb37135d7368064ff19b16f867c3bba0bddad37df86f",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": [
+            "react-jsx-only",
+            "test-noise"
+          ]
+        }
+      ],
+      "summary": {
+        "errorCount": 0,
+        "warningCount": 5,
+        "affectedFileCount": 1,
+        "totalDiagnosticCount": 5,
+        "score": null,
+        "scoreLabel": null
+      },
+      "elapsedMilliseconds": 286.51633400000003,
+      "error": null
+    },
+    "noNewSemanticWarnings": true
+  },
+  "galleryVerification": {
+    "bothPairsDecodedAndFullyVisible": true,
+    "route": "/.agents/uiux/tocktutor/tocktutor.html#live-preview",
+    "viewport": [1512, 949, 2],
+    "theme": "dark",
+    "rootSkin": null,
+    "proofId": "tockteam-ae0l-2026-10-03",
+    "horizontalOverflow": false,
+    "obsoleteCollapsedCopyPresent": false,
+    "runtimeErrors": [],
+    "failedRequests": [],
+    "preservedReferenceHashes": ["886b4cddfaa7d6db2129ce9e9f359f46a4c3408a66ad4e98cc15f3140420d604", "46a142ca48251b754909bad157a6c2f431986710a01c238c93da59aa1351e027"]
+  },
+  "galleryCleanup": {
+    "browser": {
+      "id": "4f2ab417-fc7b-4a0c-b4c1-d5f1ca1c8745",
+      "rootPid": 52243,
+      "recordedPids": [52243, 52247, 52248, 52249],
+      "stopped": true,
+      "remaining": []
+    },
+    "server": { "rootPid": 52233, "stopped": true, "remaining": [] },
+    "earlierServer": { "rootPid": 52046, "stopped": true, "remaining": [] }
+  }
+}

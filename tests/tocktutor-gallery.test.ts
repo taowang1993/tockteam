@@ -81,7 +81,18 @@ test('keeps Properties expanded in both upper and lower Live Preview captures', 
   assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-editor-live-preview.png', 'tocktutor-live-preview-lower.png'])
   assert.equal(refresh.unrelatedExistingCapturesUnchanged, 60)
   assert.equal(refresh.propertiesDisclosureToggled, false)
-  assert.equal(refresh.rebuild, false)
+  assert.equal(refresh.rebuild, true)
+  assert.equal(refresh.compactBorderlessProperties, true)
+  assert.equal(verified.interaction.editSaveReopen, true)
+  assert.equal(verified.interaction.draftRetention, true)
+  assert.equal(verified.focusAndNarrow.focus.visible, true)
+  assert.equal(verified.focusAndNarrow.narrow.width, verified.focusAndNarrow.narrow.scrollWidth)
+  assert.equal(verified.appearances.appearances.length, 8)
+  for (const appearance of verified.appearances.appearances) {
+    assert.ok(appearance.borders.every((border: string) => border === '0px'))
+    assert.ok(appearance.minimumInputContrast >= 4.5)
+    assert.ok(appearance.sourceHintContrast >= 4.5)
+  }
   for (const name of refresh.publicationAllowlist) {
     const capture = proof.captures[name]
     assert.equal(capture.refreshId, refresh.id, name)
