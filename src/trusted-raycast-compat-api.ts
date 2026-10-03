@@ -73,6 +73,7 @@ export function useNavigation(): { push: (view: unknown) => void; pop: () => voi
 // Each mounted Form owns its values; no process-global registry outlives that form.
 type StoredFormValue = readonly [UserRaycastFieldKind, UserRaycastFieldValue]
 const FormContext = React.createContext<{ values: Map<string, UserRaycastFieldValue>; dates: Set<string>; stored: Map<string, UserRaycastFieldKind>; load(): Map<string, StoredFormValue>; save?: (value: string) => void } | null>(null)
+const DropdownDefaultContext = React.createContext<((value: string) => void) | null>(null)
 const copyFormValue = (value: UserRaycastFieldValue): UserRaycastFieldValue => Array.isArray(value) ? [...value] : value
 const encodeFormDate = (value: unknown): string | null => {
   if (value === null) return null
@@ -118,10 +119,19 @@ const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFi
     initialRef.current = copyFormValue(initial)
   }
   const initial = initialRef.current
+  const defaultChosen = React.useRef(fieldKind !== 'dropdown' || props.defaultValue !== undefined)
+  const restored = React.useRef(false)
   const [draft, setDraft] = React.useState(() => {
     const stored = props.storeValue === true && collected?.save ? collected.load().get(String(props.id)) : undefined
-    return copyFormValue(stored?.[0] === fieldKind ? stored[1] : initial)
+    restored.current = stored?.[0] === fieldKind
+    return copyFormValue(restored.current ? stored![1] : initial)
   })
+  const chooseFirstOption = React.useCallback((option: string) => {
+    if (defaultChosen.current) return
+    defaultChosen.current = true
+    initialRef.current = option
+    if (!restored.current) setDraft(option)
+  }, [])
   const [focusRequest, setFocusRequest] = React.useState(0)
   const [resetRequest, setResetRequest] = React.useState(0)
   const [, refresh] = React.useState(0)
@@ -139,7 +149,7 @@ const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFi
   }
   React.useImperativeHandle(props.ref as React.Ref<{ focus(): void; reset(): void }>, () => ({
     focus: () => setFocusRequest(previous => previous + 1),
-    reset: () => { if (fieldKind === 'date') setResetRequest(previous => previous + 1); void change(initial) },
+    reset: () => { if (fieldKind === 'date') setResetRequest(previous => previous + 1); void change(initialRef.current!) },
   }))
   React.useLayoutEffect(() => {
     if (!collected) return
@@ -150,7 +160,7 @@ const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFi
     return () => { collected.values.delete(id); collected.dates.delete(id); collected.stored.delete(id) }
   }, [collected, id, value, props.storeValue])
   // The reviewed bundled projection remains unchanged; callbacks stay in the private child.
-  return element('raycast-text-field', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? props : {
+  const field = element('raycast-text-field', process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? props : {
     ...props, ref: undefined, fieldKind, value, fieldEventId, focusRequest, ...(fieldKind === 'date' ? { resetRequest } : {}),
     onChange: (next: UserRaycastFieldValue) => {
       if (fieldKind === 'date' && typeof next === 'string' && (typeof props.min === 'string' && formDateKey(next, props.dateType) < formDateKey(props.min, props.dateType)
@@ -165,6 +175,7 @@ const basicFormField = (fieldKind: UserRaycastFieldKind, fallback: UserRaycastFi
     onFocus: (next: UserRaycastFieldValue) => typeof props.onFocus === 'function' ? props.onFocus({ target: { id, value: copyFormValue(next) }, type: 'focus' }) : undefined,
     onBlur: (next: UserRaycastFieldValue) => typeof props.onBlur === 'function' ? props.onBlur({ target: { id, value: copyFormValue(next) }, type: 'blur' }) : undefined,
   }, React.Children.toArray(props.children as React.ReactNode))
+  return fieldKind === 'dropdown' && process.env.TOCKTEAM_USER_RAYCAST_ID !== undefined ? React.createElement(DropdownDefaultContext.Provider, { value: chooseFirstOption }, field) : field
 }
 const formDropdown = (props: Record<string, unknown>) => {
   const collected = React.useContext(FormContext)?.values ?? null
@@ -180,13 +191,12 @@ const formDropdown = (props: Record<string, unknown>) => {
   }
   return element('raycast-form-dropdown', { title: String(props.title ?? ''), value, fieldEventId: fieldId, onChange: (next: string) => { collected?.set(String(props.id), next); if (typeof props.onChange === 'function') props.onChange(next) } }, React.Children.toArray(props.children as React.ReactNode))
 }
-const dropdownItem = component('raycast-form-dropdown-item')
-const firstDropdownValue = (children: React.ReactNode): string | undefined => {
-  for (const child of React.Children.toArray(children)) if (React.isValidElement<Record<string, unknown>>(child)) {
-    if (child.type === dropdownItem && typeof child.props.value === 'string') return child.props.value
-    const nested = firstDropdownValue(child.props.children as React.ReactNode)
-    if (nested !== undefined) return nested
-  }
+const dropdownItem = function DropdownItem(props: Record<string, unknown>) {
+  const chooseFirstOption = React.useContext(DropdownDefaultContext)
+  React.useLayoutEffect(() => {
+    if (typeof props.value === 'string') chooseFirstOption?.(props.value)
+  }, [chooseFirstOption, props.value])
+  return element('raycast-form-dropdown-item', props, React.Children.toArray(props.children as React.ReactNode))
 }
 const dateField = basicFormField('date', null)
 const datePicker = (props: Record<string, unknown>) => {
@@ -218,7 +228,7 @@ export const Form = Object.assign(form, {
   DatePicker: Object.assign(datePicker, { Type: Object.freeze({ Date: 'date', DateTime: 'date_time' }), isFullDay: (_date?: Date | null): never => unsupported('Form.DatePicker.isFullDay') }),
   TextField: basicFormField('text', ''), PasswordField: basicFormField('password', ''),
   TextArea: basicFormField('textarea', ''), Checkbox: basicFormField('checkbox', false),
-  Dropdown: Object.assign(process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? formDropdown : basicFormField('dropdown', props => firstDropdownValue(props.children as React.ReactNode) ?? ''), { Item: dropdownItem, Section: section }),
+  Dropdown: Object.assign(process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? formDropdown : basicFormField('dropdown', ''), { Item: dropdownItem, Section: section }),
   TagPicker: Object.assign(basicFormField('tagpicker', []), { Item: dropdownItem }),
   DropdownItem: dropdownItem, DropdownSection: section, TagPickerItem: dropdownItem,
 })

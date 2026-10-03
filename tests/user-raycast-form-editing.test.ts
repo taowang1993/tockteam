@@ -33,9 +33,10 @@ async function fixture(t: TestContext, command: string) {
   })
   await buildUserRaycast(runtime)
   const selected = install.prepare(source); install.approve(selected.digest); install.enable()
-  const opening = manager.start(owner); if (manager.childPid) pids.push(manager.childPid); await opening
+  const open = async () => { const opening = manager.start(owner); if (manager.childPid) pids.push(manager.childPid); await opening }
+  await open()
   const latest = () => messages.filter(message => message.root).at(-1)!
-  const nodes = (type: string): any[] => { const found: any[] = []; const walk = (node: any): void => { if (!node || typeof node === 'string') return; if (node.type === type) found.push(node); for (const child of node.children ?? []) walk(child) }; walk(latest().root); return found }
+  const nodes = (type: string, tree: unknown = latest().root): any[] => { const found: any[] = []; const walk = (node: any): void => { if (!node || typeof node === 'string') return; if (node.type === type) found.push(node); for (const child of node.children ?? []) walk(child) }; walk(tree); return found }
   const field = (id: string) => { const result = nodes('raycast-text-field').find(node => node.props.id === id); assert.ok(result, `missing field ${id}`); return result }
   let requestSequence = 0
   const edit = (node: any, value: unknown, kind = 'fieldChanged') => manager.send(owner, { sessionId: latest().sessionId, revision: latest().revision, eventId: node.props.fieldEventId, requestId: `request-${++requestSequence}`, kind, value } as any)
@@ -48,7 +49,7 @@ async function fixture(t: TestContext, command: string) {
     assert.equal(messages.slice(before).find(message => message.type === 'outcome')?.succeeded, true, errors.join('\n'))
   }
   const submit = async () => { await act(); return JSON.parse(nodes('raycast-list-item')[0].props.title) }
-  return { manager, messages, errors, copyCalls: () => copyCalls, latest, nodes, field, edit, act, submit }
+  return { manager, messages, errors, copyCalls: () => copyCalls, latest, nodes, field, edit, act, submit, open }
 }
 const shell = (form: string, body: string, action = "React.createElement(Action.SubmitForm,{title:'Submit Form',onSubmit:values=>setAnswer(JSON.stringify(values))})") => `
  const React=require('react');const {Form,Action,ActionPanel,List}=require('@raycast/api');global.fetch=()=>{throw Error('Network prohibited')};
@@ -107,6 +108,54 @@ test('dropdown picks the first nested item by default and empty choice fields re
  const f = await fixture(t, shell("React.createElement(React.Fragment,null,React.createElement(Form.Dropdown,{id:'first',title:'First'},React.createElement(Form.Dropdown.Section,{title:'Choices'},React.createElement(Form.Dropdown.Item,{value:'',title:'Empty'}),React.createElement(Form.Dropdown.Item,{value:'second',title:'Second'}))),React.createElement(Form.Dropdown,{id:'empty',title:'Empty Dropdown'}),React.createElement(Form.TagPicker,{id:'tags',title:'Tags'}))",''))
  assert.deepEqual(await f.submit(),{first:'',empty:'',tags:[]})
  assert.deepEqual(f.field('tags').props.value,[])
+})
+
+test('implicit dropdown defaults come from the first rendered option through component wrappers', async t => {
+ const f = await fixture(t, shell("React.createElement(Form.Dropdown,{id:'locale',ref:choiceRef,onChange:value=>changes.current.push(value)},React.createElement(Choices),React.createElement(Form.Dropdown.Item,{value:'es',title:'Spanish'}))", "const choiceRef=React.useRef(null),changes=React.useRef([]);function Choices(){return React.createElement(Form.Dropdown.Section,{title:'Languages'},React.createElement(Form.Dropdown.Item,{value:'fr',title:'French'}),React.createElement(Form.Dropdown.Item,{value:'en',title:'English'}))}", "React.createElement(Action.SubmitForm,{title:'Submit Form',onSubmit:values=>setAnswer(JSON.stringify({values,changes:changes.current}))}),React.createElement(Action,{title:'Reset Choice',onAction:()=>choiceRef.current.reset()})"))
+ const ready=f.messages.find(message=>message.type==='ready');assert.ok(ready)
+ assert.equal(f.nodes('raycast-text-field',ready.root)[0].props.value,'fr','The first frame must include the resolved default, not expose a transient stale action')
+ assert.deepEqual(await f.submit(),{values:{locale:'fr'},changes:[]})
+ await f.edit(f.field('locale'),'en');await f.act('Reset Choice')
+ assert.deepEqual(await f.submit(),{values:{locale:'fr'},changes:['en','fr']})
+ assert.deepEqual(f.errors,[])
+})
+
+test('child-only late dropdown options initialize once without firing change callbacks', async t => {
+ const f=await fixture(t,shell("React.createElement(Form.Dropdown,{id:'late',ref:choiceRef,onChange:value=>changes.current.push(value)},React.createElement(Choices,{ref:choicesRef}))","const choiceRef=React.useRef(null),choicesRef=React.useRef(null),changes=React.useRef([]);const Choices=React.useMemo(()=>React.forwardRef(function Choices(_,ref){const [loaded,setLoaded]=React.useState(false),[reordered,setReordered]=React.useState(false);React.useImperativeHandle(ref,()=>({load:()=>setLoaded(true),reorder:()=>setReordered(true)}));return loaded?React.createElement(Form.Dropdown.Section,{title:'Languages'},reordered?React.createElement(Form.Dropdown.Item,{value:'de',title:'German'}):null,React.createElement(Form.Dropdown.Item,{value:'fr',title:'French'}),React.createElement(Form.Dropdown.Item,{value:'en',title:'English'})):null}),[])","React.createElement(Action.SubmitForm,{title:'Submit Form',onSubmit:values=>setAnswer(JSON.stringify({values,changes:changes.current}))}),React.createElement(Action,{title:'Load Choices',onAction:()=>choicesRef.current.load()}),React.createElement(Action,{title:'Reorder Choices',onAction:()=>choicesRef.current.reorder()}),React.createElement(Action,{title:'Reset Choice',onAction:()=>choiceRef.current.reset()})"))
+ assert.deepEqual(await f.submit(),{values:{late:''},changes:[]})
+ await f.act('Load Choices')
+ const deadline=Date.now()+2500
+ while(f.field('late').props.value!=='fr'&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,10))
+ assert.deepEqual(await f.submit(),{values:{late:'fr'},changes:[]})
+ await f.edit(f.field('late'),'en');await f.act('Reorder Choices')
+ assert.deepEqual(await f.submit(),{values:{late:'en'},changes:['en']})
+ await f.act('Reset Choice')
+ assert.deepEqual(await f.submit(),{values:{late:'fr'},changes:['en','fr']})
+ assert.deepEqual(f.errors,[]);assert.equal(f.copyCalls(),0)
+})
+
+test('implicit dropdown initialization preserves controlled, explicit and empty values',async t=>{
+ const f=await fixture(t,shell("React.createElement(React.Fragment,null,React.createElement(Form.Dropdown,{id:'controlled',value:controlled?'en':undefined,onChange:value=>changes.current.push(value)},choices),React.createElement(Form.Dropdown,{id:'explicit',defaultValue:'en'},choices),React.createElement(Form.Dropdown,{id:'blank',defaultValue:''},choices),React.createElement(Form.Dropdown,{id:'emptyFirst',onChange:value=>changes.current.push(value)},React.createElement(Form.Dropdown.Item,{value:'',title:'Empty'}),React.createElement(Form.Dropdown.Item,{value:'en',title:'English'})),React.createElement(Form.Dropdown,{id:'noOptions'}))","const [controlled,setControlled]=React.useState(true),changes=React.useRef([]);const choices=React.createElement(Form.Dropdown.Section,{title:'Languages'},React.createElement(Form.Dropdown.Item,{value:'fr',title:'French'}),React.createElement(Form.Dropdown.Item,{value:'en',title:'English'}),React.createElement(Form.Dropdown.Item,{value:'',title:'Empty'}))","React.createElement(Action.SubmitForm,{title:'Submit Form',onSubmit:values=>setAnswer(JSON.stringify({values,changes:changes.current}))}),React.createElement(Action,{title:'Release Control',onAction:()=>setControlled(false)})"))
+ assert.deepEqual(await f.submit(),{values:{controlled:'en',explicit:'en',blank:'',emptyFirst:'',noOptions:''},changes:[]})
+ await f.act('Release Control')
+ assert.deepEqual(await f.submit(),{values:{controlled:'fr',explicit:'en',blank:'',emptyFirst:'',noOptions:''},changes:[]})
+ assert.deepEqual(f.errors,[]);assert.equal(f.copyCalls(),0)
+})
+
+test('implicit dropdown defaults do not overwrite restored empty or edited selections',async t=>{
+ const f=await fixture(t,shell("React.createElement(Form.Dropdown,{id:'locale',storeValue:true,ref:choiceRef,onChange:value=>changes.current.push(value)},React.createElement(Choices))","const choiceRef=React.useRef(null),changes=React.useRef([]);function Choices(){return React.createElement(Form.Dropdown.Section,{title:'Languages'},React.createElement(Form.Dropdown.Item,{value:'fr',title:'French'}),React.createElement(Form.Dropdown.Item,{value:'en',title:'English'}),React.createElement(Form.Dropdown.Item,{value:'',title:'Empty'}))}","React.createElement(Action.SubmitForm,{title:'Submit Form',onSubmit:values=>setAnswer(JSON.stringify({values,changes:changes.current}))}),React.createElement(Action,{title:'Reset Choice',onAction:()=>choiceRef.current.reset()})"))
+ assert.deepEqual(await f.submit(),{values:{locale:'fr'},changes:[]})
+ for(const saved of ['en','']){
+  await f.edit(f.field('locale'),saved);await f.submit();await f.manager.close();await f.open()
+  assert.deepEqual(await f.submit(),{values:{locale:saved},changes:[]})
+  await f.act('Reset Choice')
+  assert.deepEqual(await f.submit(),{values:{locale:'fr'},changes:['fr']})
+ }
+ assert.deepEqual(f.errors,[]);assert.equal(f.copyCalls(),0)
+})
+
+test('invalid dropdown metadata still fails visibly before a usable ready frame',async t=>{
+ await assert.rejects(fixture(t,shell("React.createElement(Form.Dropdown,{id:'locale'},React.createElement(Form.Dropdown.Item,{value:'en',title:'English',keywords:[1]}))",'')),/Invalid dropdown keywords/)
 })
 
 test('choice callbacks preserve controlled updates, typed focus events and default reset snapshots', async t => {

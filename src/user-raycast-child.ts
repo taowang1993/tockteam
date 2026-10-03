@@ -61,6 +61,13 @@ const emit = (): void => {
   ready = true
 }
 const reportError = (error: unknown): void => send({ type: 'error', extensionId, sessionId, revision: ++revision, message: String(error).slice(0, 512) })
+let emitScheduled = false
+const emitAfterLayout = (): void => {
+  if (emitScheduled) return
+  emitScheduled = true
+  // Layout-driven defaults must settle before publishing handles and their revision.
+  queueMicrotask(() => { emitScheduled = false; try { emit() } catch (error) { reportError(error) } })
+}
 const storage = createUserRaycastStorage(process.env.TOCKTEAM_USER_RAYCAST_STATE!)
 api.configureCompatibility({
   authUrl: (url: string) => send({ type: 'auth-url', extensionId, sessionId, revision: Math.max(0, revision), url }),
@@ -90,7 +97,7 @@ if (extensionId === 'linear') process.once('SIGTERM', () => {
 const hostConfig: any = {
   supportsMutation: true, supportsPersistence: false, supportsHydration: false, isPrimaryRenderer: false, now: Date.now,
   getRootHostContainer: () => root, getRootHostContext: () => root, getChildHostContext: (parent: unknown) => parent,
-  prepareForCommit: () => null, resetAfterCommit: emit,
+  prepareForCommit: () => null, resetAfterCommit: emitAfterLayout,
   createInstance: (type: string, props: Record<string, unknown>) => ({ type, props, children: [] }),
   createTextInstance: (text: string) => text,
   appendInitialChild: (parent: Node, child: Node | string) => parent.children.push(child),
@@ -154,8 +161,9 @@ process.stdin.on('data', (chunk: string) => {
       }
       activeField = true
       const callback = event.kind === 'fieldChanged' ? field.change : event.kind === 'fieldFocused' ? field.focus : field.blur
-      Promise.resolve().then(() => event.kind === 'fieldSearchChanged' ? field.search!(event.value as string) : callback?.(event.value as UserRaycastFieldValue)).then(() => {
+      Promise.resolve().then(() => event.kind === 'fieldSearchChanged' ? field.search!(event.value as string) : callback?.(event.value as UserRaycastFieldValue)).then(async () => {
         renderer.flushSyncWork()
+        await Promise.resolve()
         respond(true)
       }, error => respond(false, String(error).slice(0, 512))).finally(() => { activeField = false })
       continue
@@ -170,7 +178,11 @@ process.stdin.on('data', (chunk: string) => {
     if (!action || activeAction || activeField) throw new Error('Stale or busy user extension action')
     activeAction = { eventId: event.eventId!, revision }
     const actionRevision = revision
-    Promise.resolve().then(action).then(() => send({ type: 'outcome', extensionId, sessionId, revision: actionRevision, eventId: event.eventId, succeeded: true, message: '' }), error => send({ type: 'outcome', extensionId, sessionId, revision: actionRevision, eventId: event.eventId, succeeded: false, message: String(error).slice(0, 512) })).finally(() => { activeAction = undefined })
+    Promise.resolve().then(action).then(async () => {
+      renderer.flushSyncWork()
+      await Promise.resolve()
+      send({ type: 'outcome', extensionId, sessionId, revision: actionRevision, eventId: event.eventId, succeeded: true, message: '' })
+    }, error => send({ type: 'outcome', extensionId, sessionId, revision: actionRevision, eventId: event.eventId, succeeded: false, message: String(error).slice(0, 512) })).finally(() => { activeAction = undefined })
   }
 })
 process.stdin.on('end', () => process.exit(0))
