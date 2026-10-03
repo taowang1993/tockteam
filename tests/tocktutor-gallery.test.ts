@@ -8,9 +8,69 @@ import { TOCKTEAM_SKINS } from '../plugins/skins/src/skins.ts'
 const root = resolve('.agents/uiux/tocktutor')
 const html = readFileSync(resolve(root, 'tocktutor.html'), 'utf8')
 const proof = JSON.parse(readFileSync(resolve(root, 'content-alignment.json'), 'utf8'))
+const historical = { ...proof, ...proof.tocktutorGalleryRefresh?.previousProof }
 const images = [...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => match[1]!)
 const links = [...html.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].map(match => match[1]!)
 const sha256 = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex')
+
+test('refreshes every retained TockTutor image without changing Obsidian and removes only unused captures', () => {
+  const refresh = proof.tocktutorGalleryRefresh
+  assert.ok(refresh, 'The complete TockTutor refresh has live capture evidence')
+  assert.equal(refresh.status, 'verified-current')
+  const referenced = [...new Set([...html.matchAll(/screenshots\/([^"'<>\s]+\.png)/gu)].map(match => match[1]!))].sort()
+  assert.deepEqual(refresh.publicationAllowlist, referenced.filter(name => name.startsWith('tocktutor-')))
+  assert.equal(refresh.publicationAllowlist.length, 33)
+  assert.deepEqual(Object.keys(refresh.preservedReferenceHashes).sort(), referenced.filter(name => name.startsWith('obsidian-')))
+  assert.equal(Object.keys(refresh.preservedReferenceHashes).length, 29)
+  assert.deepEqual(refresh.removedCaptures, [
+    'obsidian-backlinks.png', 'obsidian-outline.png', 'obsidian-quick-switcher.png', 'obsidian-reading-embed.png',
+    'tocktutor-backlinks.png', 'tocktutor-bookmarks-tags.png', 'tocktutor-main-workspace.png', 'tocktutor-new-note-dialog.png',
+    'tocktutor-properties-links.png', 'tocktutor-reading-embed.png', 'tocktutor-tag-tab-polish.png',
+  ])
+  assert.equal(refresh.reusesExistingBuild, true)
+  assert.equal(refresh.appSourceEdits, false)
+  assert.equal(refresh.rebuild, false)
+  for (const name of refresh.removedCaptures) {
+    assert.ok(!referenced.includes(name), name)
+    assert.equal(existsSync(resolve(root, 'screenshots', name)), false, name)
+    assert.ok(refresh.previousProof.captures[name], name)
+  }
+  for (const [name, hash] of Object.entries(refresh.preservedReferenceHashes)) {
+    assert.equal(sha256(readFileSync(resolve(root, 'screenshots', name))), hash, name)
+    assert.deepEqual(proof.captures[name], refresh.previousProof.captures[name], name)
+  }
+  for (const name of refresh.publicationAllowlist) {
+    const capture = proof.captures[name]
+    assert.equal(capture.captureScope, 'real-desktop', name)
+    assert.equal(capture.refreshId, refresh.id, name)
+    assert.ok(Date.parse(capture.capturedAt) >= Date.parse(refresh.startedAt), name)
+    assert.deepEqual(capture.geometry, { width: 1512, height: 949, deviceScaleFactor: 2 }, name)
+    assert.equal(capture.theme, 'dark', name)
+    assert.equal(capture.skin, null, name)
+    assert.equal(capture.visibleState.rootColorScheme, 'dark', name)
+    assert.equal(capture.visibleState.rootSkin, null, name)
+    assert.equal(capture.visibleState.bodySkin, null, name)
+    assert.equal(capture.visibleState.assertionPassed, true, name)
+    assert.deepEqual(capture.runtimeErrors, [], name)
+    assert.ok(capture.route && capture.runtimeErrorMonitoring, name)
+  }
+  assert.equal(proof.captures['tocktutor-note-actions-menu.png'].visibleState.menus.length, 19)
+  assert.equal(proof.captures['tocktutor-editor-source.png'].visibleState.sourceVisible, true)
+  for (const heading of ['Data', 'Code and Notes', 'Small Heading']) {
+    assert.ok(proof.captures['tocktutor-live-preview-lower.png'].visibleState.visibleHeadings.includes(heading), heading)
+  }
+  assert.equal(proof.captures['tocktutor-mermaid-reading.png'].visibleState.diagrams, 7)
+  assert.equal(proof.captures['tocktutor-mermaid-live-preview.png'].visibleState.diagrams, 7)
+  assert.equal(proof.captures['tocktutor-web-viewer.png'].visibleState.loading, false)
+  assert.equal(proof.captures['tocktutor-web-viewer.png'].visibleState.goEnabled, true)
+  assert.equal(proof.captures['tocktutor-web-viewer-reader.png'].visibleState.readerArticleVisible, true)
+  assert.equal(proof.captures['tocktutor-web-viewer-reader.png'].visibleState.pageViewEnabled, true)
+  assert.equal(proof.noteNavigationRefresh.status, 'verified-historical')
+  assert.equal(proof.titlebarDividerRefresh.status, 'verified-historical')
+  assert.equal(proof.readerViewRefresh.status, 'verified-historical')
+  assert.ok(refresh.cleanup.length > 0)
+  assert.ok(refresh.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
+})
 
 test('accounts for every gallery and supplemental capture without stale links', () => {
   assert.match(html, /Visual Design Audit · 61 Captures/u)
@@ -23,9 +83,9 @@ test('accounts for every gallery and supplemental capture without stale links', 
   const actual = readdirSync(resolve(root, 'screenshots')).sort()
   assert.deepEqual(actual, proof.gallery.allowlist)
   assert.deepEqual(actual, Object.keys(proof.captures).sort())
-  assert.equal(actual.length, 73)
-  assert.deepEqual(actual.filter(name => !images.includes(`screenshots/${name}`)), proof.gallery.supplementalCaptures)
-  assert.ok(proof.gallery.supplementalCaptures.includes('tocktutor-tag-tab-polish.png'))
+  assert.equal(actual.length, 62)
+  assert.deepEqual(actual.filter(name => !images.includes(`screenshots/${name}`)), ['tocktutor-web-viewer-reader.png'])
+  assert.deepEqual(proof.gallery.supplementalCaptures, ['tocktutor-web-viewer-reader.png'])
   assert.ok(proof.comparisons.every((comparison: { surface: string }) => comparison.surface !== 'polish'))
   assert.ok(proof.pairs.every((pair: { surface: string }) => pair.surface !== 'polish'))
   for (const href of [...html.matchAll(/\bhref="([^"]+)"/gu)].map(match => match[1]!)) {
@@ -43,7 +103,8 @@ test('omits comparisons already covered by a more complete retained surface', ()
   assert.equal([...html.matchAll(/<section class="surface" id="([^"]+)"/gu)].at(-1)?.[1], 'imported-properties')
   for (const name of ['tocktutor-main-workspace.png', 'tocktutor-backlinks.png', 'obsidian-backlinks.png', 'tocktutor-reading-embed.png', 'obsidian-reading-embed.png']) {
     assert.ok(!images.includes(`screenshots/${name}`), name)
-    assert.ok(proof.gallery.supplementalCaptures.includes(name), name)
+    assert.ok(proof.tocktutorGalleryRefresh.removedCaptures.includes(name), name)
+    assert.equal(existsSync(resolve(root, 'screenshots', name)), false, name)
   }
   for (const name of ['tocktutor-editor-live-preview.png', 'obsidian-main-editor.png', 'tocktutor-backlinks-unlinked-expanded.png', 'obsidian-backlinks-unlinked-expanded.png', 'tocktutor-attachments-embeds.png', 'obsidian-attachments-embeds.png', 'tocktutor-properties.png', 'tocktutor-imported-properties.png']) {
     assert.ok(images.includes(`screenshots/${name}`), name)
@@ -56,7 +117,44 @@ test('omits comparisons already covered by a more complete retained surface', ()
   }
 })
 
-test('pairs the Image Viewer with the verified installed Obsidian reference', () => {
+test('preserves the historical shortened-menu and relocated-navigation verification', () => {
+  const proof = historical
+  const refresh = proof.noteNavigationRefresh
+  const capture = proof.captures['tocktutor-note-actions-menu.png']
+  assert.equal(refresh.status, 'verified-current')
+  assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-note-actions-menu.png'])
+  assert.equal(refresh.unrelatedExistingCapturesUnchanged, 72)
+  assert.equal(refresh.screenshotSha256, capture.sha256)
+  assert.equal(refresh.sameSavedBytes, true)
+  assert.equal(capture.contentSha256, proof.captures['obsidian-note-actions.png'].contentSha256)
+  assert.equal(capture.visibleState.menuEntries, 19)
+  assert.ok(capture.visibleState.menuLabels.includes('Backlinks in Document'))
+  assert.ok(capture.visibleState.menuLabels.includes('Open Linked View'))
+  for (const label of ['File Recovery', 'Graph View', 'Web Viewer', 'Bookmarks', 'Outline', 'Backlinks', 'Tags', 'All Properties']) {
+    assert.ok(!capture.visibleState.menuLabels.includes(label), label)
+  }
+  assert.deepEqual(refresh.sidebarLabels, ['Backlinks', 'Outgoing Links', 'Tags', 'All Properties', 'Outline', 'File Properties', 'Assistant'])
+  assert.ok(refresh.paletteLabels.includes('All Properties') && refresh.paletteLabels.includes('File Properties'))
+  assert.equal(refresh.separatePropertyScopes, true)
+  assert.equal(refresh.appearanceChecks.length, 8)
+  for (const sample of refresh.appearanceChecks) {
+    assert.deepEqual(sample.geometry, [1512, 949, 2])
+    assert.ok(sample.textContrast >= 4.5 && sample.selectedIconContrast >= 3)
+    assert.equal(sample.systemDark, sample.mode !== 'dark')
+    assert.equal(sample.overflow, false)
+  }
+  assert.deepEqual(refresh.narrow.overflow, [])
+  assert.equal(refresh.outsideDismissed, true)
+  assert.equal(refresh.focus.restored, true)
+  assert.ok(parseFloat(refresh.focus.outline) >= 2)
+  assert.deepEqual(refresh.runtimeErrors, [])
+  assert.ok(refresh.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
+  assert.equal(proof.noteActionsRefresh.status, 'verified-historical')
+  assert.match(html, /Workspace menu|workspace menu/u)
+})
+
+test('preserves the historical Image Viewer interaction and appearance verification', () => {
+  const proof = historical
   const section = /<section class="surface" id="image-viewer">([\s\S]*?)<\/section>/u.exec(html)![1]!
   assert.deepEqual([...section.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => match[1]), [
     'screenshots/tocktutor-image-viewer.png', 'screenshots/obsidian-image-viewer.png',
@@ -110,7 +208,8 @@ test('pairs the Image Viewer with the verified installed Obsidian reference', ()
   assert.doesNotMatch(section, /backdrop matches Obsidian|Both products.+full-window/u)
 })
 
-test('pairs Image Resizing with byte-identical palace images and saved widths in installed Obsidian', () => {
+test('preserves the historical Image Resizing save and layout verification', () => {
+  const proof = historical
   const section = /<section class="surface" id="image-resizing">([\s\S]*?)<\/section>/u.exec(html)![1]!
   assert.deepEqual([...section.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => match[1]), [
     'screenshots/tocktutor-image-resizing.png', 'screenshots/obsidian-image-resizing.png',
@@ -146,7 +245,8 @@ test('pairs Image Resizing with byte-identical palace images and saved widths in
   assert.match(section, /Potala Palace/u)
 })
 
-test('pairs Diagram Editing with genuine Obsidian and identical saved uppercase-fence source', () => {
+test('preserves the historical Diagram Editing reference verification', () => {
+  const proof = historical
   const section = /<section class="surface" id="mermaid-editing">([\s\S]*?)<\/section>/u.exec(html)![1]!
   assert.deepEqual([...section.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => match[1]), [
     'screenshots/tocktutor-mermaid-editing.png', 'screenshots/obsidian-mermaid-editing.png',
@@ -170,7 +270,8 @@ test('pairs Diagram Editing with genuine Obsidian and identical saved uppercase-
   assert.deepEqual(proof.migrationReview.diagramEditingReference.cleanup.remaining, [])
 })
 
-test('pairs Imported Property Controls with genuine Obsidian and the identical saved note', () => {
+test('preserves the historical Imported Property Controls reference and layout verification', () => {
+  const proof = historical
   const section = /<section class="surface" id="imported-properties">([\s\S]*?)<\/section>/u.exec(html)![1]!
   assert.deepEqual([...section.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => match[1]), [
     'screenshots/tocktutor-imported-properties.png', 'screenshots/obsidian-imported-properties.png',
@@ -263,7 +364,7 @@ test('uses the expanded shared comparison note for the Properties screenshot pai
     assert.equal(side.path, 'comparison.md')
     assert.equal(side.contentSha256, sha256(source))
   }
-  assert.equal(proof.captures[pair.tocktutor.screenshot].visibleState.noteHeading, 'Markdown Rendering Lab')
+  assert.ok(proof.captures[pair.tocktutor.screenshot].visibleState.visibleHeadings.includes('Markdown Rendering Lab'))
   assert.equal(proof.captures[pair.obsidian.screenshot].visibleState.noteHeading, 'Markdown Rendering Lab')
   const revision = proof.comparisonNoteRevision
   const body = source.slice(source.indexOf('\n---\n') + 5)
@@ -276,7 +377,8 @@ test('uses the expanded shared comparison note for the Properties screenshot pai
   assert.equal(refresh.visibleRows, 9)
 })
 
-test('publishes the current Properties comparison in the canonical gallery from installed Obsidian', () => {
+test('preserves the historical Properties editing comparison verification', () => {
+  const proof = historical
   const refresh = proof.comparisonPropertiesRefresh
   assert.ok(refresh, 'Current shared-note Properties has installed Obsidian comparison evidence')
   assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-imported-properties.png', 'obsidian-imported-properties.png'])
@@ -308,7 +410,8 @@ test('publishes the current Properties comparison in the canonical gallery from 
   assert.equal(existsSync(resolve('.beads/reports/2026-10-01-tocktutor-properties-proof/index.html')), false)
 })
 
-test('aligns compact Properties rows and titlebar buttons without replacing the installed reference', () => {
+test('preserves the historical compact Properties row and titlebar verification', () => {
+  const proof = historical
   const refresh = proof.propertiesLayoutRefresh
   const current = proof.captures['tocktutor-imported-properties.png']
   const native = proof.captures['obsidian-imported-properties.png']
@@ -355,7 +458,8 @@ test('aligns compact Properties rows and titlebar buttons without replacing the 
   assert.match(html, /Properties Layout Refresh/u)
 })
 
-test('places native calendar controls before both property dates in all eight appearances', () => {
+test('preserves the historical eight-appearance native calendar verification', () => {
+  const proof = historical
   const refresh = proof.propertyCalendarRefresh
   const current = proof.captures['tocktutor-imported-properties.png']
   assert.equal(refresh.status, 'verified-historical')
@@ -389,7 +493,8 @@ test('places native calendar controls before both property dates in all eight ap
   assert.match(html, /calendar button before the date/u)
 })
 
-test('keeps a two-pixel composer gap and right-edge footer without changing comparison content', () => {
+test('preserves the historical composer gap and footer verification', () => {
+  const proof = historical
   const refresh = proof.composerGapRefresh
   assert.equal(refresh.status, 'verified-historical')
   assert.equal(proof.footerComposerRefresh.status, 'verified-historical')
@@ -434,7 +539,8 @@ test('keeps a two-pixel composer gap and right-edge footer without changing comp
   assert.match(html, /2 CSS pixels/u)
 })
 
-test('matches the left titlebar divider in both right-sidebar views without moving the pane', () => {
+test('preserves the historical right-titlebar divider verification', () => {
+  const proof = historical
   const refresh = proof.titlebarDividerRefresh
   assert.ok(refresh, 'Current right-titlebar divider has rendered Desktop evidence')
   assert.equal(refresh.status, 'verified-current')
@@ -474,7 +580,8 @@ test('matches the left titlebar divider in both right-sidebar views without movi
   assert.match(html, /Titlebar Divider Refresh/u)
 })
 
-test('keeps unmatched migration surfaces distinct from the four focused comparisons', () => {
+test('preserves the historical migration comparisons and original source bindings', () => {
+  const proof = historical
   const additions = proof.migrationReview
   assert.equal(additions.allowlist.length, 6)
   assert.equal(additions.registryUnchanged, true)
@@ -542,7 +649,8 @@ test('refreshes supplemental captures with verified pixels and honest runtime ev
   assert.ok(proof.startupObservations.some((entry: { message: string }) => entry.message.includes('workspaces.startSession')))
 })
 
-test('records a fresh dark Source Mode capture with visible raw Markdown', () => {
+test('preserves the historical Source Mode and note-history verification', () => {
+  const proof = historical
   const source = proof.captures['tocktutor-editor-source.png']
   assert.equal(source.route, '/tocktutor/UIUX%20Comparison.md')
   assert.equal(source.mode, 'source')
@@ -556,7 +664,8 @@ test('records a fresh dark Source Mode capture with visible raw Markdown', () =>
   assert.equal(source.captureProof.processTreeStopped, true)
 })
 
-test('records the scrolled lower Live Preview pair with both target sections visible', () => {
+test('preserves the historical lower Live Preview comparison verification', () => {
+  const proof = historical
   const pair = proof.pairs.find((candidate: { surface: string }) => candidate.surface === 'live-preview-lower')
   assert.ok(pair)
   assert.equal(pair.tocktutor.path, 'UIUX Comparison.md')
@@ -579,7 +688,8 @@ test('records the scrolled lower Live Preview pair with both target sections vis
   }
 })
 
-test('records corrected Live Preview text and a loaded current Reader View capture', () => {
+test('preserves the historical Live Preview correction and Reader View verification', () => {
+  const proof = historical
   const expected = 'Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.'
   const corrected = Object.entries(proof.captures).filter(([, capture]) => (capture as { visibleState?: { renderedParagraph?: string } }).visibleState?.renderedParagraph === expected)
   assert.equal(corrected.length, proof.livePreviewCorrection.updatedCount + 1)
@@ -605,7 +715,8 @@ test('records corrected Live Preview text and a loaded current Reader View captu
   assert.doesNotMatch(html, /Reader View.+(?:earlier capture|stayed loading)|earlier Reader View capture/u)
 })
 
-test('tracks only the focused bullet-and-link retake', () => {
+test('preserves the historical focused bullet-and-link retake', () => {
+  const proof = historical
   const retake = proof.focusedStyleRetake
   assert.equal(retake.filename, 'tocktutor-tag-tab-polish.png')
   assert.equal(retake.updatedCount, 1)
@@ -616,7 +727,8 @@ test('tracks only the focused bullet-and-link retake', () => {
   assert.equal(retake.processTreeStopped, true)
 })
 
-test('binds refreshed Live Preview colors and checkbox size to visible capture evidence', () => {
+test('preserves the historical Live Preview color and checkbox verification', () => {
+  const proof = historical
   const entries = Object.entries(proof.captures).filter(([, capture]) => (capture as { styleEvidence?: unknown }).styleEvidence)
   assert.equal(entries.length, proof.livePreviewStyleCorrection.updatedCount)
   assert.ok(entries.some(([name]) => name === 'tocktutor-tag-tab-polish.png'))
