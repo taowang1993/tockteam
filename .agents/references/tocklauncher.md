@@ -140,6 +140,8 @@ The renderer provides:
 - native buttons, listbox/menu/dialog semantics, live status, focus restoration, visible focus, and reduced-motion behavior;
 - semantic DSH color tokens, Tailwind v4, shared `@tockteam/ui` React controls, and Lucide icons.
 
+Returning from File Search, Web Search or DeepL to Results removes the tool. A pending tool action, search response, initial focus callback or input debounce must not send another search or restore tool focus after that removal. Searches replace the owner's action set, so a closed tool must leave the visible Results search in control.
+
 The settings shortcut opens the canonical workbench settings page. There is no second settings application or renderer-owned persistence authority. Active text drafts survive background snapshot refreshes; committed drafts reconcile with the accepted main-owned snapshot, including normalized currency lists and JSON formatting, without clearing newer edits. Rejected drafts stay editable after blur, and invalid structured values receive visible and announced field errors.
 
 ## Provider Composition
