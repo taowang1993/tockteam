@@ -23,6 +23,33 @@ function setClipboard(writeText: (value: string) => Promise<void>): void {
 }
 
 describe('editable document properties', () => {
+  it('keeps inline Properties compact and borderless without losing editing or its disclosure', () => {
+    const set = vi.fn(() => true)
+    renderEditableHeader({ onSetProperty: set, source: '---\nstatus: active\ntags: [one]\n---\n' })
+    const scalar = screen.getByRole('textbox', { name: 'Property status' })
+    const list = screen.getByRole('textbox', { name: 'New tags Value' })
+    for (const input of [scalar, list]) {
+      expect(input.classList.contains('border-0')).toBe(true)
+      expect(input.classList.contains('bg-transparent')).toBe(true)
+      expect(input.classList.contains('focus-visible:outline')).toBe(true)
+    }
+    const add = screen.getByRole('button', { name: 'Add tags Value' })
+    expect(add.textContent).toBe('')
+    expect(add.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
+    const disclosure = screen.getByRole('button', { name: 'Properties', exact: true })
+    expect(disclosure.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.change(scalar, { target: { value: 'review' } })
+    fireEvent.blur(scalar)
+    expect(set).toHaveBeenCalledWith('status', 'review')
+    fireEvent.change(list, { target: { value: 'two' } })
+    fireEvent.click(add)
+    expect(set).toHaveBeenCalledWith('tags', ['one', 'two'])
+    fireEvent.click(disclosure)
+    expect(screen.queryByRole('textbox', { name: 'Property status' })).toBeNull()
+    fireEvent.click(disclosure)
+    expect(screen.getByRole('textbox', { name: 'Property status' })).toBe(scalar)
+  })
+
   it('exposes rename, copy, and remove actions for ordinary property names', () => {
     renderEditableHeader({ onRenameProperty: vi.fn(() => true), onRemoveProperty: vi.fn(() => true) })
 
