@@ -324,7 +324,7 @@ export const Action = Object.assign(action, {
   Push: (props: Record<string, unknown>) => element('raycast-action', { title: props.title, shortcut: JSON.stringify(props.shortcut ?? null), ...(process.env.TRUSTED_RAYCAST_EXTENSION_ID === 'can-i-use' ? { canIUsePush: true } : {}), onAction: () => navigationStack.push(props.target) && renderNavigationTop() }),
   SubmitForm: (props: Record<string, unknown>) => {
     const collected = React.useContext(FormContext)
-    return element('raycast-action', { title: props.title ?? 'Submit', submitForm: true, shortcut: JSON.stringify(props.shortcut ?? null), onAction: async () => {
+    return element('raycast-action', { title: props.title ?? 'Submit', ...(process.env.TOCKTEAM_USER_RAYCAST_ID === undefined ? {} : { submitForm: true }), shortcut: JSON.stringify(props.shortcut ?? null), onAction: async () => {
       const values = Object.fromEntries(Array.from(collected?.values ?? [], ([id, value]) => [id, collected?.dates.has(id) ? decodeFormDate(value) : copyFormValue(value)]))
       const stored = collected?.save && collected.stored.size ? new Map(collected.load()) : undefined
       if (stored) for (const [id, kind] of collected!.stored) stored.set(id, [kind, copyFormValue(collected!.values.get(id)!)])

@@ -8,6 +8,7 @@ import Reconciler from 'react-reconciler'
 import * as api from './api.mjs'
 import { createTrustedRaycastLineReader, TRUSTED_RAYCAST_INPUT_FRAME_BYTES } from './trusted-raycast-contract.ts'
 import { createUserRaycastStorage } from './user-raycast-storage.ts'
+import { appendTrustedRaycastChild, insertTrustedRaycastChild } from './trusted-raycast-projection.ts'
 import { isUserRaycastEvent, isUserRaycastFieldValue, isUserRaycastOAuthCleanupCounts, isUserRaycastOAuthCleanupReasons, type UserRaycastFieldValue } from './user-raycast-contract.ts'
 
 type Node = { type: string; props: Record<string, unknown>; children: Array<Node | string> }
@@ -93,10 +94,10 @@ const hostConfig: any = {
   createInstance: (type: string, props: Record<string, unknown>) => ({ type, props, children: [] }),
   createTextInstance: (text: string) => text,
   appendInitialChild: (parent: Node, child: Node | string) => parent.children.push(child),
-  appendChild: (parent: Node, child: Node | string) => parent.children.push(child),
-  appendChildToContainer: (parent: Node, child: Node | string) => parent.children.push(child),
-  insertBefore: (parent: Node, child: Node | string, before: Node | string) => parent.children.splice(parent.children.indexOf(before), 0, child),
-  insertInContainerBefore: (parent: Node, child: Node | string, before: Node | string) => parent.children.splice(parent.children.indexOf(before), 0, child),
+  appendChild: appendTrustedRaycastChild,
+  appendChildToContainer: appendTrustedRaycastChild,
+  insertBefore: insertTrustedRaycastChild,
+  insertInContainerBefore: insertTrustedRaycastChild,
   removeChild: (parent: Node, child: Node | string) => { const index = parent.children.indexOf(child); if (index >= 0) parent.children.splice(index, 1) },
   removeChildFromContainer: (parent: Node, child: Node | string) => { const index = parent.children.indexOf(child); if (index >= 0) parent.children.splice(index, 1) },
   clearContainer: (parent: Node) => { parent.children.length = 0 }, finalizeInitialChildren: () => false,

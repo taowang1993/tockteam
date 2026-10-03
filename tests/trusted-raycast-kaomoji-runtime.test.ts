@@ -167,10 +167,11 @@ await test('reviewed Kaomoji default and search projections stay finite in dispo
     const query = outside.name.toLowerCase()
     assert.ok(dataset.filter(entry => entry.name.toLowerCase().includes(query) || entry.keywords.some(keyword => keyword.toLowerCase().includes(query)) || entry.category.toLowerCase().includes(query)).includes(outside), 'proof lookup diverged from audited search semantics')
     const searchMs = await search(outside.name)
-    assert.ok(currentNodes().some(node => node.type === 'raycast-list-item' && node.props.title === outside.entry), 'search did not resolve an entry outside the initial 64')
+    await waitFor(() => currentNodes().some(node => node.type === 'raycast-list-item' && node.props.title === outside.entry), 'search did not resolve an entry outside the initial 64')
     const emptyMs = await search(`no-result-${randomUUID()}`)
-    assert.equal(currentNodes().filter(node => node.type === 'raycast-list-item').length, 0)
+    await waitFor(() => currentNodes().filter(node => node.type === 'raycast-list-item').length === 0, 'empty search did not remove the previous results')
     await search('')
+    await waitFor(() => currentNodes().filter(node => node.type === 'raycast-list-item').length === 64, 'cleared search did not restore the default results')
     const activeItems = currentNodes().filter(node => node.type === 'raycast-list-item')
     const initialTitle = String(activeItems[0]!.props.title)
     const actionOrder = visit(activeItems[0]!).filter(node => node.type === 'raycast-action').map(node => String(node.props.title))
@@ -320,4 +321,61 @@ await test('reviewed Kaomoji default and search projections stay finite in dispo
     assert.equal(liveSnapshot(join(homedir(), 'Library/Application Support/TockTeam')), beforeLive)
     assert.equal(existsSync(root), false)
   }
+})
+
+test('bundled Kaomoji preferences open and save through the reviewed child', { timeout: 30_000 }, async t => {
+  const root = join(tmpdir(), `tockteam-kaomoji-preferences-${process.pid}-${randomUUID()}`)
+  const paths = trustedRaycastDataPaths(join(root, 'profile'), 'kaomoji-search')
+  const messages: TrustedRaycastViewMessage[] = [], errors: string[] = [], childPids: number[] = []
+  const owner = { webContentsId: 702 }
+  const input = { extensionId: 'kaomoji-search' as const, sessionId: 'preferences', generation: 'preferences', command: 'index' as const, preferences: KAOMOJI_PREFERENCE_DEFAULTS }
+  let store: TrustedRaycastTrustStore
+  const manager = new TrustedRaycastManager({
+    runtimeDir: () => store.runtimeDir(), nodePath: process.execPath, stateFile: paths.stateFile,
+    preferencesConfigured: () => existsSync(paths.preferencesFile),
+    savePreferences: async (values, extensionId) => { assert.equal(extensionId, 'kaomoji-search'); await saveKaomojiPreferences(paths.preferencesFile, values) },
+    onMessage: (_owner, message) => messages.push(message), onError: (_owner, error) => errors.push(error.message),
+  })
+  t.after(async () => {
+    await manager.close()
+    for (const pid of childPids) assert.throws(() => process.kill(-pid, 0), { code: 'ESRCH' })
+    t.diagnostic(`Stopped managed-preferences process groups: ${childPids.join(', ')}`)
+    rmSync(root, { recursive: true, force: true })
+  })
+  await buildTrustedRaycast(root, resolve('plugins/trusted-raycast/vendor/kaomoji-search.tar'), 'kaomoji-search')
+  store = new TrustedRaycastTrustStore({
+    descriptor: trustedRaycastDescriptors['kaomoji-search'], installRoot: paths.installRoot,
+    candidateDir: join(root, 'trusted-raycast-kaomoji'), stateFile: paths.trustFile,
+    preview: staged => manager.previewRuntime(staged, 'kaomoji-search'),
+  })
+  store.stage(); await store.preview(); store.apply(); store.enable()
+  await manager.start(owner, input)
+  const childPid = (manager as unknown as { session?: { child?: { pid?: number } } }).session?.child?.pid
+  assert.ok(childPid); childPids.push(childPid)
+  const latest = (): TrustedRaycastViewMessage => messages.findLast(message => message.root !== undefined)!
+  const waitFor = async (predicate: () => boolean): Promise<void> => {
+    const deadline = Date.now() + 3000
+    while (!predicate() && !errors.length && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
+    assert.deepEqual(errors, [], 'Opening a supported preferences form must keep the command running')
+    assert.ok(predicate(), 'Preferences must finish opening or saving')
+  }
+  const invoke = (title: string): void => {
+    const projection = latest()
+    const action = visit(projection.root!).find(node => node.type === 'raycast-action' && node.props.title === title)
+    assert.ok(action?.props.actionEventId, `Missing action ${title}`)
+    manager.send(owner, { extensionId: input.extensionId, sessionId: input.sessionId, generation: input.generation,
+      revision: projection.revision, eventId: String(action.props.actionEventId), kind: 'action' })
+  }
+  await waitFor(() => visit(latest().root!).some(node => node.type === 'raycast-action' && node.props.title === 'Open Extension Preferences'))
+  invoke('Open Extension Preferences')
+  await waitFor(() => latest().root!.props.preferenceSetup === true)
+  const fields = visit(latest().root!).filter(node => node.type === 'raycast-form-dropdown')
+  assert.deepEqual(fields.map(field => field.props.title), ['Display Mode', 'Primary Action'])
+  for (const [field, value] of [[fields[0]!, 'grid'], [fields[1]!, 'copy-to-clipboard']] as const) {
+    manager.send(owner, { extensionId: input.extensionId, sessionId: input.sessionId, generation: input.generation,
+      revision: latest().revision, eventId: String(field.props.fieldEventId), kind: 'fieldChanged', value })
+  }
+  invoke('Save Preferences')
+  await waitFor(() => existsSync(paths.preferencesFile) && latest().root!.props.preferenceSetup === false)
+  assert.deepEqual(loadKaomojiPreferenceState(paths.preferencesFile).values, { displayMode: 'grid', primaryAction: 'copy-to-clipboard' })
 })

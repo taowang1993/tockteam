@@ -6,6 +6,22 @@ export type TrustedRaycastProjectionNode = {
   children: Array<TrustedRaycastProjectionNode | string>
 }
 
+/** React placement moves a mounted instance instead of adding another reference to it. */
+export function appendTrustedRaycastChild(parent: TrustedRaycastProjectionNode, child: TrustedRaycastProjectionNode | string): void {
+  const index = typeof child === 'string' ? -1 : parent.children.indexOf(child)
+  if (index >= 0) parent.children.splice(index, 1)
+  parent.children.push(child)
+}
+
+export function insertTrustedRaycastChild(parent: TrustedRaycastProjectionNode, child: TrustedRaycastProjectionNode | string, before: TrustedRaycastProjectionNode | string): void {
+  if (typeof child !== 'string' && child === before) return
+  const index = typeof child === 'string' ? -1 : parent.children.indexOf(child)
+  if (index >= 0) parent.children.splice(index, 1)
+  const anchor = parent.children.indexOf(before)
+  if (anchor < 0) throw new Error('Compatibility placement anchor is unavailable')
+  parent.children.splice(anchor, 0, child)
+}
+
 const itemType = (type: string): boolean => type === 'raycast-list-item' || type === 'raycast-grid-item'
 const contains = (node: TrustedRaycastProjectionNode, predicate: (type: string) => boolean): boolean => predicate(node.type) || node.children.some(child => typeof child !== 'string' && contains(child, predicate))
 

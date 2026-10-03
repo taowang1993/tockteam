@@ -1,6 +1,6 @@
 import React from 'react'
 // @ts-expect-error Build-time first-party projection alias.
-import { createTranslateCollectionProjection, projectTrustedRaycastRoot } from '@tockteam/trusted-raycast-projection'
+import { appendTrustedRaycastChild, insertTrustedRaycastChild, createTranslateCollectionProjection, projectTrustedRaycastRoot } from '@tockteam/trusted-raycast-projection'
 // @ts-expect-error Build-time first-party alias, shared with unchanged source.
 import { Action, ActionPanel, Form, configureCompatibility, advanceQuery, getPreferenceValues, savePreferenceValues, queryText, registerNavigationRenderer, popView, useNavigation, viewSearchable, navigationDepth } from '@raycast/api'
 // @ts-expect-error Build-time first-party contract alias.
@@ -113,10 +113,10 @@ const hostConfig: any = {
   createInstance: (type: string, props: Record<string, unknown>) => ({ type, props, children: [] }),
   createTextInstance: (text: string) => text,
   appendInitialChild: (parent: Node, child: Node | string) => parent.children.push(child),
-  appendChild: (parent: Node, child: Node | string) => parent.children.push(child),
-  appendChildToContainer: (parent: Node, child: Node | string) => parent.children.push(child),
-  insertBefore: (parent: Node, child: Node | string, before: Node | string) => parent.children.splice(parent.children.indexOf(before), 0, child),
-  insertInContainerBefore: (parent: Node, child: Node | string, before: Node | string) => parent.children.splice(parent.children.indexOf(before), 0, child),
+  appendChild: appendTrustedRaycastChild,
+  appendChildToContainer: appendTrustedRaycastChild,
+  insertBefore: insertTrustedRaycastChild,
+  insertInContainerBefore: insertTrustedRaycastChild,
   removeChild: (parent: Node, child: Node | string) => { const index = parent.children.indexOf(child); if (index >= 0) parent.children.splice(index, 1) },
   removeChildFromContainer: (parent: Node, child: Node | string) => { const index = parent.children.indexOf(child); if (index >= 0) parent.children.splice(index, 1) },
   clearContainer: (parent: Node) => { parent.children.length = 0 },
