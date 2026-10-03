@@ -345,6 +345,7 @@ Persistence rules:
 - managed writes use exclusive no-follow temporary files, file synchronization, atomic rename, directory synchronization, and validated backups;
 - a successful managed settings reset clears both the primary and recovery copy; later missing/corrupt-primary recovery must not resurrect cleared settings or secrets;
 - mutations are serialized; usage ranking updates in memory before best-effort persistence so opening-screen search never waits on disk, and reset fencing prevents stale writes from restoring cleared usage;
+- a settings reset checks cancellation after acquiring the mutation queue; it fences queued usage and removes ranking/recovery bytes only after the settings reset is accepted by storage. A reset canceled before it starts or rejected by settings publication preserves Recent history and queued launches across restart, while a completed reset still blocks older queued ranking snapshots from restoring that history;
 - the inert cached index drops dynamic image data and acquires no authority until current actions are republished;
 - external grants bind canonical path, canonical parent, device, and inode;
 - external selection reopens and parses the selected settings inside the serialized adoption operation; same-inode editor changes made while selection waits are adopted from their current valid bytes, and invalid content rejects adoption;
