@@ -391,7 +391,7 @@
     },
     {
       "path": "packages/tockbot-web-clip/lib/fetch.js",
-      "sha256": "d99144bd50312f1ef04267e3dd90a4b8dbd3162310a19b11333f416b9abeaec5"
+      "sha256": "2e4f8cb358fa1d01fafa1ddd50bcab9e4e5f925530d4a02bd836ab49607d5e26"
     },
     {
       "path": "packages/tockbot-web-clip/lib/index.d.ts",
@@ -451,7 +451,7 @@
     },
     {
       "path": "packages/tockbot-web-clip/src/fetch.ts",
-      "sha256": "6394ce5f80156f35eff93fee701a4c9951f16e33ebd406b8e0067e8ee30a7e6d"
+      "sha256": "1cca2893890b091e8a5b807d3ded4d8f226445c56de3a03e3690e7a74a44d0cc"
     },
     {
       "path": "packages/tockbot-web-clip/src/index.ts",

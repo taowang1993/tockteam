@@ -248,15 +248,22 @@ async function defaultRequest(input: PublicFetchRequest): Promise<Response> {
       method: 'GET',
       signal: input.signal,
     }, incoming => {
-      const status = incoming.statusCode ?? 502
-      const body = status === 204 || status === 304
-        ? null
-        : Readable.toWeb(incoming) as ReadableStream<Uint8Array>
-      resolve(new Response(body, {
-        headers: incomingHeaders(incoming.headers),
-        status,
-        ...(incoming.statusMessage === undefined ? {} : { statusText: incoming.statusMessage }),
-      }))
+      try {
+        const status = incoming.statusCode ?? 502
+        const body = status === 204 || status === 205 || status === 304
+          ? null
+          : Readable.toWeb(incoming) as ReadableStream<Uint8Array>
+        const response = new Response(body, {
+          headers: incomingHeaders(incoming.headers),
+          status,
+          ...(incoming.statusMessage === undefined ? {} : { statusText: incoming.statusMessage }),
+        })
+        if (body === null) incoming.destroy()
+        resolve(response)
+      } catch (error) {
+        incoming.destroy()
+        reject(error)
+      }
     })
     outgoing.once('socket', socket => {
       if (!socket.connecting) return
