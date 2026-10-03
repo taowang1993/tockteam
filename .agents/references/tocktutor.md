@@ -281,6 +281,8 @@ ZIP parsing rejects traversal, aliases, symbolic links, Unix executable regular-
 
 Existing vault files are never overwritten. Document creation preserves the reviewed UTF-8 bytes, including a leading BOM. Multi-file imports report committed, skipped, failed, and recovery-required entries rather than claiming rollback after partial success. Import and backup planning drain ordinary `result-limit` pages with valid cursors; depth/entry limits and incomplete inventories still fail closed. New backup creation enforces the restore-side entry/member limits, preventing publication of archives the same version cannot restore.
 
+Backups read supported in-vault document aliases against their inventoried logical-entry revision. Runtime `openDocument` accepts an optional Host-supplied `expectedEntryRevision` for this read and rejects a changed entry; ordinary editor opens retain canonical revisions for safe saves. Archives store the followed bytes as independent ordinary documents, never symbolic links. Aliases leaving the vault, changing document kind, or resolving to directories still fail closed. Real-filesystem coverage in `tockteam-tocktutor-import-export/tests/backup-engine.test.ts` checks Markdown, Canvas, Base, exact UTF-8/BOM/CRLF bytes, retargeting, and confinement.
+
 ### `tockbot-web-clip`
 
 `WebClipHost` provides the `webClip` service. It injects `noteVault` when available and conditionally injects `webServer` plus `tockTeamSurface` to register Desktop-only routes:
