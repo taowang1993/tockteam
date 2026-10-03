@@ -2128,7 +2128,15 @@ function loadPersistedVaultSelection(stateRoot, limit) {
             || parsed.activeRoot.length > 32_768
             || parsed.activeRoot.includes('\0')))
             return null;
-        const activeRoot = parsed.activeRoot === null ? null : resolveVaultRoot(parsed.activeRoot);
+        let activeRoot = null;
+        if (parsed.activeRoot !== null) {
+            try {
+                activeRoot = resolveVaultRoot(parsed.activeRoot);
+            }
+            catch {
+                // An unavailable active folder must not discard independently valid recent vaults.
+            }
+        }
         return {
             activeRoot,
             recents: parsePersistedRecentVaults(parsed.recents, limit),
@@ -3165,10 +3173,11 @@ export class NoteVaultRuntime extends Service {
         const state = this.currentState;
         if (state.generation !== expectedGeneration)
             throw new NoteVaultError('stale-vault', 'The active vault changed before recent-vault removal');
-        this.recentVaults = this.recentVaults.filter(record => record.id !== id);
-        if (this.stateRoot !== null && state.active && this.vaultRoot !== null) {
-            persistVaultSelection(this.stateRoot, this.vaultRoot, this.recentVaults);
+        const nextRecent = this.recentVaults.filter(record => record.id !== id);
+        if (this.stateRoot !== null) {
+            persistVaultSelection(this.stateRoot, this.vaultRoot, nextRecent);
         }
+        this.recentVaults = nextRecent;
         return this.listRecentVaults();
     }
     openSandboxVault(expectedGeneration) {
