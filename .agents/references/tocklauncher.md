@@ -216,6 +216,8 @@ Discovery is bounded by item, file-size, directory-visit, output, and time limit
 
 Simple File Search also checks each returned path against its selected folder before publishing a result. Being inside the home folder alone is insufficient: sibling folders and normalized parent escapes cannot acquire result actions. Dot-prefixed child names remain valid; native action revalidation still checks canonical scope and file identity immediately before opening or revealing a result.
 
+The shared folder-settings validator accepts complete Windows UNC paths (for example, `\\\\server\\homes\\name\\Documents`) for both Application Search and Simple File Search. Saving, importing, disk recovery and renderer snapshots retain them. Incomplete UNC roots, drive-relative paths and Windows device namespaces remain invalid. Accepting the setting does not grant path authority: the provider still enforces its existing home/root and file-identity checks before opening a result. Source regressions cover the settings-to-provider handoff; they do not establish a live Windows network-share or installed Desktop proof.
+
 Native helpers never rely on a writable current-directory search:
 
 - Windows application scan and elevation use absolute `%SystemRoot%` PowerShell paths;
