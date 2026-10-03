@@ -29,6 +29,7 @@ import {
   boundToolText,
   type AssistantPromptInput,
 } from '../src/context.ts'
+import { PennivoChildManager } from '../src/pennivo-child.ts'
 
 class QuickAnswerAdapter extends LlmAdapter {
   private calls = 0
@@ -293,6 +294,64 @@ test('ordinary staging rejects a permission revoke-and-restore during its source
     await rm(root, { recursive: true, force: true })
   }
 })
+
+for (const tool of ['notes_organize_capture', 'notes_stage_write'] as const) {
+  test(`ordinary ${tool} staging cannot publish a proposal after assistant unload begins`, async t => {
+    const { ctx, assistant, assistantFiber, root, vaultRoot } = await boot(true)
+    assert.ok(vaultRoot)
+    const original = await readFile(join(vaultRoot, 'Inbox/capture.md'), 'utf8')
+    const agent = { id: 'agent-main-notes-12345678', ctx, options: {}, session: { id: 'session-main-notes-12345678' }, status: 'running' } as unknown as Agent
+    const sourceGate = Promise.withResolvers<void>()
+    const sourceRead = Promise.withResolvers<void>()
+    const disposalGate = Promise.withResolvers<void>()
+    const disposalStarted = Promise.withResolvers<void>()
+    const open = ctx.noteVault.openDocument.bind(ctx.noteVault)
+    ctx.noteVault.openDocument = async (...args) => {
+      const result = await open(...args)
+      sourceRead.resolve()
+      await sourceGate.promise
+      return result
+    }
+    const disposeChild = PennivoChildManager.prototype.dispose
+    t.mock.method(PennivoChildManager.prototype, 'dispose', async function (this: PennivoChildManager) {
+      disposalStarted.resolve()
+      await disposalGate.promise
+      await disposeChild.call(this)
+    })
+    let unloading: Promise<void> | undefined
+    let pending: ReturnType<typeof ctx.tools.execute> | undefined
+    try {
+      await assistant.saveSettings({ ...defaults, writePermission: 'propose' })
+      pending = ctx.tools.execute({
+        agent,
+        arguments: tool === 'notes_organize_capture'
+          ? { path: 'Inbox/capture.md' }
+          : { path: 'Inbox/capture.md', content: '# Proposed update\n', operation: 'update' },
+        callId: ToolCallId('call-main-organize-unload-12345678'),
+        name: tool,
+        signal: new AbortController().signal,
+      })
+      await sourceRead.promise
+      unloading = assistantFiber.dispose()
+      await disposalStarted.promise
+      sourceGate.resolve()
+      assert.equal((await pending).isError, true, 'unloading withdraws proposal staging authority')
+      disposalGate.resolve()
+      await unloading
+      await ctx.plugin(NoteAssistant, defaults)
+      assert.deepEqual(await ctx.noteAssistant.listProposals(), [])
+      assert.deepEqual(await ctx.noteAssistant.proposalAudit(), [])
+      assert.equal(await readFile(join(vaultRoot, 'Inbox/capture.md'), 'utf8'), original)
+    } finally {
+      sourceGate.resolve()
+      disposalGate.resolve()
+      await pending?.catch(() => undefined)
+      await unloading
+      await ctx.fiber.dispose()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+}
 
 test('public proposal staging cannot bypass live turn acquisition', async () => {
   const { ctx, assistant, root } = await boot()

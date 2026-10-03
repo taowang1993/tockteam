@@ -430,6 +430,7 @@ export class NoteAssistant extends Service implements AssistantRemoteHost {
     vault: { generation: number; id: string }
   } {
     if (signal.aborted) throw new AssistantTurnBindingError('ABORTED')
+    if (!this.decisionAdmissionOpen) throw new AssistantTurnBindingError('TOOL_UNAVAILABLE')
     const settings = this.settings.get()
     this.observeSettings(settings)
     const state = this.noteVault.state
