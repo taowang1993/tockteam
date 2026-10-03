@@ -5600,6 +5600,8 @@ export class NoteVaultRuntime extends Service {
         if (!unchanged) {
           throw new NoteVaultError('conflict', 'The source attachment changed before the operation')
         }
+        signal.throwIfAborted()
+        this.assertCapturedVault(state, root)
         await unlink(source.candidate)
       } catch (error) {
         if (!await rollbackCreatedEntry(destinationPath, created)) {
@@ -5649,6 +5651,8 @@ export class NoteVaultRuntime extends Service {
         signal.throwIfAborted()
         this.assertCapturedVault(state, root)
         await assertFileEntryUnchanged(root, source, request.expectedRevision, !source.alias)
+        signal.throwIfAborted()
+        this.assertCapturedVault(state, root)
         await unlink(source.candidate)
       } catch (error) {
         if (!await rollbackCreatedEntry(destination.candidate, created)) {

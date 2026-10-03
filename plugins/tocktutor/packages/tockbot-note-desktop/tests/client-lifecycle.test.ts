@@ -9,6 +9,34 @@ import {
 const nativeActionsSlot = 'tockteam.tocktutor.workbench.native-actions'
 const vaultActionsSlot = 'tockteam.tocktutor.workbench.vault-actions'
 
+test('a note pop-out does not mount primary-window native actions or dispatch', async () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { dshDesktop: {
+      windowKind: 'note-popout',
+      tockTutor: {
+        authorize: async () => { assert.fail('note windows cannot request primary-window authority') },
+        cancelDispatch: async () => { assert.fail('note windows do not own the main dispatch poll') },
+        completeDispatch: async () => { assert.fail('note windows cannot complete main dispatch') },
+        nextDispatch: async () => { assert.fail('note windows cannot receive main dispatch') },
+      },
+    } },
+  })
+  try {
+    const context = {
+      get: () => ({ kind: 'desktop' }),
+      remote: { $mount: async () => { assert.fail('main-window native Remote stays unmounted') } },
+      inject: () => { assert.fail('main-window contributions stay unmounted') },
+    }
+    const dispose = await apply(context as never)
+    await dispose()
+  } finally {
+    if (previousWindow === undefined) delete (globalThis as { window?: unknown }).window
+    else Object.defineProperty(globalThis, 'window', previousWindow)
+  }
+})
+
 test('still cancels dispatch and disposes Remote when slot disposal fails', async () => {
   const cleanup: string[] = []
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')

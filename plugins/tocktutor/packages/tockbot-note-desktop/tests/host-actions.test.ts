@@ -559,6 +559,84 @@ test('bounds tracked pop-outs before another native window call', async () => {
   }
 })
 
+test('pop-out limit includes windows that are still loading', async () => {
+  const state = await loaded()
+  const release = Promise.withResolvers<void>()
+  const started = Promise.withResolvers<void>()
+  const pending: Promise<unknown>[] = []
+  let nativeOpens = 0
+  const popOut = state.context.get('tockTeamDesktopPopOut')
+  assert.ok(popOut)
+  popOut.open = async request => {
+    nativeOpens += 1
+    if (nativeOpens === MAX_TRACKED_POPOUTS) started.resolve()
+    await release.promise
+    return { operationId: request.identity.operationId, status: 'opened', windowId: request.relativePath }
+  }
+  try {
+    const signal = new AbortController().signal
+    for (let index = 0; index < MAX_TRACKED_POPOUTS; index += 1) {
+      pending.push(state.gateway.openPopOut(`authorization-${index}`, `Folder/Note-${index}.md`, vault, signal))
+    }
+    await started.promise
+    let overflowResult: unknown
+    const overflow = state.gateway.openPopOut('authorization-overflow', 'Folder/Overflow.md', vault, signal)
+    pending.push(overflow)
+    void overflow.then(result => { overflowResult = result })
+    await new Promise<void>(resolve => { setImmediate(resolve) })
+    assert.deepEqual(overflowResult, { status: 'denied' })
+    assert.equal(nativeOpens, MAX_TRACKED_POPOUTS)
+  } finally {
+    release.resolve()
+    await Promise.allSettled(pending)
+    await state.context.fiber.dispose()
+  }
+})
+
+test('same-note loading shares one slot until every failed request has settled', async () => {
+  const state = await loaded()
+  const firstReply = Promise.withResolvers<void>()
+  const secondReply = Promise.withResolvers<void>()
+  const started = Promise.withResolvers<void>()
+  const pending: Promise<unknown>[] = []
+  let loadingRequests = 0
+  const popOut = state.context.get('tockTeamDesktopPopOut')
+  assert.ok(popOut)
+  popOut.open = async request => {
+    if (request.relativePath === 'Loading.md') {
+      const requestNumber = ++loadingRequests
+      if (requestNumber === 2) started.resolve()
+      await (requestNumber === 1 ? firstReply.promise : secondReply.promise)
+      if (requestNumber === 1) throw new Error('window load failed')
+      return { operationId: request.identity.operationId, status: 'unavailable' }
+    }
+    return { operationId: request.identity.operationId, status: 'opened', windowId: request.relativePath }
+  }
+  try {
+    const signal = new AbortController().signal
+    for (let index = 0; index < MAX_TRACKED_POPOUTS - 1; index += 1) {
+      await state.gateway.openPopOut(`authorization-${index}`, `Folder/Note-${index}.md`, vault, signal)
+    }
+    const first = state.gateway.openPopOut('authorization-first', 'Loading.md', vault, signal)
+    pending.push(first)
+    const failed = assert.rejects(first, /window load failed/u)
+    const second = state.gateway.openPopOut('authorization-second', 'Loading.md', vault, signal)
+    pending.push(second)
+    await started.promise
+    firstReply.resolve()
+    await failed
+    assert.deepEqual(await state.gateway.openPopOut('authorization-overflow', 'Overflow.md', vault, signal), { status: 'denied' })
+    secondReply.resolve()
+    assert.deepEqual(await second, { status: 'unavailable' })
+    assert.deepEqual(await state.gateway.openPopOut('authorization-retry', 'Overflow.md', vault, signal), { status: 'opened' })
+  } finally {
+    firstReply.resolve()
+    secondReply.resolve()
+    await Promise.allSettled(pending)
+    await state.context.fiber.dispose()
+  }
+})
+
 test('closes an opened pop-out when the adapter lifecycle unloads', async () => {
   const state = await loaded()
   const signal = new AbortController().signal

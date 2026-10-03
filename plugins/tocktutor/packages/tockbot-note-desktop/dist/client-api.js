@@ -48,6 +48,9 @@ function desktopBridge() {
 /** Mount the caller facade Remote and one root-scoped Workbench contribution. */
 export async function apply(ctx) {
     assertDesktopSurface(ctx.get(TOCKTEAM_SURFACE_SERVICE));
+    if (window.dshDesktop?.windowKind === 'note-popout') {
+        return async () => { };
+    }
     const bridge = desktopBridge();
     const disposeRemote = await ctx.remote.$mount(desktopRemote);
     let slotFiber;

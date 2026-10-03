@@ -69,6 +69,9 @@ function desktopBridge(): DesktopCallerBridge {
 /** Mount the caller facade Remote and one root-scoped Workbench contribution. */
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   assertDesktopSurface(ctx.get(TOCKTEAM_SURFACE_SERVICE))
+  if ((window as unknown as { dshDesktop?: { windowKind?: string } }).dshDesktop?.windowKind === 'note-popout') {
+    return async () => {}
+  }
   const bridge = desktopBridge()
   const disposeRemote = await ctx.remote.$mount(desktopRemote)
   let slotFiber: ReturnType<Context['inject']> | undefined

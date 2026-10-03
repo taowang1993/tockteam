@@ -231,6 +231,7 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
     vault: VaultReference
   }>()
   private readonly popOuts = new Map<string, { identity: NativeOperationIdentity; windowId: string }>()
+  private readonly openingPopOuts = new Map<string, number>()
   private readonly revealed = new Map<string, {
     identity: NativeOperationIdentity
     path: string
@@ -248,6 +249,7 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
       this.targetActivations.clear()
       this.popOutClosures.clear()
       this.popOuts.clear()
+      this.openingPopOuts.clear()
       this.recoveredResults.clear()
       this.revealed.clear()
       await Promise.allSettled([...opened.values()].map(record => (
@@ -415,18 +417,26 @@ export class TockTutorDesktopGateway extends TypertRemoteService {
       const recovered = this.recoverResult(authorization, fingerprint, identity)
       if (recovered !== undefined) return recovered
       const key = popOutKey(expectedVault, path)
-      if (!this.popOuts.has(key) && this.popOuts.size >= MAX_TRACKED_POPOUTS) {
+      const trackedPaths = new Set([...this.popOuts.keys(), ...this.openingPopOuts.keys()])
+      if (!trackedPaths.has(key) && trackedPaths.size >= MAX_TRACKED_POPOUTS) {
         return { status: 'denied' }
       }
-      const result = await this.ctx.tockTeamDesktopPopOut.open({ identity, relativePath: path }, ownerSignal)
-      assertClaim(this.ctx.noteVault, expectedVault, identity)
-      if (result.operationId !== identity.operationId) {
-        throw new Error('Desktop pop-out returned a mismatched operation.')
+      this.openingPopOuts.set(key, (this.openingPopOuts.get(key) ?? 0) + 1)
+      try {
+        const result = await this.ctx.tockTeamDesktopPopOut.open({ identity, relativePath: path }, ownerSignal)
+        assertClaim(this.ctx.noteVault, expectedVault, identity)
+        if (result.operationId !== identity.operationId) {
+          throw new Error('Desktop pop-out returned a mismatched operation.')
+        }
+        if (result.status === 'opened' || result.status === 'focused') {
+          this.popOuts.set(key, { identity, windowId: result.windowId })
+        }
+        return this.rememberResult(authorization, fingerprint, identity, { status: result.status })
+      } finally {
+        const remaining = (this.openingPopOuts.get(key) ?? 1) - 1
+        if (remaining === 0) this.openingPopOuts.delete(key)
+        else this.openingPopOuts.set(key, remaining)
       }
-      if (result.status === 'opened' || result.status === 'focused') {
-        this.popOuts.set(key, { identity, windowId: result.windowId })
-      }
-      return this.rememberResult(authorization, fingerprint, identity, { status: result.status })
     }, signal)
   }
 

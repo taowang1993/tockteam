@@ -24,6 +24,7 @@ export declare class TockTutorDesktopGateway extends TypertRemoteService {
     private readonly recoveredResults;
     private readonly popOutClosures;
     private readonly popOuts;
+    private readonly openingPopOuts;
     private readonly revealed;
     constructor(ctx: Context);
     private claimForVault;
