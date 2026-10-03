@@ -4125,14 +4125,17 @@ export class NoteVaultRuntime extends Service {
     async saveDraft(request, signal) {
         const { root, state } = this.captureExpectedVault(request.expectedVault);
         signal.throwIfAborted();
-        if (this.stateRoot === null) {
+        const stateRoot = this.stateRoot;
+        if (stateRoot === null) {
             throw new NoteVaultError('recovery-unavailable', 'Draft storage is not configured');
         }
         const relativePath = normalizeDocumentPath(request.path);
-        const filePath = await draftFilePath(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, true);
-        if (filePath === null)
-            throw new NoteVaultError('recovery-unavailable', 'Draft storage is unavailable');
-        return await this.runDraftOperation(filePath, async () => {
+        return await this.runDraftOperation(`draft:${state.id}:${relativePath}`, async () => {
+            signal.throwIfAborted();
+            this.assertCapturedVault(state, root);
+            const filePath = await draftFilePath(stateRoot, state, relativePath, true);
+            if (filePath === null)
+                throw new NoteVaultError('recovery-unavailable', 'Draft storage is unavailable');
             signal.throwIfAborted();
             this.assertCapturedVault(state, root);
             const updatedAt = Date.now();
@@ -4156,13 +4159,15 @@ export class NoteVaultRuntime extends Service {
     async readDraft(request, signal) {
         const { root, state } = this.captureExpectedVault(request.expectedVault);
         signal.throwIfAborted();
-        if (this.stateRoot === null) {
+        const stateRoot = this.stateRoot;
+        if (stateRoot === null) {
             throw new NoteVaultError('recovery-unavailable', 'Draft storage is not configured');
         }
         const relativePath = normalizeDocumentPath(request.path);
-        const key = await draftFilePath(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, false) ?? `${this.stateRoot}:${state.id}:${relativePath}`;
-        return await this.runDraftOperation(key, async () => {
-            const draft = await readDraftRecord(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, this.maxDraftBytes);
+        return await this.runDraftOperation(`draft:${state.id}:${relativePath}`, async () => {
+            signal.throwIfAborted();
+            this.assertCapturedVault(state, root);
+            const draft = await readDraftRecord(stateRoot, state, relativePath, this.maxDraftBytes);
             this.assertCapturedVault(state, root);
             signal.throwIfAborted();
             return { draft, generation: state.generation };
@@ -4171,13 +4176,15 @@ export class NoteVaultRuntime extends Service {
     async clearDraft(request, signal) {
         const { root, state } = this.captureExpectedVault(request.expectedVault);
         signal.throwIfAborted();
-        if (this.stateRoot === null) {
+        const stateRoot = this.stateRoot;
+        if (stateRoot === null) {
             throw new NoteVaultError('recovery-unavailable', 'Draft storage is not configured');
         }
         const relativePath = normalizeDocumentPath(request.path);
-        const filePath = await draftFilePath(this.stateRoot, { id: state.id, generation: state.generation }, relativePath, false);
-        const key = filePath ?? `${this.stateRoot}:${state.id}:${relativePath}`;
-        return await this.runDraftOperation(key, async () => {
+        return await this.runDraftOperation(`draft:${state.id}:${relativePath}`, async () => {
+            signal.throwIfAborted();
+            this.assertCapturedVault(state, root);
+            const filePath = await draftFilePath(stateRoot, state, relativePath, false);
             signal.throwIfAborted();
             this.assertCapturedVault(state, root);
             if (filePath !== null)
