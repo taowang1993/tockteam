@@ -1,0 +1,388 @@
+{
+  "issue": "tockteam-e8rn",
+  "date": "2026-10-03",
+  "baseCommit": "1b2f1cbb75f7d4e41da2165ca79eec4ca07a526d",
+  "totalConfirmedFindings": 1,
+  "findings": [
+    {
+      "number": 1,
+      "severity": "low",
+      "impact": "Completed tasks lacked the requested visual completion cue in Live Preview.",
+      "affectedPath": "plugins/skins/src/client/tailwind.css",
+      "cause": "The Crepe task icon reflected checked state, but its adjacent text had no completed-task decoration.",
+      "status": "Fixed and verified; one scoped CSS rule targets only this task’s direct paragraphs, excluding nested tasks."
+    }
+  ],
+  "allowlist": [
+    "live-preview.png",
+    "proof.json"
+  ],
+  "screenshot": {
+    "file": "live-preview.png",
+    "sha256": "32e49c9d5226e66000e2fe3837cb2988f2bf816d86ba29240ab3c67d525a02d7",
+    "pixels": [
+      3024,
+      1898
+    ],
+    "route": "/tocktutor/comparison.md",
+    "mode": "live-preview",
+    "viewport": [
+      1512,
+      949,
+      2
+    ],
+    "theme": "dark",
+    "htmlSkin": null,
+    "bodySkin": null,
+    "completed": {
+      "text": "Completed task",
+      "decoration": "line-through",
+      "visible": true
+    },
+    "firstParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
+  },
+  "comparisonFixture": {
+    "path": ".agents/uiux/tocktutor/comparison.md",
+    "bytes": 1413,
+    "sha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+    "isolatedCopyByteIdenticalAfterVerification": true
+  },
+  "browser": {
+    "checks": [
+      "Completed formatted task with a link: crossed out",
+      "Completed child: crossed out",
+      "Completed parent: crossed out",
+      "Pending task: not crossed out",
+      "Pending parent: not crossed out",
+      "Pending child: not crossed out",
+      "An ordinary paragraph should not be crossed out.: not crossed out",
+      "checking adds strikethrough",
+      "unchecking with the keyboard removes strikethrough",
+      "save and reopen retain checked-task styling",
+      "the shared comparison note shows Completed task crossed out",
+      "the shared comparison note leaves Pending task unchanged",
+      "canonical route, geometry and dark/no-skin appearance",
+      "zero runtime errors"
+    ],
+    "errors": [],
+    "state": {
+      "route": "/tocktutor/comparison.md",
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "theme": "dark",
+      "htmlSkin": null,
+      "bodySkin": null,
+      "mode": "live-preview"
+    }
+  },
+  "appearances": [
+    {
+      "name": "Default",
+      "systemTheme": "dark",
+      "route": "/tocktutor/comparison.md",
+      "theme": "light",
+      "skin": null,
+      "completed": "line-through",
+      "pending": "none",
+      "viewport": [
+        1512,
+        949,
+        2
+      ]
+    },
+    {
+      "name": "Default",
+      "systemTheme": "light",
+      "route": "/tocktutor/comparison.md",
+      "theme": "dark",
+      "skin": null,
+      "completed": "line-through",
+      "pending": "none",
+      "viewport": [
+        1512,
+        949,
+        2
+      ]
+    },
+    {
+      "name": "Navy",
+      "systemTheme": "dark",
+      "route": "/tocktutor/comparison.md",
+      "theme": "light",
+      "skin": "tockteam-skin-navy",
+      "completed": "line-through",
+      "pending": "none",
+      "viewport": [
+        1512,
+        949,
+        2
+      ]
+    },
+    {
+      "name": "Navy",
+      "systemTheme": "light",
+      "route": "/tocktutor/comparison.md",
+      "theme": "dark",
+      "skin": "tockteam-skin-navy",
+      "completed": "line-through",
+      "pending": "none",
+      "viewport": [
+        1512,
+        949,
+        2
+      ]
+    },
+    {
+      "name": "Jade",
+      "systemTheme": "dark",
+      "route": "/tocktutor/comparison.md",
+      "theme": "light",
+      "skin": "tockteam-skin-jade",
+      "completed": "line-through",
+      "pending": "none",
+      "viewport": [
+        1512,
+        949,
+        2
+      ]
+    },
+    {
+      "name": "Jade",
+      "systemTheme": "light",
+      "route": "/tocktutor/comparison.md",
+      "theme": "dark",
+      "skin": "tockteam-skin-jade",
+      "completed": "line-through",
+      "pending": "none",
+      "viewport": [
+        1512,
+        949,
+        2
+      ]
+    },
+    {
+      "name": "Ember",
+      "systemTheme": "dark",
+      "route": "/tocktutor/comparison.md",
+      "theme": "light",
+      "skin": "tockteam-skin-ember",
+      "completed": "line-through",
+      "pending": "none",
+      "viewport": [
+        1512,
+        949,
+        2
+      ]
+    },
+    {
+      "name": "Ember",
+      "systemTheme": "light",
+      "route": "/tocktutor/comparison.md",
+      "theme": "dark",
+      "skin": "tockteam-skin-ember",
+      "completed": "line-through",
+      "pending": "none",
+      "viewport": [
+        1512,
+        949,
+        2
+      ]
+    }
+  ],
+  "reading": {
+    "route": "/tocktutor/comparison.md",
+    "mode": "reading",
+    "viewport": [
+      1512,
+      949,
+      2
+    ],
+    "theme": "dark",
+    "htmlSkin": null,
+    "bodySkin": null,
+    "completed": {
+      "text": " Completed task",
+      "decoration": "line-through",
+      "visible": true
+    },
+    "firstParagraph": "Use bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph."
+  },
+  "gates": [
+    {
+      "command": "node --test tests/tailwind.test.ts",
+      "red": "1 expected failure before the fix",
+      "green": "5 passed"
+    },
+    {
+      "command": "node --test tests/tailwind.test.ts tests/skins.test.ts",
+      "result": "33 passed"
+    },
+    {
+      "command": "pnpm -C plugins/tocktutor/packages/tockteam-tocktutor-workbench exec vitest run tests/editor-adapters.test.tsx --environment jsdom -t 'task'",
+      "result": "3 passed, 87 unselected"
+    },
+    {
+      "command": "pnpm run typecheck",
+      "result": "Passed"
+    },
+    {
+      "command": "pnpm test",
+      "result": "1,818 passed, 18 skipped, 0 failed"
+    },
+    {
+      "command": "pnpm run build",
+      "result": "Passed"
+    },
+    {
+      "command": "node scripts/stage-dsh.mjs --quick",
+      "result": "Passed"
+    },
+    {
+      "command": "node scripts/tocktutor-build-manifest.mjs --check",
+      "result": "Passed; nested source and release payloads unchanged"
+    },
+    {
+      "command": "playwright-cli -s=tocktutor-tasks-final run-code --filename=/tmp/tocktutor-completed-task.VTYwEp/checks.js",
+      "result": "14 checks passed; red run failed on completed-task text before the CSS fix"
+    }
+  ],
+  "placement": {
+    "displayId": 23,
+    "nonMain": true,
+    "focused": false,
+    "nativeBounds": {
+      "x": 1512,
+      "y": 30,
+      "width": 1366,
+      "height": 994
+    },
+    "cssViewport": [
+      1512,
+      949
+    ],
+    "deviceScaleFactor": 2
+  },
+  "cleanup": {
+    "red": {
+      "id": "b8c8708c-bbfa-4032-922c-43a3bce0ffc0",
+      "rootPid": 92850,
+      "stopped": true,
+      "recordedPids": [
+        92850,
+        92852,
+        92853,
+        92854,
+        92856,
+        92861,
+        92864,
+        92866,
+        93066,
+        93077,
+        93307,
+        93308,
+        93309,
+        93310,
+        93311,
+        93312,
+        93313,
+        93314,
+        93470,
+        93471,
+        93472,
+        93473
+      ],
+      "remaining": []
+    },
+    "firstGreenAttempt": {
+      "id": "473cfe1d-e72f-4930-a893-2c7b821282f8",
+      "rootPid": 98178,
+      "stopped": true,
+      "recordedPids": [
+        98178,
+        98181,
+        98183,
+        98185,
+        98186,
+        98250,
+        98278,
+        98463,
+        98464,
+        98465,
+        98466,
+        98467,
+        98468,
+        98469,
+        98470,
+        98481,
+        98690,
+        98691,
+        98692,
+        98693,
+        98694,
+        98695,
+        98849,
+        98850,
+        98851,
+        98852,
+        98853,
+        98854,
+        98855,
+        98856,
+        98978,
+        98979,
+        98980,
+        98981,
+        98982,
+        98983,
+        98984,
+        98985
+      ],
+      "remaining": []
+    },
+    "final": {
+      "id": "19b0a54c-5d56-422c-a0ee-d7fd64a4a880",
+      "rootPid": 459,
+      "stopped": true,
+      "recordedPids": [
+        459,
+        463,
+        464,
+        466,
+        467,
+        471,
+        480,
+        481,
+        990,
+        1030,
+        1031,
+        1032,
+        1276,
+        1277,
+        1278,
+        1279,
+        1280,
+        1281,
+        1282,
+        1283,
+        1448,
+        1449,
+        1450,
+        1451,
+        1452,
+        1453,
+        1454,
+        1455
+      ],
+      "remaining": []
+    }
+  },
+  "limitations": [
+    "This is a source-built isolated Desktop proof, not an installed-release smoke. The existing gallery and Obsidian references are unchanged.",
+    "No Markdown serialization changes were made. Existing Live Preview task editing normalized the separate test note’s - bullets to *; all text, formatting and task states matched otherwise. The comparison note retained its exact original bytes.",
+    "Two existing development startup warnings remain: Electron CSP and Vue feature flags. Captured runtime and console errors were zero.",
+    "Capture checks normalize layout whitespace inserted by inline preview elements when inspecting visible paragraph text."
+  ]
+}

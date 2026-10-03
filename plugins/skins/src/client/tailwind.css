@@ -1301,6 +1301,7 @@
   & .milkdown .label-wrapper .label:is(.checked, .unchecked) svg { width: 21.333px; height: 21.333px; }
   & .milkdown .label-wrapper .label.unchecked svg { fill: color-mix(in srgb, var(--tt-text) 55%, transparent); }
   & .milkdown .label-wrapper .label.checked svg { fill: var(--dsw-specific-markdown-accent); }
+  & .milkdown .label-wrapper:has(> .checked) + .children > .content-dom > p { text-decoration: line-through; }
   & .milkdown :is(button, [role='button'], input, [tabindex]):focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 2px; }
   & .tocktutor-rich-inline[data-editing='false'] > .tocktutor-inline-source { display: none; }
   & .tocktutor-rich-inline[data-editing='true'] > .tocktutor-inline-preview { display: none; }
