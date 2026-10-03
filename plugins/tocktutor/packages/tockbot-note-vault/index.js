@@ -753,7 +753,11 @@ export async function apply(ctx, config) {
     output: { schema: SEARCH_OUTPUT_SCHEMA, render: (_args, value) => renderJson(value) },
     isConcurrencySafe: () => true,
     async execute(args, exec) {
-      return await inspection.search(args, exec.signal)
+      const result = await inspection.search(args, exec.signal)
+      return {
+        ...result,
+        matches: result.matches.map(({ id: _id, revision: _revision, ...match }) => match),
+      }
     },
   })
 

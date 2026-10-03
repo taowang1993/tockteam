@@ -347,7 +347,7 @@
     },
     {
       "path": "packages/tockbot-note-vault/index.js",
-      "sha256": "6caea307d028bf3eb2fde0c803043306ee573881ce80fd629f5d74d805c02142"
+      "sha256": "9b3c2c347ef4e7eb73a5ce123ac444e8630cbf553a785edc2da95ddc0c96329a"
     },
     {
       "path": "packages/tockbot-note-vault/inspection.d.ts",
