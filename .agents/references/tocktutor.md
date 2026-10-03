@@ -274,6 +274,8 @@ The Host gateway injects `noteVault`, `tockTeamDesktopCaller`, and `tockTeamDesk
 
 The browser client mounts its generated transport before registering the Shared Review Panel in a child that injects `remote.tocktutor-import-export`. The panel receives only that mounted namespace, so its buttons can invoke reviewed operations under Cordis's strict service access. Losing the namespace withdraws the panel; remounting it restores one contribution, and disposal removes the panel before its transport.
 
+The 2026-10-02 Desktop proof in `.beads/reports/2026-10-02-tocktutor-code-review.md` verifies reviewed import and backup, exact committed/archive bytes, and expiry after awaited preflight without new files or archives. It uses disposable Native dialog selections and a Host clock fixture; it does not claim fresh acceptance of every import format or native feature.
+
 Supported inputs include Markdown folders and ZIPs, HTML with bounded media/PDF resources, CSV, Apple Journal, Bear, Evernote, Google Keep, Roam Research, Textbundle/Textpack, and TockTutor backup archives. Craft, Notion, Apple Notes, and compatible exports delegate to the reviewed Markdown or HTML paths instead of adding parser stacks.
 
 The transaction is:
