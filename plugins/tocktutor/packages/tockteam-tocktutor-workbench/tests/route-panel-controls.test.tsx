@@ -119,6 +119,18 @@ function openNoteActions(): HTMLElement {
   return trigger
 }
 
+function openView(label: string): void {
+  if (label === 'Bookmarks') { fireEvent.click(screen.getByRole('button', { name: 'Show Bookmarks' })); return }
+  if (['Backlinks', 'Outgoing Links', 'Tags', 'All Properties', 'Outline', 'File Properties', 'Assistant'].includes(label)) {
+    if (!screen.queryByRole('radiogroup', { name: 'Right Sidebar View' })) fireEvent.click(screen.getByRole('button', { name: 'Toggle Right Sidebar' }))
+    fireEvent.click(screen.getByRole('radio', { name: label, exact: true }))
+    return
+  }
+  fireEvent.pointerDown(screen.getByRole('button', { name: 'Workspace', exact: true }), { button: 0, ctrlKey: false })
+  if (label === 'File Recovery' || label === 'Merge Recovery') fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Recovery', exact: true }), { key: 'ArrowRight' })
+  fireEvent.click(screen.getByRole('menuitem', { name: label, exact: true }))
+}
+
 async function openCopyPath(): Promise<HTMLElement> {
   const trigger = screen.getByRole('menuitem', { name: 'Copy Path', exact: true })
   fireEvent.pointerMove(trigger, { pointerType: 'mouse' })
@@ -233,6 +245,101 @@ describe('TockTutor titlebar panel controls', () => {
     expect(labels).not.toContain('Open in Default App')
     expect(labels.indexOf('Open in New Window')).toBeLessThan(labels.indexOf('Rename Note…'))
     expect(labels.indexOf('Copy Path')).toBeLessThan(labels.indexOf('Reveal File in Navigation'))
+  })
+
+  it('keeps workspace views out of note actions without hiding note-bound commands', () => {
+    renderRoute({ documentKind: 'markdown', path: 'Note.md', phase: 'ready', settings: DEFAULT_TOCKTUTOR_SETTINGS })
+    openNoteActions()
+    const menu = screen.getByRole('menu', { name: 'More Note Actions' })
+    const labels = within(menu).getAllByRole('menuitem').map(item => item.textContent?.trim())
+    for (const label of ['File Recovery', 'Outline', 'Properties', 'Backlinks', 'Graph View', 'Web Viewer', 'Bookmarks', 'Tags', 'Attachments and Embeds', 'Note Tools', 'Workspaces and Panes', 'Reviews and Actions', 'Merge Recovery']) {
+      expect(labels).not.toContain(label)
+    }
+    expect(labels.length).toBeLessThanOrEqual(20)
+    expect(within(menu).getByRole('menuitemcheckbox', { name: 'Backlinks in Document' })).toBeTruthy()
+    expect(within(menu).getByRole('menuitem', { name: 'Open Linked View' })).toBeTruthy()
+    expect(within(menu).getByRole('menuitem', { name: 'Move File to Trash' })).toBeTruthy()
+  })
+
+  it('exposes all right-sidebar views and remembers a non-Assistant choice after reopening', () => {
+    renderRoute({ documentKind: 'markdown', path: 'Note.md', source: '# Heading\n' })
+    openView('Outline')
+    const chooser = screen.getByRole('radiogroup', { name: 'Right Sidebar View' })
+    expect(within(chooser).getAllByRole('radio').map(button => button.getAttribute('aria-label'))).toEqual(['Backlinks', 'Outgoing Links', 'Tags', 'All Properties', 'Outline', 'File Properties', 'Assistant'])
+    const toggle = screen.getByRole('button', { name: 'Toggle Right Sidebar' })
+    fireEvent.click(toggle)
+    expect(screen.queryByRole('radiogroup', { name: 'Right Sidebar View' })).toBeNull()
+    expect(screen.getByLabelText('Right Sidebar').hasAttribute('inert')).toBe(true)
+    fireEvent.click(toggle)
+    expect(screen.getByRole('radio', { name: 'Outline', exact: true }).getAttribute('aria-checked')).toBe('true')
+    expect(screen.getByRole('region', { name: 'Outline', exact: true }).textContent).toContain('Heading')
+  })
+
+  it('switches Files, Search, and Bookmarks without changing the right-sidebar view', () => {
+    const onOpenBookmark = vi.fn()
+    renderRoute({
+      bookmarks: [{ id: 'lesson', kind: 'note', path: 'Note.md', title: 'Saved Note' }],
+      documentKind: 'markdown', path: 'Note.md', source: '# Heading\n',
+      entries: [{ kind: 'document', path: 'Note.md' }],
+      searchOpen: true, searchPresentation: 'sidebar', searchQuery: '',
+    }, { onOpenBookmark, onOpenSidebarSearch: vi.fn() })
+    openView('Outline')
+    openView('Bookmarks')
+    expect(screen.getByRole('button', { name: 'Show Bookmarks' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(within(screen.getByRole('region', { name: 'Bookmarks' })).getByRole('button', { name: 'Saved Note · note' }))
+    expect(onOpenBookmark).toHaveBeenCalledExactlyOnceWith('lesson')
+    fireEvent.click(screen.getByRole('button', { name: 'Show Files' }))
+    expect(screen.queryByRole('region', { name: 'Bookmarks' })).toBeNull()
+    expect(screen.getByRole('navigation', { name: 'Vault Notes' }).textContent).toContain('Note')
+    fireEvent.click(screen.getByRole('button', { name: 'Search Vault' }))
+    expect(screen.getByRole('complementary', { name: 'Vault Search' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'Outline', exact: true }).getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('opens safe outgoing links and excludes links belonging to another note', () => {
+    const onSelect = vi.fn()
+    const onLoadRelationships = vi.fn()
+    const links: NonNullable<WorkbenchRouteSnapshot['links']> = {
+      backlinkDetails: [], backlinks: [], complete: true, cursor: null, generation: 1,
+      outgoing: ['Other.md'], outgoingDetails: [
+        { authoredTarget: 'Other', displayText: 'Other', fragment: null, kind: 'wiki', line: 1, normalizedTarget: 'Other', resolvedPath: 'Other.md', sourcePath: 'Note.md', status: 'resolved' },
+        { authoredTarget: '../outside.md', displayText: 'Outside', fragment: null, kind: 'wiki', line: 2, normalizedTarget: '../outside.md', resolvedPath: '../outside.md', sourcePath: 'Note.md', status: 'resolved' },
+      ], path: 'Note.md', scan: { bytes: 20, entries: 2, files: 2 },
+      tagRelations: [], truncated: false, truncationReason: null, unlinkedMentions: [], warnings: [],
+    }
+    renderRoute({ documentKind: 'markdown', path: 'Note.md', links }, { onSelect, onLoadRelationships })
+    openView('Outgoing Links')
+    const outgoing = screen.getByRole('region', { name: 'Outgoing Links' })
+    expect(onLoadRelationships).toHaveBeenCalledOnce()
+    fireEvent.click(within(outgoing).getByRole('button', { name: 'Other · Other.md' }))
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith('Other.md')
+    expect(within(outgoing).queryByRole('button', { name: /Outside/ })).toBeNull()
+    cleanup()
+    renderRoute({ documentKind: 'markdown', path: 'Next.md', links }, { onSelect, onLoadRelationships })
+    openView('Outgoing Links')
+    expect(screen.queryByRole('button', { name: 'Other · Other.md' })).toBeNull()
+    fireEvent.click(within(screen.getByRole('region', { name: 'Outgoing Links' })).getByRole('button', { name: 'Retry' }))
+    expect(onLoadRelationships).toHaveBeenCalledTimes(3)
+    expect(onSelect).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['Backlinks', 'Outgoing Links', 'Tags', 'All Properties', 'Outline', 'File Properties', 'Assistant', 'Bookmarks', 'Graph View', 'Web Viewer', 'Attachments and Embeds', 'Note Tools', 'Workspaces and Panes', 'Reviews and Actions', 'File Recovery', 'Merge Recovery'])('keeps relocated %s searchable in Command Palette', async label => {
+    renderRoute({ commandPaletteOpen: true })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search Commands' }), { target: { value: label } })
+    expect(await screen.findByRole('option', { name: label, exact: true })).toBeTruthy()
+  })
+
+  it('opens All Properties from Command Palette without confusing it with File Properties', async () => {
+    const onLoadFacets = vi.fn()
+    const onCloseCommandPalette = vi.fn()
+    renderRoute({ commandPaletteOpen: true, documentKind: 'markdown', path: 'Note.md', source: '---\nstatus: active\n---\n', facets: { properties: [{ key: 'status', count: 4, types: ['string'] }], tags: [] } }, { onLoadFacets, onCloseCommandPalette })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search Commands' }), { target: { value: 'All Properties' } })
+    fireEvent.click(await screen.findByRole('option', { name: 'All Properties', exact: true }))
+    expect(onLoadFacets).toHaveBeenCalledOnce()
+    expect(onCloseCommandPalette).toHaveBeenCalledOnce()
+    expect(screen.getByLabelText('Right Sidebar').getAttribute('data-view')).toBe('properties')
+    expect(screen.getByRole('region', { name: 'All Properties', hidden: true }).textContent).toContain('status')
+    expect(screen.queryByRole('textbox', { name: 'status Property' })).toBeNull()
   })
 
   it('opens note-local Find, highlights Reading matches, navigates, and restores editor focus on Escape', async () => {
@@ -414,8 +521,7 @@ describe('TockTutor titlebar panel controls', () => {
 
   it('omits frontmatter, comments and fenced code from the note outline', () => {
     renderRoute({ documentKind: 'markdown', path: 'Guide.md', source: ['---', 'title: Guide', '# metadata', '---', '# Visible', '```md', '## Code', '```', '%%', '## Comment', '%%', '### Child'].join('\n') })
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Outline', exact: true }))
+    openView('Outline')
     const panel = within(screen.getByRole('region', { name: 'Outline', exact: true }))
     expect(panel.getAllByRole('button', { name: /^Go to / }).map(button => button.textContent)).toEqual(['Visible', 'Child'])
   })
@@ -423,8 +529,7 @@ describe('TockTutor titlebar panel controls', () => {
   it('outlines unsaved source headings without waiting for the saved-note index', () => {
     const onJumpToLine = vi.fn()
     renderRoute({ phase: 'ready', documentKind: 'markdown', path: 'Draft.md', mode: 'source', saveStatus: 'unsaved', source: '# Draft\n\n## New section', outline: null }, { onJumpToLine })
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Outline', exact: true }))
+    openView('Outline')
     fireEvent.click(screen.getByRole('button', { name: 'Go to New section' }))
     expect(onJumpToLine).toHaveBeenCalledWith(3)
   })
@@ -442,8 +547,7 @@ describe('TockTutor titlebar panel controls', () => {
           { level: 2, line: 7, selector: 'Data', text: 'Data' },
         ],
       } })
-      openNoteActions()
-      fireEvent.click(screen.getByRole('menuitem', { name: 'Outline', exact: true }))
+      openView('Outline')
       const outline = within(screen.getByRole('region', { name: 'Outline', exact: true }))
       fireEvent.click(outline.getByRole('button', { name: 'Collapse Structure' }))
       expect(outline.queryByRole('button', { name: 'Go to Lists' })).toBeNull()
@@ -721,7 +825,7 @@ describe('TockTutor titlebar panel controls', () => {
     renderRoute()
     fireEvent.click(screen.getByRole('button', { name: 'Toggle Right Sidebar' }))
     const chooser = screen.getByRole('radiogroup', { name: 'Right Sidebar View' })
-    const properties = within(chooser).getByRole('radio', { name: 'Properties' })
+    const properties = within(chooser).getByRole('radio', { name: 'File Properties' })
     const assistant = within(chooser).getByRole('radio', { name: 'Assistant' })
     expect(chooser.textContent).toBe('')
     expect(within(screen.getByRole('region', { name: 'TockTutor Title Bar' })).getByRole('radiogroup', { name: 'Right Sidebar View' })).toBe(chooser)
@@ -755,7 +859,7 @@ describe('TockTutor titlebar panel controls', () => {
     const chooser = screen.getByRole('radiogroup', { name: 'Right Sidebar View' })
     const draft = screen.getByRole('textbox', { name: 'Assistant Draft' }) as HTMLInputElement
     fireEvent.change(draft, { target: { value: 'Keep this unsent question' } })
-    fireEvent.click(within(chooser).getByRole('radio', { name: 'Properties' }))
+    fireEvent.click(within(chooser).getByRole('radio', { name: 'File Properties' }))
     expect(screen.queryByRole('textbox', { name: 'Assistant Draft' })).toBeNull()
     expect(draft.closest('[aria-label="Assistant Panel"]')?.hasAttribute('inert')).toBe(true)
     fireEvent.click(within(chooser).getByRole('radio', { name: 'Assistant' }))
@@ -780,8 +884,7 @@ describe('TockTutor titlebar panel controls', () => {
       ],
     }, { onClosePane, onFocusPane })
 
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Workspaces and Panes' }))
+    openView('Workspaces and Panes')
     expect(screen.getByRole('button', { name: 'Add Pane' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Pane 1 First.md' }))
     expect(onFocusPane).toHaveBeenCalledWith('pane-1')
@@ -790,8 +893,7 @@ describe('TockTutor titlebar panel controls', () => {
 
     cleanup()
     renderRoute({ panes: [{ activePath: 'First.md', id: 'pane-1', tabs: [{ dirty: false, path: 'First.md', pinned: false }] }] })
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Workspaces and Panes' }))
+    openView('Workspaces and Panes')
     const pane1Close = screen.getByRole('button', { name: 'Close Pane 1' })
     expect(pane1Close.hasAttribute('disabled')).toBe(true)
   })
@@ -829,8 +931,7 @@ describe('TockTutor titlebar panel controls', () => {
       }],
     }, { onLoadWorkspace, onSaveWorkspace })
 
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Workspaces and Panes' }))
+    openView('Workspaces and Panes')
     fireEvent.click(screen.getByRole('button', { name: 'Save Workspace' }))
     expect(onSaveWorkspace).toHaveBeenCalledOnce()
     fireEvent.click(screen.getByRole('button', { name: 'Load Class Layout' }))
@@ -1006,6 +1107,7 @@ describe('TockTutor titlebar panel controls', () => {
     const onOpenSearch = vi.fn()
     renderRoute({ commandPaletteOpen: true }, { onOpenSearch })
     const input = screen.getByRole('combobox', { name: 'Search Commands' })
+    fireEvent.change(input, { target: { value: 'Search Notes' } })
     fireEvent.keyDown(input, { key: 'ArrowDown' })
     await waitFor(() => expect(screen.getByRole('option', { name: 'Search Notes' }).getAttribute('aria-selected')).toBe('true'))
     fireEvent.keyDown(input, { key: 'Enter' })
@@ -1427,8 +1529,7 @@ describe('TockTutor titlebar panel controls', () => {
     const dropZone = screen.getByLabelText('Editor Attachment Drop Zone')
     fireEvent.drop(dropZone, { dataTransfer: { files } })
     fireEvent.paste(dropZone, { clipboardData: { files } })
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Attachments and Embeds' }))
+    openView('Attachments and Embeds')
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('attachments')
     expect(screen.queryByRole('heading', { name: 'Graph View' })).toBeNull()
     fireEvent.change(screen.getByLabelText('Add Files'), { target: { files } })
@@ -1457,8 +1558,7 @@ describe('TockTutor titlebar panel controls', () => {
       trash: [{ createdAt: 2, id: trashId, kind: 'document', originalPath: 'Deleted.md' }],
     }, { onOpenRecovery, onReadSnapshot, onRestoreSnapshot, onRestoreTrash, onTrashCurrent })
 
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'File Recovery' }))
+    openView('File Recovery')
     const recoveryPanel = screen.getByLabelText('Workbench Utilities')
     expect(recoveryPanel.getAttribute('data-view')).toBe('recovery')
     expect(recoveryPanel.className).toContain('data-[view=recovery]:w-[min(560px,calc(100vw-262px))]')
@@ -1490,8 +1590,7 @@ describe('TockTutor titlebar panel controls', () => {
       snapshots: [{ createdAt: 1, digest: `sha256:${'a'.repeat(64)}`, id: 'stale', path: 'Other.md', reason: 'save', size: 8 }],
     }, { onRestoreSnapshot })
 
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'File Recovery' }))
+    openView('File Recovery')
     expect(screen.getByRole('region', { name: 'Selected Snapshot Content' }).textContent).toContain('Select a snapshot')
     expect(screen.queryByLabelText('Snapshot Preview')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Restore as New' })).toBeNull()
@@ -1515,8 +1614,7 @@ describe('TockTutor titlebar panel controls', () => {
       ],
     }, { onReadSnapshot })
 
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'File Recovery' }))
+    openView('File Recovery')
     const selector = screen.getByRole('listbox', { name: 'Recovery Snapshots' })
     const options = within(selector).getAllByRole('option')
     expect(options).toHaveLength(2)
@@ -1546,8 +1644,7 @@ describe('TockTutor titlebar panel controls', () => {
       ],
     }, { onReadSnapshot })
 
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'File Recovery' }))
+    openView('File Recovery')
     const options = within(screen.getByRole('listbox', { name: 'Recovery Snapshots' })).getAllByRole('option')
     expect(options[0]?.getAttribute('tabindex')).toBe('0')
     expect(options[1]?.getAttribute('tabindex')).toBe('-1')
@@ -1575,8 +1672,7 @@ describe('TockTutor titlebar panel controls', () => {
     const onRunSearch = vi.fn()
     const onSearchMode = vi.fn()
     renderRoute({ searchMode: 'related', facets: { properties: [], tags: [{ tag: 'lesson/intro', count: 2 }] } }, { onOpenSearch, onSearchChange, onRunSearch, onSearchMode })
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Tags', exact: true }))
+    openView('Tags')
     fireEvent.click(screen.getByRole('button', { name: 'Collapse Tag lesson' }))
     expect(screen.queryByRole('button', { name: 'Search Tag lesson/intro' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Expand Tag lesson' }))
@@ -1596,8 +1692,7 @@ describe('TockTutor titlebar panel controls', () => {
       { key: 'aliases', count: 2, types: ['list'] },
       { key: 'area', count: 2, types: ['string'] },
     ], tags: [] } }, { onOpenSearch, onSearchChange, onRunSearch })
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Properties' }))
+    openView('All Properties')
     const filter = screen.getByRole('searchbox', { name: 'Filter Properties' })
     const names = () => within(screen.getByRole('table', { name: 'Vault Properties' })).getAllByRole('button').map(button => button.textContent)
     expect(names()).toEqual(['status', 'aliases', 'area'])
@@ -1620,7 +1715,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(names()).toEqual(['aliases', 'area', 'status'])
   })
 
-  it('keeps Properties and Backlinks as separate utility views', () => {
+  it('keeps All Properties and Backlinks as separate sidebar views', () => {
     const onLoadFacets = vi.fn()
     renderRoute({
       documentKind: 'markdown',
@@ -1629,30 +1724,27 @@ describe('TockTutor titlebar panel controls', () => {
       source: '---\nstatus: active\n---\n# Note\n',
     }, { onLoadFacets })
 
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Properties' }))
+    openView('All Properties')
     expect(onLoadFacets).toHaveBeenCalledOnce()
-    expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('properties')
-    const properties = screen.getByRole('region', { name: 'Properties' })
+    expect(screen.getByLabelText('Right Sidebar').getAttribute('data-view')).toBe('properties')
+    const properties = screen.getByRole('region', { name: 'All Properties' })
     expect(properties).toBeTruthy()
     expect(within(properties).queryByRole('heading', { name: 'Properties' })).toBeNull()
     expect(screen.getByRole('table', { name: 'Vault Properties' })).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: 'Property' })).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: 'Count' })).toBeTruthy()
-    expect(screen.getByRole('region', { name: 'Properties' }).textContent).toContain('status')
-    expect(screen.getByRole('region', { name: 'Properties' }).textContent).toContain('string')
-    expect(screen.getByRole('region', { name: 'Properties' }).textContent).toContain('4')
+    expect(properties.textContent).toContain('status')
+    expect(properties.textContent).toContain('string')
+    expect(properties.textContent).toContain('4')
     expect(screen.queryByRole('textbox', { name: 'status Property' })).toBeNull()
-    expect(screen.getByRole('region', { name: 'Properties' }).textContent).not.toContain('File')
-    expect(screen.getByRole('region', { name: 'Properties' }).textContent).not.toContain('All')
+    expect(properties.textContent).not.toContain('File')
+    expect(properties.textContent).not.toContain('All')
     expect(screen.queryByRole('region', { name: 'Backlinks' })).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close Utility Panel' }))
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Backlinks' }))
-    expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('backlinks')
+    openView('Backlinks')
+    expect(screen.getByLabelText('Right Sidebar').getAttribute('data-view')).toBe('backlinks')
     expect(screen.getByRole('region', { name: 'Backlinks' })).toBeTruthy()
-    expect(screen.queryByRole('region', { name: 'Properties' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'All Properties' })).toBeNull()
   })
 
   it('offers direct Desktop note actions without Claudian and disables them while busy', () => {
@@ -1742,8 +1834,7 @@ describe('TockTutor titlebar panel controls', () => {
     const statusBar = screen.getByLabelText('TockTutor Status Bar')
     expect(statusBar.textContent).toContain('1 backlink')
     expect(statusBar.textContent).not.toContain('0 backlinks')
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Backlinks' }))
+    openView('Backlinks')
     expect(onLoadRelationships).toHaveBeenCalledOnce()
     const backlinks = screen.getByRole('region', { name: 'Backlinks' })
     const linkedMentions = screen.getByText('Linked Mentions (1)', { selector: 'summary' }).parentElement as HTMLDetailsElement
@@ -1767,8 +1858,7 @@ describe('TockTutor titlebar panel controls', () => {
     const onOpenExternalUrl = vi.fn()
     const onOpenBookmark = vi.fn()
     renderRoute({ bookmarks: [{ id: 'web-link', kind: 'link', title: 'Reference', url: 'https://example.com/page' }] }, { onOpenBookmark, onOpenExternalUrl })
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Bookmarks' }))
+    openView('Bookmarks')
     fireEvent.click(within(screen.getByRole('region', { name: 'Bookmarks' })).getByRole('button', { name: 'Reference · link' }))
     expect(onOpenExternalUrl).toHaveBeenCalledExactlyOnceWith('https://example.com/page')
     expect(onOpenBookmark).not.toHaveBeenCalled()
@@ -1793,8 +1883,7 @@ describe('TockTutor titlebar panel controls', () => {
           : null} />)
       await screen.findByText('No supported notes found.')
       for (const id of [1, 2]) {
-        openNoteActions()
-        fireEvent.click(screen.getByRole('menuitem', { name: 'Bookmarks' }))
+        openView('Bookmarks')
         fireEvent.click(within(screen.getByRole('region', { name: 'Bookmarks' })).getByRole('button', { name: 'Saved Page · link' }))
         await waitFor(() => expect(screen.getByRole('status', { name: 'Viewer Navigation Request' }).textContent).toBe(`https://example.com/saved#${String(id)}`))
         expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('web')
@@ -1807,8 +1896,7 @@ describe('TockTutor titlebar panel controls', () => {
   it('keeps a grouped bookmark visible and openable without a dead group button', () => {
     const onOpenBookmark = vi.fn()
     renderRoute({ bookmarks: [{ id: 'group', kind: 'group', title: 'Lessons', children: [{ id: 'child', kind: 'note', path: 'Notes/Lesson.md', title: 'Lesson' }] }] }, { onOpenBookmark })
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Bookmarks' }))
+    openView('Bookmarks')
     const list = screen.getByRole('region', { name: 'Bookmarks' })
     expect(within(list).queryByRole('button', { name: /Lessons · group/u })).toBeNull()
     expect(within(list).getByText('Lessons')).toBeTruthy()
@@ -1819,33 +1907,29 @@ describe('TockTutor titlebar panel controls', () => {
   it('does not offer a Page Preview switch without a preview feature', () => {
     const onSettingsChange = vi.fn()
     renderRoute({ settings: DEFAULT_TOCKTUTOR_SETTINGS }, { onSettingsChange })
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Workspaces and Panes' }))
+    openView('Workspaces and Panes')
     const settings = screen.getByRole('region', { name: 'TockTutor Settings' })
     expect(within(settings).queryByText('Page Preview')).toBeNull()
     fireEvent.click(within(settings).getByRole('checkbox', { name: 'Backlinks in Document' }))
     expect(onSettingsChange).toHaveBeenCalledExactlyOnceWith({ backlinksInDocument: true })
   })
 
-  it('keeps Bookmarks and Tags as compact separate utility views', () => {
+  it('keeps Bookmarks and Tags in independent compact sidebars', () => {
     const onLoadFacets = vi.fn()
     renderRoute({ bookmarks: [{ createdAt: 1, id: 'bookmark-1', kind: 'note', missing: false, path: 'Note.md', title: 'Note' }], facets: { properties: [], tags: [{ count: 2, tag: 'lesson' }] } }, { onLoadFacets })
 
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Bookmarks' }))
+    openView('Bookmarks')
     const bookmarks = screen.getByRole('region', { name: 'Bookmarks' })
     expect(within(bookmarks).queryByRole('heading', { name: 'Bookmarks' })).toBeNull()
-    expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('bookmarks')
+    expect(screen.getByRole('complementary', { name: 'Bookmarks Sidebar' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Bookmarks' }).textContent).toContain('Note')
     expect(screen.queryByRole('region', { name: 'Tags' })).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close Utility Panel' }))
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Tags' }))
+    openView('Tags')
     expect(onLoadFacets).toHaveBeenCalledOnce()
     const tags = screen.getByRole('region', { name: 'Tags' })
     expect(within(tags).queryByRole('heading', { name: 'Tags' })).toBeNull()
-    expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('tags')
+    expect(screen.getByLabelText('Right Sidebar').getAttribute('data-view')).toBe('tags')
     expect(within(tags).getByRole('button', { name: 'Search Tag lesson' })).toBeTruthy()
     expect(tags.textContent).toContain('2')
     expect(screen.getByRole('list', { name: 'Vault Tags' })).toBeTruthy()
@@ -1854,7 +1938,7 @@ describe('TockTutor titlebar panel controls', () => {
     expect(tags.textContent).not.toContain('Journals')
     expect(tags.textContent).not.toContain('Favorites')
     expect(tags.textContent).not.toContain('Collections')
-    expect(screen.queryByRole('region', { name: 'Bookmarks' })).toBeNull()
+    expect(screen.getByRole('region', { name: 'Bookmarks' })).toBe(bookmarks)
   })
 
   it('filters, groups, colors, zooms, and opens bounded graph nodes accessibly', () => {
@@ -1873,8 +1957,7 @@ describe('TockTutor titlebar panel controls', () => {
       },
     }, { onCopyGraphPath, onOpenGraphNode, onSettingsChange })
 
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Graph View' }))
+    openView('Graph View')
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('data-view')).toBe('graph')
     expect(screen.getByLabelText('Workbench Utilities').className).toContain('!absolute')
     expect(screen.getByLabelText('Global Graph Canvas')).toBeTruthy()
@@ -1924,8 +2007,7 @@ describe('TockTutor titlebar panel controls', () => {
       phase: 'ready',
     }, { onOpenGraphNode })
 
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Graph View' }))
+    openView('Graph View')
     fireEvent.click(screen.getByLabelText('Note.md Graph Node'))
     await waitFor(() => { expect(screen.getByLabelText('Workbench Utilities').getAttribute('aria-hidden')).toBe('true') })
     expect(onOpenGraphNode).toHaveBeenCalledWith('Note.md', 'note')
@@ -1941,8 +2023,7 @@ describe('TockTutor titlebar panel controls', () => {
       phase: 'ready',
     }, { onOpenGraphNode })
 
-    openNoteActions()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Graph View' }))
+    openView('Graph View')
     fireEvent.click(screen.getByLabelText('Note.md Graph Node'))
     await waitFor(() => { expect(onOpenGraphNode).toHaveBeenCalledWith('Note.md', 'note') })
     expect(screen.getByLabelText('Workbench Utilities').getAttribute('aria-hidden')).toBe('false')
@@ -2107,6 +2188,7 @@ describe('TockTutor titlebar panel controls', () => {
     previousFocus.focus()
     fireEvent.keyDown(previousFocus, { key: 'p', metaKey: true })
     const commandInput = await screen.findByRole('combobox', { name: 'Search Commands' })
+    fireEvent.change(commandInput, { target: { value: 'Search Notes' } })
     fireEvent.keyDown(commandInput, { key: 'ArrowDown' })
     await waitFor(() => expect(screen.getByRole('option', { name: 'Search Notes' }).getAttribute('aria-selected')).toBe('true'))
     fireEvent.keyDown(commandInput, { key: 'Enter' })

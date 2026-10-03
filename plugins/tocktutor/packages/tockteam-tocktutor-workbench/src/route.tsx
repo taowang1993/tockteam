@@ -30,6 +30,8 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  Archive,
+  ArrowUpRight,
   BookmarkPlus,
   Merge,
   ChevronLeft,
@@ -87,7 +89,7 @@ import { TOCKTUTOR_WEB_VIEWER_PANEL_SLOT } from './web-viewer-panel.ts'
 import { LivePreviewView, RichReadingView, type ReadingLinkResult } from './editor-surface.tsx'
 import { MAX_EDITOR_SEARCH_QUERY_LENGTH, type EditorSearchAction, type EditorSearchRequest, type EditorSearchState } from './editor-search.ts'
 import { SourceEditor, type SourceEditorSelectionRequest } from './source-editor.tsx'
-import { WorkbenchUtilities, type WorkbenchUtilityView } from './utility-panel.tsx'
+import { WorkbenchBookmarks, WorkbenchSidebarViews, WorkbenchUtilities, type WorkbenchUtilityView } from './utility-panel.tsx'
 import { LinkedNotePane, LINKED_VIEW_TITLES } from './linked-note-pane.tsx'
 import { PaneLayoutView, paneLayoutEntries } from './pane-layout.tsx'
 import { PaneTabs } from './pane-tabs.tsx'
@@ -231,6 +233,26 @@ const clampAssistantPanelWidth = (width: number): number => Math.min(
   MAX_ASSISTANT_PANEL_WIDTH,
   Math.max(MIN_ASSISTANT_PANEL_WIDTH, width),
 )
+const RIGHT_SIDEBAR_VIEWS = [
+  ['backlinks', 'Backlinks', Link2],
+  ['outgoing-links', 'Outgoing Links', ArrowUpRight],
+  ['tags', 'Tags', Tags],
+  ['properties', 'All Properties', Archive],
+  ['outline', 'Outline', ListTree],
+  ['file-properties', 'File Properties', FileText],
+  ['assistant', 'Assistant', MessageSquare],
+] as const
+const WORKSPACE_VIEWS = [
+  ['graph', 'Graph View', Network],
+  ['web', 'Web Viewer', Globe2],
+  ['attachments', 'Attachments and Embeds', Paperclip],
+  ['tools', 'Note Tools', Wrench],
+  ['workspace', 'Workspaces and Panes', PanelsTopLeft],
+  ['extensions', 'Reviews and Actions', MessageSquare],
+] as const
+type RightSidebarView = typeof RIGHT_SIDEBAR_VIEWS[number][0]
+type WorkbenchNavigationView = WorkbenchUtilityView | 'assistant' | 'file-properties' | 'merge-recovery'
+
 export const MAX_ROUTE_SOURCE_BYTES = 2_000_000
 
 export interface WorkbenchRouteRemote extends NoteVaultEventRemote {
@@ -5471,6 +5493,8 @@ function WorkbenchCommandPalette(props: {
   onReopen: (() => void) | undefined
   onSearch: (() => void) | undefined
   onToggleFocus: (() => void) | undefined
+  onOpenView(view: WorkbenchNavigationView): void
+  canMergeRecovery: boolean
 }): ReactNode {
   const [query, setQuery] = useState('')
   const editor = (command: EditorCommandId): (() => void) | undefined => props.onEditorCommand === undefined
@@ -5491,6 +5515,11 @@ function WorkbenchCommandPalette(props: {
     { disabled: !props.editorEnabled, label: 'Insert Table', run: editor('insert-table') },
     { disabled: !props.editorEnabled, label: 'Insert Tip Callout', run: editor('callout-tip') },
     { disabled: !props.editorEnabled, label: 'Delete Current Line', run: editor('delete-line') },
+    ...RIGHT_SIDEBAR_VIEWS.map(([view, label]) => ({ label, run: () => props.onOpenView(view) })),
+    { label: 'Bookmarks', run: () => props.onOpenView('bookmarks') },
+    ...WORKSPACE_VIEWS.map(([view, label]) => ({ label, run: () => props.onOpenView(view) })),
+    { label: 'File Recovery', run: () => props.onOpenView('recovery') },
+    { disabled: !props.canMergeRecovery, label: 'Merge Recovery', run: () => props.onOpenView('merge-recovery') },
   ]
   return (
     <Dialog open onOpenChange={open => { if (!open) props.onClose() }}>
@@ -5815,15 +5844,17 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const propertyPaneId = snapshot.propertiesPaneId ?? propertyPanes.at(-1)?.id
   const [localPanel, setLocalPanel] = useState<'assistant' | 'file-properties' | WorkbenchUtilityView | null>()
   const panel = props.panePanel === undefined ? localPanel === undefined ? propertyPaneId ? 'file-properties' : null : localPanel : props.panePanel
-  const lastSidebarView = useRef<'assistant' | 'file-properties'>()
+  const lastSidebarView = useRef<RightSidebarView>()
   const setPanel = (value: typeof panel | ((current: typeof panel) => typeof panel)): void => {
     const next = typeof value === 'function' ? value(panel) : value
-    if (next === 'assistant' || next === 'file-properties') lastSidebarView.current = next
+    const sidebar = RIGHT_SIDEBAR_VIEWS.find(([view]) => view === next)?.[0]
+    if (sidebar !== undefined) lastSidebarView.current = sidebar
     if (props.onPanePanel) props.onPanePanel(next)
     else setLocalPanel(next)
   }
-  const rightSidebarOpen = panel === 'assistant' || panel === 'file-properties'
-  const sidebarView = panel === 'file-properties' ? 'file-properties' : 'assistant'
+  const currentSidebarView = RIGHT_SIDEBAR_VIEWS.find(([view]) => view === panel)?.[0]
+  const rightSidebarOpen = currentSidebarView !== undefined
+  const sidebarView = currentSidebarView ?? 'assistant'
   const openProperties = (): void => {
     setPanel('file-properties')
     if (!propertyPaneId && props.paneController) void props.paneController.openLinkedView(snapshot.focusedPaneId, 'properties')
@@ -5837,8 +5868,9 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const [mergeRecoveryOpen, setMergeRecoveryOpen] = useState(false)
   const [revealPath, setRevealPath] = useState<string | null>(null)
   const [paletteView, setPaletteView] = useState<'commands' | 'notes' | null>(null)
-  const [sidebarSearch, setSidebarSearch] = useState(true)
-  const showSidebarSearch = sidebarSearch && snapshot.searchOpen && snapshot.searchPresentation === 'sidebar'
+  const [leftSidebarView, setLeftSidebarView] = useState<'files' | 'search' | 'bookmarks'>('search')
+  const showSidebarSearch = leftSidebarView === 'search' && snapshot.searchOpen && snapshot.searchPresentation === 'sidebar'
+  const showSidebarBookmarks = leftSidebarView === 'bookmarks'
   const visiblePalette = paletteView ?? snapshotPalette(snapshot)
   const [assistantPanelWidth, setAssistantPanelWidth] = useState(DEFAULT_ASSISTANT_PANEL_WIDTH)
   const [baseView, setBaseView] = useState<string | null>(null)
@@ -5847,6 +5879,18 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
   const [compactWindow, setCompactWindow] = useState(false)
+  const openNavigation = (view: WorkbenchNavigationView): void => {
+    if (view === 'bookmarks') { setSidebarOpen(true); setLeftSidebarView('bookmarks'); return }
+    if (view === 'merge-recovery') {
+      if (props.onListMergeRecovery && props.onRecoverNoteMerge && snapshot.vault) setMergeRecoveryOpen(true)
+      return
+    }
+    if (view === 'file-properties') { openProperties(); return }
+    setPanel(view)
+    if (view === 'properties' || view === 'tags') props.onLoadFacets?.()
+    if (view === 'backlinks' || view === 'outgoing-links') props.onLoadRelationships?.()
+    if (view === 'recovery') props.onOpenRecovery?.()
+  }
   useEffect(() => {
     const query = window.matchMedia?.('(max-width: 760px)')
     if (!query || props.paneOnly) return
@@ -5972,7 +6016,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
     const path = snapshot.path
     if (path === null || props.onRevealFile === undefined) return
     setSidebarOpen(true)
-    setSidebarSearch(false)
+    setLeftSidebarView('files')
     void Promise.resolve(props.onRevealFile()).then(success => {
       if (success !== false && path === snapshot.path) { if (props.onPaneReveal) props.onPaneReveal(path); else setRevealPath(path) }
     })
@@ -6149,8 +6193,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       <div className="tocktutor-titlebar-sidebar flex min-w-0 items-center justify-start gap-2 shadow-[inset_0_-1px_var(--tt-border)] border-r border-[var(--tt-border)] pr-1 pl-[46px] [&>button]:inline-flex [&>button]:items-center [&>button]:justify-center [&>button]:border-0 [&>button]:bg-transparent [&>button]:p-0 [&>button]:text-[var(--tt-muted)] [&>span]:inline-flex [&>span]:h-7 [&>span]:w-[22px] [&>span]:items-center [&>span]:justify-center [&>span]:border-0 [&>span]:bg-transparent [&>span]:p-0 [&>span]:text-[var(--tt-muted)]">
         {effectiveSidebarOpen && (
           <>
-            <Button unstyled aria-label="Show Files" aria-pressed={!showSidebarSearch} className="h-7 w-[22px] rounded-[5px] aria-pressed:bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)]" onClick={() => { setSidebarSearch(false) }} title="Files" type="button"><FolderOpen aria-hidden="true" /></Button>
-            <Button unstyled aria-label="Search Vault" aria-pressed={showSidebarSearch} className="h-7 w-[22px] rounded-[5px] aria-pressed:bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)]" disabled={props.onOpenSidebarSearch === undefined} onClick={() => { setSidebarSearch(true); props.onOpenSidebarSearch?.() }} title="Search vault in sidebar" type="button"><Search aria-hidden="true" /></Button>
+            <Button unstyled aria-label="Show Files" aria-pressed={!showSidebarSearch && !showSidebarBookmarks} className="h-7 w-[22px] rounded-[5px] aria-pressed:bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)]" onClick={() => { setLeftSidebarView('files') }} title="Files" type="button"><FolderOpen aria-hidden="true" /></Button>
+            <Button unstyled aria-label="Search Vault" aria-pressed={showSidebarSearch} className="h-7 w-[22px] rounded-[5px] aria-pressed:bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)]" disabled={props.onOpenSidebarSearch === undefined} onClick={() => { setLeftSidebarView('search'); props.onOpenSidebarSearch?.() }} title="Search Vault" type="button"><Search aria-hidden="true" /></Button>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
@@ -6159,7 +6203,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               </TooltipTrigger>
               <TooltipContent>Search Notes</TooltipContent>
             </Tooltip>
-            <Button unstyled aria-label="Bookmark Active Note" className="h-7 w-[22px] border-0 bg-transparent p-0" disabled={snapshot.path === null || (activeBookmarks.length === 0 ? props.onAddBookmark === undefined : props.onEditBookmark === undefined)} onClick={openBookmarkEditor} type="button"><WorkbenchGlyph kind="bookmark" /></Button>
+            <Tooltip><TooltipTrigger asChild><Button unstyled aria-label="Show Bookmarks" aria-pressed={showSidebarBookmarks} className="h-7 w-[22px] rounded-[5px] border-0 bg-transparent p-0 aria-pressed:bg-[color-mix(in_srgb,var(--tt-text)_8%,transparent)]" onClick={() => openNavigation('bookmarks')} type="button"><WorkbenchGlyph kind="bookmark" /></Button></TooltipTrigger><TooltipContent>Bookmarks</TooltipContent></Tooltip>
           </>
         )}
         <Tooltip>
@@ -6196,7 +6240,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               aria-expanded={rightSidebarOpen}
               aria-label="Toggle Right Sidebar"
               className="tocktutor-panel-icon border-0 bg-transparent p-1.5 text-[var(--tt-muted)]"
-              onClick={() => { if (rightSidebarOpen) lastSidebarView.current = panel; setPanel(rightSidebarOpen ? null : lastSidebarView.current ?? (propertyPaneId ? 'file-properties' : 'assistant')) }}
+              onClick={() => { if (rightSidebarOpen) { lastSidebarView.current = sidebarView; setPanel(null) } else openNavigation(lastSidebarView.current ?? (propertyPaneId ? 'file-properties' : 'assistant')) }}
               type="button"
             ><WorkbenchGlyph kind="panel-right" /></Button>
           </TooltipTrigger>
@@ -6204,20 +6248,14 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
         </Tooltip>
         </div>
       </div>
-      {rightSidebarOpen && <div className="absolute inset-y-0 right-0 flex items-center border-l border-[var(--tt-border)] px-3" style={{ width: assistantPanelWidth }}>
-        <ToggleGroup unstyled aria-label="Right Sidebar View" className="tocktutor-sidebar-view-buttons flex items-center gap-2 [-webkit-app-region:no-drag]" data-view={sidebarView} orientation="horizontal" type="single" value={sidebarView} onValueChange={value => { if (value === 'assistant') setPanel(value); else if (value === 'file-properties') openProperties() }}>
-          <Tooltip>
+      {rightSidebarOpen && <div className="absolute inset-y-0 right-0 flex items-center border-l border-[var(--tt-border)] px-2" style={{ width: assistantPanelWidth }}>
+        <ToggleGroup unstyled aria-label="Right Sidebar View" className="tocktutor-sidebar-view-buttons flex min-w-0 items-center gap-1 [-webkit-app-region:no-drag]" data-view={sidebarView} orientation="horizontal" type="single" value={sidebarView} onValueChange={value => { const view = RIGHT_SIDEBAR_VIEWS.find(([id]) => id === value)?.[0]; if (view !== undefined) openNavigation(view) }}>
+          {RIGHT_SIDEBAR_VIEWS.map(([view, label, Icon]) => <Tooltip key={view}>
             <TooltipTrigger asChild>
-              <ToggleGroupItem unstyled aria-label="Properties" className="flex size-7 items-center justify-center rounded-[5px] border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted aria-checked:bg-accent aria-checked:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" value="file-properties"><ListTree aria-hidden="true" /></ToggleGroupItem>
+              <ToggleGroupItem unstyled aria-label={label} className="flex size-7 shrink-0 items-center justify-center rounded-[5px] border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted aria-checked:bg-accent aria-checked:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" value={view}><Icon aria-hidden="true" /></ToggleGroupItem>
             </TooltipTrigger>
-            <TooltipContent>Properties</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <ToggleGroupItem unstyled aria-label="Assistant" className="flex size-7 items-center justify-center rounded-[5px] border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted aria-checked:bg-accent aria-checked:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" value="assistant"><MessageSquare aria-hidden="true" /></ToggleGroupItem>
-            </TooltipTrigger>
-            <TooltipContent>Assistant</TooltipContent>
-          </Tooltip>
+            <TooltipContent>{label}</TooltipContent>
+          </Tooltip>)}
         </ToggleGroup>
       </div>}
     </section>
@@ -6414,31 +6452,6 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
-                    {([
-                      ['recovery', 'File Recovery', FileClock],
-                      ['outline', 'Outline', ListTree],
-                      ['properties', 'Properties', ListTree],
-                      ['backlinks', 'Backlinks', Link2],
-                      ['graph', 'Graph View', Network],
-                      ['web', 'Web Viewer', Globe2],
-                      ['bookmarks', 'Bookmarks', BookmarkPlus],
-                      ['tags', 'Tags', Tags],
-                      ['attachments', 'Attachments and Embeds', Paperclip],
-                      ['tools', 'Note Tools', Wrench],
-                      ['workspace', 'Workspaces and Panes', PanelsTopLeft],
-                      ['extensions', 'Reviews and Actions', MessageSquare],
-                    ] as const).map(([view, label, Icon]) => (
-                      <DropdownMenuItem className={NOTE_ACTION_CLASS} key={view} onSelect={() => {
-                        setPanel(view)
-                        if (view === 'properties' || view === 'tags') props.onLoadFacets?.()
-                        if (view === 'backlinks') props.onLoadRelationships?.()
-                        if (view === 'recovery') props.onOpenRecovery?.()
-                      }}><Icon aria-hidden="true" /><span>{label}</span></DropdownMenuItem>
-                    ))}
-                  </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    {props.onListMergeRecovery && props.onRecoverNoteMerge && <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={snapshot.vault === null} onSelect={() => setMergeRecoveryOpen(true)}><FileClock aria-hidden="true" /><span>Merge Recovery</span></DropdownMenuItem>}
                     <DropdownMenuItem className={`${NOTE_ACTION_CLASS} text-[color:var(--dsw-alias-state-error-primary,#dc2626)]!`} disabled={snapshot.path === null || props.onTrashCurrent === undefined} onSelect={() => { props.onTrashCurrent?.() }}><Trash2 aria-hidden="true" /><span>Move File to Trash</span></DropdownMenuItem>
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
@@ -6643,6 +6656,8 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           onReopen={props.onReopenClosedTab}
           onSearch={() => { openSearch() }}
           onToggleFocus={props.onToggleFocusMode}
+          onOpenView={openNavigation}
+          canMergeRecovery={!!(props.onListMergeRecovery && props.onRecoverNoteMerge && snapshot.vault)}
         />
       )}
       {visiblePalette === 'notes' && (
@@ -6677,14 +6692,14 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
       >
         <aside
           aria-hidden={!effectiveSidebarOpen}
-          aria-label={showSidebarSearch ? 'Vault Search' : 'Files'}
+          aria-label={showSidebarBookmarks ? 'Bookmarks Sidebar' : showSidebarSearch ? 'Vault Search' : 'Files'}
           className="tocktutor-sidebar grid min-h-0 grid-rows-[40px_minmax(0,1fr)_var(--tt-footer-height)] overflow-hidden border-r border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] data-[open=false]:invisible data-[open=false]:[transition:visibility_0s_linear_300ms]"
           data-open={effectiveSidebarOpen}
           {...(effectiveSidebarOpen ? {} : { inert: '' })}
         >
           <header className="tocktutor-sidebar-header flex items-center border-b border-[var(--tt-border)] px-2.5">
-            <h1 className="m-0 text-sm font-semibold">{showSidebarSearch ? 'Search' : 'Files'}</h1>
-            {!showSidebarSearch && <DropdownMenu modal={false}>
+            <h1 className="m-0 text-sm font-semibold">{showSidebarBookmarks ? 'Bookmarks' : showSidebarSearch ? 'Search' : 'Files'}</h1>
+            {!showSidebarSearch && !showSidebarBookmarks && <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild><Button unstyled aria-label="Add to Files" className="ml-auto flex size-7 items-center justify-center rounded border-0 bg-transparent p-0 hover:bg-[var(--tt-selected)] [-webkit-app-region:no-drag]" disabled={!snapshot.vault} type="button"><Plus aria-hidden="true" /></Button></DropdownMenuTrigger>
               <DropdownMenuContent align="end" unstyled portalled={false} className="min-w-40 rounded-lg border border-border bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))] p-1.5 text-foreground shadow-xl">
                 <DropdownMenuItem disabled={!props.onNewNote} onSelect={() => props.onNewNote?.()}><FileText aria-hidden="true" /><span>New Note</span></DropdownMenuItem>
@@ -6693,7 +6708,7 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
             </DropdownMenu>}
           </header>
           <div className="tocktutor-sidebar-content min-h-0 overflow-auto px-[5px] py-[3px]">
-            {showSidebarSearch ? <SidebarSearch snapshot={snapshot} onChange={props.onSearchChange} onRun={props.onRunSearch} onLoadMore={props.onLoadMoreSearch} onSelect={props.onSelectSearchMatch} /> : <nav aria-label="Vault Notes" ref={treeRef}>
+            {showSidebarBookmarks ? <WorkbenchBookmarks snapshot={snapshot} onOpenBookmark={openBookmark} onOpenExternalUrl={props.onOpenExternalUrl} onRemoveBookmark={props.onRemoveBookmark} /> : showSidebarSearch ? <SidebarSearch snapshot={snapshot} onChange={props.onSearchChange} onRun={props.onRunSearch} onLoadMore={props.onLoadMoreSearch} onSelect={props.onSelectSearchMatch} /> : <nav aria-label="Vault Notes" ref={treeRef}>
               {snapshot.phase === 'loading' && <p className="mx-1 my-[7px] text-xs text-[var(--tt-muted)]">Loading notes…</p>}
               {snapshot.phase === 'inactive' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]">No Active Vault</Alert>}
               {snapshot.phase === 'error' && <Alert unstyled className="mx-1 my-[7px] text-xs text-[color-mix(in_srgb,var(--tt-muted)_90%,var(--tt-text))]">{snapshot.message}</Alert>}
@@ -6703,13 +6718,31 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               </ul>
             </nav>}
           </div>
-          <WorkbenchVaultDialog
-            onCreateManagedVault={props.onCreateManagedVault}
-            renderVaultActions={props.renderVaultActions}
-            vault={snapshot.vault}
-            vaultDisplayPath={snapshot.vaultDisplayPath ?? null}
-            vaultName={snapshot.vaultName ?? null}
-          />
+          <div className="flex min-w-0 items-center">
+            <div className="min-w-0 flex-1"><WorkbenchVaultDialog
+              onCreateManagedVault={props.onCreateManagedVault}
+              renderVaultActions={props.renderVaultActions}
+              vault={snapshot.vault}
+              vaultDisplayPath={snapshot.vaultDisplayPath ?? null}
+              vaultName={snapshot.vaultName ?? null}
+            /></div>
+            <DropdownMenu modal={false}>
+              <Tooltip><TooltipTrigger asChild><DropdownMenuTrigger asChild><Button unstyled aria-label="Workspace" className="flex size-7 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring [&_svg]:size-[18px]" type="button"><PanelsTopLeft aria-hidden="true" /></Button></DropdownMenuTrigger></TooltipTrigger><TooltipContent>Workspace</TooltipContent></Tooltip>
+              <DropdownMenuContent unstyled aria-label="Workspace" side="top" align="end" className={NOTE_SUBMENU_CLASS} collisionPadding={{ top: 48, bottom: 8, left: 8, right: 8 }}>
+                <DropdownMenuGroup>
+                  {WORKSPACE_VIEWS.map(([view, label, Icon]) => <DropdownMenuItem key={view} className={NOTE_ACTION_CLASS} onSelect={() => openNavigation(view)}><Icon aria-hidden="true" /><span>{label}</span></DropdownMenuItem>)}
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup><DropdownMenuSub>
+                  <DropdownMenuSubTrigger className={NOTE_ACTION_CLASS}><FileClock aria-hidden="true" /><span>Recovery</span></DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent unstyled className={NOTE_SUBMENU_CLASS} collisionPadding={{ top: 48, bottom: 8, left: 8, right: 8 }}><DropdownMenuGroup>
+                    <DropdownMenuItem className={NOTE_ACTION_CLASS} onSelect={() => openNavigation('recovery')}><FileClock aria-hidden="true" /><span>File Recovery</span></DropdownMenuItem>
+                    <DropdownMenuItem className={NOTE_ACTION_CLASS} disabled={!props.onListMergeRecovery || !props.onRecoverNoteMerge || !snapshot.vault} onSelect={() => openNavigation('merge-recovery')}><FileClock aria-hidden="true" /><span>Merge Recovery</span></DropdownMenuItem>
+                  </DropdownMenuGroup></DropdownMenuSubContent>
+                </DropdownMenuSub></DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </aside>
         <Button unstyled
           aria-label={`Resize Files Sidebar, ${String(sidebarWidth)} Pixels`}
@@ -6722,13 +6755,14 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
           type="button"
         />
         {props.paneController && snapshot.layout ? <PaneLayoutView layout={snapshot.layout} onResize={(path, ratio) => { props.paneController!.resizeSplit(path, ratio) }} renderPane={(id, topRow) => (
-          snapshot.panes.find(pane => pane.id === id)?.linkedView?.kind === 'properties' ? <Empty><EmptyHeader><EmptyTitle>No Note Selected</EmptyTitle></EmptyHeader></Empty> : snapshot.panes.find(pane => pane.id === id)?.linkedView ? <LinkedNotePane controller={props.paneController!} id={id} /> : <TockTutorRouteView {...boundPaneProps(props, id)} paneOnly paneTabs={!topRow} panePanel={panel} onPanePanel={setPanel} onPaneReveal={path => { setSidebarOpen(true); setSidebarSearch(false); setRevealPath(path) }} />
+          snapshot.panes.find(pane => pane.id === id)?.linkedView?.kind === 'properties' ? <Empty><EmptyHeader><EmptyTitle>No Note Selected</EmptyTitle></EmptyHeader></Empty> : snapshot.panes.find(pane => pane.id === id)?.linkedView ? <LinkedNotePane controller={props.paneController!} id={id} /> : <TockTutorRouteView {...boundPaneProps(props, id)} paneOnly paneTabs={!topRow} panePanel={panel} onPanePanel={setPanel} onPaneReveal={path => { setSidebarOpen(true); setLeftSidebarView('files'); setRevealPath(path) }} />
         )} /> : editor}
         <aside
           aria-hidden={!rightSidebarOpen}
           aria-label="Right Sidebar"
           className="tocktutor-right-panel tocktutor-right-panel-assistant relative invisible grid min-h-0 min-w-0 w-0 max-w-[calc(100vw-var(--tockteam-rail-width,40px))] translate-x-6 grid-rows-[minmax(0,1fr)] overflow-hidden border-l-0 bg-[var(--tt-panel)] opacity-0 shadow-none transition-[width,opacity,transform,visibility] [transition-duration:420ms,300ms,460ms,0s] [transition-timing-function:cubic-bezier(.16,1,.3,1),cubic-bezier(.16,1,.3,1),linear] [transition-delay:0s,0s,0s,420ms] pointer-events-none data-[open=true]:visible data-[open=true]:translate-x-0 data-[open=true]:overflow-visible data-[open=true]:opacity-100 data-[open=true]:[transition-delay:0s] data-[open=true]:pointer-events-auto"
           data-open={rightSidebarOpen}
+          data-view={panel ?? undefined}
           style={{ width: rightSidebarOpen ? `${String(assistantPanelWidth)}px` : '0px' }}
           {...(rightSidebarOpen ? {} : { inert: '' })}
         >
@@ -6753,13 +6787,14 @@ export function TockTutorRouteView(props: TockTutorRouteViewProps): ReactNode {
               {propertyPanes.length > 1 && <NativeSelect aria-label="Properties Note" onChange={event => { props.paneController?.selectPropertiesPane(event.currentTarget.value) }} value={propertyPaneId}>{propertyPanes.map(pane => <NativeSelectOption key={pane.id} value={pane.id}>{pane.activePath ?? 'No Active Note'} · {pane.id}</NativeSelectOption>)}</NativeSelect>}
               {props.paneController && propertyPaneId ? <LinkedNotePane key={propertyPaneId} controller={props.paneController} id={propertyPaneId} /> : <Empty><EmptyHeader><EmptyTitle>No Properties Open</EmptyTitle><EmptyDescription>Open a Markdown note to inspect its properties.</EmptyDescription></EmptyHeader>{snapshot.documentKind === 'markdown' && props.paneController && <Button variant="outline" onClick={openProperties}>Open Properties</Button>}</Empty>}
             </div>
+            <WorkbenchSidebarViews {...props} view={panel === 'assistant' || panel === 'file-properties' ? null : panel ?? null} />
           </div>
         </aside>
         <WorkbenchUtilities {...props} onOpenBookmark={openBookmark} snapshot={panel === 'recovery' ? props.paneController?.getRecoverySnapshot() ?? snapshot : snapshot} onInsertCurrentDateTime={kind => { props.onInsertCurrentDateTime?.(kind, snapshot.mode === 'live-preview' ? liveInsertTextRef.current ?? undefined : undefined) }} onClose={() => { if (panel === 'recovery') void props.paneController?.setRecoveryOpen(false); setPanel(null) }} onOpenGraphNode={(path, mode) => {
           const result = props.onOpenGraphNode?.(path, mode)
           if (mode !== 'note' || result === undefined) return
           void Promise.resolve(result).then(success => { if (success === true) setPanel(null) })
-        }} view={rightSidebarOpen ? null : panel} />
+        }} view={rightSidebarOpen || panel === 'assistant' || panel === 'file-properties' ? null : panel} />
         <footer aria-label="TockTutor Status Bar" className="tocktutor-statusbar absolute right-0 bottom-0 z-10 flex h-[var(--tt-footer-height)] max-w-full min-w-0 items-center overflow-x-auto rounded-tl-md border-t border-l border-[var(--tt-border)] bg-[var(--tockteam-shell-chrome,var(--tt-panel))] px-2 text-xs text-[var(--tt-muted)]" role="group">
           <output aria-live="polite" className="tocktutor-message absolute size-px overflow-hidden whitespace-nowrap [clip:rect(0_0_0_0)] [clip-path:inset(50%)]">{snapshot.message}</output>
           {props.nativeNoteActions != null && props.nativeNoteActions.message !== 'Ready.' && <output aria-live="polite" className="mr-3 min-w-0 truncate">{props.nativeNoteActions.message}</output>}

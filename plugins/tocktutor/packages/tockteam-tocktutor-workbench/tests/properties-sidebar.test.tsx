@@ -71,7 +71,7 @@ it('preserves Properties and Assistant drafts without the extra toolbar and reta
     fireEvent.click(within(chooser).getByRole('radio', { name: 'Assistant' }))
     const assistantDraft = within(sidebar).getByLabelText('Assistant Draft') as HTMLInputElement
     fireEvent.change(assistantDraft, { target: { value: 'Unsent question' } })
-    fireEvent.click(within(chooser).getByRole('radio', { name: 'Properties' }))
+    fireEvent.click(within(chooser).getByRole('radio', { name: 'File Properties' }))
     expect(listDraft.value).toBe('Unsubmitted')
     expect((within(sidebar).getByLabelText('Property name') as HTMLInputElement).value).toBe('Changed')
     setFailSave(true)

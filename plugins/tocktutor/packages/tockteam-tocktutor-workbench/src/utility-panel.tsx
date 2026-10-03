@@ -15,18 +15,19 @@ import type { TockTutorRouteViewProps } from './route.tsx'
 import { MAX_PANE_GROUPS } from './session.ts'
 import { NoteGraphPanel } from './note-graph.tsx'
 import { NoteOutlinePanel } from './note-outline.tsx'
-import { NoteBacklinks } from './note-backlinks.tsx'
+import { NoteBacklinks, NoteOutgoingLinks } from './note-backlinks.tsx'
 import { VaultProperties } from './vault-properties.tsx'
 import { VaultTags } from './vault-tags.tsx'
 import { WorkbenchGlyph } from './workbench-glyph.tsx'
 
-export type WorkbenchUtilityView = 'attachments' | 'backlinks' | 'bookmarks' | 'extensions' | 'graph' | 'outline' | 'properties' | 'recovery' | 'tags' | 'tools' | 'web' | 'workspace'
+export type WorkbenchUtilityView = 'attachments' | 'backlinks' | 'outgoing-links' | 'bookmarks' | 'extensions' | 'graph' | 'outline' | 'properties' | 'recovery' | 'tags' | 'tools' | 'web' | 'workspace'
 
 const UTILITY_TITLES: Record<WorkbenchUtilityView, string> = {
   attachments: 'Attachments and Embeds',
   extensions: 'Reviews and Actions',
   graph: 'Graph View',
   backlinks: 'Backlinks',
+  'outgoing-links': 'Outgoing Links',
   bookmarks: 'Bookmarks',
   outline: 'Outline',
   properties: 'Properties',
@@ -40,6 +41,45 @@ const UTILITY_TITLES: Record<WorkbenchUtilityView, string> = {
 export type WorkbenchUtilitiesProps = TockTutorRouteViewProps & {
   onClose(): void
   view: WorkbenchUtilityView | null
+}
+
+export function WorkbenchBookmarks(props: {
+  snapshot: TockTutorRouteViewProps['snapshot']
+  onOpenBookmark: TockTutorRouteViewProps['onOpenBookmark']
+  onOpenExternalUrl: TockTutorRouteViewProps['onOpenExternalUrl']
+  onRemoveBookmark: TockTutorRouteViewProps['onRemoveBookmark']
+}): ReactNode {
+  const bookmarkRow = (bookmark: Bookmark): ReactNode => (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-1" key={bookmark.id}>
+      {bookmark.kind === 'group'
+        ? <span className="truncate px-2 py-1.5 text-xs font-medium">{bookmark.title}</span>
+        : <Button unstyled className="truncate rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" disabled={bookmark.kind === 'graph' || (bookmark.kind === 'link' && props.onOpenExternalUrl === undefined)} onClick={() => { props.onOpenBookmark?.(bookmark.id) }} type="button">{bookmark.title} · {bookmark.kind}{bookmark.missing === true ? ' · Missing' : ''}</Button>}
+      <Button unstyled aria-label={`Remove Bookmark ${bookmark.title}`} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" disabled={!props.onRemoveBookmark} onClick={() => { props.onRemoveBookmark?.(bookmark.id) }} type="button">Remove</Button>
+    </div>
+  )
+  return <section aria-label="Bookmarks" className="grid gap-1 p-2">
+    {(props.snapshot.bookmarks ?? []).map(bookmark => bookmark.kind === 'group'
+      ? <div aria-label={bookmark.title} className="grid gap-1" key={bookmark.id} role="group">{bookmarkRow(bookmark)}<div className="ml-2 grid gap-1 border-l border-[var(--tt-border)] pl-2">{bookmark.children.map(bookmarkRow)}</div></div>
+      : bookmarkRow(bookmark))}
+    {(props.snapshot.bookmarks?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No bookmarks.</span>}
+  </section>
+}
+
+/** Note information and vault indexes share the existing right-sidebar owner. */
+export function WorkbenchSidebarViews(props: TockTutorRouteViewProps & { view: WorkbenchUtilityView | null }): ReactNode {
+  const { snapshot, view } = props
+  const open = view === 'outline' || view === 'backlinks' || view === 'outgoing-links' || view === 'properties' || view === 'tags'
+  const links = snapshot.links?.path === snapshot.path ? snapshot.links : null
+  return <div className="flex h-full min-h-0 flex-col [&[hidden]]:hidden" hidden={!open} {...(open ? {} : { inert: '' })}>
+    <header className="flex h-10 shrink-0 items-center border-b border-[var(--tt-border)] px-3"><h2 className="m-0 text-sm">{view === 'properties' ? 'All Properties' : view === null ? '' : UTILITY_TITLES[view]}</h2></header>
+    <div className="min-h-0 flex-1 overflow-auto p-3">
+      <section aria-label="Outline" hidden={view !== 'outline'}>{view === 'outline' && <NoteOutlinePanel snapshot={snapshot} onJumpToLine={props.onJumpToLine} />}</section>
+      <section aria-label="Backlinks" hidden={view !== 'backlinks'}><NoteBacklinks links={links} loading={snapshot.linksLoading === true} onRetry={props.onLoadRelationships} onSelect={props.onSelect} /></section>
+      <section aria-label="Outgoing Links" hidden={view !== 'outgoing-links'}><NoteOutgoingLinks links={links} loading={snapshot.linksLoading === true} onRetry={props.onLoadRelationships} onSelect={props.onSelect} /></section>
+      <section aria-label="Tags" hidden={view !== 'tags'}><VaultTags key={snapshot.vault?.id ?? 'inactive'} tags={snapshot.facets?.tags ?? []} onSearch={tag => { props.onOpenSearch?.(); props.onSearchChange?.(`tag:${tag}`); props.onSearchMode?.('query'); props.onRunSearch?.() }} /></section>
+      <section aria-label="All Properties" hidden={view !== 'properties'}><VaultProperties key={snapshot.vault?.id ?? 'inactive'} properties={snapshot.facets?.properties ?? []} onSearch={key => { props.onOpenSearch?.(); props.onSearchChange?.(`[${key}]`); props.onRunSearch?.() }} /></section>
+    </div>
+  </div>
 }
 
 function snapshotDateLabel(createdAt: number): string {
@@ -63,23 +103,12 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
   const rovingId = recoverySnapshots.some(entry => entry.id === rovingSnapshotId)
     ? rovingSnapshotId
     : selectedSnapshot?.snapshot.id ?? recoverySnapshots[0]?.id ?? null
-  const vaultProperties = snapshot.facets?.properties ?? []
-  const vaultTags = snapshot.facets?.tags ?? []
-
   const snapshotOptionRefs = useRef(new Map<string, HTMLButtonElement>())
   const selectSnapshot = (id: string): void => {
     setRovingSnapshotId(id)
     props.onReadSnapshot?.(id)
     snapshotOptionRefs.current.get(id)?.focus()
   }
-  const bookmarkRow = (bookmark: Bookmark): ReactNode => (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-1" key={bookmark.id}>
-      {bookmark.kind === 'group'
-        ? <span className="truncate px-2 py-1.5 text-xs font-medium">{bookmark.title}</span>
-        : <Button unstyled className="truncate rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-xs hover:bg-[var(--tt-selected)] focus-visible:bg-[var(--tt-selected)]" disabled={bookmark.kind === 'graph' || (bookmark.kind === 'link' && props.onOpenExternalUrl === undefined)} onClick={() => { props.onOpenBookmark?.(bookmark.id) }} type="button">{bookmark.title} · {bookmark.kind}{bookmark.missing === true ? ' · Missing' : ''}</Button>}
-      <Button unstyled aria-label={`Remove Bookmark ${bookmark.title}`} className="rounded border border-[var(--tt-border)] bg-transparent px-2 py-1 text-xs" onClick={() => { props.onRemoveBookmark?.(bookmark.id) }} type="button">Remove</Button>
-    </div>
-  )
   return (
         <aside
           aria-hidden={!open}
@@ -98,9 +127,6 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
               <TooltipContent>Close Utility Panel</TooltipContent>
             </Tooltip>
           </header>
-          <section aria-label="Outline" className="p-3" hidden={props.view !== 'outline'}>
-            {props.view === 'outline' && <NoteOutlinePanel snapshot={snapshot} onJumpToLine={props.onJumpToLine} />}
-          </section>
           <section aria-label="File Recovery" className="p-3" hidden={props.view !== 'recovery'}>
             <div className="flex items-center justify-end gap-2">
               <span className="flex gap-1">
@@ -183,26 +209,6 @@ export function WorkbenchUtilities(props: WorkbenchUtilitiesProps): ReactNode {
           <div className="absolute inset-x-0 top-10 bottom-0" hidden={props.view !== 'graph'}>
             <NoteGraphPanel {...props} />
           </div>
-          <section aria-label="Bookmarks" className="p-3" hidden={props.view !== 'bookmarks'}>
-            <div className="grid gap-1">
-              {(snapshot.bookmarks ?? []).map(bookmark => bookmark.kind === 'group'
-                ? <div aria-label={bookmark.title} className="grid gap-1" key={bookmark.id} role="group">
-                    {bookmarkRow(bookmark)}
-                    <div className="ml-2 grid gap-1 border-l border-[var(--tt-border)] pl-2">{bookmark.children.map(bookmarkRow)}</div>
-                  </div>
-                : bookmarkRow(bookmark))}
-              {(snapshot.bookmarks?.length ?? 0) === 0 && <span className="text-xs text-[var(--tt-muted)]">No bookmarks.</span>}
-            </div>
-          </section>
-          <section aria-label="Tags" className="p-3" hidden={props.view !== 'tags'}>
-            <VaultTags key={snapshot.vault?.id ?? 'inactive'} tags={vaultTags} onSearch={tag => { props.onOpenSearch?.(); props.onSearchChange?.(`tag:${tag}`); props.onSearchMode?.('query'); props.onRunSearch?.() }} />
-          </section>
-          <section aria-label="Properties" className="p-3" hidden={props.view !== 'properties'}>
-            <VaultProperties key={snapshot.vault?.id ?? 'inactive'} properties={vaultProperties} onSearch={key => { props.onOpenSearch?.(); props.onSearchChange?.(`[${key}]`); props.onRunSearch?.() }} />
-          </section>
-          <section aria-label="Backlinks" className="border-t border-[var(--tt-border)] p-3" hidden={props.view !== 'backlinks'}>
-            <NoteBacklinks links={snapshot.links?.path === snapshot.path ? snapshot.links : null} loading={snapshot.linksLoading === true} onRetry={props.onLoadRelationships} onSelect={props.onSelect} />
-          </section>
           <section aria-label="Resolved Embeds" className="p-3" hidden={props.view !== 'attachments'}>
             <h2 className="m-0 text-sm">Resolved Embeds</h2>
             <div className="mt-2 grid gap-2">
