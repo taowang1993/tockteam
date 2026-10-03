@@ -3986,60 +3986,76 @@ export class NoteVaultRuntime extends Service {
             if (existing)
                 return this.mergeResult(existing, state.generation);
             const review = this.mergeReviews.get(request.id);
-            if (!review || review.expires < Date.now() || review.request.expectedVault.generation !== state.generation
+            if (!review || review.expires <= Date.now() || review.request.expectedVault.generation !== state.generation
                 || review.record.vaultId !== state.id)
                 throw new NoteVaultError('conflict', 'Merge review expired. Create a new review.');
-            const { record } = review;
-            const fresh = await this.previewMergeLinks(review.request, signal);
-            if (fresh.fingerprint !== review.request.fingerprint)
-                throw new NoteVaultError('conflict', 'The vault changed. Create a new merge review.');
-            const expected = new Map(record.inventory.map(entry => [entry.path, entry.revision]));
-            const verifyInventory = async () => {
-                const current = await this.mergeInventory(root, signal);
-                if (current.length !== expected.size || current.some(entry => expected.get(entry.path) !== entry.revision))
-                    throw new NoteVaultError('conflict', 'The vault changed during merge');
-                this.assertCapturedVault(state, root);
+            const deadline = new AbortController();
+            const timer = setTimeout(() => deadline.abort(new NoteVaultError('conflict', 'Merge review expired. Create a new review.')), Math.max(0, review.expires - Date.now()));
+            timer.unref();
+            signal = AbortSignal.any([signal, deadline.signal]);
+            const assertReviewCurrent = () => {
                 signal.throwIfAborted();
+                this.assertCapturedVault(state, root);
+                if (review.expires <= Date.now())
+                    throw new NoteVaultError('conflict', 'Merge review expired. Create a new review.');
             };
-            await verifyInventory();
-            const directory = (await this.mergeDirectory(request.expectedVault, true));
-            const journal = path.join(directory, `${record.id}.json`);
-            const check = async () => { signal.throwIfAborted(); this.assertCapturedVault(state, root); await this.mergeDirectory(request.expectedVault); };
-            // Durable originals and an interrupted phase precede every vault mutation. A retry never appends twice.
-            await writeDocumentAtomic(journal, encodeDocumentContent(JSON.stringify(record), DEFAULT_MAX_INSPECTION_BYTES), true, check);
-            this.mergeReviews.delete(record.id);
             try {
-                for (const file of record.files.filter(file => file.path !== record.sourcePath)) {
-                    const result = await this.saveDocument({ path: file.path, content: file.newContent, expectedRevision: file.revision, expectedVault: request.expectedVault }, signal);
-                    if (result.digest !== mergeDigest(file.newContent))
-                        throw new NoteVaultError('partial', 'Merge publication could not be verified');
-                    expected.set(file.path, result.revision);
-                }
+                const { record } = review;
+                const fresh = await this.previewMergeLinks(review.request, signal);
+                assertReviewCurrent();
+                if (fresh.fingerprint !== review.request.fingerprint)
+                    throw new NoteVaultError('conflict', 'The vault changed. Create a new merge review.');
+                const expected = new Map(record.inventory.map(entry => [entry.path, entry.revision]));
+                const verifyInventory = async () => {
+                    const current = await this.mergeInventory(root, signal);
+                    if (current.length !== expected.size || current.some(entry => expected.get(entry.path) !== entry.revision))
+                        throw new NoteVaultError('conflict', 'The vault changed during merge');
+                    assertReviewCurrent();
+                };
                 await verifyInventory();
-                const source = record.files.at(-1);
-                if (record.sourceDisposition === 'trash') {
-                    const trashPath = `.trash/${record.id}${path.posix.extname(record.sourcePath)}`;
-                    await ensureDestinationParent(root, path.join(root, ...trashPath.split('/')));
-                    const moved = await this.moveFileInternal({ fromPath: source.path, toPath: trashPath, expectedRevision: source.revision, expectedVault: request.expectedVault }, signal, false);
-                    const trash = { id: `trash-${record.id.slice(6)}`, createdAt: record.createdAt, kind: 'document', originalPath: source.path, trashPath, revision: moved.revision };
-                    await writeTrashRecord(this.stateRoot, request.expectedVault, trash, signal, () => this.assertCapturedVault(state, root));
-                    this.emitFileMutation('trashed', source.path, source.path, state);
-                    expected.delete(source.path);
+                const directory = (await this.mergeDirectory(request.expectedVault, true));
+                const journal = path.join(directory, `${record.id}.json`);
+                const check = async () => { assertReviewCurrent(); await this.mergeDirectory(request.expectedVault); assertReviewCurrent(); };
+                // Durable originals and an interrupted phase precede every vault mutation. A retry never appends twice.
+                await writeDocumentAtomic(journal, encodeDocumentContent(JSON.stringify(record), DEFAULT_MAX_INSPECTION_BYTES), true, check);
+                this.mergeReviews.delete(record.id);
+                try {
+                    for (const file of record.files.filter(file => file.path !== record.sourcePath)) {
+                        assertReviewCurrent();
+                        const result = await this.saveDocument({ path: file.path, content: file.newContent, expectedRevision: file.revision, expectedVault: request.expectedVault }, signal);
+                        if (result.digest !== mergeDigest(file.newContent))
+                            throw new NoteVaultError('partial', 'Merge publication could not be verified');
+                        expected.set(file.path, result.revision);
+                    }
+                    await verifyInventory();
+                    const source = record.files.at(-1);
+                    if (record.sourceDisposition === 'trash') {
+                        const trashPath = `.trash/${record.id}${path.posix.extname(record.sourcePath)}`;
+                        await ensureDestinationParent(root, path.join(root, ...trashPath.split('/')));
+                        const moved = await this.moveFileInternal({ fromPath: source.path, toPath: trashPath, expectedRevision: source.revision, expectedVault: request.expectedVault }, signal, false);
+                        const trash = { id: `trash-${record.id.slice(6)}`, createdAt: record.createdAt, kind: 'document', originalPath: source.path, trashPath, revision: moved.revision };
+                        await writeTrashRecord(this.stateRoot, request.expectedVault, trash, signal, () => this.assertCapturedVault(state, root));
+                        this.emitFileMutation('trashed', source.path, source.path, state);
+                        expected.delete(source.path);
+                    }
+                    else if (record.sourceDisposition !== 'keep') {
+                        const replaced = await this.saveDocument({ path: source.path, content: source.newContent, expectedRevision: source.revision, expectedVault: request.expectedVault }, signal);
+                        if (replaced.digest !== mergeDigest(source.newContent))
+                            throw new NoteVaultError('partial', 'Source replacement could not be verified');
+                        expected.set(source.path, replaced.revision);
+                    }
+                    await verifyInventory();
+                    const completed = { ...record, status: 'applied' };
+                    await writeDocumentAtomic(journal, encodeDocumentContent(JSON.stringify(completed), DEFAULT_MAX_INSPECTION_BYTES), false, check);
+                    return this.mergeResult(completed, state.generation);
                 }
-                else if (record.sourceDisposition !== 'keep') {
-                    const replaced = await this.saveDocument({ path: source.path, content: source.newContent, expectedRevision: source.revision, expectedVault: request.expectedVault }, signal);
-                    if (replaced.digest !== mergeDigest(source.newContent))
-                        throw new NoteVaultError('partial', 'Source replacement could not be verified');
-                    expected.set(source.path, replaced.revision);
+                catch {
+                    // Never roll back over newer user edits. Recovery creates exclusive copies from durable originals.
+                    return this.mergeResult(record, state.generation);
                 }
-                await verifyInventory();
-                const completed = { ...record, status: 'applied' };
-                await writeDocumentAtomic(journal, encodeDocumentContent(JSON.stringify(completed), DEFAULT_MAX_INSPECTION_BYTES), false, check);
-                return this.mergeResult(completed, state.generation);
             }
-            catch {
-                // Never roll back over newer user edits. Recovery creates exclusive copies from durable originals.
-                return this.mergeResult(record, state.generation);
+            finally {
+                clearTimeout(timer);
             }
         });
     }

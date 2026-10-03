@@ -189,7 +189,7 @@ export function CanvasBoard({ source, revision, onChange, disabled = false }: Ca
     if (document === null) {
       setArmed(null)
       setSelectedNodeId(null)
-      setSelectedNodeIds(new Set())
+      if (selectedNodeIds.size > 0) setSelectedNodeIds(new Set())
       setSelectedEdgeId(null)
       setNodeEditor(null)
       setEdgeEditor(null)
