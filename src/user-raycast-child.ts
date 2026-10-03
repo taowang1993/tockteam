@@ -17,6 +17,7 @@ const extensionId = process.env.TOCKTEAM_USER_RAYCAST_ID!
 const sessionId = process.env.TOCKTEAM_USER_RAYCAST_SESSION!
 const command = process.env.TOCKTEAM_USER_RAYCAST_COMMAND!
 const mode = process.env.TOCKTEAM_USER_RAYCAST_MODE
+if (mode !== 'view' && mode !== 'no-view' && mode !== 'menu-bar') throw new Error('Unsupported command mode')
 let revision = -1
 let ready = false
 let handles = new Map<string, () => unknown>()
@@ -70,6 +71,7 @@ const emitAfterLayout = (): void => {
 }
 const storage = createUserRaycastStorage(process.env.TOCKTEAM_USER_RAYCAST_STATE!)
 api.configureCompatibility({
+  environment: { extensionName: extensionId, entryPointName: command, entryPointMode: mode },
   authUrl: (url: string) => send({ type: 'auth-url', extensionId, sessionId, revision: Math.max(0, revision), url }),
   native: (request: { kind: string; text?: string }) => new Promise<void>((resolve, reject) => {
     if (request.kind !== 'copy') { reject(new Error(`Raycast native effect ${request.kind} is unsupported for user extensions`)); return }
@@ -126,7 +128,6 @@ registerHooks({ resolve(specifier, context, nextResolve) {
 const imported = await import(pathToFileURL(join(process.cwd(), 'source', `${command}.js`)).href)
 const Command = typeof imported.default === 'function' ? imported.default : imported.default?.default
 if (typeof Command !== 'function') throw new Error('Selected command has no callable default export')
-if (mode !== 'view' && mode !== 'no-view' && mode !== 'menu-bar') throw new Error('Unsupported command mode')
 let searchHandler: ((value: string) => void) | undefined
 if (mode === 'view' || mode === 'menu-bar') {
   const mount = (view?: unknown): void => renderer.updateContainer(view ?? React.createElement(Command), container, null, () => {
