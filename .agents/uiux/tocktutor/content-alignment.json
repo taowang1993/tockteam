@@ -1,4 +1,165 @@
 {
+  "readingIconsRefresh": {
+    "id": "tockteam-8tl1-reading-2026-10-04",
+    "status": "capture-verified-user-review-pending",
+    "publicationAllowlist": [
+      "tocktutor-editor-reading.png"
+    ],
+    "screenshotSha256": "5fdc68fd778deed88240603283777f6ba9d4bdfc93e49f2a8eeee6d3cd60d986",
+    "captureProof": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/ttc1.NcpmxE/capture-proof-v4.json",
+    "captureReceipt": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/ttc1.NcpmxE/d4-receipt.json",
+    "guardStop": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/ttc1.NcpmxE/guard-stop-v4.json",
+    "previousCaptures": {
+      "tocktutor-editor-reading.png": {
+        "product": "TockTutor Source-Built Desktop",
+        "captureScope": "real-desktop",
+        "refreshId": "tockteam-tigk-2026-10-03",
+        "sourceCommit": "f635857ba26d37feafaa72bde25fe168bed5f7da",
+        "sourceDirty": true,
+        "sourceProvenance": "Reused frozen working-tree build; not a pristine commit build. See tocktutorGalleryRefresh.builtArtifactHashes.",
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "path": "UIUX Comparison.md",
+        "mode": "reading",
+        "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+        "noteBytes": 1324,
+        "geometry": {
+          "width": 1512,
+          "height": 949,
+          "deviceScaleFactor": 2
+        },
+        "theme": "dark",
+        "skin": null,
+        "capturedAt": "2026-10-03T00:04:02.398Z",
+        "sha256": "6a771b46281eb441ebe9f26251444afab31799519f1f7a1ee69c4100ab3e4862",
+        "bytes": 282233,
+        "visibleState": {
+          "geometry": [
+            1512,
+            949,
+            2
+          ],
+          "rootColorScheme": "dark",
+          "rootSkin": null,
+          "bodySkin": null,
+          "systemDark": false,
+          "route": "/tocktutor/UIUX%20Comparison.md",
+          "path": "UIUX Comparison.md",
+          "documentMode": "reading",
+          "status": "UIUX Comparison.md opened.\n1 backlink\nReading\n171 words\n1322 characters",
+          "sourceVisible": false,
+          "renderedParagraph": null,
+          "visibleHeadings": [
+            "Files",
+            "UIUX Comparison",
+            "UIUX Comparison",
+            "Properties",
+            "Markdown Rendering Lab",
+            "Structure",
+            "Lists"
+          ],
+          "menus": [],
+          "fontsReady": true,
+          "assertedText": "Markdown Rendering Lab",
+          "assertionPassed": true,
+          "textExcerpt": "Markdown Rendering Lab",
+          "codeEditorVisible": false
+        },
+        "runtimeErrors": [],
+        "runtimeErrorMonitoring": "Playwright pageerror and console-error listeners installed before opening TockTutor; startup console and guard placement recorded separately.",
+        "failedRequests": [],
+        "warnings": [
+          "Feature flags __VUE_OPTIONS_API__, __VUE_PROD_DEVTOOLS__, __VUE_PROD_HYDRATION_MISMATCH_DETAILS__ are not explicitly defined. You are running the esm-bundler build of Vue, which expects these compile-time feature flags to be globally injected via the bundler config in order to get better tree-shaking in the production bundle.\n\nFor more details, see https://link.vuejs.org/feature-flags."
+        ],
+        "proofFile": "batch1/proof.json"
+      }
+    },
+    "previousScreenshot": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/ttc1.NcpmxE/pub-reading-v4/previous-reading.png",
+    "unrelatedExistingCapturesUnchanged": 61,
+    "userEyePending": true,
+    "parentEyePassed": false,
+    "imageReaderBlocked": true,
+    "canonicalGeometry": [
+      1512,
+      949,
+      2
+    ],
+    "pixels": [
+      3024,
+      1898
+    ],
+    "theme": "dark",
+    "skin": null,
+    "fixtureSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+    "actualCleanup": {
+      "id": "df9aa03e-a795-4c0c-99a2-2337ea545bdd",
+      "stopped": true,
+      "rootPid": 72372,
+      "recordedPids": [
+        72372,
+        72374,
+        72375,
+        72377,
+        72378,
+        72384,
+        72393,
+        72584,
+        72585,
+        72586,
+        72587,
+        72588,
+        72589,
+        72601,
+        72819,
+        72820,
+        72976,
+        72977,
+        72978,
+        72979,
+        72980,
+        72981,
+        72982,
+        72983
+      ],
+      "remaining": [],
+      "artifacts": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-YVtKKC"
+    },
+    "namedCliCleanup": {
+      "namedOnly": true,
+      "daemonPid": 73119,
+      "sessionFile": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/ttc1.NcpmxE/cli-state-v4/162c434918ffd693/tocktutor-reading-v4-NcpmxE.session",
+      "socketPath": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/ttc1.NcpmxE/s-v4/cli/de2be747d238ffe0.sock",
+      "globalInventoryQueried": false,
+      "errors": [],
+      "detach": {
+        "session": "tocktutor-reading-v4-NcpmxE",
+        "status": "detached"
+      },
+      "close": {
+        "session": "tocktutor-reading-v4-NcpmxE",
+        "status": "not-open"
+      },
+      "sessionFileAbsent": true,
+      "socketAbsent": true,
+      "pidAbsent": true
+    },
+    "warnings": [
+      "Feature flags __VUE_OPTIONS_API__, __VUE_PROD_DEVTOOLS__, __VUE_PROD_HYDRATION_MISMATCH_DETAILS__ are not explicitly defined. You are running the esm-bundler build of Vue, which expects these compile-time feature flags to be globally injected via the bundler config in order to get better tree-shaking in the production bundle.\n\nFor more details, see https://link.vuejs.org/feature-flags.",
+      "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently"
+    ],
+    "coldStartDiagnostics": {
+      "path": "/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/pi-extended-display-YVtKKC/electron.log",
+      "bytes": 370,
+      "sha256": "1491706e88fd9d3548978b429a0a75a7cb5a3ea3190f200a1d76b31e7e1f05c5",
+      "text": "\nDevTools listening on ws://127.0.0.1:65509/devtools/browser/470647be-41a1-4117-becd-250435220e63\n[72372:1004/181630.342066:ERROR:content/browser/gpu/gpu_process_host.cc:999] GPU process exited unexpectedly: exit_code=15\n[72372:1004/181630.344345:ERROR:content/browser/network_service_instance_impl.cc:703] Network service crashed or was terminated, restarting service.\n"
+    },
+    "scopeLimitations": [
+      "Only Reading View was captured; other modes, skins, portals and full hover/focus/selected contrast were not retested.",
+      "Computed icon and folder-guide color equality is not pixel brightness, line-weight or effective-opacity equality.",
+      "The original D2 and D3 failure causes remain unproven.",
+      "B1 verifier failed. P1 vendor hashes are current-read custody only; no whole-repository, SDK, native or installed acceptance.",
+      "Parent/User visual approval is pending; image tools omitted the original and preview."
+    ]
+  },
   "noteNavigationRefresh": {
     "status": "verified-historical",
     "sourceCommit": "f635857ba26d37feafaa72bde25fe168bed5f7da",
@@ -6191,10 +6352,10 @@
     "tocktutor-editor-reading.png": {
       "product": "TockTutor Source-Built Desktop",
       "captureScope": "real-desktop",
-      "refreshId": "tockteam-tigk-2026-10-03",
-      "sourceCommit": "f635857ba26d37feafaa72bde25fe168bed5f7da",
+      "refreshId": "tockteam-8tl1-reading-2026-10-04",
+      "sourceCommit": "3d4157af82789e6755b7bb49f74e3800b0c44cb2",
       "sourceDirty": true,
-      "sourceProvenance": "Reused frozen working-tree build; not a pristine commit build. See tocktutorGalleryRefresh.builtArtifactHashes.",
+      "sourceProvenance": "Frozen Source10/Source2Fix TockTutor and skins TEMP candidates over the unchanged staged Desktop runtime. B1 build verification failed; P1 is current-read custody, not build-time, whole-repository or SDK acceptance.",
       "route": "/tocktutor/UIUX%20Comparison.md",
       "path": "UIUX Comparison.md",
       "mode": "reading",
@@ -6207,48 +6368,923 @@
       },
       "theme": "dark",
       "skin": null,
-      "capturedAt": "2026-10-03T00:04:02.398Z",
-      "sha256": "6a771b46281eb441ebe9f26251444afab31799519f1f7a1ee69c4100ab3e4862",
-      "bytes": 282233,
+      "capturedAt": "2026-10-04T10:16:22.067Z",
+      "sha256": "5fdc68fd778deed88240603283777f6ba9d4bdfc93e49f2a8eeee6d3cd60d986",
+      "bytes": 279249,
       "visibleState": {
         "geometry": [
           1512,
           949,
           2
         ],
+        "route": "/tocktutor/UIUX%20Comparison.md",
+        "editorTitle": "UIUX Comparison",
         "rootColorScheme": "dark",
+        "rootSkinPresent": false,
+        "bodySkinPresent": false,
+        "skin": null,
+        "referenceColor": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+        "icons": [
+          {
+            "label": "Show Files",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-folder-open",
+            "contrast": {
+              "ratio": 5.9099967359884245,
+              "foreground": [
+                0.676105570255784,
+                0.6785354049347536,
+                0.6833950742926929,
+                1
+              ],
+              "background": [
+                0.18685121107266436,
+                0.18685121107266436,
+                0.18685121107266436,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Search Vault",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-search",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Search Notes",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-sliders-horizontal",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Show Bookmarks",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-bookmark",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Toggle Files Sidebar",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-panel-left",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Close UIUX Comparison.md",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-x",
+            "contrast": {
+              "ratio": 7.221344974465391,
+              "foreground": [
+                0.6363552479815456,
+                0.6387850826605153,
+                0.6466282199154172,
+                1
+              ],
+              "background": [
+                0.08235294117647059,
+                0.08235294117647059,
+                0.09019607843137255,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "New Note",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-plus",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Toggle Right Sidebar",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-panel-right",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Add to Files",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-plus",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Attachments",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-chevron-right",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Bases",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-chevron-right",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Note Actions for Bases/Lessons.base",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "0",
+            "disabled": false,
+            "classes": "lucide lucide-ellipsis",
+            "contrast": null
+          },
+          {
+            "label": "Boards",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-chevron-right",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Note Actions for Boards/Lesson.canvas",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "0",
+            "disabled": false,
+            "classes": "lucide lucide-ellipsis",
+            "contrast": null
+          },
+          {
+            "label": "Imports",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-chevron-right",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Note Actions for Imports/Imported.md",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "0",
+            "disabled": false,
+            "classes": "lucide lucide-ellipsis",
+            "contrast": null
+          },
+          {
+            "label": "Notes",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-chevron-right",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Note Actions for Notes/Alias Target.md",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "0",
+            "disabled": false,
+            "classes": "lucide lucide-ellipsis",
+            "contrast": null
+          },
+          {
+            "label": "Note Actions for Notes/Welcome.md",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "0",
+            "disabled": false,
+            "classes": "lucide lucide-ellipsis",
+            "contrast": null
+          },
+          {
+            "label": "Note Actions for comparison.md",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "0",
+            "disabled": false,
+            "classes": "lucide lucide-ellipsis",
+            "contrast": null
+          },
+          {
+            "label": "Note Actions for Mention.md",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "0",
+            "disabled": false,
+            "classes": "lucide lucide-ellipsis",
+            "contrast": null
+          },
+          {
+            "label": "Note Actions for Study Guide.md",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "0",
+            "disabled": false,
+            "classes": "lucide lucide-ellipsis",
+            "contrast": null
+          },
+          {
+            "label": "Note Actions for UIUX Comparison.md",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "0",
+            "disabled": false,
+            "classes": "lucide lucide-ellipsis",
+            "contrast": null
+          },
+          {
+            "label": "BUTTON",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-chevron-right",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "BUTTON",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-ellipsis",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Workspace",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-panels-top-left",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Go Back",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "0.35",
+            "disabled": true,
+            "classes": "lucide lucide-chevron-left",
+            "contrast": {
+              "ratio": 1.955460052632701,
+              "foreground": [
+                0.2762537485582468,
+                0.2771041906958862,
+                0.28494732795078814,
+                1
+              ],
+              "background": [
+                0.08235294117647059,
+                0.08235294117647059,
+                0.09019607843137255,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Go Forward",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "0.35",
+            "disabled": true,
+            "classes": "lucide lucide-chevron-right",
+            "contrast": {
+              "ratio": 1.955460052632701,
+              "foreground": [
+                0.2762537485582468,
+                0.2771041906958862,
+                0.28494732795078814,
+                1
+              ],
+              "background": [
+                0.08235294117647059,
+                0.08235294117647059,
+                0.09019607843137255,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Switch to Editing View",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-pencil",
+            "contrast": {
+              "ratio": 7.221344974465391,
+              "foreground": [
+                0.6363552479815456,
+                0.6387850826605153,
+                0.6466282199154172,
+                1
+              ],
+              "background": [
+                0.08235294117647059,
+                0.08235294117647059,
+                0.09019607843137255,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "More Note Actions",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-ellipsis",
+            "contrast": {
+              "ratio": 7.221344974465391,
+              "foreground": [
+                0.6363552479815456,
+                0.6387850826605153,
+                0.6466282199154172,
+                1
+              ],
+              "background": [
+                0.08235294117647059,
+                0.08235294117647059,
+                0.09019607843137255,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "BUTTON",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-chevron-right absolute -left-5 size-4 text-[var(--tt-muted)] group-aria-expanded:rotate-90",
+            "contrast": {
+              "ratio": 7.221344974465391,
+              "foreground": [
+                0.6363552479815456,
+                0.6387850826605153,
+                0.6466282199154172,
+                1
+              ],
+              "background": [
+                0.08235294117647059,
+                0.08235294117647059,
+                0.09019607843137255,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "DT",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-align-left size-4 shrink-0",
+            "contrast": {
+              "ratio": 7.221344974465391,
+              "foreground": [
+                0.6363552479815456,
+                0.6387850826605153,
+                0.6466282199154172,
+                1
+              ],
+              "background": [
+                0.08235294117647059,
+                0.08235294117647059,
+                0.09019607843137255,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "DT",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-square-check-big size-4 shrink-0",
+            "contrast": {
+              "ratio": 7.221344974465391,
+              "foreground": [
+                0.6363552479815456,
+                0.6387850826605153,
+                0.6466282199154172,
+                1
+              ],
+              "background": [
+                0.08235294117647059,
+                0.08235294117647059,
+                0.09019607843137255,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "DT",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-align-left size-4 shrink-0",
+            "contrast": {
+              "ratio": 7.221344974465391,
+              "foreground": [
+                0.6363552479815456,
+                0.6387850826605153,
+                0.6466282199154172,
+                1
+              ],
+              "background": [
+                0.08235294117647059,
+                0.08235294117647059,
+                0.09019607843137255,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "DT",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-tags size-4 shrink-0",
+            "contrast": {
+              "ratio": 7.221344974465391,
+              "foreground": [
+                0.6363552479815456,
+                0.6387850826605153,
+                0.6466282199154172,
+                1
+              ],
+              "background": [
+                0.08235294117647059,
+                0.08235294117647059,
+                0.09019607843137255,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Remove comparison tag",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-x size-3",
+            "contrast": {
+              "ratio": 6.641158561536009,
+              "foreground": [
+                0.6585616090342328,
+                0.6564284928119652,
+                0.6803940565845716,
+                1
+              ],
+              "background": [
+                0.14073048827374085,
+                0.1287351018838908,
+                0.17896193771626298,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Remove typography tag",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-x size-3",
+            "contrast": {
+              "ratio": 6.641158561536009,
+              "foreground": [
+                0.6585616090342328,
+                0.6564284928119652,
+                0.6803940565845716,
+                1
+              ],
+              "background": [
+                0.14073048827374085,
+                0.1287351018838908,
+                0.17896193771626298,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "DT",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-align-left size-4 shrink-0",
+            "contrast": {
+              "ratio": 7.221344974465391,
+              "foreground": [
+                0.6363552479815456,
+                0.6387850826605153,
+                0.6466282199154172,
+                1
+              ],
+              "background": [
+                0.08235294117647059,
+                0.08235294117647059,
+                0.09019607843137255,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "BUTTON",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-plus",
+            "contrast": {
+              "ratio": 7.221344974465391,
+              "foreground": [
+                0.6363552479815456,
+                0.6387850826605153,
+                0.6466282199154172,
+                1
+              ],
+              "background": [
+                0.08235294117647059,
+                0.08235294117647059,
+                0.09019607843137255,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          },
+          {
+            "label": "Open Assistant",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "stroke": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "opacity": "1",
+            "disabled": false,
+            "classes": "lucide lucide-message-square",
+            "contrast": {
+              "ratio": 6.870283518827065,
+              "foreground": [
+                0.6497808535178777,
+                0.6522106881968474,
+                0.6570703575547866,
+                1
+              ],
+              "background": [
+                0.11764705882352941,
+                0.11764705882352941,
+                0.11764705882352941,
+                1
+              ],
+              "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+            }
+          }
+        ],
+        "guides": [
+          {
+            "folder": "Bases",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "width": "1px",
+            "open": true
+          },
+          {
+            "folder": "Boards",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "width": "1px",
+            "open": true
+          },
+          {
+            "folder": "Imports",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "width": "1px",
+            "open": true
+          },
+          {
+            "folder": "Notes",
+            "color": "color(srgb 0.976471 0.980392 0.984314 / 0.62)",
+            "width": "1px",
+            "open": true
+          }
+        ],
+        "bodyText": "rgb(249, 250, 251)",
+        "noteText": "rgb(249, 250, 251)",
+        "reading": true,
+        "sourceVisible": false,
+        "livePreviewVisible": false,
+        "noteExcerpt": "Markdown Rendering Lab\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\nStructure\nLists\nCompa",
+        "fontsReady": true,
+        "status": "UIUX Comparison.md opened.1 backlinkReading171 words1322 characters",
+        "contentColors": {
+          "link": "rgb(166, 138, 249)",
+          "inlineCode": "rgb(249, 250, 251)",
+          "heading": "rgb(249, 250, 251)",
+          "text": "rgb(249, 250, 251)"
+        },
+        "textContrast": {
+          "ratio": 17.45095194843412,
+          "foreground": [
+            0.9764705882352941,
+            0.9803921568627451,
+            0.984313725490196,
+            1
+          ],
+          "background": [
+            0.08235294117647059,
+            0.08235294117647059,
+            0.09019607843137255,
+            1
+          ],
+          "basis": "Computed flat ancestor fill compositing; gradients are not pixel-sampled"
+        },
         "rootSkin": null,
         "bodySkin": null,
-        "systemDark": false,
-        "route": "/tocktutor/UIUX%20Comparison.md",
         "path": "UIUX Comparison.md",
         "documentMode": "reading",
-        "status": "UIUX Comparison.md opened.\n1 backlink\nReading\n171 words\n1322 characters",
-        "sourceVisible": false,
-        "renderedParagraph": null,
-        "visibleHeadings": [
-          "Files",
-          "UIUX Comparison",
-          "UIUX Comparison",
-          "Properties",
-          "Markdown Rendering Lab",
-          "Structure",
-          "Lists"
-        ],
-        "menus": [],
-        "fontsReady": true,
         "assertedText": "Markdown Rendering Lab",
         "assertionPassed": true,
-        "textExcerpt": "Markdown Rendering Lab",
-        "codeEditorVisible": false
+        "overlayCount": 0
       },
       "runtimeErrors": [],
-      "runtimeErrorMonitoring": "Playwright pageerror and console-error listeners installed before opening TockTutor; startup console and guard placement recorded separately.",
       "failedRequests": [],
+      "externalRequests": [],
       "warnings": [
-        "Feature flags __VUE_OPTIONS_API__, __VUE_PROD_DEVTOOLS__, __VUE_PROD_HYDRATION_MISMATCH_DETAILS__ are not explicitly defined. You are running the esm-bundler build of Vue, which expects these compile-time feature flags to be globally injected via the bundler config in order to get better tree-shaking in the production bundle.\n\nFor more details, see https://link.vuejs.org/feature-flags."
+        "Feature flags __VUE_OPTIONS_API__, __VUE_PROD_DEVTOOLS__, __VUE_PROD_HYDRATION_MISMATCH_DETAILS__ are not explicitly defined. You are running the esm-bundler build of Vue, which expects these compile-time feature flags to be globally injected via the bundler config in order to get better tree-shaking in the production bundle.\n\nFor more details, see https://link.vuejs.org/feature-flags.",
+        "Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently"
       ],
-      "proofFile": "batch1/proof.json"
+      "runtimeErrorMonitoring": "Playwright pageerror/console-error/request-failed listeners installed before navigation on the returned owned CDP endpoint. Cold-start diagnostics retained separately; no cause inferred.",
+      "proofFile": "/private/var/folders/fv/18g6fp8n0xnbycsgy4zsj7f40000gn/T/ttc1.NcpmxE/d4-receipt.json",
+      "userEyePending": true
     },
     "tocktutor-editor-source.png": {
       "product": "TockTutor Source-Built Desktop",
