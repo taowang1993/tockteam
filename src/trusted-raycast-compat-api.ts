@@ -1,5 +1,6 @@
 import React from 'react'
 import { afterSucceededEffect } from './trusted-raycast-effect-callback.ts'
+import { isUserRaycastCreatorName } from './user-raycast-environment.ts'
 import { authorizeUserRaycastPkce } from './user-raycast-oauth.ts'
 import type { UserRaycastLocalStorageValue } from './user-raycast-storage.ts'
 import { isUserRaycastFieldValue, isUserRaycastOAuthCleanupCounts, isUserRaycastOAuthCleanupReasons, type UserRaycastFieldKind, type UserRaycastFieldValue, type UserRaycastOAuthCleanupReason } from './user-raycast-contract.ts'
@@ -48,7 +49,7 @@ export const Grid = Object.assign(searchableCollection('raycast-grid'), {
   EmptyView: component('raycast-empty'),
 })
 export const LaunchType = Object.freeze({ UserInitiated: 'userInitiated', Background: 'background' } as const)
-type CommandEnvironment = Readonly<{ extensionName: string; entryPointName: string; entryPointMode: 'no-view' | 'view' | 'menu-bar'; launchType?: typeof LaunchType[keyof typeof LaunchType]; assetsPath?: string; supportPath?: string }>
+type CommandEnvironment = Readonly<{ extensionName: string; entryPointName: string; entryPointMode: 'no-view' | 'view' | 'menu-bar'; launchType?: typeof LaunchType[keyof typeof LaunchType]; assetsPath?: string; supportPath?: string; ownerOrAuthorName?: string | undefined }>
 type NativeEffectRequest = { kind: 'copy' | 'openGoogleTranslate' | 'paste' | 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>>; text?: string; url?: string }
 type CompatibilityStorage = { removeItem: (key: string) => Promise<void>; clear: () => Promise<void> } & (
   { typed?: false; allItems?: () => Promise<Record<string, string>>; getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void> }
@@ -61,7 +62,10 @@ export let queryEpoch = 0
 export let queryText = ''
 export function advanceQuery(value: string): void { queryText = value; queryEpoch++ }
 export function configureCompatibility(value: Compatibility): void {
-  const next = value.environment === undefined ? undefined : { ...value.environment }
+  const creator = value.environment == null ? undefined : Object.getOwnPropertyDescriptor(value.environment, 'ownerOrAuthorName')
+  // Validate this optional member before spreading any provider or replacing active delegates.
+  if (creator && (!Object.hasOwn(creator, 'value') || creator.value !== undefined && !isUserRaycastCreatorName(creator.value))) throw new Error('Invalid command environment')
+  const next = value.environment === undefined ? undefined : { ...value.environment, ownerOrAuthorName: creator?.value }
   if (next && (typeof next.extensionName !== 'string' || !next.extensionName || next.extensionName.length > 128
     || typeof next.entryPointName !== 'string' || !next.entryPointName || next.entryPointName.length > 128
     || !['view', 'no-view', 'menu-bar'].includes(next.entryPointMode)
@@ -357,6 +361,7 @@ export const environment = Object.freeze({
   get launchType(): NonNullable<CommandEnvironment['launchType']> { return commandEnvironment?.launchType ?? unsupported('environment.launchType') },
   get assetsPath(): string { return commandEnvironment?.assetsPath ?? unsupported('environment.assetsPath') },
   get supportPath(): string { return commandEnvironment?.supportPath ?? unsupported('environment.supportPath') },
+  get ownerOrAuthorName(): string { return commandEnvironment?.ownerOrAuthorName ?? unsupported('environment.ownerOrAuthorName') },
   get commandName(): string { return environment.entryPointName },
   get commandMode(): CommandEnvironment['entryPointMode'] { return environment.entryPointMode },
 })

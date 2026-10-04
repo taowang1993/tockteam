@@ -72,6 +72,28 @@ for (const mode of ['view', 'no-view', 'menu-bar'] as const) test(`selected ${mo
   }
 })
 
+test('owner or author uses the approved declared owner at import without changing its text', async t => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-owner-author-import-')), runtime = join(root, 'host'), folder = join(root, 'source'), proof = join(root, 'import.json')
+  const install = new UserRaycastInstall(join(root, 'installed')), messages: UserRaycastMessage[] = [], groups = new Set<number>()
+  const manager = new UserRaycastManager({ install, runtime, nodePath: process.execPath, artifact, onMessage: (_owner, message) => { if (manager.childPid) groups.add(manager.childPid); messages.push(message) } })
+  t.after(async () => { await manager.close(); for (const pid of groups) assert.throws(() => process.kill(-pid, 0), /ESRCH/); t.diagnostic(`Stopped owned process groups: ${[...groups].join(', ')}`); rmSync(root, { recursive: true, force: true }) })
+  await buildUserRaycast(runtime); mkdirSync(folder)
+  const declared = '  Étude 李 🙂  '
+  writeFileSync(join(folder, 'package.json'), JSON.stringify({ name: 'creator-import', title: 'Not the Creator', owner: declared, author: 'Not the Owner', commands: [{ name: 'browse', mode: 'view' }] }))
+  writeFileSync(join(folder, 'browse.js'), `
+    const React = require('react'), { List, environment } = require('@raycast/api'); global.fetch = () => { throw Error('Network prohibited'); };
+    const imported = environment.ownerOrAuthorName;
+    require('node:fs').writeFileSync(${JSON.stringify(proof)}, JSON.stringify({ value: imported }));
+    process.env.TOCKTEAM_USER_RAYCAST_OWNER_OR_AUTHOR_NAME = 'Changed Ambient Value';
+    exports.default = () => React.createElement(List, null, React.createElement(List.Item, { title: JSON.stringify({ value: environment.ownerOrAuthorName, frozen: Object.isFrozen(environment), immutable: Reflect.set(environment, 'ownerOrAuthorName', 'Changed') === false, sameAtImport: imported === environment.ownerOrAuthorName }) }));
+  `)
+  const selected = install.prepare(folder, 'browse'); install.approve(selected.digest); install.enable()
+  const opening = manager.start(owner); if (manager.childPid) groups.add(manager.childPid); await opening
+  assert.deepEqual(JSON.parse(readFileSync(proof, 'utf8')), { value: declared }, 'The declared owner must be available before command import')
+  const item = (messages.find(message => message.type === 'ready')!.root as any).children[0].children.find((node: any) => node.type === 'raycast-list-item')
+  assert.deepEqual(JSON.parse(item.props.title), { value: declared, frozen: true, immutable: true, sameAtImport: true })
+})
+
 test('SDK environment rejects missing or malformed providers without replacing a valid snapshot', async t => {
   const root = mkdtempSync(join(tmpdir(), 'tockteam-environment-provider-')), runtime = join(root, 'host'), folder = join(root, 'source')
   const install = new UserRaycastInstall(join(root, 'installed')), messages: UserRaycastMessage[] = [], errors: string[] = [], groups = new Set<number>()
@@ -92,25 +114,48 @@ test('SDK environment rejects missing or malformed providers without replacing a
       const base = { native: async () => { throw Error('Native prohibited'); }, selection: async () => '', toast: () => {},
         cache: () => ({ get: () => 'kept', set: () => {}, remove: () => false, clear: () => {}, subscribe: () => () => {} }) };
       configureCompatibility(base);
-      for (const key of ['extensionName', 'entryPointName', 'entryPointType', 'entryPointMode', 'commandName', 'commandMode', 'assetsPath', 'supportPath']) {
+      for (const key of ['extensionName', 'entryPointName', 'entryPointType', 'entryPointMode', 'commandName', 'commandMode', 'assetsPath', 'supportPath', 'ownerOrAuthorName']) {
         let rejected = false; try { environment[key]; } catch (error) { rejected = /not admitted by this capability/.test(String(error)); }
         if (!rejected) throw Error('Missing environment provider reported success for ' + key);
       }
-      const supplied = { extensionName: 'configured', entryPointName: 'stable', entryPointMode: 'view', assetsPath: '/owned/assets', supportPath: '/owned/state/configured.support' };
+      const supplied = { extensionName: 'configured', entryPointName: 'stable', entryPointMode: 'view', assetsPath: '/owned/assets', supportPath: '/owned/state/configured.support', ownerOrAuthorName: '  Étude 李 🙂  ' };
       configureCompatibility({ ...base, environment: supplied });
-      supplied.extensionName = 'changed'; supplied.entryPointName = 'changed'; supplied.entryPointMode = 'no-view'; supplied.assetsPath = '/changed'; supplied.supportPath = '/changed';
-      if (environment.extensionName !== 'configured' || environment.commandName !== 'stable' || environment.commandMode !== 'view' || environment.assetsPath !== '/owned/assets' || environment.supportPath !== '/owned/state/configured.support') throw Error('Environment retained a mutable provider object');
-      const good = { extensionName: 'configured', entryPointName: 'stable', entryPointMode: 'view', assetsPath: '/owned/assets', supportPath: '/owned/state/configured.support' };
+      supplied.extensionName = 'changed'; supplied.entryPointName = 'changed'; supplied.entryPointMode = 'no-view'; supplied.assetsPath = '/changed'; supplied.supportPath = '/changed'; supplied.ownerOrAuthorName = 'Changed';
+      if (environment.extensionName !== 'configured' || environment.commandName !== 'stable' || environment.commandMode !== 'view' || environment.assetsPath !== '/owned/assets' || environment.supportPath !== '/owned/state/configured.support' || environment.ownerOrAuthorName !== '  Étude 李 🙂  ') throw Error('Environment retained a mutable provider object');
+      const good = { extensionName: 'configured', entryPointName: 'stable', entryPointMode: 'view', assetsPath: '/owned/assets', supportPath: '/owned/state/configured.support', ownerOrAuthorName: '  Étude 李 🙂  ' };
       const invalidPaths = [null, false, 3, {}, [], '', 'relative/assets', '/owned\\0assets', '/' + 'x'.repeat(4096), '/' + '🙂'.repeat(1024)];
       for (const invalid of [null, {}, { ...good, extensionName: '' }, { ...good, extensionName: 1 }, { ...good, extensionName: 'x'.repeat(129) },
         { ...good, entryPointName: '' }, { ...good, entryPointName: null }, { ...good, entryPointName: 'x'.repeat(129) }, { ...good, entryPointMode: 'tool' },
         ...invalidPaths.flatMap(path => [{ ...good, assetsPath: path }, { ...good, supportPath: path }])]) {
         let rejected = false; try { configureCompatibility({ ...base, cache: () => ({ get: () => 'replaced' }), environment: invalid }); } catch (error) { rejected = /Invalid command environment/.test(String(error)); }
         if (!rejected) throw Error('Malformed environment provider was accepted: ' + JSON.stringify(invalid));
-        if (environment.extensionName !== 'configured' || environment.commandName !== 'stable' || environment.entryPointType !== 'command' || environment.assetsPath !== good.assetsPath || environment.supportPath !== good.supportPath || new Cache().get('key') !== 'kept') throw Error('Rejected environment replaced active compatibility');
+        if (environment.extensionName !== 'configured' || environment.commandName !== 'stable' || environment.entryPointType !== 'command' || environment.assetsPath !== good.assetsPath || environment.supportPath !== good.supportPath || environment.ownerOrAuthorName !== good.ownerOrAuthorName || new Cache().get('key') !== 'kept') throw Error('Rejected environment replaced active compatibility');
       }
+      const invalidCreators = [null, false, 3, {}, [], new String('Ada'), Symbol('Ada'), '', '   ', '\\u00a0\\u2003', '\\ud800', '\\udfff', 'Name\\0', 'Name\\u007f', 'Name\\u0085', 'x'.repeat(1025), '🙂'.repeat(257), '李'.repeat(342)];
+      let invoked = false;
+      const accessor = Object.defineProperty({ ...good }, 'ownerOrAuthorName', { enumerable: true, get() { invoked = true; throw Error('Creator getter must not run'); } });
+      const setter = Object.defineProperty({ ...good }, 'ownerOrAuthorName', { set() { invoked = true; } });
+      const beforeSpread = Object.defineProperty({ ...good, ownerOrAuthorName: '' }, 'extensionName', { enumerable: true, get() { invoked = true; throw Error('Spread must not run before rejecting creator'); } });
+      for (const invalid of [...invalidCreators.map(ownerOrAuthorName => ({ ...good, ownerOrAuthorName })), accessor, setter, beforeSpread]) {
+        let rejected = false; try { configureCompatibility({ ...base, cache: () => ({ get: () => 'replaced' }), environment: invalid }); } catch (error) { rejected = /Invalid command environment/.test(String(error)); }
+        if (!rejected || invoked || environment.ownerOrAuthorName !== good.ownerOrAuthorName || new Cache().get('key') !== 'kept') throw Error('Rejected creator changed active capability or invoked an accessor');
+      }
+      for (const ownerOrAuthorName of ['x'.repeat(1024), '🙂'.repeat(256), '李'.repeat(341) + 'x']) {
+        configureCompatibility({ ...base, environment: { ...good, ownerOrAuthorName } });
+        if (environment.ownerOrAuthorName !== ownerOrAuthorName) throw Error('Creator byte boundary changed valid text');
+      }
+      const { ownerOrAuthorName: ignored, ...withoutCreator } = good;
+      const inherited = Object.assign(Object.create({ ownerOrAuthorName: 'Inherited Creator' }), withoutCreator);
+      for (const provider of [withoutCreator, { ...good, ownerOrAuthorName: undefined }, inherited]) {
+        configureCompatibility({ ...base, environment: provider });
+        let rejected = false; try { environment.ownerOrAuthorName; } catch (error) { rejected = /environment.ownerOrAuthorName is not admitted/.test(String(error)); }
+        if (!rejected || environment.extensionName !== 'configured') throw Error('Missing creator was invented or blocked legacy identity');
+      }
+      const nonenumerable = Object.defineProperty({ ...withoutCreator }, 'ownerOrAuthorName', { value: good.ownerOrAuthorName });
+      configureCompatibility({ ...base, environment: nonenumerable });
+      if (environment.ownerOrAuthorName !== good.ownerOrAuthorName) throw Error('Own nonenumerable creator was lost');
       configureCompatibility({ ...base, environment: { extensionName: 'legacy', entryPointName: 'stable', entryPointMode: 'view' } });
-      for (const key of ['assetsPath', 'supportPath']) {
+      for (const key of ['assetsPath', 'supportPath', 'ownerOrAuthorName']) {
         let rejected = false; try { environment[key]; } catch (error) { rejected = /not admitted by this capability/.test(String(error)); }
         if (!rejected) throw Error('Legacy provider invented an owned path');
       }
@@ -122,6 +167,85 @@ test('SDK environment rejects missing or malformed providers without replacing a
   await opening
   assert.ok(JSON.stringify(messages.find(message => message.type === 'ready')?.root).includes('Missing and Invalid Providers Rejected'), JSON.stringify({ errors, messages }))
   assert.deepEqual(errors, [])
+})
+
+test('owner or author admits only valid declared metadata while non-reading commands still start', async t => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-owner-author-admission-')), runtime = join(root, 'host'), groups = new Set<number>(), managers: UserRaycastManager[] = []
+  t.after(async () => { for (const manager of managers) await manager.close(); for (const pid of groups) assert.throws(() => process.kill(-pid, 0), /ESRCH/); t.diagnostic(`Stopped owned process groups: ${[...groups].join(', ')}`); rmSync(root, { recursive: true, force: true }) })
+  await buildUserRaycast(runtime)
+  const cases: Array<{ declared: object; expected?: string }> = [
+    { declared: { author: '  Author 李 🙂  ' }, expected: '  Author 李 🙂  ' },
+    { declared: {} }, { declared: { owner: null, author: 'No Fallback' } },
+    { declared: { owner: { name: 'No Coercion' }, author: 'No Fallback' } },
+    { declared: { owner: '   ', author: 'No Fallback' } }, { declared: { owner: 'Name\u0085', author: 'No Fallback' } },
+    { declared: { owner: '\ud800', author: 'No Fallback' } },
+    { declared: { owner: 'x'.repeat(1024) }, expected: 'x'.repeat(1024) },
+    { declared: { author: '🙂'.repeat(256) }, expected: '🙂'.repeat(256) },
+    { declared: { owner: '李'.repeat(341) + 'x' }, expected: '李'.repeat(341) + 'x' },
+    { declared: { owner: 'x'.repeat(1025), author: 'No Fallback' } },
+    { declared: { author: '🙂'.repeat(257) } }, { declared: { author: '李'.repeat(342) } },
+  ]
+  for (const [index, entry] of cases.entries()) {
+    const folder = join(root, `case-${index}`, 'source'), installed = join(root, `case-${index}`, 'installed'); mkdirSync(folder, { recursive: true })
+    const install = new UserRaycastInstall(installed), messages: UserRaycastMessage[] = []
+    const manager = new UserRaycastManager({ install, runtime, nodePath: process.execPath, artifact, onMessage: (_owner, message) => { if (manager.childPid) groups.add(manager.childPid); messages.push(message) } }); managers.push(manager)
+    writeFileSync(join(folder, 'package.json'), JSON.stringify({ name: `creator-case-${index}`, title: 'Never a Creator Fallback', ...entry.declared, commands: ['browse', 'ignore'].map(name => ({ name, mode: 'view' })) }))
+    writeFileSync(join(folder, 'browse.js'), `
+      const React = require('react'), { List, environment } = require('@raycast/api'); global.fetch = () => { throw Error('Network prohibited'); };
+      let answer; try { answer = { value: environment.ownerOrAuthorName }; } catch (error) { if (!/environment.ownerOrAuthorName is not admitted by this capability/.test(String(error))) throw error; answer = { unavailable: true }; }
+      exports.default = () => React.createElement(List, null, React.createElement(List.Item, { title: JSON.stringify(answer) }));
+    `)
+    writeFileSync(join(folder, 'ignore.js'), `const React = require('react'), { List, environment } = require('@raycast/api'); global.fetch = () => { throw Error('Network prohibited'); }; const identity = environment.extensionName; exports.default = () => React.createElement(List, null, React.createElement(List.Item, { title: identity }));`)
+    for (const command of entry.expected === undefined ? ['browse', 'ignore'] : ['browse']) {
+      const selected = install.prepare(folder, command); install.approve(selected.digest); install.enable(); messages.length = 0
+      const opening = manager.start(owner); if (manager.childPid) groups.add(manager.childPid); await opening
+      const item = (messages.find(message => message.type === 'ready')!.root as any).children[0].children.find((node: any) => node.type === 'raycast-list-item')
+      if (command === 'ignore') assert.equal(item.props.title, `creator-case-${index}`)
+      else assert.deepEqual(JSON.parse(item.props.title), entry.expected === undefined ? { unavailable: true } : { value: entry.expected }, `Manifest creator case ${index}`)
+      await manager.close()
+    }
+  }
+})
+
+test('owner or author follows approved snapshot updates and rollback without persisted metadata or storage writes', async t => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-owner-author-snapshot-')), runtime = join(root, 'host'), folder = join(root, 'source'), installed = join(root, 'installed'), groups = new Set<number>()
+  const install = new UserRaycastInstall(installed), messages: UserRaycastMessage[] = []
+  const manager = new UserRaycastManager({ install, runtime, nodePath: process.execPath, artifact, onMessage: (_owner, message) => { if (manager.childPid) groups.add(manager.childPid); messages.push(message) } })
+  t.after(async () => { await manager.close(); for (const pid of groups) assert.throws(() => process.kill(-pid, 0), /ESRCH/); t.diagnostic(`Stopped owned process groups: ${[...groups].join(', ')}`); rmSync(root, { recursive: true, force: true }) })
+  await buildUserRaycast(runtime); mkdirSync(folder)
+  const manifest = { name: 'creator-snapshot', title: 'Never the Creator', owner: '  Original 李 🙂  ', author: 'Ignored Author', commands: [{ name: 'browse', mode: 'view' }] }
+  writeFileSync(join(folder, 'package.json'), JSON.stringify(manifest))
+  writeFileSync(join(folder, 'browse.js'), `
+    const React = require('react'), { List, environment } = require('@raycast/api'), fs = require('node:fs'), path = require('node:path'); global.fetch = () => { throw Error('Network prohibited'); };
+    const imported = environment.ownerOrAuthorName;
+    const privateManifest = path.join(__dirname, 'package.json'), manifest = JSON.parse(fs.readFileSync(privateManifest, 'utf8'));
+    manifest.owner = 'Changed After Import'; fs.writeFileSync(privateManifest, JSON.stringify(manifest)); process.env.TOCKTEAM_USER_RAYCAST_OWNER_OR_AUTHOR_NAME = 'Changed Ambient Name';
+    exports.default = () => React.createElement(List, null, React.createElement(List.Item, { title: JSON.stringify({ imported, current: environment.ownerOrAuthorName, assetsPath: environment.assetsPath, supportPath: environment.supportPath }) }));
+  `)
+  const original = install.prepare(folder, 'browse'); install.approve(original.digest); install.enable()
+  const selectionPath = join(installed, 'current', 'selection.json'), selectionKeys = Object.keys(JSON.parse(readFileSync(selectionPath, 'utf8'))).sort()
+  for (const record of [original, JSON.parse(readFileSync(selectionPath, 'utf8'))]) for (const key of ['owner', 'author', 'ownerOrAuthorName']) assert.equal(Object.hasOwn(record, key), false)
+  const state = install.statePath(manifest.name), raw = Buffer.from('{ "legacy": "Kept Exactly" }\n'), typedPath = `${state}.local-storage.v1.json`, typed = Buffer.from('{ "version": 1, "values": { "typed": 7, "empty": "" } }\n')
+  writeFileSync(state, raw); writeFileSync(typedPath, typed)
+  let originalAssets: string | undefined, supportPath: string | undefined
+  for (const step of ['first', 'cold-open', 'unapproved-edit', 'update', 'rollback']) {
+    let expected = manifest.owner
+    if (step === 'unapproved-edit') writeFileSync(join(folder, 'package.json'), JSON.stringify({ ...manifest, owner: 'Unapproved Live Source Name' }))
+    if (step === 'update') {
+      expected = '  Updated Étude  '; writeFileSync(join(folder, 'package.json'), JSON.stringify({ ...manifest, owner: expected }))
+      const updated = install.prepare(folder, 'browse'); assert.notEqual(updated.digest, original.digest); install.approve(updated.digest); install.enable()
+    } else if (step === 'rollback') { install.recoverPrevious(); install.enable(); assert.equal(install.status().digest, original.digest) }
+    messages.length = 0
+    const opening = manager.start(owner); if (manager.childPid) groups.add(manager.childPid); await opening
+    const item = (messages.find(message => message.type === 'ready')!.root as any).children[0].children.find((node: any) => node.type === 'raycast-list-item'), answer = JSON.parse(item.props.title)
+    assert.equal(answer.imported, expected, step); assert.equal(answer.current, expected, step)
+    if (originalAssets) assert.notEqual(answer.assetsPath, originalAssets); originalAssets = answer.assetsPath
+    if (supportPath) assert.equal(answer.supportPath, supportPath); supportPath = answer.supportPath
+    assert.deepEqual(readFileSync(state), raw); assert.deepEqual(readFileSync(typedPath), typed)
+    const selection = JSON.parse(readFileSync(selectionPath, 'utf8')); assert.deepEqual(Object.keys(selection).sort(), selectionKeys)
+    for (const key of ['owner', 'author', 'ownerOrAuthorName']) assert.equal(Object.hasOwn(selection, key), false)
+    await manager.close()
+  }
 })
 
 test('selected extension reads approved asset files and writes its own stable save folder', async t => {

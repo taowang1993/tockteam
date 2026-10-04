@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { admitTrustedRaycastArtifact, readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
 import { validMenuIcon } from './user-raycast-menu.ts'
+import { userRaycastOwnerOrAuthorName } from './user-raycast-environment.ts'
 import { isUserRaycastAuthUrl, isUserRaycastEvent, isUserRaycastFieldValue, isUserRaycastOAuthCleanupDiagnostic, type UserRaycastEvent, type UserRaycastFieldKind, type UserRaycastOAuthCleanupCounts, type UserRaycastOAuthCleanupReason } from './user-raycast-contract.ts'
 import { getTrustedRaycastRuntimeDescriptor } from './trusted-raycast-descriptors.ts'
 import { createTrustedRaycastLineReader, inspectTrustedRaycastProjection } from './trusted-raycast-contract.ts'
@@ -78,6 +79,7 @@ export class UserRaycastManager {
       const linearClientId = chosen.extensionId === 'linear' && chosen.command === 'search-issues' ? this.options.linearClientId : undefined
       if (linearClientId !== undefined && !/^[a-f0-9]{32}$/i.test(linearClientId)) throw new Error('Invalid Linear test client ID')
       const manifest = JSON.parse(readFileSync(join(workspace, 'source', 'package.json'), 'utf8')) as { preferences?: unknown; commands?: Array<{ name: string; preferences?: unknown }> }
+      const ownerOrAuthorName = userRaycastOwnerOrAuthorName(manifest)
       const defaults: Record<string, string | boolean> = {}
       const commandPreferences = manifest.commands?.find(item => item.name === chosen.command)?.preferences
       for (const entry of [...(Array.isArray(manifest.preferences) ? manifest.preferences : []), ...(Array.isArray(commandPreferences) ? commandPreferences : [])]) {
@@ -96,7 +98,7 @@ export class UserRaycastManager {
       const id = randomUUID()
       const assets = join(realpathSync(join(workspace, 'source')), 'assets')
       support = this.options.install.prepareSupportDirectory(chosen.extensionId, chosen.digest)
-      const child = spawn(this.options.nodePath, [join(workspace, 'child.mjs')], { cwd: workspace, detached: true, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TOCKTEAM_USER_RAYCAST_ID: chosen.extensionId, TOCKTEAM_USER_RAYCAST_SESSION: id, TOCKTEAM_USER_RAYCAST_COMMAND: chosen.command, TOCKTEAM_USER_RAYCAST_MODE: chosen.mode ?? 'view', TOCKTEAM_USER_RAYCAST_ASSETS: assets, TOCKTEAM_USER_RAYCAST_SUPPORT: support.path, ...(linearClientId ? { TOCKTEAM_LINEAR_TEST_CLIENT_ID: linearClientId } : {}), TOCKTEAM_USER_RAYCAST_STATE: this.options.install.statePath(chosen.extensionId), TRUSTED_RAYCAST_EXTENSION_ID: chosen.extensionId, TRUSTED_RAYCAST_PREFERENCES: preferences } })
+      const child = spawn(this.options.nodePath, [join(workspace, 'child.mjs')], { cwd: workspace, detached: true, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TOCKTEAM_USER_RAYCAST_ID: chosen.extensionId, TOCKTEAM_USER_RAYCAST_SESSION: id, TOCKTEAM_USER_RAYCAST_COMMAND: chosen.command, TOCKTEAM_USER_RAYCAST_MODE: chosen.mode ?? 'view', TOCKTEAM_USER_RAYCAST_ASSETS: assets, TOCKTEAM_USER_RAYCAST_SUPPORT: support.path, ...(ownerOrAuthorName === undefined ? {} : { TOCKTEAM_USER_RAYCAST_OWNER_OR_AUTHOR_NAME: ownerOrAuthorName }), ...(linearClientId ? { TOCKTEAM_LINEAR_TEST_CLIENT_ID: linearClientId } : {}), TOCKTEAM_USER_RAYCAST_STATE: this.options.install.statePath(chosen.extensionId), TRUSTED_RAYCAST_EXTENSION_ID: chosen.extensionId, TRUSTED_RAYCAST_PREFERENCES: preferences } })
       let resolve!: () => void; let reject!: (error: Error) => void
       const ready = new Promise<void>((yes, no) => { resolve = yes; reject = no })
       const session: Session = { child, workspace, owner, candidate: chosen, id, revision: -1, actions: new Set(), fields: new Map(), ...(chosen.mode === 'no-view' ? { action: { eventId: 'run', revision: 0, nativeUsed: false } } : {}), resolve, reject, settled: false }
