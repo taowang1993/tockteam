@@ -443,7 +443,7 @@ function MarkdownDocumentProperty(props: {
       {rowError !== '' && <span className="basis-full text-xs text-destructive" id={rowErrorId} role="alert">{rowError}</span>}
     </dd>
     {props.editable && <AlertDialog onOpenChange={open => { if (!open && !typeBusy) setTypePending(null) }} open={typePending !== null}>
-      <AlertDialogContent className="z-[2147483647] max-h-[85dvh] overflow-y-auto" overlayClassName="z-[2147483646]" onCloseAutoFocus={event => { event.preventDefault(); typeButton.current?.focus() }}>
+      <AlertDialogContent className="tocktutor-icons z-[2147483647] max-h-[85dvh] overflow-y-auto" overlayClassName="z-[2147483646]" onCloseAutoFocus={event => { event.preventDefault(); typeButton.current?.focus() }}>
         <AlertDialogHeader><AlertDialogTitle>Change Property Type</AlertDialogTitle><AlertDialogDescription className="text-popover-foreground">This remembers the type throughout this vault. Only this note’s value will be converted. Save the note to keep the new value.</AlertDialogDescription></AlertDialogHeader>
         <div className="text-sm"><p className="m-0 font-medium">Current Value</p><pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap break-all text-xs">{JSON.stringify(property.value)}</pre><p className="mt-3 mb-0 font-medium">New Value</p><pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap break-all text-xs">{JSON.stringify(typePending?.value)}</pre></div>
         {typePending?.lossy && <p className="m-0 text-sm font-medium text-popover-foreground">Some of the original value will be lost. A recovery copy will be saved before this change.</p>}
@@ -452,7 +452,7 @@ function MarkdownDocumentProperty(props: {
       </AlertDialogContent>
     </AlertDialog>}
     {props.editable && <AlertDialog onOpenChange={setRemoveOpen} open={removeOpen}>
-      <AlertDialogContent className="z-[2147483647] max-h-[85dvh] overflow-y-auto" overlayClassName="z-[2147483646]" onCloseAutoFocus={event => { event.preventDefault(); actionsButton.current?.focus() }}>
+      <AlertDialogContent className="tocktutor-icons z-[2147483647] max-h-[85dvh] overflow-y-auto" overlayClassName="z-[2147483646]" onCloseAutoFocus={event => { event.preventDefault(); actionsButton.current?.focus() }}>
         <AlertDialogHeader>
           <AlertDialogTitle>Remove Property “{property.key}”?</AlertDialogTitle>
           <AlertDialogDescription className="text-popover-foreground">This removes the property from this document.</AlertDialogDescription>

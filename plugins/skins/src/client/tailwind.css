@@ -165,6 +165,16 @@
   &:focus-visible { outline: none !important; }
 }
 
+/* Match idle navigation ink on owned controls, never authored content or state glyphs. */
+@utility tocktutor-icons {
+  --tt-icon: color-mix(in srgb, var(--dsw-alias-label-primary) 62%, transparent);
+  & :is(button > svg, summary > svg, svg.lucide):not(:where(
+    .tocktutor-note-links *, .ProseMirror *, .tocktutor-search-preview *,
+    [role='checkbox'] *, [role='radio'] *,
+    [role='menuitemcheckbox'] > span > [data-state] *, [role='menuitemradio'] > span > [data-state] *
+  )) { color: var(--tt-icon); }
+}
+
 /* Decorative only: keep the outbound cue out of editable Markdown and link names. */
 @utility tocktutor-note-links {
   & a:is([href^="http://" i], [href^="https://" i])::after {

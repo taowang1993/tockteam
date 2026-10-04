@@ -90,7 +90,7 @@ export function ImageViewerDialog(props: { image: ViewerImage | null; onClose():
   return (
     <Dialog open={image !== null} onOpenChange={open => { if (!open) props.onClose() }}>
       <DialogContent
-        className="fixed inset-0 z-[2147483647] box-border flex flex-col gap-3 overflow-hidden p-4 pt-[calc(var(--tockteam-titlebar-height,0px)+12px)] text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2 [-webkit-app-region:no-drag]"
+        className="tocktutor-icons fixed inset-0 z-[2147483647] box-border flex flex-col gap-3 overflow-hidden p-4 pt-[calc(var(--tockteam-titlebar-height,0px)+12px)] text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2 [-webkit-app-region:no-drag]"
         data-tocktutor-image-viewer=""
         overlayClassName="z-[2147483646] !bg-[color-mix(in_srgb,var(--dsw-alias-bg-base)_95%,transparent)]"
         showCloseButton={false}

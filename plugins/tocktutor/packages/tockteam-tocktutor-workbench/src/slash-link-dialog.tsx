@@ -46,7 +46,7 @@ export function SlashLinkDialog({ action }: { action: PendingSlashLink }) {
   }, [])
   const notes = action.context?.entries.filter(entry => (attachment ? entry.kind === 'attachment' && isSupportedAttachment(entry.path) : entry.kind === 'document' && /\.(?:md|markdown)$/iu.test(entry.path)) && entry.path.toLocaleLowerCase().includes(query.toLocaleLowerCase())) ?? []
   return <Dialog open onOpenChange={open => { if (!open) action.cancel() }}>
-    <DialogContent className="tocktutor-slash-link-dialog z-[2147483647] max-h-[calc(100vh-2rem)] overflow-auto !bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))]" overlayClassName="z-[2147483646]" onCloseAutoFocus={event => { event.preventDefault(); action.restoreFocus() }} onEscapeKeyDown={event => event.stopPropagation()}>
+    <DialogContent className="tocktutor-slash-link-dialog tocktutor-icons z-[2147483647] max-h-[calc(100vh-2rem)] overflow-auto !bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))]" overlayClassName="z-[2147483646]" onCloseAutoFocus={event => { event.preventDefault(); action.restoreFocus() }} onEscapeKeyDown={event => event.stopPropagation()}>
       <DialogHeader><DialogTitle>{action.kind === 'link' ? 'Link' : action.kind === 'new-note' ? 'New Note' : attachment ? 'File Attachment' : 'Link to Note'}</DialogTitle><DialogDescription>Insert an ordinary Markdown link.</DialogDescription></DialogHeader>
       <form className="flex min-w-0 flex-col gap-4" onSubmit={event => {
         event.preventDefault()

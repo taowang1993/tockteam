@@ -115,7 +115,7 @@ function MergeReviewContent(props: NoteMergeReviewProps): ReactNode {
   const candidates = [...new Set(props.paths)].filter(path => isSafeVaultRelativePath(path) && /\.(?:md|markdown)$/iu.test(path)
     && canonical(path) !== canonical(props.sourcePath) && canonical(path).includes(canonical(query))).sort()
   return <Dialog open onOpenChange={open => { if (!open) close() }}>
-    <DialogContent unstyled className="fixed top-1/2 left-1/2 z-[2147483647] box-border flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-lg border border-border bg-surface p-5 text-sm text-foreground shadow-xl" overlayClassName="z-[2147483646]" showCloseButton={false} onCloseAutoFocus={event => {
+    <DialogContent unstyled className="tocktutor-icons fixed top-1/2 left-1/2 z-[2147483647] box-border flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-lg border border-border bg-surface p-5 text-sm text-foreground shadow-xl" overlayClassName="z-[2147483646]" showCloseButton={false} onCloseAutoFocus={event => {
       if (returnFocus.current instanceof HTMLElement && returnFocus.current.isConnected) { event.preventDefault(); returnFocus.current.focus() }
     }}>
       <DialogTitle>Merge Entire File With</DialogTitle>
@@ -223,7 +223,7 @@ export function MergeRecoveryDialog(props: {
     finally { if (!abort.signal.aborted) setPending(false) }
   }
   return <Dialog open onOpenChange={open => { if (!open) props.onClose() }}>
-    <DialogContent className="z-[2147483647] max-h-[85dvh] overflow-y-auto" overlayClassName="z-[2147483646]" onCloseAutoFocus={event => {
+    <DialogContent className="tocktutor-icons z-[2147483647] max-h-[85dvh] overflow-y-auto" overlayClassName="z-[2147483646]" onCloseAutoFocus={event => {
       if (returnFocus.current instanceof HTMLElement && returnFocus.current.isConnected) { event.preventDefault(); returnFocus.current.focus() }
     }}>
       <DialogTitle>Merge Recovery</DialogTitle>

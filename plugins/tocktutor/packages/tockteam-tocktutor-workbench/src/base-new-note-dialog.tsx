@@ -40,7 +40,7 @@ export function BaseNewNoteDialog(props: {
     }).catch(() => { setUncertain(true); setError('Could not confirm whether the note was created. Refresh Files before retrying.') }).finally(() => setBusy(false))
   }
   return <Dialog open onOpenChange={open => { if (!open && !busy) props.onClose() }}>
-    <DialogContent className="z-[2147483647] max-h-[calc(100vh-2rem)] overflow-auto !bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))]" overlayClassName="z-[2147483646]">
+    <DialogContent className="tocktutor-icons z-[2147483647] max-h-[calc(100vh-2rem)] overflow-auto !bg-[var(--tockteam-shell-chrome,var(--dsw-alias-bg-layer-1))]" overlayClassName="z-[2147483646]">
       <DialogHeader><DialogTitle>New Note</DialogTitle><DialogDescription>Create a Markdown note in the current Base view.</DialogDescription></DialogHeader>
       <form className="flex flex-col gap-4" onSubmit={submit}>
         <Field><FieldLabel htmlFor={`${id}-name`}>Note Name</FieldLabel><Input id={`${id}-name`} autoFocus maxLength={240} value={name} disabled={busy} onChange={event => { setName(event.currentTarget.value); setError('') }} /></Field>

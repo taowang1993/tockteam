@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { join, relative, sep } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
+import { buildSync } from 'esbuild'
 import { buildTailwindCss } from '../scripts/tailwind.mjs'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
@@ -96,6 +98,63 @@ test('browser Tailwind utilities compile against DSH tokens without a global res
   assert.match(desktopSummary, /top:12px/)
 })
 
+test('TockTutor interface icons and folder guides match navigation without recoloring note content or state glyphs', async () => {
+  const css = await buildTailwindCss()
+  const iconTheme = [...css.matchAll(/\.tocktutor-icons\{([^}]*)\}/gu)].map(match => match[1]).join(';')
+  assert.match(iconTheme, /--tt-icon:color-mix\(in srgb, var\(--dsw-alias-label-primary\) 62%, transparent\)/u, 'owned roots and portals derive the idle navigation color directly from DSH')
+  const iconRules = [...css.matchAll(/(?:^|[{}])([^{}]+)\{color:var\(--tt-icon\)\}/gu)]
+  assert.equal(iconRules.length, 1, 'one scoped recipe colors interface icons, not body text or all SVGs')
+  const selector = (iconRules[0]?.[1] ?? '').replace(/['"]/gu, '')
+  assert.match(selector, /^\.tocktutor-icons :is\(button>svg,summary>svg,svg\.lucide\):not\(:where\(/u)
+  for (const excluded of ['.tocktutor-note-links *', '.ProseMirror *', '.tocktutor-search-preview *', '[role=checkbox] *', '[role=radio] *']) {
+    assert.ok(selector.includes(excluded), `${excluded} retains authored or checked-state colors`)
+  }
+  const require = createRequire(join(root, 'plugins/tocktutor/packages/tockteam-tocktutor-workbench/package.json'))
+  const React = require('react')
+  const { renderToStaticMarkup } = require('react-dom/server')
+  const { JSDOM } = require('jsdom')
+  const wrapper = buildSync({
+    entryPoints: [join(root, 'plugins/ui/src/dropdown-menu.tsx')],
+    bundle: true, platform: 'node', format: 'cjs', write: false,
+    external: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime'],
+  }).outputFiles?.[0]?.text
+  assert.ok(wrapper, 'compile the actual shared menu wrappers in memory, without artifact writes')
+  const menuModule = { exports: {} }
+  new Function('require', 'module', 'exports', wrapper)(require, menuModule, menuModule.exports)
+  const menu = menuModule.exports as Record<string, unknown>
+  const label = (id: string) => React.createElement('svg', { id, className: 'lucide' })
+  const dom = new JSDOM(renderToStaticMarkup(React.createElement('section', { className: 'tocktutor-icons' },
+    React.createElement(menu.DropdownMenu, { open: true, modal: false },
+      React.createElement(menu.DropdownMenuContent, { portalled: false, forceMount: true },
+        React.createElement(menu.DropdownMenuCheckboxItem, { checked: true }, label('checkbox-label'), 'Source Mode'),
+        React.createElement(menu.DropdownMenuCheckboxItem, { checked: 'indeterminate' }, label('mixed-label'), 'Backlinks'),
+        React.createElement(menu.DropdownMenuRadioGroup, { value: 'reading' },
+          React.createElement(menu.DropdownMenuRadioItem, { value: 'reading' }, label('radio-label'), 'Reading View')))),
+    React.createElement('button', { role: 'checkbox' }, label('checkbox-state')),
+    React.createElement('button', { role: 'radio' }, label('radio-state')))))
+  try {
+    const { document } = dom.window
+    for (const id of ['checkbox-label', 'mixed-label', 'radio-label']) {
+      assert.equal(document.getElementById(id)?.matches(selector), true, `${id} is an ordinary interface icon, not a state glyph`)
+    }
+    const indicators = document.querySelectorAll('[role^="menuitem"] > span > [data-state] svg')
+    assert.equal(indicators.length, 3, 'actual checkbox, indeterminate and radio indicators are present')
+    for (const svg of indicators) assert.equal(svg.matches(selector), false, 'menu state indicators keep their own color')
+    for (const id of ['checkbox-state', 'radio-state']) assert.equal(document.getElementById(id)?.matches(selector), false, 'control state glyphs remain excluded')
+  } finally {
+    dom.window.close()
+  }
+  const route = readFileSync(join(root, 'plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/route.tsx'), 'utf8')
+  assert.match(route, /className="tocktutor-titlebar tocktutor-icons /u, 'the separately mounted titlebar owns its icon recipe')
+  assert.match(route, /className="tocktutor-workbench tocktutor-icons /u, 'the route owns its icon recipe')
+  assert.match(route, /list-none border-l border-\[var\(--tt-icon\)\]/u, 'folder guides share the same color without changing disclosure behavior')
+  assert.match(css, /\.border-\\\[var\\\(--tt-icon\\\)\\\]\{border-color:var\(--tt-icon\)\}/u)
+  for (const name of ['vault-dialog', 'base-executable-view', 'base-new-note-dialog', 'merge-review', 'image-viewer', 'live-preview-editor', 'slash-link-dialog']) {
+    const source = readFileSync(join(root, `plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/${name}.tsx`), 'utf8')
+    assert.match(source, /\btocktutor-icons\b/u, `${name} defines the recipe on its own portaled controls`)
+  }
+})
+
 test('shared browser controls use a quieter two-pixel keyboard focus ring', async () => {
   const css = await buildTailwindCss()
   assert.match(css, /\.focus-visible\\:ring-ring:focus-visible\{--tw-ring-color:color-mix\(in srgb, var\(--dsw-alias-brand-primary\) 78%, var\(--dsw-alias-bg-base\)\)\}/u)
@@ -164,7 +223,7 @@ test('owned browser components use Tailwind utilities in markup', () => {
   assert.deepEqual(
     [...tailwind.matchAll(/^@utility ([\w-]+)/gmu)].map(match => match[1]),
     [
-      'tockteam-model-picker', 'tockteam-pane-divider', 'tocktutor-note-links',
+      'tockteam-model-picker', 'tockteam-pane-divider', 'tocktutor-icons', 'tocktutor-note-links',
       'launcher-settings-nav-row', 'launcher-command-surface', 'launcher-command-header', 'launcher-command-search', 'launcher-command-content', 'launcher-command-list',
       'launcher-command-field', 'launcher-command-control', 'launcher-command-select-content', 'launcher-command-select-item', 'launcher-command-status', 'launcher-command-empty', 'launcher-command-error', 'launcher-command-group-title',
       'launcher-command-row', 'launcher-command-row-icon', 'launcher-command-footer', 'launcher-command-footer-identity', 'launcher-command-footer-actions', 'launcher-command-footer-action',

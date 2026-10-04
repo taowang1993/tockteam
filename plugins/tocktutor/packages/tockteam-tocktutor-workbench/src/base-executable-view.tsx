@@ -434,7 +434,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
       if (saved) { setConfiguringView(current => current === configured.name ? renameName : current); props.onActiveViewChange?.(renameName) }
     })
   }
-  const menuClass = 'z-[1002] w-64 rounded-lg border border-border bg-surface-muted p-3 text-foreground shadow-lg'
+  const menuClass = 'tocktutor-icons z-[1002] w-64 rounded-lg border border-border bg-surface-muted p-3 text-foreground shadow-lg'
   const ViewIcon = { table: Table2, list: List, cards: LayoutGrid, 'map-label': MapPin }[model.kind]
   const LayoutIcon = layoutIcons[configured?.type ?? 'table']
   return (
@@ -448,7 +448,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
               <ChevronsUpDown aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent unstyled align="start" sideOffset={2} className={`z-[1002] box-border flex flex-col gap-0 rounded-lg border border-border bg-surface-muted p-1 text-sm text-foreground shadow-lg outline-none ${configured === undefined && !showAddView ? 'w-64' : 'w-72'}`}>
+          <PopoverContent unstyled align="start" sideOffset={2} className={`tocktutor-icons z-[1002] box-border flex flex-col gap-0 rounded-lg border border-border bg-surface-muted p-1 text-sm text-foreground shadow-lg outline-none ${configured === undefined && !showAddView ? 'w-64' : 'w-72'}`}>
             {configured !== undefined ? (
               <div className="flex flex-col gap-2 p-1">
                 <div className="flex items-center gap-1">
@@ -467,7 +467,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
                         <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent unstyled align="start" sideOffset={2} className="z-[1003] box-border w-[var(--radix-popover-trigger-width)] rounded-lg border border-border bg-surface p-1 text-sm text-foreground shadow-lg outline-none">
+                    <PopoverContent unstyled align="start" sideOffset={2} className="tocktutor-icons z-[1003] box-border w-[var(--radix-popover-trigger-width)] rounded-lg border border-border bg-surface p-1 text-sm text-foreground shadow-lg outline-none">
                       <Command unstyled className="flex min-h-0 flex-col" label="Search Layouts">
                         <div className="flex h-8 items-center gap-1 border-b border-border px-2">
                           <Search aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
@@ -495,7 +495,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
                           <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent unstyled align="start" sideOffset={2} className="z-[1003] box-border w-[var(--radix-dropdown-menu-trigger-width)] rounded-lg border border-border bg-surface p-1 text-sm text-foreground shadow-lg">
+                      <DropdownMenuContent unstyled align="start" sideOffset={2} className="tocktutor-icons z-[1003] box-border w-[var(--radix-dropdown-menu-trigger-width)] rounded-lg border border-border bg-surface p-1 text-sm text-foreground shadow-lg">
                         <DropdownMenuRadioGroup value={configured.rowHeight} onValueChange={height => { if (height !== configured.rowHeight) void commit(setBaseViewField(props.source, configured.name, 'rowHeight', height)) }}>
                           {(['short', 'medium', 'tall'] as const).map(height => <DropdownMenuRadioItem key={height} value={height} className="box-border flex h-8 w-full cursor-pointer items-center rounded-md px-2 text-sm text-foreground data-[highlighted]:bg-[var(--dsw-alias-interactive-bg-hover)] data-[state=checked]:bg-[var(--dsw-alias-interactive-bg-hover)]">{readableKind(height)}</DropdownMenuRadioItem>)}
                         </DropdownMenuRadioGroup>
@@ -535,7 +535,7 @@ export function ExecutableBaseView(props: ExecutableBaseViewProps): ReactNode {
         </Popover>
         <Popover open={resultMenuOpen} onOpenChange={open => { setResultMenuOpen(open); if (open) setLimitValue(model.view.limit === null ? '' : String(model.view.limit)) }}>
           <PopoverTrigger asChild><Button unstyled type="button" aria-live="polite" disabled={!available} className="h-7 cursor-pointer rounded-md border-0 bg-transparent px-1 text-sm tabular-nums text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{available ? resultCount(model.rows.length) : props.loadStatus === 'loading' ? 'Loading…' : 'Unavailable'}</Button></PopoverTrigger>
-          <PopoverContent unstyled align="start" sideOffset={2} className="z-[1002] box-border w-56 rounded-lg border border-border bg-surface-muted p-1 text-foreground shadow-lg outline-none">
+          <PopoverContent unstyled align="start" sideOffset={2} className="tocktutor-icons z-[1002] box-border w-56 rounded-lg border border-border bg-surface-muted p-1 text-foreground shadow-lg outline-none">
             <form className="flex flex-col gap-2 p-1" onSubmit={event => {
               event.preventDefault()
               if (!/^[1-9]\d{0,3}$/u.test(limitValue) || Number(limitValue) > 2_000) return
