@@ -1275,7 +1275,7 @@
   & .milkdown .milkdown-image-block > .image-wrapper { margin: 0; min-width: 0; }
   & .milkdown .milkdown-image-block > .image-wrapper img { min-height: 0; object-fit: contain; }
   & .milkdown .milkdown-image-block > .caption-input { text-align: start; }
-  & .milkdown .ProseMirror hr { background-color: var(--crepe-color-outline); }
+  & .milkdown .ProseMirror hr { background-color: var(--dsw-alias-border-l3); }
   & .milkdown .ProseMirror table { width: max-content; max-width: 100%; table-layout: auto; }
   & .milkdown .milkdown-table-block :is(th, td) { border-color: color-mix(in srgb, var(--dsw-alias-label-secondary) 60%, var(--tt-panel)); }
   & .milkdown .milkdown-code-block { margin: 16px 0 24px; }
