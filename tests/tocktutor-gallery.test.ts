@@ -44,7 +44,7 @@ test('preserves the full TockTutor refresh and supersedes only explicitly retake
   for (const name of refresh.publicationAllowlist) {
     const capture = proof.captures[name]
     assert.equal(capture.captureScope, 'real-desktop', name)
-    const focused = proof.propertyAccessoriesRefresh ?? proof.livePreviewExpandedRefresh ?? proof.completedTaskRefresh
+    const focused = proof.propertyColorsRefresh ?? proof.propertyAccessoriesRefresh ?? proof.livePreviewExpandedRefresh ?? proof.completedTaskRefresh
     assert.equal(capture.refreshId, focused?.publicationAllowlist.includes(name) ? focused.id : refresh.id, name)
     assert.ok(Date.parse(capture.capturedAt) >= Date.parse(refresh.startedAt), name)
     assert.deepEqual(capture.geometry, { width: 1512, height: 949, deviceScaleFactor: 2 }, name)
@@ -156,7 +156,8 @@ test('preserves the completed-task verification and its archived earlier referen
 test('matches both Live Preview pairs to all nine current properties with adjacent accessories', () => {
   const refresh = proof.propertyAccessoriesRefresh
   assert.ok(refresh, 'Fresh paired captures need current full-property evidence')
-  assert.equal(refresh.status, 'verified-current')
+  assert.equal(refresh.status, 'verified-historical')
+  const retake = JSON.parse(readFileSync(resolve(proof.propertyColorsRefresh.captureProof), 'utf8'))
   assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-editor-live-preview.png', 'tocktutor-live-preview-lower.png', 'obsidian-main-editor.png', 'obsidian-live-preview-lower.png'])
   assert.equal(refresh.unrelatedExistingCapturesUnchanged, 58)
   const verified = JSON.parse(readFileSync(resolve(refresh.captureProof), 'utf8'))
@@ -167,7 +168,7 @@ test('matches both Live Preview pairs to all nine current properties with adjace
   assert.equal(verified.narrow.overflow.length, 0)
   assert.equal(verified.appearances.appearances.length, 8)
   for (const name of refresh.publicationAllowlist) {
-    const capture = proof.captures[name]
+    const capture = name.startsWith('tocktutor-') ? retake.previousCaptures[name] : proof.captures[name]
     assert.deepEqual(capture, verified.captures[name], name)
     assert.equal(capture.refreshId, refresh.id, name)
     assert.equal(capture.path, 'comparison.md', name)
@@ -192,6 +193,57 @@ test('matches both Live Preview pairs to all nine current properties with adjace
   }
   assert.equal(verified.galleryVerification.bothPairsDecodedAndFullyVisible, true)
   assert.ok(verified.cleanup.runs.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
+})
+
+test('matches the Properties dropdown to the sidebar and lightens only the authored divider', () => {
+  const refresh = proof.propertyColorsRefresh
+  assert.equal(refresh.status, 'verified-current')
+  assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-editor-live-preview.png', 'tocktutor-live-preview-lower.png'])
+  assert.equal(refresh.unrelatedExistingCapturesUnchanged, 60)
+  const verified = JSON.parse(readFileSync(resolve(refresh.captureProof), 'utf8'))
+  const colors = verified.colors.state
+  assert.equal(colors.buttonBackground, colors.sidebarBackground)
+  assert.equal(colors.ruleBackground, colors.expectedRule)
+  assert.notEqual(colors.ruleBackground, verified.red.state.ruleBackground)
+  assert.equal(colors.arrowColor, verified.red.state.arrowColor)
+  assert.equal(colors.ruleHeight, verified.red.state.ruleHeight)
+  assert.equal(verified.focus.focus.focusVisible, true)
+  assert.equal(verified.focus.escapeFocusRestored, true)
+  assert.equal(verified.focus.outsideDismissed, true)
+  assert.equal(verified.appearances.appearances.length, 8)
+  for (const appearance of verified.appearances.appearances) {
+    assert.equal(appearance.buttonBackground, appearance.sidebarBackground)
+    assert.equal(appearance.ruleBackground, appearance.expectedRule)
+    assert.ok(appearance.arrowContrast >= 3)
+  }
+  for (const [index, name] of refresh.publicationAllowlist.entries()) {
+    const capture = proof.captures[name]
+    assert.deepEqual(capture, verified.captures[name], name)
+    assert.equal(sha256(readFileSync(resolve(root, 'screenshots', name))), capture.sha256, name)
+    const png = readFileSync(resolve(refresh.captureProof, '..', index ? 'tt-lower.png' : 'tt-upper.png'))
+    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [3024, 1898])
+    assert.equal(sha256(png), capture.sha256, name)
+    assert.deepEqual(capture.visibleState.geometry, [1512, 949, 2])
+    assert.equal(capture.visibleState.rootColorScheme, 'dark')
+    assert.equal(capture.visibleState.rootSkin, null)
+    assert.equal(capture.visibleState.bodySkin, null)
+    assert.equal(capture.visibleState.propertyCount, 9)
+    assert.equal(capture.visibleState.propertiesExpanded, true)
+    assert.equal(capture.contentSha256, sha256(readFileSync(resolve(root, 'comparison.md'))))
+    assert.deepEqual(capture.runtimeErrors, [])
+    assert.deepEqual(capture.failedRequests, [])
+    const prior = readFileSync(resolve(refresh.captureProof, '..', index ? 'previous-tt-lower.png' : 'previous-tt-upper.png'))
+    assert.equal(sha256(prior), verified.previousCaptures[name].sha256)
+  }
+  assert.equal(Object.keys(verified.preservedCaptures).length, 60)
+  for (const [name, prior] of Object.entries(verified.preservedCaptures) as [string, { sha256: string; metadata: unknown }][]) {
+    assert.equal(sha256(readFileSync(resolve(root, 'screenshots', name))), prior.sha256, name)
+    assert.deepEqual(proof.captures[name], prior.metadata, name)
+  }
+  assert.ok(verified.cleanup.runs.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && !run.remaining.length))
+  assert.equal(verified.cleanup.writer.groupAlive, false)
+  assert.deepEqual(verified.cleanup.writer.remaining, [])
+  assert.equal(verified.sdkAcceptanceClaimed, false)
 })
 
 test('accounts for every gallery and supplemental capture without stale links', () => {

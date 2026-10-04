@@ -1,0 +1,30 @@
+async page => {
+  const cancel = page.getByRole('button', { name: 'Cancel Adding Property', exact: true });
+  if (await cancel.isVisible()) await cancel.click();
+  const tag = page.getByRole('button', { name: 'tags Value Suggestions', exact: true });
+  await page.keyboard.press('Tab');
+  await tag.focus();
+  const focus = await tag.evaluate(button => ({ focused: document.activeElement === button, focusVisible: button.matches(':focus-visible'), outline: getComputedStyle(button).outlineWidth, shadow: getComputedStyle(button).boxShadow }));
+  if (!focus.focused || !focus.focusVisible || (focus.outline === '0px' && focus.shadow === 'none')) throw Error(JSON.stringify(focus));
+  await page.keyboard.press('Enter');
+  const filter = page.getByRole('combobox', { name: 'Find tags Value Suggestions' });
+  await filter.waitFor();
+  await page.keyboard.press('Escape');
+  if (await filter.isVisible() || !await tag.evaluate(button => document.activeElement === button)) throw Error('Escape must dismiss and restore trigger focus');
+  await tag.click();
+  await filter.waitFor();
+  await page.locator('.ProseMirror h1').click();
+  if (await filter.isVisible()) throw Error('Outside click must dismiss');
+  await page.getByRole('button', { name: 'Add Property', exact: true }).click();
+  const names = page.getByRole('button', { name: 'Property Name Suggestions', exact: true });
+  await page.mouse.move(20, 20);
+  const background = await names.evaluate(button => ({ button: getComputedStyle(button).backgroundColor, sidebar: getComputedStyle(document.querySelector('.tocktutor-sidebar')).backgroundColor }));
+  if (background.button !== background.sidebar) throw Error(JSON.stringify(background));
+  await names.click();
+  await page.getByRole('combobox', { name: 'Find Property Name Suggestions' }).waitFor();
+  await page.keyboard.press('Escape');
+  if (!await names.evaluate(button => document.activeElement === button)) throw Error('Name trigger focus must restore');
+  await page.getByRole('button', { name: 'Cancel Adding Property', exact: true }).click();
+  await page.mouse.move(20, 20);
+  return { focus, tagPopupOpened: true, escapeFocusRestored: true, outsideDismissed: true, nameBackground: background, namePopupOpened: true, nameFocusRestored: true };
+}

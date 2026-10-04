@@ -6127,10 +6127,10 @@
     "tocktutor-editor-live-preview.png": {
       "product": "TockTutor Source-Built Desktop",
       "captureScope": "real-desktop",
-      "refreshId": "tockteam-qs1w-2026-10-04",
-      "sourceCommit": "9976a5f10815fddda1d1e7b0e695cb7e7bbeefaf",
+      "refreshId": "tockteam-2f2j-2026-10-04",
+      "sourceCommit": "f176241d852a28349ca6469efd97bc98e36351e1",
       "sourceDirty": true,
-      "sourceProvenance": "Built and staged the two-line Properties accessory layout fix. Source/artifact hashes and frozen SDK custody are archived; build inclusion is not SDK acceptance.",
+      "sourceProvenance": "Built and staged the sidebar-matched suggestion button and clearer Markdown divider. Frozen SDK/storage/report custody is preserved; visual checks are not SDK acceptance.",
       "route": "/tocktutor/comparison.md",
       "path": "comparison.md",
       "mode": "live-preview",
@@ -6143,12 +6143,12 @@
       },
       "theme": "dark",
       "skin": null,
-      "capturedAt": "2026-10-04T00:26:52.588Z",
-      "sha256": "4dc168ddaca829c37fc2ebe209e72005fa88557cf553b67e5f3b00695201e51b",
-      "bytes": 251806,
+      "capturedAt": "2026-10-04T02:32:33.797Z",
+      "sha256": "d4205d92ce8403f59edd0d09e39ab0dc608d870bbfb3454331a8c4420dc99b5a",
+      "bytes": 254787,
       "visibleState": {
         "region": "upper",
-        "capturedAt": "2026-10-04T00:26:52.588Z",
+        "capturedAt": "2026-10-04T02:32:33.797Z",
         "route": "/tocktutor/comparison.md",
         "path": "comparison.md",
         "documentMode": "live-preview",
@@ -6179,13 +6179,13 @@
         "sourceVisible": false,
         "fontsReady": true,
         "assertionPassed": true,
-        "sha256": "4dc168ddaca829c37fc2ebe209e72005fa88557cf553b67e5f3b00695201e51b",
-        "bytes": 251806
+        "sha256": "d4205d92ce8403f59edd0d09e39ab0dc608d870bbfb3454331a8c4420dc99b5a",
+        "bytes": 254787
       },
       "runtimeErrors": [],
       "runtimeErrorMonitoring": "Owned Playwright pageerror, console-error and failed-request listeners before app-scoped note navigation; cold-start console archived separately.",
       "warnings": [],
-      "proofFile": ".beads/reports/2026-10-04-tocktutor-property-accessories/proof.json",
+      "proofFile": ".beads/reports/2026-10-04-tocktutor-property-colors/proof.json",
       "failedRequests": []
     },
     "tocktutor-editor-reading.png": {
@@ -6787,10 +6787,10 @@
     "tocktutor-live-preview-lower.png": {
       "product": "TockTutor Source-Built Desktop",
       "captureScope": "real-desktop",
-      "refreshId": "tockteam-qs1w-2026-10-04",
-      "sourceCommit": "9976a5f10815fddda1d1e7b0e695cb7e7bbeefaf",
+      "refreshId": "tockteam-2f2j-2026-10-04",
+      "sourceCommit": "f176241d852a28349ca6469efd97bc98e36351e1",
       "sourceDirty": true,
-      "sourceProvenance": "Built and staged the two-line Properties accessory layout fix. Source/artifact hashes and frozen SDK custody are archived; build inclusion is not SDK acceptance.",
+      "sourceProvenance": "Built and staged the sidebar-matched suggestion button and clearer Markdown divider. Frozen SDK/storage/report custody is preserved; visual checks are not SDK acceptance.",
       "route": "/tocktutor/comparison.md",
       "path": "comparison.md",
       "mode": "live-preview",
@@ -6803,12 +6803,12 @@
       },
       "theme": "dark",
       "skin": null,
-      "capturedAt": "2026-10-04T00:26:52.727Z",
-      "sha256": "f19bfcc161417ebe81775ba00455fd6f014a335e9a7afc59ab382324179afa93",
-      "bytes": 259042,
+      "capturedAt": "2026-10-04T02:32:33.932Z",
+      "sha256": "0e918619c099c1e7cbfdef60d62ea2f43d5be3a8fe96caea0a9ff73bc354e18c",
+      "bytes": 262201,
       "visibleState": {
         "region": "lower",
-        "capturedAt": "2026-10-04T00:26:52.727Z",
+        "capturedAt": "2026-10-04T02:32:33.932Z",
         "route": "/tocktutor/comparison.md",
         "path": "comparison.md",
         "documentMode": "live-preview",
@@ -6839,14 +6839,14 @@
         "sourceVisible": false,
         "fontsReady": true,
         "assertionPassed": true,
-        "sha256": "f19bfcc161417ebe81775ba00455fd6f014a335e9a7afc59ab382324179afa93",
-        "bytes": 259042
+        "sha256": "0e918619c099c1e7cbfdef60d62ea2f43d5be3a8fe96caea0a9ff73bc354e18c",
+        "bytes": 262201
       },
       "runtimeErrors": [],
       "runtimeErrorMonitoring": "Owned Playwright pageerror, console-error and failed-request listeners before app-scoped note navigation; cold-start console archived separately.",
       "failedRequests": [],
       "warnings": [],
-      "proofFile": ".beads/reports/2026-10-04-tocktutor-property-accessories/proof.json"
+      "proofFile": ".beads/reports/2026-10-04-tocktutor-property-colors/proof.json"
     },
     "tocktutor-marketplace.png": {
       "product": "TockTutor Source-Built Desktop",
@@ -9753,9 +9753,23 @@
       "remaining": []
     }
   },
+  "propertyColorsRefresh": {
+    "id": "tockteam-2f2j-2026-10-04",
+    "status": "verified-current",
+    "publicationAllowlist": [
+      "tocktutor-editor-live-preview.png",
+      "tocktutor-live-preview-lower.png"
+    ],
+    "unrelatedExistingCapturesUnchanged": 60,
+    "captureProof": ".beads/reports/2026-10-04-tocktutor-property-colors/proof.json",
+    "buttonMatchesSidebar": true,
+    "dividerUsesBorderL3": true,
+    "propertiesDisclosureToggled": false,
+    "rebuild": true
+  },
   "propertyAccessoriesRefresh": {
     "id": "tockteam-qs1w-2026-10-04",
-    "status": "verified-current",
+    "status": "verified-historical",
     "publicationAllowlist": ["tocktutor-editor-live-preview.png", "tocktutor-live-preview-lower.png", "obsidian-main-editor.png", "obsidian-live-preview-lower.png"],
     "unrelatedExistingCapturesUnchanged": 58,
     "sameNoteBytes": true,
