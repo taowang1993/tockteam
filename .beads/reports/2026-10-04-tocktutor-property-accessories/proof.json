@@ -1,0 +1,2478 @@
+{
+  "id": "tockteam-qs1w-2026-10-04",
+  "status": "verified-current",
+  "publicationAllowlist": [
+    "tocktutor-editor-live-preview.png",
+    "tocktutor-live-preview-lower.png",
+    "obsidian-main-editor.png",
+    "obsidian-live-preview-lower.png"
+  ],
+  "unrelatedExistingCapturesUnchanged": 58,
+  "captures": {
+    "tocktutor-editor-live-preview.png": {
+      "product": "TockTutor Source-Built Desktop",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-qs1w-2026-10-04",
+      "sourceCommit": "9976a5f10815fddda1d1e7b0e695cb7e7bbeefaf",
+      "sourceDirty": true,
+      "sourceProvenance": "Built and staged the two-line Properties accessory layout fix. Source/artifact hashes and frozen SDK custody are archived; build inclusion is not SDK acceptance.",
+      "route": "/tocktutor/comparison.md",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-04T00:26:52.588Z",
+      "sha256": "4dc168ddaca829c37fc2ebe209e72005fa88557cf553b67e5f3b00695201e51b",
+      "bytes": 251806,
+      "visibleState": {
+        "region": "upper",
+        "capturedAt": "2026-10-04T00:26:52.588Z",
+        "route": "/tocktutor/comparison.md",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "propertiesExpanded": true,
+        "propertiesVisible": true,
+        "propertyCount": 9,
+        "scrollTop": 0,
+        "visibleHeadings": [
+          "Markdown Rendering Lab",
+          "Structure",
+          "Lists"
+        ],
+        "headingPositions": [
+          {
+            "text": "Markdown Rendering Lab",
+            "top": 498.5
+          },
+          {
+            "text": "Structure",
+            "top": 637.5
+          },
+          {
+            "text": "Lists",
+            "top": 690.5
+          }
+        ],
+        "completedTask": {
+          "text": "Completed task",
+          "decoration": "line-through",
+          "visible": true
+        },
+        "pendingTask": {
+          "text": "Pending task with Welcome",
+          "decoration": "none",
+          "visible": true
+        },
+        "sourceVisible": false,
+        "fontsReady": true,
+        "assertionPassed": true,
+        "sha256": "4dc168ddaca829c37fc2ebe209e72005fa88557cf553b67e5f3b00695201e51b",
+        "bytes": 251806
+      },
+      "runtimeErrors": [],
+      "warnings": [],
+      "failedRequests": [],
+      "runtimeErrorMonitoring": "Owned Playwright pageerror, console-error and failed-request listeners before app-scoped note navigation; cold-start console archived separately.",
+      "proofFile": ".beads/reports/2026-10-04-tocktutor-property-accessories/proof.json"
+    },
+    "tocktutor-live-preview-lower.png": {
+      "product": "TockTutor Source-Built Desktop",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-qs1w-2026-10-04",
+      "sourceCommit": "9976a5f10815fddda1d1e7b0e695cb7e7bbeefaf",
+      "sourceDirty": true,
+      "sourceProvenance": "Built and staged the two-line Properties accessory layout fix. Source/artifact hashes and frozen SDK custody are archived; build inclusion is not SDK acceptance.",
+      "route": "/tocktutor/comparison.md",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-04T00:26:52.727Z",
+      "sha256": "f19bfcc161417ebe81775ba00455fd6f014a335e9a7afc59ab382324179afa93",
+      "bytes": 259042,
+      "visibleState": {
+        "region": "lower",
+        "capturedAt": "2026-10-04T00:26:52.727Z",
+        "route": "/tocktutor/comparison.md",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "propertiesExpanded": true,
+        "propertiesVisible": false,
+        "propertyCount": 9,
+        "scrollTop": 812.5,
+        "visibleHeadings": [
+          "Data",
+          "Code and Notes",
+          "Small Heading"
+        ],
+        "headingPositions": [
+          {
+            "text": "Data",
+            "top": 210
+          },
+          {
+            "text": "Code and Notes",
+            "top": 448
+          },
+          {
+            "text": "Small Heading",
+            "top": 759.5234375
+          }
+        ],
+        "completedTask": {
+          "text": "Completed task",
+          "decoration": "line-through",
+          "visible": false
+        },
+        "pendingTask": {
+          "text": "Pending task with Welcome",
+          "decoration": "none",
+          "visible": true
+        },
+        "sourceVisible": false,
+        "fontsReady": true,
+        "assertionPassed": true,
+        "sha256": "f19bfcc161417ebe81775ba00455fd6f014a335e9a7afc59ab382324179afa93",
+        "bytes": 259042
+      },
+      "runtimeErrors": [],
+      "warnings": [],
+      "failedRequests": [],
+      "runtimeErrorMonitoring": "Owned Playwright pageerror, console-error and failed-request listeners before app-scoped note navigation; cold-start console archived separately.",
+      "proofFile": ".beads/reports/2026-10-04-tocktutor-property-accessories/proof.json"
+    },
+    "obsidian-main-editor.png": {
+      "product": "Obsidian 1.13.7",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-qs1w-2026-10-04",
+      "entry": "/Applications/Obsidian.app/Contents/Resources/app.asar",
+      "runtime": "Electron 42.3.0",
+      "userStateUnchanged": true,
+      "route": "app://obsidian.md/index.html",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-04T00:06:33.379Z",
+      "sha256": "daa9eb94e4651602736e27ac3be3fd3cffed7370401a8ea3c697fe4915fffa36",
+      "bytes": 209920,
+      "visibleState": {
+        "region": "upper",
+        "capturedAt": "2026-10-04T00:06:33.379Z",
+        "route": "app://obsidian.md/index.html",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "theme": "obsidian",
+        "rootColorScheme": "",
+        "bodyColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "customTheme": "",
+        "propertiesExpanded": true,
+        "propertiesVisible": true,
+        "propertyCount": 9,
+        "scrollTop": 0,
+        "visibleHeadings": [
+          "Markdown Rendering Lab",
+          "Structure",
+          "Lists"
+        ],
+        "headingPositions": [
+          {
+            "text": "Markdown Rendering Lab",
+            "top": 579.046875
+          },
+          {
+            "text": "Structure",
+            "top": 746.109375
+          },
+          {
+            "text": "Lists",
+            "top": 814.171875
+          }
+        ],
+        "assertionPassed": true,
+        "sha256": "daa9eb94e4651602736e27ac3be3fd3cffed7370401a8ea3c697fe4915fffa36",
+        "bytes": 209920
+      },
+      "runtimeErrors": [],
+      "warnings": [],
+      "failedRequests": [],
+      "runtimeErrorMonitoring": "Owned Playwright pageerror, console-error and failed-request listeners before app-scoped note navigation; cold-start console archived separately.",
+      "proofFile": ".beads/reports/2026-10-04-tocktutor-property-accessories/proof.json"
+    },
+    "obsidian-live-preview-lower.png": {
+      "product": "Obsidian 1.13.7",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-qs1w-2026-10-04",
+      "entry": "/Applications/Obsidian.app/Contents/Resources/app.asar",
+      "runtime": "Electron 42.3.0",
+      "userStateUnchanged": true,
+      "route": "app://obsidian.md/index.html",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-04T00:06:33.520Z",
+      "sha256": "4231cf9d02613e731e9000cb2459359c240e3c909f9d8126db79e6612a4c623c",
+      "bytes": 214381,
+      "visibleState": {
+        "region": "lower",
+        "capturedAt": "2026-10-04T00:06:33.520Z",
+        "route": "app://obsidian.md/index.html",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "theme": "obsidian",
+        "rootColorScheme": "",
+        "bodyColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "customTheme": "",
+        "propertiesExpanded": true,
+        "propertiesVisible": false,
+        "propertyCount": 9,
+        "scrollTop": 958,
+        "visibleHeadings": [
+          "Data",
+          "Code and Notes",
+          "Small Heading"
+        ],
+        "headingPositions": [
+          {
+            "text": "Data",
+            "top": 209.921875
+          },
+          {
+            "text": "Code and Notes",
+            "top": 454.171875
+          },
+          {
+            "text": "Small Heading",
+            "top": 804.0390625
+          }
+        ],
+        "assertionPassed": true,
+        "sha256": "4231cf9d02613e731e9000cb2459359c240e3c909f9d8126db79e6612a4c623c",
+        "bytes": 214381
+      },
+      "runtimeErrors": [],
+      "warnings": [],
+      "failedRequests": [],
+      "runtimeErrorMonitoring": "Owned Playwright pageerror, console-error and failed-request listeners before app-scoped note navigation; cold-start console archived separately.",
+      "proofFile": ".beads/reports/2026-10-04-tocktutor-property-accessories/proof.json"
+    }
+  },
+  "previousCaptures": {
+    "tocktutor-editor-live-preview.png": {
+      "product": "TockTutor Source-Built Desktop",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-ae0l-2026-10-03",
+      "sourceCommit": "fdde9d0d",
+      "sourceDirty": true,
+      "sourceProvenance": "Built and staged the saved borderless Properties fix plus the tested narrow-window clamp/tag-box correction. Exact source and staged artifact hashes are archived; Raycast source custody and build inclusion do not constitute Raycast acceptance.",
+      "route": "/tocktutor/comparison.md",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-03T14:08:43.266Z",
+      "sha256": "a89f030f3dd6ca3c9a625bb6a11b46ba0fafb699a080bb2a8973d897875b2583",
+      "bytes": 273955,
+      "visibleState": {
+        "region": "upper",
+        "capturedAt": "2026-10-03T14:08:43.266Z",
+        "route": "/tocktutor/comparison.md",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "propertiesExpanded": true,
+        "propertiesVisible": true,
+        "propertyCount": 9,
+        "scrollTop": 0,
+        "visibleHeadings": [
+          "Markdown Rendering Lab",
+          "Structure",
+          "Lists"
+        ],
+        "headingPositions": [
+          {
+            "text": "Markdown Rendering Lab",
+            "top": 498.5
+          },
+          {
+            "text": "Structure",
+            "top": 637.5
+          },
+          {
+            "text": "Lists",
+            "top": 690.5
+          }
+        ],
+        "completedTask": {
+          "text": "Completed task",
+          "decoration": "line-through",
+          "visible": true
+        },
+        "pendingTask": {
+          "text": "Pending task with Welcome",
+          "decoration": "none",
+          "visible": true
+        },
+        "sourceVisible": false,
+        "fontsReady": true,
+        "assertionPassed": true,
+        "sha256": "a89f030f3dd6ca3c9a625bb6a11b46ba0fafb699a080bb2a8973d897875b2583",
+        "bytes": 273955
+      },
+      "runtimeErrors": [],
+      "runtimeErrorMonitoring": "Playwright pageerror, console-error and failed-request listeners installed before navigating into TockTutor; cold-start console and owned guard placement recorded separately.",
+      "warnings": [],
+      "proofFile": ".beads/reports/2026-10-03-tocktutor-inline-properties/proof.json",
+      "failedRequests": []
+    },
+    "tocktutor-live-preview-lower.png": {
+      "product": "TockTutor Source-Built Desktop",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-ae0l-2026-10-03",
+      "sourceCommit": "fdde9d0d",
+      "sourceDirty": true,
+      "sourceProvenance": "Built and staged the saved borderless Properties fix plus the tested narrow-window clamp/tag-box correction. Exact source and staged artifact hashes are archived; Raycast source custody and build inclusion do not constitute Raycast acceptance.",
+      "route": "/tocktutor/comparison.md",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "capturedAt": "2026-10-03T14:08:43.392Z",
+      "sha256": "e41771bc7f07f80e935a6a38d1134dafc026fb399e6a800a3ed9532f67bba97c",
+      "bytes": 281346,
+      "visibleState": {
+        "region": "lower",
+        "capturedAt": "2026-10-03T14:08:43.392Z",
+        "route": "/tocktutor/comparison.md",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [
+          1512,
+          949,
+          2
+        ],
+        "rootColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "propertiesExpanded": true,
+        "propertiesVisible": false,
+        "propertyCount": 9,
+        "scrollTop": 812.5,
+        "visibleHeadings": [
+          "Data",
+          "Code and Notes",
+          "Small Heading"
+        ],
+        "headingPositions": [
+          {
+            "text": "Data",
+            "top": 210
+          },
+          {
+            "text": "Code and Notes",
+            "top": 448
+          },
+          {
+            "text": "Small Heading",
+            "top": 759.5234375
+          }
+        ],
+        "completedTask": {
+          "text": "Completed task",
+          "decoration": "line-through",
+          "visible": false
+        },
+        "pendingTask": {
+          "text": "Pending task with Welcome",
+          "decoration": "none",
+          "visible": true
+        },
+        "sourceVisible": false,
+        "fontsReady": true,
+        "assertionPassed": true,
+        "sha256": "e41771bc7f07f80e935a6a38d1134dafc026fb399e6a800a3ed9532f67bba97c",
+        "bytes": 281346
+      },
+      "runtimeErrors": [],
+      "runtimeErrorMonitoring": "Playwright pageerror, console-error and failed-request listeners installed before navigating into TockTutor; cold-start console and owned guard placement recorded separately.",
+      "failedRequests": [],
+      "warnings": [],
+      "proofFile": ".beads/reports/2026-10-03-tocktutor-inline-properties/proof.json"
+    },
+    "obsidian-main-editor.png": {
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "route": "/index.html",
+      "runtimeErrors": [],
+      "path": "UIUX Comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+      "bytes": 230211,
+      "sha256": "886b4cddfaa7d6db2129ce9e9f359f46a4c3408a66ad4e98cc15f3140420d604",
+      "capturedAt": "2026-09-19T02:03:29.209Z",
+      "visibleState": {
+        "assertedText": "Markdown Rendering Lab",
+        "textSha256": "3ad16368e81c5e2a9017a5d9e348e6eadb776ac36a397d9e53788c5da3fe5b6a",
+        "textExcerpt": "Comparison Vault\nAttachments\npixel\nPNG\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nUIUX Comparison\nUIUX Comparison\nUIUX Comparison\nProperties\nreview\nmarkdown\ncomparison\ntypography\nmedium\nAdd property\n\n\nMarkdown Rendering Lab\n\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\n\nStructure\n\n\nLists\n\n\n1. Compare heading scale and paragraph rhythm.\n2. Inspect nested content.\n   - A nested bullet\n   - A bullet with strong text\n\n\n Completed task\n Pending task with Welcome\n\n\n> A short quote should begin close to its leading bar.\n>\n> A second paragraph tests spacing inside the same quote.\n1 backlink\n5 properties"
+      },
+      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+    },
+    "obsidian-live-preview-lower.png": {
+      "geometry": {
+        "width": 1512,
+        "height": 949,
+        "deviceScaleFactor": 2
+      },
+      "theme": "dark",
+      "skin": null,
+      "runtimeErrors": [],
+      "path": "UIUX Comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
+      "bytes": 221639,
+      "sha256": "46a142ca48251b754909bad157a6c2f431986710a01c238c93da59aa1351e027",
+      "capturedAt": "2026-09-25T01:21:03.025Z",
+      "sourceCommit": "74873748",
+      "visibleState": {
+        "assertedText": "Data; Code and Notes; Small Heading",
+        "assertionPassed": true,
+        "visibleHeadings": [
+          "Data",
+          "Code and Notes",
+          "Small Heading"
+        ],
+        "scrollContainer": "CodeMirror Live Preview scroller",
+        "scrollTop": 858,
+        "textExcerpt": "Data · Syntax · Expected Result · State · Code and Notes · const lesson = \"markdown\" · Small Heading · Final text tests the smallest heading · Footnotes should remain readable without dominating the page.",
+        "headingPositions": [
+          {
+            "text": "Data",
+            "y": 184.921875,
+            "bottom": 228.984375
+          },
+          {
+            "text": "Code and Notes",
+            "y": 429.171875,
+            "bottom": 473.234375
+          },
+          {
+            "text": "Small Heading",
+            "y": 773.234375,
+            "bottom": 815.84375
+          }
+        ]
+      },
+      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners during route verification and capture; no capture-time errors.",
+      "route": "app://obsidian.md/index.html",
+      "productVersion": "Obsidian 1.13.7"
+    }
+  },
+  "previousReferences": {
+    "obsidian-main-editor.png": {
+      "path": ".beads/reports/2026-10-04-tocktutor-property-accessories/previous-obsidian-upper.png",
+      "sha256": "886b4cddfaa7d6db2129ce9e9f359f46a4c3408a66ad4e98cc15f3140420d604"
+    },
+    "obsidian-live-preview-lower.png": {
+      "path": ".beads/reports/2026-10-04-tocktutor-property-accessories/previous-obsidian-lower.png",
+      "sha256": "46a142ca48251b754909bad157a6c2f431986710a01c238c93da59aa1351e027"
+    }
+  },
+  "fixture": {
+    "path": "comparison.md",
+    "sha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+    "bytes": 1413,
+    "propertyTypes": {
+      "status": "text",
+      "favorite": "checkbox",
+      "area": "text",
+      "tags": "tags",
+      "difficulty": "text",
+      "due": "date",
+      "meeting": "datetime",
+      "rating": "number",
+      "unsupported": "text"
+    }
+  },
+  "nativeVerification": {
+    "upper": {
+      "region": "upper",
+      "capturedAt": "2026-10-04T00:06:33.379Z",
+      "route": "app://obsidian.md/index.html",
+      "path": "comparison.md",
+      "documentMode": "live-preview",
+      "source": "---\nstatus: review\nfavorite: true\narea: markdown\ntags: [comparison, typography]\ndifficulty: medium\ndue: \"2026-10-01\"\nmeeting: \"2026-10-01T14:45\"\nrating: 1e+21\nunsupported: {nested: value}\n---\n\n# Markdown Rendering Lab\n\nUse **bold**, *italic*, ***bold italic***, ~~strikethrough~~, ==highlighting==, and `inline code` in one paragraph.\n\nOpen [[Welcome]], follow [[Study Guide|an aliased note]], or visit [Obsidian Help](https://help.obsidian.md).\n\n## Structure\n\n### Lists\n\n1. Compare heading scale and paragraph rhythm.\n2. Inspect nested content.\n   - A nested bullet\n   - A bullet with **strong text**\n\n- [x] Completed task\n- [ ] Pending task with [[Welcome]]\n\n> A short quote should begin close to its leading bar.\n>\n> A second paragraph tests spacing inside the same quote.\n\n## Data\n\n| Syntax | Expected Result | State |\n| :--- | :--- | ---: |\n| `**text**` | Bold text | Ready |\n| `[[note]]` | Internal link | Review |\n| `> quote` | Leading bar | Ready |\n\n## Code and Notes\n\n```ts\nconst lesson = \"markdown\"\nconsole.log(lesson)\n```\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.[^context]\n\nA soft line ends here.\nThis sentence follows without a blank line.\n\n---\n\n#### Small Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\n[^context]: Footnotes should remain readable without dominating the page.\n",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "theme": "obsidian",
+      "rootColorScheme": "",
+      "bodyColorScheme": "dark",
+      "rootSkin": null,
+      "bodySkin": null,
+      "customTheme": "",
+      "propertiesExpanded": true,
+      "propertiesVisible": true,
+      "propertyCount": 9,
+      "properties": [
+        {
+          "key": "status",
+          "type": "text",
+          "value": "review",
+          "unknown": null,
+          "warning": null,
+          "visible": true,
+          "rect": {
+            "x": 566.5,
+            "y": 197.546875,
+            "width": 700,
+            "height": 29,
+            "bottom": 226.546875
+          }
+        },
+        {
+          "key": "favorite",
+          "type": "checkbox",
+          "value": true,
+          "unknown": null,
+          "warning": null,
+          "visible": true,
+          "rect": {
+            "x": 566.5,
+            "y": 229.546875,
+            "width": 700,
+            "height": 28,
+            "bottom": 257.546875
+          }
+        },
+        {
+          "key": "area",
+          "type": "text",
+          "value": "markdown",
+          "unknown": null,
+          "warning": null,
+          "visible": true,
+          "rect": {
+            "x": 566.5,
+            "y": 260.546875,
+            "width": 700,
+            "height": 29,
+            "bottom": 289.546875
+          }
+        },
+        {
+          "key": "tags",
+          "type": "tags",
+          "value": [
+            "comparison",
+            "typography"
+          ],
+          "unknown": null,
+          "warning": null,
+          "visible": true,
+          "rect": {
+            "x": 566.5,
+            "y": 292.546875,
+            "width": 700,
+            "height": 29,
+            "bottom": 321.546875
+          }
+        },
+        {
+          "key": "difficulty",
+          "type": "text",
+          "value": "medium",
+          "unknown": null,
+          "warning": null,
+          "visible": true,
+          "rect": {
+            "x": 566.5,
+            "y": 324.546875,
+            "width": 700,
+            "height": 29,
+            "bottom": 353.546875
+          }
+        },
+        {
+          "key": "due",
+          "type": "date",
+          "value": "2026-10-01",
+          "unknown": null,
+          "warning": null,
+          "visible": true,
+          "rect": {
+            "x": 566.5,
+            "y": 356.546875,
+            "width": 700,
+            "height": 28,
+            "bottom": 384.546875
+          }
+        },
+        {
+          "key": "meeting",
+          "type": "datetime",
+          "value": "2026-10-01T14:45",
+          "unknown": null,
+          "warning": null,
+          "visible": true,
+          "rect": {
+            "x": 566.5,
+            "y": 387.546875,
+            "width": 700,
+            "height": 28,
+            "bottom": 415.546875
+          }
+        },
+        {
+          "key": "rating",
+          "type": "number",
+          "value": "1e+21",
+          "unknown": null,
+          "warning": null,
+          "visible": true,
+          "rect": {
+            "x": 566.5,
+            "y": 418.546875,
+            "width": 700,
+            "height": 28,
+            "bottom": 446.546875
+          }
+        },
+        {
+          "key": "unsupported",
+          "type": "unknown",
+          "value": [],
+          "unknown": "{\"nested\":\"value\"}",
+          "warning": "Type mismatch, expected Text",
+          "visible": true,
+          "rect": {
+            "x": 566.5,
+            "y": 449.546875,
+            "width": 700,
+            "height": 29,
+            "bottom": 478.546875
+          }
+        }
+      ],
+      "scrollTop": 0,
+      "visibleHeadings": [
+        "Markdown Rendering Lab",
+        "Structure",
+        "Lists"
+      ],
+      "headingPositions": [
+        {
+          "text": "Markdown Rendering Lab",
+          "top": 579.046875
+        },
+        {
+          "text": "Structure",
+          "top": 746.109375
+        },
+        {
+          "text": "Lists",
+          "top": 814.171875
+        }
+      ],
+      "assertionPassed": true,
+      "sha256": "daa9eb94e4651602736e27ac3be3fd3cffed7370401a8ea3c697fe4915fffa36",
+      "bytes": 209920
+    },
+    "lower": {
+      "region": "lower",
+      "capturedAt": "2026-10-04T00:06:33.520Z",
+      "route": "app://obsidian.md/index.html",
+      "path": "comparison.md",
+      "documentMode": "live-preview",
+      "source": "---\nstatus: review\nfavorite: true\narea: markdown\ntags: [comparison, typography]\ndifficulty: medium\ndue: \"2026-10-01\"\nmeeting: \"2026-10-01T14:45\"\nrating: 1e+21\nunsupported: {nested: value}\n---\n\n# Markdown Rendering Lab\n\nUse **bold**, *italic*, ***bold italic***, ~~strikethrough~~, ==highlighting==, and `inline code` in one paragraph.\n\nOpen [[Welcome]], follow [[Study Guide|an aliased note]], or visit [Obsidian Help](https://help.obsidian.md).\n\n## Structure\n\n### Lists\n\n1. Compare heading scale and paragraph rhythm.\n2. Inspect nested content.\n   - A nested bullet\n   - A bullet with **strong text**\n\n- [x] Completed task\n- [ ] Pending task with [[Welcome]]\n\n> A short quote should begin close to its leading bar.\n>\n> A second paragraph tests spacing inside the same quote.\n\n## Data\n\n| Syntax | Expected Result | State |\n| :--- | :--- | ---: |\n| `**text**` | Bold text | Ready |\n| `[[note]]` | Internal link | Review |\n| `> quote` | Leading bar | Ready |\n\n## Code and Notes\n\n```ts\nconst lesson = \"markdown\"\nconsole.log(lesson)\n```\n\nInline math uses $E = mc^2$, while a footnote keeps context nearby.[^context]\n\nA soft line ends here.\nThis sentence follows without a blank line.\n\n---\n\n#### Small Heading\n\nFinal text tests the smallest heading, an automatic URL https://example.com, and punctuation—without changing application chrome.\n\n[^context]: Footnotes should remain readable without dominating the page.\n",
+      "geometry": [
+        1512,
+        949,
+        2
+      ],
+      "theme": "obsidian",
+      "rootColorScheme": "",
+      "bodyColorScheme": "dark",
+      "rootSkin": null,
+      "bodySkin": null,
+      "customTheme": "",
+      "propertiesExpanded": true,
+      "propertiesVisible": false,
+      "propertyCount": 9,
+      "properties": [
+        {
+          "key": "status",
+          "type": "text",
+          "value": "review",
+          "unknown": null,
+          "warning": null,
+          "visible": false,
+          "rect": {
+            "x": 566.5,
+            "y": -760.453125,
+            "width": 700,
+            "height": 29,
+            "bottom": -731.453125
+          }
+        },
+        {
+          "key": "favorite",
+          "type": "checkbox",
+          "value": true,
+          "unknown": null,
+          "warning": null,
+          "visible": false,
+          "rect": {
+            "x": 566.5,
+            "y": -728.453125,
+            "width": 700,
+            "height": 28,
+            "bottom": -700.453125
+          }
+        },
+        {
+          "key": "area",
+          "type": "text",
+          "value": "markdown",
+          "unknown": null,
+          "warning": null,
+          "visible": false,
+          "rect": {
+            "x": 566.5,
+            "y": -697.453125,
+            "width": 700,
+            "height": 29,
+            "bottom": -668.453125
+          }
+        },
+        {
+          "key": "tags",
+          "type": "tags",
+          "value": [
+            "comparison",
+            "typography"
+          ],
+          "unknown": null,
+          "warning": null,
+          "visible": false,
+          "rect": {
+            "x": 566.5,
+            "y": -665.453125,
+            "width": 700,
+            "height": 29,
+            "bottom": -636.453125
+          }
+        },
+        {
+          "key": "difficulty",
+          "type": "text",
+          "value": "medium",
+          "unknown": null,
+          "warning": null,
+          "visible": false,
+          "rect": {
+            "x": 566.5,
+            "y": -633.453125,
+            "width": 700,
+            "height": 29,
+            "bottom": -604.453125
+          }
+        },
+        {
+          "key": "due",
+          "type": "date",
+          "value": "2026-10-01",
+          "unknown": null,
+          "warning": null,
+          "visible": false,
+          "rect": {
+            "x": 566.5,
+            "y": -601.453125,
+            "width": 700,
+            "height": 28,
+            "bottom": -573.453125
+          }
+        },
+        {
+          "key": "meeting",
+          "type": "datetime",
+          "value": "2026-10-01T14:45",
+          "unknown": null,
+          "warning": null,
+          "visible": false,
+          "rect": {
+            "x": 566.5,
+            "y": -570.453125,
+            "width": 700,
+            "height": 28,
+            "bottom": -542.453125
+          }
+        },
+        {
+          "key": "rating",
+          "type": "number",
+          "value": "1e+21",
+          "unknown": null,
+          "warning": null,
+          "visible": false,
+          "rect": {
+            "x": 566.5,
+            "y": -539.453125,
+            "width": 700,
+            "height": 28,
+            "bottom": -511.453125
+          }
+        },
+        {
+          "key": "unsupported",
+          "type": "unknown",
+          "value": [],
+          "unknown": "{\"nested\":\"value\"}",
+          "warning": "Type mismatch, expected Text",
+          "visible": false,
+          "rect": {
+            "x": 566.5,
+            "y": -508.453125,
+            "width": 700,
+            "height": 29,
+            "bottom": -479.453125
+          }
+        }
+      ],
+      "scrollTop": 958,
+      "visibleHeadings": [
+        "Data",
+        "Code and Notes",
+        "Small Heading"
+      ],
+      "headingPositions": [
+        {
+          "text": "Data",
+          "top": 209.921875
+        },
+        {
+          "text": "Code and Notes",
+          "top": 454.171875
+        },
+        {
+          "text": "Small Heading",
+          "top": 804.0390625
+        }
+      ],
+      "assertionPassed": true,
+      "sha256": "4231cf9d02613e731e9000cb2459359c240e3c909f9d8126db79e6612a4c623c",
+      "bytes": 214381
+    },
+    "errors": [],
+    "warnings": [],
+    "failedRequests": []
+  },
+  "accessories": {
+    "geometry": [
+      1512,
+      949,
+      2
+    ],
+    "scheme": "dark",
+    "skin": null,
+    "bodySkin": null,
+    "route": "/tocktutor/comparison.md",
+    "propertiesExpanded": true,
+    "propertyCount": 9,
+    "tagRect": {
+      "x": 816.8515625,
+      "y": 275,
+      "width": 101.0703125,
+      "height": 20,
+      "right": 917.921875
+    },
+    "suggestionsRect": {
+      "x": 921.921875,
+      "y": 273,
+      "width": 24,
+      "height": 24,
+      "right": 945.921875
+    },
+    "sourceRect": {
+      "x": 710,
+      "y": 420,
+      "width": 552,
+      "height": 20,
+      "right": 1262
+    },
+    "warningRect": {
+      "x": 835.40625,
+      "y": 423,
+      "width": 14,
+      "height": 14,
+      "right": 849.40625
+    },
+    "tagSuggestionsGap": 4,
+    "warningGap": 8,
+    "warningDecorationHidden": true,
+    "sourceHint": "Use Source Mode to edit this value.",
+    "overflow": []
+  },
+  "red": "### Error\nError: {\"geometry\":[1512,949,2],\"scheme\":\"dark\",\"skin\":null,\"bodySkin\":null,\"route\":\"/tocktutor/comparison.md\",\"propertiesExpanded\":true,\"propertyCount\":9,\"tagRect\":{\"x\":816.8515625,\"y\":275,\"width\":101.0703125,\"height\":20,\"right\":917.921875},\"suggestionsRect\":{\"x\":1210,\"y\":273,\"width\":24,\"height\":24,\"right\":1234},\"sourceRect\":{\"x\":710,\"y\":420,\"width\":552,\"height\":20,\"right\":1262},\"warningRect\":{\"x\":1248,\"y\":423,\"width\":14,\"height\":14,\"right\":1262},\"tagSuggestionsGap\":292.078125,\"warningGap\":420.59375,\"warningDecorationHidden\":true,\"sourceHint\":\"Use Source Mode to edit this value.\",\"overflow\":[]}\n",
+  "interaction": {
+    "chosen": "migration",
+    "suggestionsAndFreeFormSaved": true,
+    "reopened": true,
+    "unfinishedDraftRetained": true,
+    "escapeRestoresFocus": true,
+    "errors": [],
+    "savedBytesExact": true,
+    "savedNoteSha256": "2e080c72d18053cb677b02b81d6dbfb9f50e1b4fcbf726a8e01e5d3f94126f03"
+  },
+  "narrow": {
+    "focus": {
+      "active": true,
+      "visible": true,
+      "outline": "2px",
+      "border": "0px"
+    },
+    "width": 224,
+    "scrollWidth": 224,
+    "rows": [
+      {
+        "width": 224,
+        "scrollWidth": 224
+      },
+      {
+        "width": 224,
+        "scrollWidth": 224
+      },
+      {
+        "width": 224,
+        "scrollWidth": 224
+      },
+      {
+        "width": 224,
+        "scrollWidth": 224
+      },
+      {
+        "width": 224,
+        "scrollWidth": 224
+      },
+      {
+        "width": 224,
+        "scrollWidth": 224
+      },
+      {
+        "width": 224,
+        "scrollWidth": 224
+      },
+      {
+        "width": 224,
+        "scrollWidth": 224
+      },
+      {
+        "width": 224,
+        "scrollWidth": 224
+      }
+    ],
+    "overflow": [],
+    "restoredViewport": [
+      1512,
+      949,
+      2
+    ]
+  },
+  "appearances": {
+    "appearances": [
+      {
+        "name": "Default",
+        "systemTheme": "dark",
+        "route": "/tocktutor/comparison.md",
+        "theme": "light",
+        "skin": null,
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 18.896452054380127,
+        "sourceHintContrast": 18.896452054380127,
+        "horizontalOverflow": false
+      },
+      {
+        "name": "Default",
+        "systemTheme": "light",
+        "route": "/tocktutor/comparison.md",
+        "theme": "dark",
+        "skin": null,
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 17.45095194843412,
+        "sourceHintContrast": 8.491415116500356,
+        "horizontalOverflow": false
+      },
+      {
+        "name": "Navy",
+        "systemTheme": "dark",
+        "route": "/tocktutor/comparison.md",
+        "theme": "light",
+        "skin": "tockteam-skin-navy",
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 12.220961192426797,
+        "sourceHintContrast": 12.220961192426797,
+        "horizontalOverflow": false
+      },
+      {
+        "name": "Navy",
+        "systemTheme": "light",
+        "route": "/tocktutor/comparison.md",
+        "theme": "dark",
+        "skin": "tockteam-skin-navy",
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 16.4495170055241,
+        "sourceHintContrast": 11.123957395229967,
+        "horizontalOverflow": false
+      },
+      {
+        "name": "Jade",
+        "systemTheme": "dark",
+        "route": "/tocktutor/comparison.md",
+        "theme": "light",
+        "skin": "tockteam-skin-jade",
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 11.738037009519548,
+        "sourceHintContrast": 11.738037009519548,
+        "horizontalOverflow": false
+      },
+      {
+        "name": "Jade",
+        "systemTheme": "light",
+        "route": "/tocktutor/comparison.md",
+        "theme": "dark",
+        "skin": "tockteam-skin-jade",
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 16.739293071487573,
+        "sourceHintContrast": 11.432484222399433,
+        "horizontalOverflow": false
+      },
+      {
+        "name": "Ember",
+        "systemTheme": "dark",
+        "route": "/tocktutor/comparison.md",
+        "theme": "light",
+        "skin": "tockteam-skin-ember",
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 12.308616434429975,
+        "sourceHintContrast": 12.308616434429975,
+        "horizontalOverflow": false
+      },
+      {
+        "name": "Ember",
+        "systemTheme": "light",
+        "route": "/tocktutor/comparison.md",
+        "theme": "dark",
+        "skin": "tockteam-skin-ember",
+        "completed": "line-through",
+        "pending": "none",
+        "viewport": [
+          1512,
+          949,
+          2
+        ],
+        "propertiesExpanded": true,
+        "borders": [
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px",
+          "0px"
+        ],
+        "inputHeights": [
+          24,
+          24,
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "minimumInputContrast": 16.769128719932493,
+        "sourceHintContrast": 11.746441709118434,
+        "horizontalOverflow": false
+      }
+    ],
+    "errors": []
+  },
+  "artifacts": {
+    "builtAt": "2026-10-04T00:26:05.662Z",
+    "sdkSourceUnchanged": true,
+    "sdkAcceptance": false,
+    "files": [
+      {
+        "path": "dist/main.js",
+        "sha256": "5b493a7f479eb6dd94200d03c803e969268149ab81af8d39bb034104131f0392",
+        "bytes": 3222088,
+        "mtime": "2026-10-04T00:25:29.681Z"
+      },
+      {
+        "path": "dist/client.js",
+        "sha256": "bc2baa9098ad7583adcde659407aa151ae27249e7eab19c95899cb4391d8ed41",
+        "bytes": 651221,
+        "mtime": "2026-10-04T00:25:29.712Z"
+      },
+      {
+        "path": "dist/user-raycast/api.mjs",
+        "sha256": "1faddddace0cc5deed00a42c0027b6a75efca9189bec8ccbc524885565f38c26",
+        "bytes": 36153,
+        "mtime": "2026-10-04T00:25:28.930Z"
+      },
+      {
+        "path": "dist/user-raycast/child.mjs",
+        "sha256": "b4c407fd401c117b6122ee169b60e6359e928a0b69e0692b77201cf27c3e527b",
+        "bytes": 29842,
+        "mtime": "2026-10-04T00:25:28.930Z"
+      },
+      {
+        "path": "plugins/tocktutor/packages/tockteam-tocktutor-workbench/src/live-preview-editor.tsx",
+        "sha256": "d4fd9f6b9bd22d71ee4fc20a56b22626d2c1bc1de728851d2017c9c1eca0395b",
+        "bytes": 41609,
+        "mtime": "2026-10-03T23:56:21.309Z"
+      },
+      {
+        "path": "plugins/tocktutor/packages/tockteam-tocktutor-workbench/tests/properties-ui.test.tsx",
+        "sha256": "ce84f391fcef1acdf3dae106eff955f13a430352d28b8539f3925713bc9656e6",
+        "bytes": 19837,
+        "mtime": "2026-10-03T23:55:02.042Z"
+      },
+      {
+        "path": "plugins/tocktutor/build-manifest.json",
+        "sha256": "468e433a1c0b2b46e5c07d9d4803fec924f40adf78fe7b13e8abb78e726208f3",
+        "bytes": 152495,
+        "mtime": "2026-10-04T00:25:28.037Z"
+      },
+      {
+        "path": "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/client.js",
+        "sha256": "68ddbd5502c654a6c4817ce96eb737aa1d39071a4fa911ca753bbc6b701ef2fc",
+        "bytes": 6330135,
+        "mtime": "2026-10-04T00:25:24.905Z"
+      },
+      {
+        "path": "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/client.js.map",
+        "sha256": "fa0e4e5f79af4fb5a977cbcdc34c0b61af163eb68ac0c1e18977f569c4d62926",
+        "bytes": 15174568,
+        "mtime": "2026-10-04T00:25:24.906Z"
+      },
+      {
+        "path": "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/live-preview-editor.js",
+        "sha256": "3227e79cd17fa0d754690ef54bdbf19ab6da3193fefa877778a46424c26ea17a",
+        "bytes": 40993,
+        "mtime": "2026-10-04T00:25:24.033Z"
+      },
+      {
+        "path": "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/live-preview-editor.js.map",
+        "sha256": "6948a1cf25f56da6d64890e81fc15e132e5d48fef80b65ada216711cd36ab976",
+        "bytes": 34552,
+        "mtime": "2026-10-04T00:25:24.033Z"
+      },
+      {
+        "path": ".stage/dsh-runtime/node_modules/tockbot-web-clip/node_modules/.tockteam-store/_tockteam_tocktutor-workbench_0.1.7/node_modules/@tockteam/tocktutor-workbench/dist/client.js",
+        "sha256": "68ddbd5502c654a6c4817ce96eb737aa1d39071a4fa911ca753bbc6b701ef2fc",
+        "bytes": 6330135
+      },
+      {
+        "path": ".stage/dsh-runtime/node_modules/tockbot-note-desktop/node_modules/.tockteam-store/_tockteam_tocktutor-workbench_0.1.7/node_modules/@tockteam/tocktutor-workbench/dist/client.js",
+        "sha256": "68ddbd5502c654a6c4817ce96eb737aa1d39071a4fa911ca753bbc6b701ef2fc",
+        "bytes": 6330135
+      },
+      {
+        "path": ".stage/dsh-runtime/node_modules/@tockteam/tocktutor-import-export/node_modules/.tockteam-store/_tockteam_tocktutor-workbench_0.1.7/node_modules/@tockteam/tocktutor-workbench/dist/client.js",
+        "sha256": "68ddbd5502c654a6c4817ce96eb737aa1d39071a4fa911ca753bbc6b701ef2fc",
+        "bytes": 6330135
+      },
+      {
+        "path": ".stage/dsh-runtime/node_modules/@tockteam/tocktutor-assistant/node_modules/.tockteam-store/_tockteam_tocktutor-workbench_0.1.7/node_modules/@tockteam/tocktutor-workbench/dist/client.js",
+        "sha256": "68ddbd5502c654a6c4817ce96eb737aa1d39071a4fa911ca753bbc6b701ef2fc",
+        "bytes": 6330135
+      },
+      {
+        "path": ".stage/dsh-runtime/node_modules/@tockteam/tocktutor/node_modules/.tockteam-store/_tockteam_tocktutor-workbench_0.1.7/node_modules/@tockteam/tocktutor-workbench/dist/client.js",
+        "sha256": "68ddbd5502c654a6c4817ce96eb737aa1d39071a4fa911ca753bbc6b701ef2fc",
+        "bytes": 6330135
+      },
+      {
+        "path": ".stage/dsh-runtime/node_modules/@tockteam/tocktutor-workbench/dist/client.js",
+        "sha256": "68ddbd5502c654a6c4817ce96eb737aa1d39071a4fa911ca753bbc6b701ef2fc",
+        "bytes": 6330135
+      }
+    ],
+    "stagedWorkbenchCopiesMatch": true,
+    "sdkSourceUnchangedAtReturn": true
+  },
+  "sdkFrozenCustody": {
+    "capturedAt": "2026-10-04T00:22:22.711Z",
+    "paths": [
+      {
+        "path": "src/trusted-raycast-compat-api.ts",
+        "sha256": "0456392c216b1d3ac3ff3089c8b324e890b977074b487ab10c7680d6fca49eda"
+      },
+      {
+        "path": "src/user-raycast-child.ts",
+        "sha256": "3ba56f031d6c8a5438cf34762fec19ca4a954631436c8fece924e8d676fec13b"
+      },
+      {
+        "path": "src/user-raycast-install.ts",
+        "sha256": "caee64642017786325f2604e2b9ba09ecfc82a36e78fe1146dc2db9fd88384da"
+      },
+      {
+        "path": "src/user-raycast-manager.ts",
+        "sha256": "827ab60f52bda99f071fde4e427de9704da0411fca134b14de68bbd9b316ba69"
+      },
+      {
+        "path": "tests/user-raycast-environment.test.ts",
+        "sha256": "106826ea686a1ecf28643c98d988eed5e99bc00dfdd378f0f46d6928f3441683"
+      },
+      {
+        "path": "tests/user-raycast-install.test.ts",
+        "sha256": "b0b440e013388430d19c963961efd31accc31a30218cb458db0c189a4930af88"
+      }
+    ],
+    "claim": "Custody only; no SDK acceptance"
+  },
+  "implicitBuildDisclosure": {
+    "cause": "test:tocktutor wrapper builds root and nested outputs before tests",
+    "lastRunCompletedAt": "2026-10-04T00:03:45Z",
+    "stageWritten": false,
+    "sdkSourceEdited": false,
+    "files": [
+      {
+        "path": "dist/main.js",
+        "sha256": "5b493a7f479eb6dd94200d03c803e969268149ab81af8d39bb034104131f0392",
+        "bytes": 3222088
+      },
+      {
+        "path": "dist/client.js",
+        "sha256": "bc2baa9098ad7583adcde659407aa151ae27249e7eab19c95899cb4391d8ed41",
+        "bytes": 651221
+      },
+      {
+        "path": "dist/user-raycast-storage.js",
+        "exists": false
+      },
+      {
+        "path": "dist/user-raycast-child.js",
+        "exists": false
+      },
+      {
+        "path": "dist/trusted-raycast-compat-api.js",
+        "exists": false
+      },
+      {
+        "path": "dist/user-raycast-install.js",
+        "exists": false
+      },
+      {
+        "path": "dist/user-raycast-manager.js",
+        "exists": false
+      },
+      {
+        "path": "plugins/tocktutor/build-manifest.json",
+        "sha256": "c5b3d40c2c35149dbedaa8159693336bdcb3845a6e58c4ff88374bb979d976f3",
+        "bytes": 152495
+      },
+      {
+        "path": "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/client.js",
+        "sha256": "68ddbd5502c654a6c4817ce96eb737aa1d39071a4fa911ca753bbc6b701ef2fc",
+        "bytes": 6330135
+      },
+      {
+        "path": "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/client.js.map",
+        "sha256": "fa0e4e5f79af4fb5a977cbcdc34c0b61af163eb68ac0c1e18977f569c4d62926",
+        "bytes": 15174568
+      },
+      {
+        "path": "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/live-preview-editor.js",
+        "sha256": "3227e79cd17fa0d754690ef54bdbf19ab6da3193fefa877778a46424c26ea17a",
+        "bytes": 40993
+      },
+      {
+        "path": "plugins/tocktutor/packages/tockteam-tocktutor-workbench/dist/live-preview-editor.js.map",
+        "sha256": "6948a1cf25f56da6d64890e81fc15e132e5d48fef80b65ada216711cd36ab976",
+        "bytes": 34552
+      },
+      {
+        "path": "dist/user-raycast/api.mjs",
+        "sha256": "1faddddace0cc5deed00a42c0027b6a75efca9189bec8ccbc524885565f38c26",
+        "bytes": 36153,
+        "mtime": "2026-10-04T00:00:55.718Z"
+      },
+      {
+        "path": "dist/user-raycast/child.mjs",
+        "sha256": "b4c407fd401c117b6122ee169b60e6359e928a0b69e0692b77201cf27c3e527b",
+        "bytes": 29842,
+        "mtime": "2026-10-04T00:00:55.718Z"
+      }
+    ]
+  },
+  "doctor": {
+    "base": {
+      "schemaVersion": 3,
+      "mode": "full",
+      "reactDetected": true,
+      "version": "0.9.14",
+      "ok": true,
+      "directory": "/tmp/tocktutor-property-accessories.nO92XG/doctor-base",
+      "diff": null,
+      "projects": [
+        {
+          "directory": "/tmp/tocktutor-property-accessories.nO92XG/doctor-base",
+          "packageRoot": "/tmp/tocktutor-property-accessories.nO92XG/doctor-base",
+          "framework": "unknown",
+          "project": {
+            "rootDirectory": "/tmp/tocktutor-property-accessories.nO92XG/doctor-base",
+            "projectName": "@tockteam/tocktutor-workbench",
+            "reactVersion": "^18.2.0",
+            "reactMajorVersion": 18,
+            "tailwindVersion": null,
+            "zodVersion": "4.4.3",
+            "zodMajorVersion": 4,
+            "mobxVersion": null,
+            "mobxMajorVersion": null,
+            "hasMobxReact": false,
+            "mobxReactVersion": null,
+            "hasMobxReactLite": false,
+            "mobxReactLiteVersion": null,
+            "hasMobxStateTree": false,
+            "hasMobxReactObserver": false,
+            "zustandVersion": null,
+            "zustandMajorVersion": null,
+            "framework": "unknown",
+            "hasTypeScript": false,
+            "hasReactCompiler": false,
+            "hasReactCompilerLintPlugin": false,
+            "hasTanStackQuery": false,
+            "hasI18nLibrary": false,
+            "hasRadixUi": true,
+            "hasBaseUi": false,
+            "hasReactAriaComponents": false,
+            "hasTanstackTable": false,
+            "hasTanstackVirtual": false,
+            "hasTanstackForm": false,
+            "tanstackQueryVersion": null,
+            "styledComponentsVersion": null,
+            "valtioVersion": null,
+            "valtioMajorVersion": null,
+            "hasRemotion": false,
+            "remotionVersion": null,
+            "remotionMajorVersion": null,
+            "hasThree": false,
+            "threeVersion": null,
+            "threeRelease": null,
+            "hasReactThreeFiber": false,
+            "reactThreeFiberVersion": null,
+            "reactThreeFiberMajorVersion": null,
+            "hasSsrDependency": false,
+            "preactVersion": null,
+            "preactMajorVersion": null,
+            "hasReactNativeWorkspace": false,
+            "nextjsVersion": null,
+            "nextjsMajorVersion": null,
+            "reactRouterVersion": null,
+            "hasReactRouterFramework": false,
+            "expoVersion": null,
+            "shopifyFlashListVersion": null,
+            "shopifyFlashListMajorVersion": null,
+            "hasReanimated": false,
+            "reanimatedVersion": null,
+            "hasShadcnUi": false,
+            "isPreES2023Target": false,
+            "isStaticExport": false,
+            "sourceFileCount": 1
+          },
+          "diagnostics": [
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-array-index-as-key",
+              "severity": "warning",
+              "title": "Array index used as a key",
+              "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+              "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+              "line": 203,
+              "column": 300,
+              "offset": 9459,
+              "length": 25,
+              "endLine": 203,
+              "category": "Bugs",
+              "id": "src/live-preview-editor.tsx::203:300::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": []
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "js-set-map-lookups",
+              "severity": "warning",
+              "title": "Array lookup inside a loop",
+              "message": "This scales poorly because `array.includes()` inside a loop scans the whole list every time. Use a Set for constant-time lookups.",
+              "help": "Use a `Set` or `Map` when you check for the same items over and over. `Array.includes`/`find` scans the whole list each time",
+              "line": 222,
+              "column": 137,
+              "offset": 11758,
+              "length": 66,
+              "endLine": 222,
+              "category": "Performance",
+              "id": "src/live-preview-editor.tsx::222:137::react-doctor/js-set-map-lookups::8ca162272c84d42896a45c0a801007a712bbbc2697f9f8e1c400af6faf47fe70",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": [
+                "test-noise"
+              ]
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-high-complexity-react-function",
+              "severity": "warning",
+              "title": "React function has high control-flow complexity",
+              "message": "`MarkdownDocumentProperty` has cyclomatic complexity 40, cognitive complexity 38, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+              "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+              "line": 229,
+              "column": 1,
+              "offset": 12508,
+              "length": 19369,
+              "endLine": 468,
+              "category": "Maintainability",
+              "id": "src/live-preview-editor.tsx::229:1::react-doctor/no-high-complexity-react-function::9ebaa4b7e26852eff0e955fc0ff19727acac35100c5b025418626081654b2c9e",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": [
+                "react-jsx-only",
+                "test-noise"
+              ]
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-array-index-as-key",
+              "severity": "warning",
+              "title": "Array index used as a key",
+              "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+              "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+              "line": 405,
+              "column": 291,
+              "offset": 24503,
+              "length": 23,
+              "endLine": 405,
+              "category": "Bugs",
+              "id": "src/live-preview-editor.tsx::405:291::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": []
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-high-complexity-react-function",
+              "severity": "warning",
+              "title": "React function has high control-flow complexity",
+              "message": "`MarkdownDocumentHeader` has cyclomatic complexity 25, cognitive complexity 22, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+              "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+              "line": 477,
+              "column": 8,
+              "offset": 32338,
+              "length": 8164,
+              "endLine": 602,
+              "category": "Maintainability",
+              "id": "src/live-preview-editor.tsx::477:8::react-doctor/no-high-complexity-react-function::b44968e42c8479e5b979bb37135d7368064ff19b16f867c3bba0bddad37df86f",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": [
+                "react-jsx-only",
+                "test-noise"
+              ]
+            }
+          ],
+          "score": null,
+          "skippedChecks": [],
+          "analyzedFiles": [
+            "src/live-preview-editor.tsx"
+          ],
+          "analyzedFileCount": 1,
+          "complete": true,
+          "scannedFileCount": 1,
+          "elapsedMilliseconds": 225.378292
+        }
+      ],
+      "diagnostics": [
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-array-index-as-key",
+          "severity": "warning",
+          "title": "Array index used as a key",
+          "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+          "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+          "line": 203,
+          "column": 300,
+          "offset": 9459,
+          "length": 25,
+          "endLine": 203,
+          "category": "Bugs",
+          "id": "src/live-preview-editor.tsx::203:300::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": []
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "js-set-map-lookups",
+          "severity": "warning",
+          "title": "Array lookup inside a loop",
+          "message": "This scales poorly because `array.includes()` inside a loop scans the whole list every time. Use a Set for constant-time lookups.",
+          "help": "Use a `Set` or `Map` when you check for the same items over and over. `Array.includes`/`find` scans the whole list each time",
+          "line": 222,
+          "column": 137,
+          "offset": 11758,
+          "length": 66,
+          "endLine": 222,
+          "category": "Performance",
+          "id": "src/live-preview-editor.tsx::222:137::react-doctor/js-set-map-lookups::8ca162272c84d42896a45c0a801007a712bbbc2697f9f8e1c400af6faf47fe70",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": [
+            "test-noise"
+          ]
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-high-complexity-react-function",
+          "severity": "warning",
+          "title": "React function has high control-flow complexity",
+          "message": "`MarkdownDocumentProperty` has cyclomatic complexity 40, cognitive complexity 38, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+          "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+          "line": 229,
+          "column": 1,
+          "offset": 12508,
+          "length": 19369,
+          "endLine": 468,
+          "category": "Maintainability",
+          "id": "src/live-preview-editor.tsx::229:1::react-doctor/no-high-complexity-react-function::9ebaa4b7e26852eff0e955fc0ff19727acac35100c5b025418626081654b2c9e",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": [
+            "react-jsx-only",
+            "test-noise"
+          ]
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-array-index-as-key",
+          "severity": "warning",
+          "title": "Array index used as a key",
+          "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+          "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+          "line": 405,
+          "column": 291,
+          "offset": 24503,
+          "length": 23,
+          "endLine": 405,
+          "category": "Bugs",
+          "id": "src/live-preview-editor.tsx::405:291::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": []
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-high-complexity-react-function",
+          "severity": "warning",
+          "title": "React function has high control-flow complexity",
+          "message": "`MarkdownDocumentHeader` has cyclomatic complexity 25, cognitive complexity 22, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+          "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+          "line": 477,
+          "column": 8,
+          "offset": 32338,
+          "length": 8164,
+          "endLine": 602,
+          "category": "Maintainability",
+          "id": "src/live-preview-editor.tsx::477:8::react-doctor/no-high-complexity-react-function::b44968e42c8479e5b979bb37135d7368064ff19b16f867c3bba0bddad37df86f",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": [
+            "react-jsx-only",
+            "test-noise"
+          ]
+        }
+      ],
+      "summary": {
+        "errorCount": 0,
+        "warningCount": 5,
+        "affectedFileCount": 1,
+        "totalDiagnosticCount": 5,
+        "score": null,
+        "scoreLabel": null
+      },
+      "elapsedMilliseconds": 227.50175000000002,
+      "error": null
+    },
+    "current": {
+      "schemaVersion": 3,
+      "mode": "full",
+      "reactDetected": true,
+      "version": "0.9.14",
+      "ok": true,
+      "directory": "/tmp/tocktutor-property-accessories.nO92XG/doctor-current",
+      "diff": null,
+      "projects": [
+        {
+          "directory": "/tmp/tocktutor-property-accessories.nO92XG/doctor-current",
+          "packageRoot": "/tmp/tocktutor-property-accessories.nO92XG/doctor-current",
+          "framework": "unknown",
+          "project": {
+            "rootDirectory": "/tmp/tocktutor-property-accessories.nO92XG/doctor-current",
+            "projectName": "@tockteam/tocktutor-workbench",
+            "reactVersion": "^18.2.0",
+            "reactMajorVersion": 18,
+            "tailwindVersion": null,
+            "zodVersion": "4.4.3",
+            "zodMajorVersion": 4,
+            "mobxVersion": null,
+            "mobxMajorVersion": null,
+            "hasMobxReact": false,
+            "mobxReactVersion": null,
+            "hasMobxReactLite": false,
+            "mobxReactLiteVersion": null,
+            "hasMobxStateTree": false,
+            "hasMobxReactObserver": false,
+            "zustandVersion": null,
+            "zustandMajorVersion": null,
+            "framework": "unknown",
+            "hasTypeScript": false,
+            "hasReactCompiler": false,
+            "hasReactCompilerLintPlugin": false,
+            "hasTanStackQuery": false,
+            "hasI18nLibrary": false,
+            "hasRadixUi": true,
+            "hasBaseUi": false,
+            "hasReactAriaComponents": false,
+            "hasTanstackTable": false,
+            "hasTanstackVirtual": false,
+            "hasTanstackForm": false,
+            "tanstackQueryVersion": null,
+            "styledComponentsVersion": null,
+            "valtioVersion": null,
+            "valtioMajorVersion": null,
+            "hasRemotion": false,
+            "remotionVersion": null,
+            "remotionMajorVersion": null,
+            "hasThree": false,
+            "threeVersion": null,
+            "threeRelease": null,
+            "hasReactThreeFiber": false,
+            "reactThreeFiberVersion": null,
+            "reactThreeFiberMajorVersion": null,
+            "hasSsrDependency": false,
+            "preactVersion": null,
+            "preactMajorVersion": null,
+            "hasReactNativeWorkspace": false,
+            "nextjsVersion": null,
+            "nextjsMajorVersion": null,
+            "reactRouterVersion": null,
+            "hasReactRouterFramework": false,
+            "expoVersion": null,
+            "shopifyFlashListVersion": null,
+            "shopifyFlashListMajorVersion": null,
+            "hasReanimated": false,
+            "reanimatedVersion": null,
+            "hasShadcnUi": false,
+            "isPreES2023Target": false,
+            "isStaticExport": false,
+            "sourceFileCount": 1
+          },
+          "diagnostics": [
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-array-index-as-key",
+              "severity": "warning",
+              "title": "Array index used as a key",
+              "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+              "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+              "line": 203,
+              "column": 300,
+              "offset": 9459,
+              "length": 25,
+              "endLine": 203,
+              "category": "Bugs",
+              "id": "src/live-preview-editor.tsx::203:300::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": []
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "js-set-map-lookups",
+              "severity": "warning",
+              "title": "Array lookup inside a loop",
+              "message": "This scales poorly because `array.includes()` inside a loop scans the whole list every time. Use a Set for constant-time lookups.",
+              "help": "Use a `Set` or `Map` when you check for the same items over and over. `Array.includes`/`find` scans the whole list each time",
+              "line": 221,
+              "column": 137,
+              "offset": 11428,
+              "length": 66,
+              "endLine": 221,
+              "category": "Performance",
+              "id": "src/live-preview-editor.tsx::221:137::react-doctor/js-set-map-lookups::8ca162272c84d42896a45c0a801007a712bbbc2697f9f8e1c400af6faf47fe70",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": [
+                "test-noise"
+              ]
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-high-complexity-react-function",
+              "severity": "warning",
+              "title": "React function has high control-flow complexity",
+              "message": "`MarkdownDocumentProperty` has cyclomatic complexity 40, cognitive complexity 38, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+              "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+              "line": 229,
+              "column": 1,
+              "offset": 12508,
+              "length": 19362,
+              "endLine": 468,
+              "category": "Maintainability",
+              "id": "src/live-preview-editor.tsx::229:1::react-doctor/no-high-complexity-react-function::9ebaa4b7e26852eff0e955fc0ff19727acac35100c5b025418626081654b2c9e",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": [
+                "react-jsx-only",
+                "test-noise"
+              ]
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-array-index-as-key",
+              "severity": "warning",
+              "title": "Array index used as a key",
+              "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+              "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+              "line": 405,
+              "column": 291,
+              "offset": 24496,
+              "length": 23,
+              "endLine": 405,
+              "category": "Bugs",
+              "id": "src/live-preview-editor.tsx::405:291::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": []
+            },
+            {
+              "filePath": "src/live-preview-editor.tsx",
+              "plugin": "react-doctor",
+              "rule": "no-high-complexity-react-function",
+              "severity": "warning",
+              "title": "React function has high control-flow complexity",
+              "message": "`MarkdownDocumentHeader` has cyclomatic complexity 25, cognitive complexity 22, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+              "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+              "line": 477,
+              "column": 8,
+              "offset": 32331,
+              "length": 8164,
+              "endLine": 602,
+              "category": "Maintainability",
+              "id": "src/live-preview-editor.tsx::477:8::react-doctor/no-high-complexity-react-function::b44968e42c8479e5b979bb37135d7368064ff19b16f867c3bba0bddad37df86f",
+              "normalizedFilePath": "src/live-preview-editor.tsx",
+              "tags": [
+                "react-jsx-only",
+                "test-noise"
+              ]
+            }
+          ],
+          "score": null,
+          "skippedChecks": [],
+          "analyzedFiles": [
+            "src/live-preview-editor.tsx"
+          ],
+          "analyzedFileCount": 1,
+          "complete": true,
+          "scannedFileCount": 1,
+          "elapsedMilliseconds": 222.75491700000003
+        }
+      ],
+      "diagnostics": [
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-array-index-as-key",
+          "severity": "warning",
+          "title": "Array index used as a key",
+          "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+          "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+          "line": 203,
+          "column": 300,
+          "offset": 9459,
+          "length": 25,
+          "endLine": 203,
+          "category": "Bugs",
+          "id": "src/live-preview-editor.tsx::203:300::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": []
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "js-set-map-lookups",
+          "severity": "warning",
+          "title": "Array lookup inside a loop",
+          "message": "This scales poorly because `array.includes()` inside a loop scans the whole list every time. Use a Set for constant-time lookups.",
+          "help": "Use a `Set` or `Map` when you check for the same items over and over. `Array.includes`/`find` scans the whole list each time",
+          "line": 221,
+          "column": 137,
+          "offset": 11428,
+          "length": 66,
+          "endLine": 221,
+          "category": "Performance",
+          "id": "src/live-preview-editor.tsx::221:137::react-doctor/js-set-map-lookups::8ca162272c84d42896a45c0a801007a712bbbc2697f9f8e1c400af6faf47fe70",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": [
+            "test-noise"
+          ]
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-high-complexity-react-function",
+          "severity": "warning",
+          "title": "React function has high control-flow complexity",
+          "message": "`MarkdownDocumentProperty` has cyclomatic complexity 40, cognitive complexity 38, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+          "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+          "line": 229,
+          "column": 1,
+          "offset": 12508,
+          "length": 19362,
+          "endLine": 468,
+          "category": "Maintainability",
+          "id": "src/live-preview-editor.tsx::229:1::react-doctor/no-high-complexity-react-function::9ebaa4b7e26852eff0e955fc0ff19727acac35100c5b025418626081654b2c9e",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": [
+            "react-jsx-only",
+            "test-noise"
+          ]
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-array-index-as-key",
+          "severity": "warning",
+          "title": "Array index used as a key",
+          "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\".",
+          "help": "Use a stable id from the item, like `key={item.id}` or `key={item.slug}`. Index keys break when the list reorders or filters.",
+          "line": 405,
+          "column": 291,
+          "offset": 24496,
+          "length": 23,
+          "endLine": 405,
+          "category": "Bugs",
+          "id": "src/live-preview-editor.tsx::405:291::react-doctor/no-array-index-as-key::4355749737c20ecca42e88a124407ac8602be73048f4c3deb95ffd199427279c",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": []
+        },
+        {
+          "filePath": "src/live-preview-editor.tsx",
+          "plugin": "react-doctor",
+          "rule": "no-high-complexity-react-function",
+          "severity": "warning",
+          "title": "React function has high control-flow complexity",
+          "message": "`MarkdownDocumentHeader` has cyclomatic complexity 25, cognitive complexity 22, and maximum nesting depth 2, so its React logic is hard to understand and change. Extract independent branches into components or hooks.",
+          "help": "Extract independent render branches and state logic into focused components or hooks until the control flow is easy to follow.",
+          "line": 477,
+          "column": 8,
+          "offset": 32331,
+          "length": 8164,
+          "endLine": 602,
+          "category": "Maintainability",
+          "id": "src/live-preview-editor.tsx::477:8::react-doctor/no-high-complexity-react-function::b44968e42c8479e5b979bb37135d7368064ff19b16f867c3bba0bddad37df86f",
+          "normalizedFilePath": "src/live-preview-editor.tsx",
+          "tags": [
+            "react-jsx-only",
+            "test-noise"
+          ]
+        }
+      ],
+      "summary": {
+        "errorCount": 0,
+        "warningCount": 5,
+        "affectedFileCount": 1,
+        "totalDiagnosticCount": 5,
+        "score": null,
+        "scoreLabel": null
+      },
+      "elapsedMilliseconds": 224.99291699999998,
+      "error": null
+    }
+  },
+  "cleanup": {
+    "runs": [
+      {
+        "id": "3976b9a7-b3d0-432c-9ebe-cc990356185e",
+        "rootPid": 92079,
+        "recordedPids": [
+          92079,
+          92097
+        ],
+        "stopped": true,
+        "remaining": [],
+        "scope": "Guard inspection only"
+      },
+      {
+        "id": "d716c828-1428-4609-9396-b0b011048717",
+        "rootPid": 157,
+        "recordedPids": [
+          157,
+          159,
+          160,
+          161,
+          162,
+          168,
+          174,
+          191,
+          194,
+          373,
+          680,
+          689,
+          1078,
+          1079,
+          1080,
+          1081,
+          1082,
+          1083,
+          1084,
+          1085,
+          1227,
+          1228,
+          1229,
+          1230,
+          1231,
+          1232,
+          1233,
+          1234
+        ],
+        "stopped": true,
+        "remaining": []
+      },
+      {
+        "id": "86fe5393-c3ba-4c19-ab3e-b1dd04070903",
+        "rootPid": 1331,
+        "recordedPids": [
+          1331,
+          1333,
+          1334,
+          1335,
+          2545,
+          2546
+        ],
+        "stopped": true,
+        "remaining": []
+      },
+      {
+        "id": "72707054-661c-4d8d-a785-6d6385aead04",
+        "rootPid": 5182,
+        "recordedPids": [
+          5182,
+          5184,
+          5185,
+          5187,
+          5188,
+          5193,
+          5207,
+          5224,
+          5225,
+          5226,
+          5227,
+          5228,
+          5408,
+          5447,
+          5448,
+          5449,
+          5450,
+          5451,
+          5452,
+          5453,
+          5454,
+          5674,
+          6520,
+          6521
+        ],
+        "stopped": true,
+        "remaining": []
+      }
+    ],
+    "sameNativeNoteBytes": true
+  },
+  "galleryVerification": {
+    "state": {
+      "route": "/.agents/uiux/tocktutor/tocktutor.html",
+      "viewport": [
+        1512,
+        949,
+        2
+      ],
+      "theme": "dark",
+      "rootSkin": null,
+      "imageCount": 61,
+      "pairs": [
+        [
+          {
+            "src": "/.agents/uiux/tocktutor/screenshots/tocktutor-editor-live-preview.png",
+            "pixels": [
+              3024,
+              1898
+            ],
+            "sha256": "4dc168ddaca829c37fc2ebe209e72005fa88557cf553b67e5f3b00695201e51b",
+            "badge": "Current",
+            "visible": true
+          },
+          {
+            "src": "/.agents/uiux/tocktutor/screenshots/obsidian-main-editor.png",
+            "pixels": [
+              3024,
+              1898
+            ],
+            "sha256": "daa9eb94e4651602736e27ac3be3fd3cffed7370401a8ea3c697fe4915fffa36",
+            "badge": "Current Reference",
+            "visible": true
+          }
+        ],
+        [
+          {
+            "src": "/.agents/uiux/tocktutor/screenshots/tocktutor-live-preview-lower.png",
+            "pixels": [
+              3024,
+              1898
+            ],
+            "sha256": "f19bfcc161417ebe81775ba00455fd6f014a335e9a7afc59ab382324179afa93",
+            "badge": "Focused Comparison",
+            "visible": true
+          },
+          {
+            "src": "/.agents/uiux/tocktutor/screenshots/obsidian-live-preview-lower.png",
+            "pixels": [
+              3024,
+              1898
+            ],
+            "sha256": "4231cf9d02613e731e9000cb2459359c240e3c909f9d8126db79e6612a4c623c",
+            "badge": "Current Reference",
+            "visible": true
+          }
+        ]
+      ],
+      "proofId": "tockteam-qs1w-2026-10-04",
+      "expandedCopyPresent": true,
+      "obsoleteCollapsedCopyPresent": false,
+      "horizontalOverflow": false
+    },
+    "errors": [],
+    "failedRequests": [],
+    "bothPairsDecodedAndFullyVisible": true
+  },
+  "galleryCleanup": {
+    "rootPid": 7618,
+    "recordedPids": [
+      7618,
+      7620,
+      7621,
+      7622
+    ],
+    "remaining": [],
+    "stopped": true,
+    "serverPid": 7606,
+    "serverGroupStopped": true
+  },
+  "guardPlacement": {
+    "tocktutor": {
+      "pid": 5182,
+      "events": [
+        {
+          "windowId": 1,
+          "displayId": 25,
+          "bounds": {
+            "x": 1512,
+            "y": 30,
+            "width": 1366,
+            "height": 994
+          },
+          "visible": true,
+          "focused": false
+        }
+      ],
+      "display": {
+        "accelerometerSupport": "unknown",
+        "bounds": {
+          "x": 1512,
+          "y": 0,
+          "width": 1366,
+          "height": 1024
+        },
+        "colorDepth": 24,
+        "colorSpace": "{primaries:P3, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
+        "depthPerComponent": 8,
+        "detected": true,
+        "displayFrequency": 60,
+        "id": 25,
+        "internal": false,
+        "label": "Sidecar Display (AirPlay)",
+        "maximumCursorSize": {
+          "width": 0,
+          "height": 0
+        },
+        "monochrome": false,
+        "nativeOrigin": {
+          "x": 0,
+          "y": 0
+        },
+        "rotation": 0,
+        "scaleFactor": 2,
+        "size": {
+          "width": 1366,
+          "height": 1024
+        },
+        "workArea": {
+          "x": 1512,
+          "y": 30,
+          "width": 1366,
+          "height": 994
+        },
+        "workAreaSize": {
+          "width": 1366,
+          "height": 994
+        },
+        "touchSupport": "unknown"
+      },
+      "ready": true
+    },
+    "gallery": {
+      "pid": 7618,
+      "events": [
+        {
+          "windowId": 1,
+          "displayId": 25,
+          "bounds": {
+            "x": 1512,
+            "y": 30,
+            "width": 1366,
+            "height": 994
+          },
+          "visible": true,
+          "focused": false
+        }
+      ],
+      "display": {
+        "accelerometerSupport": "unknown",
+        "bounds": {
+          "x": 1512,
+          "y": 0,
+          "width": 1366,
+          "height": 1024
+        },
+        "colorDepth": 24,
+        "colorSpace": "{primaries:P3, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
+        "depthPerComponent": 8,
+        "detected": true,
+        "displayFrequency": 60,
+        "id": 25,
+        "internal": false,
+        "label": "Sidecar Display (AirPlay)",
+        "maximumCursorSize": {
+          "width": 0,
+          "height": 0
+        },
+        "monochrome": false,
+        "nativeOrigin": {
+          "x": 0,
+          "y": 0
+        },
+        "rotation": 0,
+        "scaleFactor": 2,
+        "size": {
+          "width": 1366,
+          "height": 1024
+        },
+        "workArea": {
+          "x": 1512,
+          "y": 30,
+          "width": 1366,
+          "height": 994
+        },
+        "workAreaSize": {
+          "width": 1366,
+          "height": 994
+        },
+        "touchSupport": "unknown"
+      },
+      "ready": true
+    }
+  },
+  "verification": {
+    "componentTests": 41,
+    "rootFocusedUiTests": 8,
+    "galleryTests": 26,
+    "nestedSuitePassed": true,
+    "workbenchComponentTests": 817,
+    "assistantComponentTests": 13,
+    "rootTypecheckPassed": true,
+    "tocktutorTypecheckPassed": true,
+    "uiTypecheckPassed": true,
+    "buildManifestCheckPassed": true,
+    "optionalBroadRootSuiteRun": false
+  }
+}

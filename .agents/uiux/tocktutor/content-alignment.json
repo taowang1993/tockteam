@@ -3588,12 +3588,12 @@
       },
       "obsidian": {
         "screenshot": "obsidian-main-editor.png",
-        "path": "UIUX Comparison.md",
+        "path": "comparison.md",
         "mode": "live-preview",
-        "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
+        "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2"
       },
-      "referenceStatus": "historical-frontmatter-and-filename",
-      "sameNoteBytes": false,
+      "referenceStatus": "current-matched-content",
+      "sameNoteBytes": true,
       "sameMarkdownBody": true
     },
     {
@@ -3606,12 +3606,12 @@
       },
       "obsidian": {
         "screenshot": "obsidian-live-preview-lower.png",
-        "path": "UIUX Comparison.md",
+        "path": "comparison.md",
         "mode": "live-preview",
-        "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5"
+        "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2"
       },
-      "referenceStatus": "historical-frontmatter-and-filename",
-      "sameNoteBytes": false,
+      "referenceStatus": "current-matched-content",
+      "sameNoteBytes": true,
       "sameMarkdownBody": true
     },
     {
@@ -5167,6 +5167,17 @@
       "sha256": "22c5efa5ffe4dfa97c1a0f29b23dca62f3757c1dc0b9e1c64e3799c7044fa236"
     },
     "obsidian-live-preview-lower.png": {
+      "product": "Obsidian 1.13.7",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-qs1w-2026-10-04",
+      "entry": "/Applications/Obsidian.app/Contents/Resources/app.asar",
+      "runtime": "Electron 42.3.0",
+      "userStateUnchanged": true,
+      "route": "app://obsidian.md/index.html",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
       "geometry": {
         "width": 1512,
         "height": 949,
@@ -5174,48 +5185,54 @@
       },
       "theme": "dark",
       "skin": null,
-      "runtimeErrors": [],
-      "path": "UIUX Comparison.md",
-      "mode": "live-preview",
-      "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 221639,
-      "sha256": "46a142ca48251b754909bad157a6c2f431986710a01c238c93da59aa1351e027",
-      "capturedAt": "2026-09-25T01:21:03.025Z",
-      "sourceCommit": "74873748",
+      "capturedAt": "2026-10-04T00:06:33.520Z",
+      "sha256": "4231cf9d02613e731e9000cb2459359c240e3c909f9d8126db79e6612a4c623c",
+      "bytes": 214381,
       "visibleState": {
-        "assertedText": "Data; Code and Notes; Small Heading",
-        "assertionPassed": true,
-        "visibleHeadings": [
-          "Data",
-          "Code and Notes",
-          "Small Heading"
-        ],
-        "scrollContainer": "CodeMirror Live Preview scroller",
-        "scrollTop": 858,
-        "textExcerpt": "Data · Syntax · Expected Result · State · Code and Notes · const lesson = \"markdown\" · Small Heading · Final text tests the smallest heading · Footnotes should remain readable without dominating the page.",
+        "region": "lower",
+        "capturedAt": "2026-10-04T00:06:33.520Z",
+        "route": "app://obsidian.md/index.html",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [1512, 949, 2],
+        "theme": "obsidian",
+        "rootColorScheme": "",
+        "bodyColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "customTheme": "",
+        "propertiesExpanded": true,
+        "propertiesVisible": false,
+        "propertyCount": 9,
+        "scrollTop": 958,
+        "visibleHeadings": ["Data", "Code and Notes", "Small Heading"],
         "headingPositions": [
-          {
-            "text": "Data",
-            "y": 184.921875,
-            "bottom": 228.984375
-          },
-          {
-            "text": "Code and Notes",
-            "y": 429.171875,
-            "bottom": 473.234375
-          },
-          {
-            "text": "Small Heading",
-            "y": 773.234375,
-            "bottom": 815.84375
-          }
-        ]
+          { "text": "Data", "top": 209.921875 },
+          { "text": "Code and Notes", "top": 454.171875 },
+          { "text": "Small Heading", "top": 804.0390625 }
+        ],
+        "assertionPassed": true,
+        "sha256": "4231cf9d02613e731e9000cb2459359c240e3c909f9d8126db79e6612a4c623c",
+        "bytes": 214381
       },
-      "runtimeErrorMonitoring": "Injected window error/unhandledrejection and Playwright console/pageerror listeners during route verification and capture; no capture-time errors.",
-      "route": "app://obsidian.md/index.html",
-      "productVersion": "Obsidian 1.13.7"
+      "runtimeErrors": [],
+      "warnings": [],
+      "failedRequests": [],
+      "runtimeErrorMonitoring": "Owned Playwright pageerror, console-error and failed-request listeners before app-scoped note navigation; cold-start console archived separately.",
+      "proofFile": ".beads/reports/2026-10-04-tocktutor-property-accessories/proof.json"
     },
     "obsidian-main-editor.png": {
+      "product": "Obsidian 1.13.7",
+      "captureScope": "real-desktop",
+      "refreshId": "tockteam-qs1w-2026-10-04",
+      "entry": "/Applications/Obsidian.app/Contents/Resources/app.asar",
+      "runtime": "Electron 42.3.0",
+      "userStateUnchanged": true,
+      "route": "app://obsidian.md/index.html",
+      "path": "comparison.md",
+      "mode": "live-preview",
+      "contentSha256": "6792ccbb22b31fbd55abf417995c5dd0975dd570f4cd7ab8cca4eaa6fb8b84d2",
+      "noteBytes": 1413,
       "geometry": {
         "width": 1512,
         "height": 949,
@@ -5223,20 +5240,41 @@
       },
       "theme": "dark",
       "skin": null,
-      "route": "/index.html",
-      "runtimeErrors": [],
-      "path": "UIUX Comparison.md",
-      "mode": "live-preview",
-      "contentSha256": "3a55316a7e1628a2a4e7c7167662556322c10ae1691a7cfe519856cbade091e5",
-      "bytes": 230211,
-      "sha256": "886b4cddfaa7d6db2129ce9e9f359f46a4c3408a66ad4e98cc15f3140420d604",
-      "capturedAt": "2026-09-19T02:03:29.209Z",
+      "capturedAt": "2026-10-04T00:06:33.379Z",
+      "sha256": "daa9eb94e4651602736e27ac3be3fd3cffed7370401a8ea3c697fe4915fffa36",
+      "bytes": 209920,
       "visibleState": {
-        "assertedText": "Markdown Rendering Lab",
-        "textSha256": "3ad16368e81c5e2a9017a5d9e348e6eadb776ac36a397d9e53788c5da3fe5b6a",
-        "textExcerpt": "Comparison Vault\nAttachments\npixel\nPNG\nBases\nLessons\nBASE\nBoards\nLesson\nCANVAS\nImports\nImported\nNotes\nAlias Target\nWelcome\nMention\nStudy Guide\nUIUX Comparison\nUntitled\nUIUX Comparison\nUIUX Comparison\nUIUX Comparison\nProperties\nreview\nmarkdown\ncomparison\ntypography\nmedium\nAdd property\n\n\nMarkdown Rendering Lab\n\n\nUse bold, italic, bold italic, strikethrough, highlighting, and inline code in one paragraph.\n\n\nOpen Welcome, follow an aliased note, or visit Obsidian Help.\n\n\nStructure\n\n\nLists\n\n\n1. Compare heading scale and paragraph rhythm.\n2. Inspect nested content.\n   - A nested bullet\n   - A bullet with strong text\n\n\n Completed task\n Pending task with Welcome\n\n\n> A short quote should begin close to its leading bar.\n>\n> A second paragraph tests spacing inside the same quote.\n1 backlink\n5 properties"
+        "region": "upper",
+        "capturedAt": "2026-10-04T00:06:33.379Z",
+        "route": "app://obsidian.md/index.html",
+        "path": "comparison.md",
+        "documentMode": "live-preview",
+        "geometry": [1512, 949, 2],
+        "theme": "obsidian",
+        "rootColorScheme": "",
+        "bodyColorScheme": "dark",
+        "rootSkin": null,
+        "bodySkin": null,
+        "customTheme": "",
+        "propertiesExpanded": true,
+        "propertiesVisible": true,
+        "propertyCount": 9,
+        "scrollTop": 0,
+        "visibleHeadings": ["Markdown Rendering Lab", "Structure", "Lists"],
+        "headingPositions": [
+          { "text": "Markdown Rendering Lab", "top": 579.046875 },
+          { "text": "Structure", "top": 746.109375 },
+          { "text": "Lists", "top": 814.171875 }
+        ],
+        "assertionPassed": true,
+        "sha256": "daa9eb94e4651602736e27ac3be3fd3cffed7370401a8ea3c697fe4915fffa36",
+        "bytes": 209920
       },
-      "runtimeErrorMonitoring": "Renderer error and unhandledrejection listeners during capture batches"
+      "runtimeErrors": [],
+      "warnings": [],
+      "failedRequests": [],
+      "runtimeErrorMonitoring": "Owned Playwright pageerror, console-error and failed-request listeners before app-scoped note navigation; cold-start console archived separately.",
+      "proofFile": ".beads/reports/2026-10-04-tocktutor-property-accessories/proof.json"
     },
     "obsidian-mermaid-editing.png": {
       "geometry": {
@@ -6089,10 +6127,10 @@
     "tocktutor-editor-live-preview.png": {
       "product": "TockTutor Source-Built Desktop",
       "captureScope": "real-desktop",
-      "refreshId": "tockteam-ae0l-2026-10-03",
-      "sourceCommit": "fdde9d0d",
+      "refreshId": "tockteam-qs1w-2026-10-04",
+      "sourceCommit": "9976a5f10815fddda1d1e7b0e695cb7e7bbeefaf",
       "sourceDirty": true,
-      "sourceProvenance": "Built and staged the saved borderless Properties fix plus the tested narrow-window clamp/tag-box correction. Exact source and staged artifact hashes are archived; Raycast source custody and build inclusion do not constitute Raycast acceptance.",
+      "sourceProvenance": "Built and staged the two-line Properties accessory layout fix. Source/artifact hashes and frozen SDK custody are archived; build inclusion is not SDK acceptance.",
       "route": "/tocktutor/comparison.md",
       "path": "comparison.md",
       "mode": "live-preview",
@@ -6105,12 +6143,12 @@
       },
       "theme": "dark",
       "skin": null,
-      "capturedAt": "2026-10-03T14:08:43.266Z",
-      "sha256": "a89f030f3dd6ca3c9a625bb6a11b46ba0fafb699a080bb2a8973d897875b2583",
-      "bytes": 273955,
+      "capturedAt": "2026-10-04T00:26:52.588Z",
+      "sha256": "4dc168ddaca829c37fc2ebe209e72005fa88557cf553b67e5f3b00695201e51b",
+      "bytes": 251806,
       "visibleState": {
         "region": "upper",
-        "capturedAt": "2026-10-03T14:08:43.266Z",
+        "capturedAt": "2026-10-04T00:26:52.588Z",
         "route": "/tocktutor/comparison.md",
         "path": "comparison.md",
         "documentMode": "live-preview",
@@ -6141,13 +6179,13 @@
         "sourceVisible": false,
         "fontsReady": true,
         "assertionPassed": true,
-        "sha256": "a89f030f3dd6ca3c9a625bb6a11b46ba0fafb699a080bb2a8973d897875b2583",
-        "bytes": 273955
+        "sha256": "4dc168ddaca829c37fc2ebe209e72005fa88557cf553b67e5f3b00695201e51b",
+        "bytes": 251806
       },
       "runtimeErrors": [],
-      "runtimeErrorMonitoring": "Playwright pageerror, console-error and failed-request listeners installed before navigating into TockTutor; cold-start console and owned guard placement recorded separately.",
+      "runtimeErrorMonitoring": "Owned Playwright pageerror, console-error and failed-request listeners before app-scoped note navigation; cold-start console archived separately.",
       "warnings": [],
-      "proofFile": ".beads/reports/2026-10-03-tocktutor-inline-properties/proof.json",
+      "proofFile": ".beads/reports/2026-10-04-tocktutor-property-accessories/proof.json",
       "failedRequests": []
     },
     "tocktutor-editor-reading.png": {
@@ -6749,10 +6787,10 @@
     "tocktutor-live-preview-lower.png": {
       "product": "TockTutor Source-Built Desktop",
       "captureScope": "real-desktop",
-      "refreshId": "tockteam-ae0l-2026-10-03",
-      "sourceCommit": "fdde9d0d",
+      "refreshId": "tockteam-qs1w-2026-10-04",
+      "sourceCommit": "9976a5f10815fddda1d1e7b0e695cb7e7bbeefaf",
       "sourceDirty": true,
-      "sourceProvenance": "Built and staged the saved borderless Properties fix plus the tested narrow-window clamp/tag-box correction. Exact source and staged artifact hashes are archived; Raycast source custody and build inclusion do not constitute Raycast acceptance.",
+      "sourceProvenance": "Built and staged the two-line Properties accessory layout fix. Source/artifact hashes and frozen SDK custody are archived; build inclusion is not SDK acceptance.",
       "route": "/tocktutor/comparison.md",
       "path": "comparison.md",
       "mode": "live-preview",
@@ -6765,12 +6803,12 @@
       },
       "theme": "dark",
       "skin": null,
-      "capturedAt": "2026-10-03T14:08:43.392Z",
-      "sha256": "e41771bc7f07f80e935a6a38d1134dafc026fb399e6a800a3ed9532f67bba97c",
-      "bytes": 281346,
+      "capturedAt": "2026-10-04T00:26:52.727Z",
+      "sha256": "f19bfcc161417ebe81775ba00455fd6f014a335e9a7afc59ab382324179afa93",
+      "bytes": 259042,
       "visibleState": {
         "region": "lower",
-        "capturedAt": "2026-10-03T14:08:43.392Z",
+        "capturedAt": "2026-10-04T00:26:52.727Z",
         "route": "/tocktutor/comparison.md",
         "path": "comparison.md",
         "documentMode": "live-preview",
@@ -6801,14 +6839,14 @@
         "sourceVisible": false,
         "fontsReady": true,
         "assertionPassed": true,
-        "sha256": "e41771bc7f07f80e935a6a38d1134dafc026fb399e6a800a3ed9532f67bba97c",
-        "bytes": 281346
+        "sha256": "f19bfcc161417ebe81775ba00455fd6f014a335e9a7afc59ab382324179afa93",
+        "bytes": 259042
       },
       "runtimeErrors": [],
-      "runtimeErrorMonitoring": "Playwright pageerror, console-error and failed-request listeners installed before navigating into TockTutor; cold-start console and owned guard placement recorded separately.",
+      "runtimeErrorMonitoring": "Owned Playwright pageerror, console-error and failed-request listeners before app-scoped note navigation; cold-start console archived separately.",
       "failedRequests": [],
       "warnings": [],
-      "proofFile": ".beads/reports/2026-10-03-tocktutor-inline-properties/proof.json"
+      "proofFile": ".beads/reports/2026-10-04-tocktutor-property-accessories/proof.json"
     },
     "tocktutor-marketplace.png": {
       "product": "TockTutor Source-Built Desktop",
@@ -9715,9 +9753,31 @@
       "remaining": []
     }
   },
+  "propertyAccessoriesRefresh": {
+    "id": "tockteam-qs1w-2026-10-04",
+    "status": "verified-current",
+    "publicationAllowlist": ["tocktutor-editor-live-preview.png", "tocktutor-live-preview-lower.png", "obsidian-main-editor.png", "obsidian-live-preview-lower.png"],
+    "unrelatedExistingCapturesUnchanged": 58,
+    "sameNoteBytes": true,
+    "samePropertyTypes": true,
+    "propertiesDisclosureToggled": false,
+    "compactBorderlessProperties": true,
+    "rebuild": true,
+    "captureProof": ".beads/reports/2026-10-04-tocktutor-property-accessories/proof.json",
+    "previousReferences": {
+      "obsidian-main-editor.png": {
+        "path": ".beads/reports/2026-10-04-tocktutor-property-accessories/previous-obsidian-upper.png",
+        "sha256": "886b4cddfaa7d6db2129ce9e9f359f46a4c3408a66ad4e98cc15f3140420d604"
+      },
+      "obsidian-live-preview-lower.png": {
+        "path": ".beads/reports/2026-10-04-tocktutor-property-accessories/previous-obsidian-lower.png",
+        "sha256": "46a142ca48251b754909bad157a6c2f431986710a01c238c93da59aa1351e027"
+      }
+    }
+  },
   "livePreviewExpandedRefresh": {
     "id": "tockteam-ae0l-2026-10-03",
-    "status": "verified-current",
+    "status": "verified-historical",
     "publicationAllowlist": [
       "tocktutor-editor-live-preview.png",
       "tocktutor-live-preview-lower.png"

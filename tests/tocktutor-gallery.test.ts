@@ -13,7 +13,7 @@ const images = [...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)].map(match => m
 const links = [...html.matchAll(/<a class="screenshot-link" href="([^"]+)"/gu)].map(match => match[1]!)
 const sha256 = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex')
 
-test('refreshes every retained TockTutor image without changing Obsidian and removes only unused captures', () => {
+test('preserves the full TockTutor refresh and supersedes only explicitly retaken references', () => {
   const refresh = proof.tocktutorGalleryRefresh
   assert.ok(refresh, 'The complete TockTutor refresh has live capture evidence')
   assert.equal(refresh.status, 'verified-current')
@@ -35,14 +35,16 @@ test('refreshes every retained TockTutor image without changing Obsidian and rem
     assert.equal(existsSync(resolve(root, 'screenshots', name)), false, name)
     assert.ok(refresh.previousProof.captures[name], name)
   }
+  const pairedProof = proof.propertyAccessoriesRefresh && JSON.parse(readFileSync(resolve(proof.propertyAccessoriesRefresh.captureProof), 'utf8'))
   for (const [name, hash] of Object.entries(refresh.preservedReferenceHashes)) {
-    assert.equal(sha256(readFileSync(resolve(root, 'screenshots', name))), hash, name)
-    assert.deepEqual(proof.captures[name], refresh.previousProof.captures[name], name)
+    const previous = proof.propertyAccessoriesRefresh?.previousReferences[name]
+    assert.equal(sha256(readFileSync(previous ? resolve(previous.path) : resolve(root, 'screenshots', name))), hash, name)
+    assert.deepEqual(previous ? pairedProof.previousCaptures[name] : proof.captures[name], refresh.previousProof.captures[name], name)
   }
   for (const name of refresh.publicationAllowlist) {
     const capture = proof.captures[name]
     assert.equal(capture.captureScope, 'real-desktop', name)
-    const focused = proof.livePreviewExpandedRefresh ?? proof.completedTaskRefresh
+    const focused = proof.propertyAccessoriesRefresh ?? proof.livePreviewExpandedRefresh ?? proof.completedTaskRefresh
     assert.equal(capture.refreshId, focused?.publicationAllowlist.includes(name) ? focused.id : refresh.id, name)
     assert.ok(Date.parse(capture.capturedAt) >= Date.parse(refresh.startedAt), name)
     assert.deepEqual(capture.geometry, { width: 1512, height: 949, deviceScaleFactor: 2 }, name)
@@ -73,11 +75,11 @@ test('refreshes every retained TockTutor image without changing Obsidian and rem
   assert.ok(refresh.cleanup.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
 })
 
-test('keeps Properties expanded in both upper and lower Live Preview captures', () => {
+test('preserves the historical expanded, borderless Properties verification', () => {
   const refresh = proof.livePreviewExpandedRefresh
   assert.ok(refresh, 'The corrected captures have expanded-Properties evidence')
   const verified = JSON.parse(readFileSync(resolve(refresh.captureProof), 'utf8'))
-  assert.equal(refresh.status, 'verified-current')
+  assert.equal(refresh.status, 'verified-historical')
   assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-editor-live-preview.png', 'tocktutor-live-preview-lower.png'])
   assert.equal(refresh.unrelatedExistingCapturesUnchanged, 60)
   assert.equal(refresh.propertiesDisclosureToggled, false)
@@ -93,21 +95,21 @@ test('keeps Properties expanded in both upper and lower Live Preview captures', 
     assert.ok(appearance.minimumInputContrast >= 4.5)
     assert.ok(appearance.sourceHintContrast >= 4.5)
   }
-  for (const name of refresh.publicationAllowlist) {
-    const capture = proof.captures[name]
+  for (const [index, name] of refresh.publicationAllowlist.entries()) {
+    const capture = verified.captures[name]
     assert.equal(capture.refreshId, refresh.id, name)
     assert.equal(capture.visibleState.propertiesExpanded, true, name)
-    assert.deepEqual(capture, verified.captures[name], name)
     assert.equal(capture.path, 'comparison.md', name)
     assert.equal(capture.contentSha256, proof.comparisonNoteRevision.current.contentSha256, name)
-    assert.equal(sha256(readFileSync(resolve(root, 'screenshots', name))), capture.sha256, name)
+    const archived = resolve(refresh.captureProof, '..', index === 0 ? 'upper.png' : 'lower.png')
+    assert.equal(sha256(readFileSync(archived)), capture.sha256, name)
     assert.notEqual(capture.sha256, refresh.previousCaptures[name].sha256, name)
   }
-  const upper = proof.captures['tocktutor-editor-live-preview.png'].visibleState
+  const upper = verified.captures['tocktutor-editor-live-preview.png'].visibleState
   assert.equal(upper.scrollTop, 0)
   assert.equal(upper.propertiesVisible, true)
   assert.equal(upper.propertyCount, 9)
-  const lower = proof.captures['tocktutor-live-preview-lower.png'].visibleState
+  const lower = verified.captures['tocktutor-live-preview-lower.png'].visibleState
   assert.ok(lower.scrollTop > 0)
   for (const heading of ['Data', 'Code and Notes', 'Small Heading']) assert.ok(lower.visibleHeadings.includes(heading), heading)
   assert.deepEqual(refresh.cleanup.remaining, [])
@@ -122,7 +124,7 @@ test('keeps Properties expanded in both upper and lower Live Preview captures', 
   assert.doesNotMatch(section, /Properties collapsed|No app rebuild or recapture/u)
 })
 
-test('preserves the completed-task verification and honestly labeled earlier reference', () => {
+test('preserves the completed-task verification and its archived earlier reference', () => {
   const name = 'tocktutor-editor-live-preview.png'
   const verified = JSON.parse(readFileSync(resolve('.beads/reports/2026-10-03-tocktutor-completed-task/proof.json'), 'utf8'))
   assert.equal(sha256(readFileSync(resolve('.beads/reports/2026-10-03-tocktutor-completed-task/live-preview.png'))), verified.screenshot.sha256)
@@ -144,10 +146,52 @@ test('preserves the completed-task verification and honestly labeled earlier ref
   assert.equal(proof.captures[name].visibleState.completedTask.decoration, 'line-through')
   assert.equal(proof.captures[name].visibleState.pendingTask.decoration, 'none')
   assert.notEqual(refresh.previousCapture.sha256, verified.screenshot.sha256)
-  assert.equal(sha256(readFileSync(resolve(root, 'screenshots/obsidian-main-editor.png'))), proof.tocktutorGalleryRefresh.preservedReferenceHashes['obsidian-main-editor.png'])
+  const reference = proof.propertyAccessoriesRefresh.previousReferences['obsidian-main-editor.png']
+  assert.equal(sha256(readFileSync(resolve(reference.path))), proof.tocktutorGalleryRefresh.preservedReferenceHashes['obsidian-main-editor.png'])
   const section = /<section class="surface" id="live-preview">([\s\S]*?)<\/section>/u.exec(html)![1]!
   assert.match(section, /completed tasks[\s\S]*pending tasks/u)
-  assert.match(section, /Obsidian · Live Preview<\/span><span class="badge">Earlier Reference/u)
+  assert.match(section, /Obsidian · Live Preview<\/span><span class="badge">Current Reference/u)
+})
+
+test('matches both Live Preview pairs to all nine current properties with adjacent accessories', () => {
+  const refresh = proof.propertyAccessoriesRefresh
+  assert.ok(refresh, 'Fresh paired captures need current full-property evidence')
+  assert.equal(refresh.status, 'verified-current')
+  assert.deepEqual(refresh.publicationAllowlist, ['tocktutor-editor-live-preview.png', 'tocktutor-live-preview-lower.png', 'obsidian-main-editor.png', 'obsidian-live-preview-lower.png'])
+  assert.equal(refresh.unrelatedExistingCapturesUnchanged, 58)
+  const verified = JSON.parse(readFileSync(resolve(refresh.captureProof), 'utf8'))
+  assert.ok(verified.accessories.tagSuggestionsGap >= 0 && verified.accessories.tagSuggestionsGap <= 8)
+  assert.ok(verified.accessories.warningGap >= 0 && verified.accessories.warningGap <= 12)
+  assert.equal(verified.interaction.suggestionsAndFreeFormSaved, true)
+  assert.equal(verified.interaction.escapeRestoresFocus, true)
+  assert.equal(verified.narrow.overflow.length, 0)
+  assert.equal(verified.appearances.appearances.length, 8)
+  for (const name of refresh.publicationAllowlist) {
+    const capture = proof.captures[name]
+    assert.deepEqual(capture, verified.captures[name], name)
+    assert.equal(capture.refreshId, refresh.id, name)
+    assert.equal(capture.path, 'comparison.md', name)
+    assert.equal(capture.contentSha256, sha256(readFileSync(resolve(root, 'comparison.md'))), name)
+    assert.equal(capture.visibleState.propertyCount, 9, name)
+    assert.equal(capture.visibleState.propertiesExpanded, true, name)
+    assert.equal(capture.theme, 'dark', name)
+    assert.equal(capture.skin, null, name)
+    assert.equal(capture.visibleState.rootSkin, null, name)
+    assert.equal(capture.visibleState.bodySkin, null, name)
+    if (name.startsWith('tocktutor-')) assert.equal(capture.visibleState.rootColorScheme, 'dark', name)
+    else assert.equal(capture.visibleState.bodyColorScheme, 'dark', name)
+  }
+  const native = verified.nativeVerification.upper
+  assert.ok(native.properties.every((property: { visible: boolean }) => property.visible))
+  assert.deepEqual(native.properties.map((property: { key: string }) => property.key), ['status', 'favorite', 'area', 'tags', 'difficulty', 'due', 'meeting', 'rating', 'unsupported'])
+  for (const surface of ['live-preview', 'live-preview-lower']) {
+    const pair = proof.pairs.find((pair: { surface: string }) => pair.surface === surface)
+    assert.equal(pair.sameNoteBytes, true, surface)
+    assert.equal(pair.referenceStatus, 'current-matched-content', surface)
+    assert.equal(pair.tocktutor.contentSha256, pair.obsidian.contentSha256, surface)
+  }
+  assert.equal(verified.galleryVerification.bothPairsDecodedAndFullyVisible, true)
+  assert.ok(verified.cleanup.runs.every((run: { stopped: boolean; remaining: number[] }) => run.stopped && run.remaining.length === 0))
 })
 
 test('accounts for every gallery and supplemental capture without stale links', () => {
