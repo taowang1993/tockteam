@@ -50,6 +50,24 @@ describe('editable document properties', () => {
     expect(screen.getByRole('textbox', { name: 'Property status' })).toBe(scalar)
   })
 
+  it('offers tag suggestions before the new-value field and retains free-form entry', async () => {
+    const set = vi.fn(() => true)
+    renderEditableHeader({
+      onSetProperty: set,
+      source: '---\ntags: [one]\n---\n',
+      suggestions: { names: [], tags: ['two'], status: 'ready', incomplete: false, onRetry: vi.fn() },
+    })
+    const suggestions = screen.getByRole('button', { name: 'tags Value Suggestions' })
+    const input = screen.getByRole('textbox', { name: 'New tags Value' })
+    expect(suggestions.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    fireEvent.click(suggestions)
+    fireEvent.click(await screen.findByRole('option', { name: 'two' }))
+    expect(set).toHaveBeenCalledWith('tags', ['one', 'two'])
+    fireEvent.change(input, { target: { value: 'free-form' } })
+    fireEvent.submit(input.closest('form')!)
+    expect(set).toHaveBeenCalledWith('tags', ['one', 'free-form'])
+  })
+
   it('exposes rename, copy, and remove actions for ordinary property names', () => {
     renderEditableHeader({ onRenameProperty: vi.fn(() => true), onRemoveProperty: vi.fn(() => true) })
 
