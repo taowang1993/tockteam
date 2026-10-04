@@ -48,7 +48,7 @@ export const Grid = Object.assign(searchableCollection('raycast-grid'), {
   EmptyView: component('raycast-empty'),
 })
 export const LaunchType = Object.freeze({ UserInitiated: 'userInitiated', Background: 'background' } as const)
-type CommandEnvironment = Readonly<{ extensionName: string; entryPointName: string; entryPointMode: 'no-view' | 'view' | 'menu-bar'; launchType?: typeof LaunchType[keyof typeof LaunchType] }>
+type CommandEnvironment = Readonly<{ extensionName: string; entryPointName: string; entryPointMode: 'no-view' | 'view' | 'menu-bar'; launchType?: typeof LaunchType[keyof typeof LaunchType]; assetsPath?: string; supportPath?: string }>
 type NativeEffectRequest = { kind: 'copy' | 'openGoogleTranslate' | 'paste' | 'savePreferences'; preferences?: Readonly<Record<string, boolean | string>>; text?: string; url?: string }
 type CompatibilityStorage = { removeItem: (key: string) => Promise<void>; clear: () => Promise<void> } & (
   { typed?: false; allItems?: () => Promise<Record<string, string>>; getItem: (key: string) => Promise<string | undefined>; setItem: (key: string, value: string) => Promise<void> }
@@ -65,7 +65,9 @@ export function configureCompatibility(value: Compatibility): void {
   if (next && (typeof next.extensionName !== 'string' || !next.extensionName || next.extensionName.length > 128
     || typeof next.entryPointName !== 'string' || !next.entryPointName || next.entryPointName.length > 128
     || !['view', 'no-view', 'menu-bar'].includes(next.entryPointMode)
-    || next.launchType !== undefined && !Object.values(LaunchType).includes(next.launchType))) throw new Error('Invalid command environment')
+    || next.launchType !== undefined && !Object.values(LaunchType).includes(next.launchType)
+    // The documented macOS contract uses absolute POSIX paths; preserve bundled external imports.
+    || [next.assetsPath, next.supportPath].some(path => path !== undefined && (typeof path !== 'string' || Buffer.byteLength(path) > 4096 || path.includes('\0') || !path.startsWith('/'))))) throw new Error('Invalid command environment')
   const snapshot = next ? Object.freeze(next) : undefined
   compatibility = value
   commandEnvironment = snapshot
@@ -353,6 +355,8 @@ export const environment = Object.freeze({
   get entryPointType(): 'command' { return commandEnvironment ? 'command' : unsupported('environment.entryPointType') },
   get entryPointMode(): CommandEnvironment['entryPointMode'] { return commandEnvironment?.entryPointMode ?? unsupported('environment.entryPointMode') },
   get launchType(): NonNullable<CommandEnvironment['launchType']> { return commandEnvironment?.launchType ?? unsupported('environment.launchType') },
+  get assetsPath(): string { return commandEnvironment?.assetsPath ?? unsupported('environment.assetsPath') },
+  get supportPath(): string { return commandEnvironment?.supportPath ?? unsupported('environment.supportPath') },
   get commandName(): string { return environment.entryPointName },
   get commandMode(): CommandEnvironment['entryPointMode'] { return environment.entryPointMode },
 })

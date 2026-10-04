@@ -2,7 +2,7 @@
 import { stopOwnedChild } from '../scripts/trusted-raycast-process.mjs'
 import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { copyFileSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { admitTrustedRaycastArtifact, readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
@@ -72,6 +72,7 @@ export class UserRaycastManager {
     if (!Number.isSafeInteger(owner.webContentsId) || ![this.options.nodePath, this.options.runtime, this.options.artifact].every(isAbsolute) || !existsSync(this.options.nodePath)) throw new Error('Invalid user extension owner or runtime')
     if (!this.options.install.runtimeDir()) throw new Error('Approved extension is not enabled')
     const workspace = mkdtempSync(join(tmpdir(), 'tockteam-user-raycast-'))
+    let support: ReturnType<UserRaycastInstall['prepareSupportDirectory']> | undefined
     try {
       const chosen = this.options.install.snapshotTo(join(workspace, 'source'))
       const linearClientId = chosen.extensionId === 'linear' && chosen.command === 'search-issues' ? this.options.linearClientId : undefined
@@ -93,7 +94,9 @@ export class UserRaycastManager {
       for (const file of ['api.mjs', 'child.mjs']) copyFileSync(join(this.options.runtime, file), join(workspace, file))
       mkdirSync(join(workspace, 'tmp'))
       const id = randomUUID()
-      const child = spawn(this.options.nodePath, [join(workspace, 'child.mjs')], { cwd: workspace, detached: true, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TOCKTEAM_USER_RAYCAST_ID: chosen.extensionId, TOCKTEAM_USER_RAYCAST_SESSION: id, TOCKTEAM_USER_RAYCAST_COMMAND: chosen.command, TOCKTEAM_USER_RAYCAST_MODE: chosen.mode ?? 'view', ...(linearClientId ? { TOCKTEAM_LINEAR_TEST_CLIENT_ID: linearClientId } : {}), TOCKTEAM_USER_RAYCAST_STATE: this.options.install.statePath(chosen.extensionId), TRUSTED_RAYCAST_EXTENSION_ID: chosen.extensionId, TRUSTED_RAYCAST_PREFERENCES: preferences } })
+      const assets = join(realpathSync(join(workspace, 'source')), 'assets')
+      support = this.options.install.prepareSupportDirectory(chosen.extensionId, chosen.digest)
+      const child = spawn(this.options.nodePath, [join(workspace, 'child.mjs')], { cwd: workspace, detached: true, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: '/usr/bin:/bin', HOME: workspace, TMPDIR: join(workspace, 'tmp'), TOCKTEAM_USER_RAYCAST_ID: chosen.extensionId, TOCKTEAM_USER_RAYCAST_SESSION: id, TOCKTEAM_USER_RAYCAST_COMMAND: chosen.command, TOCKTEAM_USER_RAYCAST_MODE: chosen.mode ?? 'view', TOCKTEAM_USER_RAYCAST_ASSETS: assets, TOCKTEAM_USER_RAYCAST_SUPPORT: support.path, ...(linearClientId ? { TOCKTEAM_LINEAR_TEST_CLIENT_ID: linearClientId } : {}), TOCKTEAM_USER_RAYCAST_STATE: this.options.install.statePath(chosen.extensionId), TRUSTED_RAYCAST_EXTENSION_ID: chosen.extensionId, TRUSTED_RAYCAST_PREFERENCES: preferences } })
       let resolve!: () => void; let reject!: (error: Error) => void
       const ready = new Promise<void>((yes, no) => { resolve = yes; reject = no })
       const session: Session = { child, workspace, owner, candidate: chosen, id, revision: -1, actions: new Set(), fields: new Map(), ...(chosen.mode === 'no-view' ? { action: { eventId: 'run', revision: 0, nativeUsed: false } } : {}), resolve, reject, settled: false }
@@ -186,6 +189,7 @@ export class UserRaycastManager {
     } catch (error) {
       await this.close()
       rmSync(workspace, { recursive: true, force: true })
+      support?.discardIfEmpty()
       throw error
     }
   }

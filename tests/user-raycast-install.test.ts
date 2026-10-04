@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { readFiles, UserRaycastInstall } from '../src/user-raycast-install.ts'
@@ -166,6 +166,126 @@ test('too many empty extension folders are rejected without replacing an install
     f.store.approve(staged.digest)
     f.store.recoverPrevious()
     assert.equal(f.store.status().digest, first.digest)
+  } finally { f.close() }
+})
+
+test('support data and its mode survive reopen, version changes, rollback and identity isolation', () => {
+  const f = fixture()
+  try {
+    const first = f.store.prepare(f.source); f.store.approve(first.digest); f.store.enable()
+    const state = f.store.statePath(first.extensionId), old = Buffer.from('{"legacy":"unchanged bytes"}'); writeFileSync(state, old)
+    const support = join(realpathSync(f.data), 'state/color-picker.support'); mkdirSync(support, { mode: 0o750 })
+    const saved = Buffer.from('Existing user-owned support data'); writeFileSync(join(support, 'saved.txt'), saved)
+    const mode = lstatSync(support).mode, identity = lstatSync(support).ino
+    const check = (store: UserRaycastInstall, digest: string): void => {
+      const receipt = store.prepareSupportDirectory('color-picker', digest)
+      assert.equal(receipt.path, support); assert.equal(lstatSync(support).ino, identity); assert.equal(lstatSync(support).mode, mode)
+      assert.deepEqual(readFileSync(join(support, 'saved.txt')), saved); assert.deepEqual(readFileSync(state), old)
+      receipt.discardIfEmpty(); assert.equal(existsSync(support), true)
+    }
+    check(f.store, first.digest); check(new UserRaycastInstall(f.data), first.digest)
+    writeFileSync(f.module, 'Updated owned fixture, never imported'); const second = f.store.prepare(f.source)
+    f.store.approve(second.digest); f.store.enable(); check(f.store, second.digest)
+    f.store.recoverPrevious(); f.store.enable(); check(f.store, first.digest)
+    const manifest = JSON.parse(readFileSync(join(f.source, 'package.json'), 'utf8')); manifest.name = 'other-identity'
+    writeFileSync(join(f.source, 'package.json'), JSON.stringify(manifest)); const other = f.store.prepare(f.source)
+    f.store.approve(other.digest); f.store.enable(); const isolated = f.store.prepareSupportDirectory(other.extensionId, other.digest)
+    assert.notEqual(isolated.path, support); assert.equal(existsSync(join(isolated.path, 'saved.txt')), false)
+    assert.deepEqual(readFileSync(join(support, 'saved.txt')), saved); assert.deepEqual(readFileSync(state), old)
+    const outside = join(f.data, 'untouched-user-file'); writeFileSync(outside, 'Outside existing owned state cleanup')
+    f.store.remove(); assert.equal(existsSync(support), false); assert.equal(existsSync(isolated.path), false)
+    assert.equal(readFileSync(outside, 'utf8'), 'Outside existing owned state cleanup'); assert.equal(existsSync(f.marker), false)
+  } finally { f.close() }
+})
+
+test('failed-start receipts remove only their own unchanged new empty directory', () => {
+  const f = fixture()
+  try {
+    const selected = f.store.prepare(f.source); f.store.approve(selected.digest); f.store.enable()
+    const create = () => f.store.prepareSupportDirectory(selected.extensionId, selected.digest)
+    const empty = create(); empty.discardIfEmpty(); assert.equal(existsSync(empty.path), false)
+    mkdirSync(empty.path, { mode: 0o750 }); const existing = create(), existingMode = lstatSync(existing.path).mode
+    existing.discardIfEmpty(); assert.equal(existsSync(existing.path), true); assert.equal(lstatSync(existing.path).mode, existingMode)
+    rmSync(existing.path, { recursive: true }); const populated = create(); writeFileSync(join(populated.path, 'new-user-data'), 'Do not discard')
+    populated.discardIfEmpty(); assert.equal(readFileSync(join(populated.path, 'new-user-data'), 'utf8'), 'Do not discard')
+    rmSync(populated.path, { recursive: true }); const replaced = create(), moved = `${replaced.path}.moved`
+    renameSync(replaced.path, moved); mkdirSync(replaced.path, { mode: 0o750 }); const replacement = lstatSync(replaced.path).ino
+    replaced.discardIfEmpty(); assert.equal(lstatSync(replaced.path).ino, replacement); assert.equal(existsSync(moved), true)
+    rmSync(replaced.path, { recursive: true }); const foreign = join(f.root, 'foreign'); mkdirSync(foreign); symlinkSync(foreign, replaced.path)
+    replaced.discardIfEmpty(); assert.equal(lstatSync(replaced.path).isSymbolicLink(), true); assert.equal(existsSync(foreign), true)
+    rmSync(replaced.path); const parentReplaced = create(), movedState = join(f.data, 'state-moved')
+    renameSync(join(f.data, 'state'), movedState); mkdirSync(join(f.data, 'state')); mkdirSync(parentReplaced.path)
+    parentReplaced.discardIfEmpty(); assert.equal(existsSync(parentReplaced.path), true); assert.equal(existsSync(join(movedState, 'color-picker.support')), true)
+    rmSync(parentReplaced.path, { recursive: true }); const rootReplaced = create(), movedRoot = `${f.data}-moved`
+    renameSync(f.data, movedRoot); mkdirSync(f.data); mkdirSync(join(f.data, 'state')); mkdirSync(rootReplaced.path)
+    rootReplaced.discardIfEmpty(); assert.equal(existsSync(rootReplaced.path), true); assert.equal(existsSync(join(movedRoot, 'state/color-picker.support')), true)
+    assert.equal(existsSync(f.marker), false)
+  } finally { f.close() }
+})
+
+test('failed-start cleanup preserves its empty support directory after an ancestor is replaced', () => {
+  const root = mkdtempSync(join(tmpdir(), 'tockteam-support-ancestor-'))
+  try {
+    const source = join(root, 'source'), parent = join(root, 'parent'), data = join(parent, 'install'); mkdirSync(source); mkdirSync(parent)
+    writeFileSync(join(source, 'package.json'), JSON.stringify({ name: 'ancestor-probe', title: 'Offline Ancestor Probe', commands: [{ name: 'probe', mode: 'view' }] }))
+    writeFileSync(join(source, 'probe.js'), 'export default function Probe() { return null }')
+    const store = new UserRaycastInstall(data), selected = store.prepare(source); store.approve(selected.digest); store.enable()
+    const receipt = store.prepareSupportDirectory(selected.extensionId, selected.digest), paths = [data, join(data, 'state'), receipt.path]
+    const identity = (path: string) => ({ dev: lstatSync(path).dev, ino: lstatSync(path).ino }), before = paths.map(identity), oldParent = identity(parent), moved = join(root, 'parent-moved')
+    renameSync(parent, moved); mkdirSync(parent); renameSync(join(moved, 'install'), data)
+    assert.notDeepEqual(identity(parent), oldParent); assert.deepEqual(paths.map(identity), before)
+    receipt.discardIfEmpty(); assert.equal(existsSync(receipt.path), true, 'Changed ancestor identity makes ownership unprovable; preserve the empty directory')
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test('support admission rejects final, state and arbitrary ancestor collisions without touching foreign data', () => {
+  const f = fixture()
+  try {
+    const selected = f.store.prepare(f.source); f.store.approve(selected.digest); f.store.enable()
+    const state = join(f.data, 'state'), support = join(state, 'color-picker.support'), foreign = join(f.root, 'foreign'); mkdirSync(foreign); writeFileSync(join(foreign, 'kept'), 'Foreign data')
+    f.store.statePath(selected.extensionId)
+    for (const kind of ['file', 'link', 'dangling'] as const) {
+      if (kind === 'file') writeFileSync(support, 'Keep this collision')
+      else symlinkSync(kind === 'link' ? foreign : join(foreign, 'missing'), support)
+      assert.throws(() => f.store.prepareSupportDirectory(selected.extensionId, selected.digest), /directory|link|EEXIST|ENOENT/i)
+      if (kind === 'file') assert.equal(readFileSync(support, 'utf8'), 'Keep this collision')
+      else assert.equal(lstatSync(support).isSymbolicLink(), true)
+      assert.equal(readFileSync(join(foreign, 'kept'), 'utf8'), 'Foreign data'); assert.equal(existsSync(join(foreign, 'missing')), false)
+      rmSync(support)
+    }
+    rmSync(state, { recursive: true })
+    for (const kind of ['file', 'link', 'dangling'] as const) {
+      if (kind === 'file') writeFileSync(state, 'Keep this state collision')
+      else symlinkSync(kind === 'link' ? foreign : join(foreign, 'missing'), state)
+      assert.throws(() => f.store.prepareSupportDirectory(selected.extensionId, selected.digest), /directory|link|EEXIST|ENOENT/i)
+      if (kind === 'file') assert.equal(readFileSync(state, 'utf8'), 'Keep this state collision')
+      else assert.equal(lstatSync(state).isSymbolicLink(), true)
+      assert.equal(readFileSync(join(foreign, 'kept'), 'utf8'), 'Foreign data'); assert.equal(existsSync(join(foreign, 'missing')), false)
+      rmSync(state)
+    }
+    const alias = join(f.root, 'arbitrary-ancestor'); symlinkSync(f.root, alias)
+    assert.throws(() => new UserRaycastInstall(join(alias, 'data')).prepareSupportDirectory(selected.extensionId, selected.digest), /ancestor link/i)
+    assert.equal(existsSync(support), false); assert.equal(readFileSync(join(foreign, 'kept'), 'utf8'), 'Foreign data'); assert.equal(existsSync(f.marker), false)
+  } finally { f.close() }
+})
+
+test('support folders require the approved enabled extension identity before any creation', () => {
+  const f = fixture()
+  try {
+    const selected = f.store.prepare(f.source), support = join(f.data, 'state/color-picker.support')
+    assert.throws(() => f.store.prepareSupportDirectory('color-picker', selected.digest), /approved.*enabled/i)
+    assert.equal(existsSync(support), false)
+    f.store.approve(selected.digest)
+    assert.throws(() => f.store.prepareSupportDirectory('color-picker', selected.digest), /approved.*enabled/i)
+    assert.equal(existsSync(support), false)
+    f.store.enable()
+    assert.throws(() => f.store.prepareSupportDirectory('another-extension', selected.digest), /identity|approved/i)
+    assert.throws(() => f.store.prepareSupportDirectory('../color-picker', selected.digest), /identity/i)
+    assert.throws(() => f.store.prepareSupportDirectory('color-picker', '0'.repeat(64)), /identity|approved/i)
+    assert.equal(existsSync(join(f.data, 'state/another-extension.support')), false)
+    const receipt = f.store.prepareSupportDirectory('color-picker', selected.digest)
+    assert.equal(existsSync(receipt.path), true); assert.equal(existsSync(f.marker), false)
+    receipt.discardIfEmpty(); assert.equal(existsSync(receipt.path), false)
   } finally { f.close() }
 })
 

@@ -72,7 +72,7 @@ const emitAfterLayout = (): void => {
 const storage = createUserRaycastStorage(process.env.TOCKTEAM_USER_RAYCAST_STATE!)
 const launchProps = Object.freeze({ launchType: api.LaunchType.UserInitiated, arguments: Object.freeze({}) })
 api.configureCompatibility({
-  environment: { extensionName: extensionId, entryPointName: command, entryPointMode: mode, launchType: launchProps.launchType },
+  environment: { extensionName: extensionId, entryPointName: command, entryPointMode: mode, launchType: launchProps.launchType, assetsPath: process.env.TOCKTEAM_USER_RAYCAST_ASSETS, supportPath: process.env.TOCKTEAM_USER_RAYCAST_SUPPORT },
   authUrl: (url: string) => send({ type: 'auth-url', extensionId, sessionId, revision: Math.max(0, revision), url }),
   native: (request: { kind: string; text?: string }) => new Promise<void>((resolve, reject) => {
     if (request.kind !== 'copy') { reject(new Error(`Raycast native effect ${request.kind} is unsupported for user extensions`)); return }

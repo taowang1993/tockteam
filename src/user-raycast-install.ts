@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, opendirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
-import { isAbsolute, join } from 'node:path'
+import { closeSync, constants, existsSync, fstatSync, fsyncSync, lstatSync, mkdirSync, openSync, opendirSync, realpathSync, renameSync, rmdirSync, rmSync, writeFileSync } from 'node:fs'
+import { isAbsolute, join, parse, resolve, sep } from 'node:path'
 import { readTrustedRaycastFile } from './trusted-raycast-artifact-admission.ts'
 import { validMenuIcon } from './user-raycast-menu.ts'
 
@@ -12,6 +12,46 @@ const MAX_ENTRIES = MAX_FILES * 9
 const MAX_BYTES = 16 * 1024 * 1024
 export type UserRaycastCandidate = Readonly<{ command: string; digest: string; extensionId: string; title: string; mode?: 'no-view' | 'menu-bar'; version?: string; license?: string; source?: string }>
 type Decision = { digest: string; enabled: boolean }
+type DirectoryIdentity = Readonly<{ dev: number; ino: number }>
+const sameDirectory = (left: DirectoryIdentity, right: DirectoryIdentity): boolean => left.dev === right.dev && left.ino === right.ino
+function directoryIdentity(path: string, expected?: DirectoryIdentity): DirectoryIdentity {
+  if (!Number.isInteger(constants.O_DIRECTORY) || !Number.isInteger(constants.O_NOFOLLOW)) throw new Error('No-follow directories are unsupported')
+  const before = lstatSync(path)
+  if (!before.isDirectory() || expected && !sameDirectory(before, expected)) throw new Error('Support path must be an unchanged real directory')
+  const fd = openSync(path, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW)
+  try {
+    const opened = fstatSync(fd), after = lstatSync(path)
+    if (!opened.isDirectory() || !after.isDirectory() || !sameDirectory(before, opened) || !sameDirectory(opened, after)) throw new Error('Support directory changed during admission')
+    return Object.freeze({ dev: opened.dev, ino: opened.ino })
+  } finally { closeSync(fd) }
+}
+function canonicalSupportRoot(root: string): Readonly<{ path: string; identity: DirectoryIdentity; ancestors: ReadonlyArray<Readonly<DirectoryIdentity & { path: string }>> }> {
+  const absolute = resolve(root), base = parse(absolute).root, parts = absolute.slice(base.length).split(sep).filter(Boolean)
+  if (Buffer.byteLength(absolute) > 4096 || parts.length > 64) throw new Error('Support root exceeds its path bound')
+  const ancestors: Array<Readonly<DirectoryIdentity & { path: string }>> = []
+  const retain = (path: string, identity: DirectoryIdentity): void => { ancestors.push(Object.freeze({ path, dev: identity.dev, ino: identity.ino })) }
+  let ancestor = base
+  retain(ancestor, directoryIdentity(ancestor))
+  for (const part of parts) {
+    ancestor = join(ancestor, part)
+    const entry = lstatSync(ancestor)
+    if (entry.isSymbolicLink()) {
+      // macOS exposes its private temporary roots through these system aliases only.
+      if (process.platform !== 'darwin' || !['/var', '/tmp'].includes(ancestor) || realpathSync(ancestor) !== `/private${ancestor}`) throw new Error('Support root contains an ancestor link')
+      retain(ancestor, entry)
+      const target = realpathSync(ancestor); retain(target, directoryIdentity(target))
+    } else retain(ancestor, directoryIdentity(ancestor))
+  }
+  const path = realpathSync(absolute)
+  if (path !== absolute) {
+    const canonicalBase = parse(path).root, canonicalParts = path.slice(canonicalBase.length).split(sep).filter(Boolean)
+    if (Buffer.byteLength(path) > 4096 || canonicalParts.length > 64) throw new Error('Support root exceeds its path bound')
+    let physical = canonicalBase
+    retain(physical, directoryIdentity(physical))
+    for (const part of canonicalParts) { physical = join(physical, part); retain(physical, directoryIdentity(physical)) }
+  }
+  return Object.freeze({ path, identity: directoryIdentity(path), ancestors: Object.freeze(ancestors) })
+}
 
 export function readFiles(directory: string): Map<string, Buffer> {
   if (!isAbsolute(directory) || !lstatSync(directory).isDirectory()) throw new Error('Extension folder must be a real directory')
@@ -187,6 +227,36 @@ export class UserRaycastInstall {
     if (existsSync(state) && !lstatSync(state).isDirectory()) throw new Error('Extension state must be a real directory')
     mkdirSync(state, { recursive: true, mode: 0o700 })
     return join(state, `${extensionId}.json`)
+  }
+  /** Called only by the Host's approved manual start, never by discovery or snapshot reads. */
+  prepareSupportDirectory(extensionId: string, expectedDigest: string): Readonly<{ path: string; discardIfEmpty(): void }> {
+    if (!ID.test(extensionId)) throw new Error('Invalid extension support identity')
+    const selected = this.inspect('current'), trust = this.readDecision()
+    if (!selected || selected.extensionId !== extensionId || selected.digest !== expectedDigest || trust.digest !== selected.digest || !trust.enabled) throw new Error('Approved extension must be enabled with matching support identity')
+    const root = canonicalSupportRoot(this.root)
+    this.statePath(extensionId) // Keep the existing state path and its directory-creation contract.
+    const state = join(root.path, 'state'), stateIdentity = directoryIdentity(state), path = join(state, `${extensionId}.support`)
+    const checkParents = (): void => {
+      const current = canonicalSupportRoot(this.root)
+      if (current.path !== root.path || !sameDirectory(current.identity, root.identity) || current.ancestors.length !== root.ancestors.length
+        || root.ancestors.some((before, index) => before.path !== current.ancestors[index]!.path || !sameDirectory(before, current.ancestors[index]!))) throw new Error('Support ancestry changed')
+      directoryIdentity(state, stateIdentity)
+    }
+    checkParents()
+    let created = false
+    try { lstatSync(path) } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      mkdirSync(path, { mode: 0o700 }) // Exclusive, final component only; existing contents are user data.
+      created = true
+    }
+    const identity = directoryIdentity(path)
+    const discardIfEmpty = (): void => {
+      if (!created) return
+      try { checkParents(); directoryIdentity(path, identity); rmdirSync(path) }
+      catch { /* Nonempty, missing, replaced or unprovable data is never recursively removed. */ }
+    }
+    try { checkParents() } catch (error) { discardIfEmpty(); throw error }
+    return Object.freeze({ path, discardIfEmpty })
   }
   snapshotTo(directory: string): UserRaycastCandidate {
     const status = this.status()
